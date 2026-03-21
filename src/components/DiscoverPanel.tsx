@@ -456,7 +456,7 @@ export default function DiscoverPanel() {
 
                       {/* One-line description */}
                       <p
-                        className="text-[11px] leading-relaxed line-clamp-2"
+                        className="text-[11px] leading-relaxed line-clamp-1"
                         style={{ color: COLORS.bodyText }}
                       >
                         {place.description}
