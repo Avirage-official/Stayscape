@@ -186,7 +186,6 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const idCounterRef = useRef(0);
-  const nextId = useCallback((prefix: string) => `${prefix}-${++idCounterRef.current}`, []);
 
   const hasInteracted = messages.length > 0;
 
@@ -197,14 +196,15 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
 
   // Expose selectPlace handler to the parent via ref
   const addPlaceMessage = useCallback((place: Place) => {
+    const id = `place-${++idCounterRef.current}`;
     const placeMessage: ChatMessage = {
-      id: nextId(`place-${place.id}`),
+      id,
       role: 'assistant',
       text: `You selected ${place.name} — let me check it for you. Here are the details I found. If you decide to book it, just send me the date and time and I'll add it to your itinerary.`,
       place,
     };
     setMessages((prev) => [...prev, placeMessage]);
-  }, [nextId]);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     selectPlace: addPlaceMessage,
@@ -215,13 +215,13 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
     if (!messageText) return;
 
     const userMsg: ChatMessage = {
-      id: nextId('user'),
+      id: `user-${++idCounterRef.current}`,
       role: 'user',
       text: messageText,
     };
 
     const assistantMsg: ChatMessage = {
-      id: nextId('assistant'),
+      id: `assistant-${++idCounterRef.current}`,
       role: 'assistant',
       text: getAssistantResponse(messageText),
     };
@@ -234,7 +234,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
     if (!selectedPlace) return;
 
     const assistantMsg: ChatMessage = {
-      id: nextId('itinerary'),
+      id: `itinerary-${++idCounterRef.current}`,
       role: 'assistant',
       text: `Great choice! To add ${selectedPlace.name} to your itinerary, just let me know the date and time you'd like to go, and I'll take care of the rest.`,
     };

@@ -198,9 +198,16 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             <g
               key={place.id}
               onClick={() => onSelectPlace?.(place)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectPlace?.(place);
+                }
+              }}
               className="cursor-pointer"
               role="button"
               tabIndex={0}
+              aria-label={`Select ${place.name}`}
             >
               {/* Hover/hit area */}
               <circle cx={place.cx} cy={place.cy} r="14" fill="transparent" />
