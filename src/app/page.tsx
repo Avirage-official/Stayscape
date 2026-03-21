@@ -1,13 +1,23 @@
 'use client';
 
+import { useState, useRef, useCallback } from 'react';
 import Header from '@/components/Header';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import CustomerPanel from '@/components/CustomerPanel';
-import AICopilotPanel from '@/components/AICopilotPanel';
+import TravelAssistantPanel, { TravelAssistantPanelHandle } from '@/components/TravelAssistantPanel';
 import ConciergeSearch from '@/components/ConciergeSearch';
 import Footer from '@/components/Footer';
+import { Place } from '@/types';
 
 export default function Home() {
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const panelRef = useRef<TravelAssistantPanelHandle>(null);
+
+  const handleSelectPlace = useCallback((place: Place) => {
+    setSelectedPlace(place);
+    panelRef.current?.selectPlace(place);
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0A] overflow-hidden">
       <Header />
@@ -21,11 +31,18 @@ export default function Home() {
           </div>
           {/* Center — Map workspace */}
           <div className="flex-1 relative">
-            <MapPlaceholder />
+            <MapPlaceholder
+              onSelectPlace={handleSelectPlace}
+              selectedPlaceId={selectedPlace?.id ?? null}
+            />
           </div>
-          {/* Right panel — AI Copilot */}
-          <div className="hidden lg:flex w-[300px] flex-shrink-0 flex-col overflow-hidden border-l border-[#1A1A1A]/80">
-            <AICopilotPanel />
+          {/* Right panel — AI Travel Assistant */}
+          <div className="hidden lg:flex w-[360px] flex-shrink-0 flex-col overflow-hidden border-l border-[#1A1A1A]/80">
+            <TravelAssistantPanel
+              ref={panelRef}
+              selectedPlace={selectedPlace}
+              onClearSelection={() => setSelectedPlace(null)}
+            />
           </div>
         </main>
         <Footer />

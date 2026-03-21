@@ -7,4 +7,5 @@ export interface Place {
   description: string;
   aiRundown: string;
   gradient: string;
+  bookingUrl?: string;
 }
