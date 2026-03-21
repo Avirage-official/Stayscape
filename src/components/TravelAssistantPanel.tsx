@@ -250,12 +250,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
   };
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#0F0F0F] animate-slide-in-left">
-      {/* Thin vertical accent rail */}
-      <div className="w-[3px] flex-shrink-0 bg-gradient-to-b from-[#C9A84C]/20 via-[#C9A84C]/8 to-transparent" />
-
-      {/* Main panel content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-[#0F0F0F] animate-slide-in-right">
         {/* Panel Header */}
         <div className="px-4 pt-4 pb-3.5 border-b border-[#1A1A1A] flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -356,7 +351,6 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
             </button>
           </div>
         </div>
-      </div>
     </div>
   );
 });
