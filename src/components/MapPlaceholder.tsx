@@ -98,7 +98,7 @@ interface MapPlaceholderProps {
 
 export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
   return (
-    <div className="relative w-full h-full bg-[#0A0E13] overflow-hidden animate-fade-in">
+    <div className="relative w-full h-full bg-[var(--map-bg)] overflow-hidden animate-fade-in">
       {/* Subtle grid background */}
       <div
         className="absolute inset-0"
@@ -234,8 +234,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       </svg>
 
       {/* Edge gradients */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0A0E13] via-transparent to-[#0A0E13] opacity-40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0A0E13] via-transparent to-[#0A0E13] opacity-30 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[var(--map-bg)] via-transparent to-[var(--map-bg)] opacity-40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[var(--map-bg)] via-transparent to-[var(--map-bg)] opacity-30 pointer-events-none" />
 
       {/* Selected place label */}
       {selectedPlaceId && (() => {
@@ -250,11 +250,11 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               transform: 'translate(-50%, 16px)',
             }}
           >
-            <div className="flex items-center space-x-2 bg-[#111519] border border-[#C9A84C]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />
-              <span className="text-[11px] font-medium text-gray-200 tracking-[0.03em]">{activePlace.name}</span>
-              <span className="text-[9px] text-gray-600">·</span>
-              <span className="text-[9px] text-gray-500">{activePlace.distance}</span>
+            <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
+              <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">{activePlace.name}</span>
+              <span className="text-[9px] text-[var(--text-faint)]">·</span>
+              <span className="text-[9px] text-[var(--text-muted)]">{activePlace.distance}</span>
             </div>
           </div>
         );
@@ -265,18 +265,18 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         <>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <div className="relative flex items-center justify-center">
-              <span className="absolute inline-flex h-12 w-12 rounded-full bg-[#C9A84C]/6 animate-gentle-pulse" />
-              <span className="absolute inline-flex h-7 w-7 rounded-full border border-[#C9A84C]/15" />
-              <span className="absolute inline-flex h-5 w-5 rounded-full border border-[#C9A84C]/25" />
-              <div className="relative w-3 h-3 rounded-full bg-[#C9A84C] shadow-[0_0_12px_rgba(201,168,76,0.5),0_0_4px_rgba(201,168,76,0.8)]" />
+              <span className="absolute inline-flex h-12 w-12 rounded-full bg-[var(--gold)]/6 animate-gentle-pulse" />
+              <span className="absolute inline-flex h-7 w-7 rounded-full border border-[var(--gold)]/15" />
+              <span className="absolute inline-flex h-5 w-5 rounded-full border border-[var(--gold)]/25" />
+              <div className="relative w-3 h-3 rounded-full bg-[var(--gold)] shadow-[0_0_12px_rgba(201,168,76,0.5),0_0_4px_rgba(201,168,76,0.8)]" />
             </div>
           </div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-8 whitespace-nowrap">
-            <div className="flex items-center space-x-2 bg-[#111519] border border-[#C9A84C]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />
-              <span className="text-[11px] font-medium text-gray-200 tracking-[0.03em]">The Grand Palace Hotel</span>
-              <span className="text-[9px] text-gray-600">·</span>
-              <span className="text-[9px] text-gray-500">0.2 mi</span>
+            <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
+              <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">The Grand Palace Hotel</span>
+              <span className="text-[9px] text-[var(--text-faint)]">·</span>
+              <span className="text-[9px] text-[var(--text-muted)]">0.2 mi</span>
             </div>
           </div>
         </>
@@ -284,12 +284,12 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
       {/* Zoom controls */}
       <div className="absolute bottom-6 right-6 flex flex-col space-y-1">
-        <button className="w-8 h-8 bg-[#111519] border border-[#1C2230] rounded-[5px] text-gray-400 hover:border-[#C9A84C]/30 hover:text-[#C9A84C] transition-all duration-200 flex items-center justify-center text-sm shadow-soft">+</button>
-        <button className="w-8 h-8 bg-[#111519] border border-[#1C2230] rounded-[5px] text-gray-400 hover:border-[#C9A84C]/30 hover:text-[#C9A84C] transition-all duration-200 flex items-center justify-center text-sm shadow-soft">−</button>
+        <button className="w-8 h-8 bg-[var(--map-zoom-bg)] border border-[var(--map-zoom-border)] rounded-[5px] text-[var(--text-secondary)] hover:border-[var(--gold)]/30 hover:text-[var(--gold)] transition-all duration-200 flex items-center justify-center text-sm shadow-soft">+</button>
+        <button className="w-8 h-8 bg-[var(--map-zoom-bg)] border border-[var(--map-zoom-border)] rounded-[5px] text-[var(--text-secondary)] hover:border-[var(--gold)]/30 hover:text-[var(--gold)] transition-all duration-200 flex items-center justify-center text-sm shadow-soft">−</button>
       </div>
 
       {/* Map attribution */}
-      <div className="absolute bottom-4 left-4 text-[9px] text-gray-700 tracking-wide">
+      <div className="absolute bottom-4 left-4 text-[9px] text-[var(--text-dim)] tracking-wide">
         © Stayscape Maps
       </div>
     </div>

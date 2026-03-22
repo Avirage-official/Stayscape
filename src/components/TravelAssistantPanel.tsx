@@ -25,7 +25,7 @@ interface TravelAssistantPanelProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-[9px] font-medium text-gray-500 uppercase tracking-[0.14em] mb-2.5 ml-0.5">
+    <h4 className="text-[9px] font-medium text-[var(--text-muted)] uppercase tracking-[0.14em] mb-2.5 ml-0.5">
       {children}
     </h4>
   );
@@ -37,13 +37,13 @@ function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((star) => (
         <span
           key={star}
-          className={star <= Math.round(rating) ? 'text-[#C9A84C]' : 'text-gray-700'}
+          className={star <= Math.round(rating) ? 'text-[var(--gold)]' : 'text-[var(--text-dim)]'}
           style={{ fontSize: '11px' }}
         >
           ★
         </span>
       ))}
-      <span className="text-[10px] text-gray-400 ml-1">{rating}</span>
+      <span className="text-[10px] text-[var(--text-secondary)] ml-1">{rating}</span>
     </div>
   );
 }
@@ -60,15 +60,15 @@ function PlaceDetailsCard({
   return (
     <div className="animate-fade-in-up stagger-1">
       <SectionLabel>Place Details</SectionLabel>
-      <div className="bg-[#141414] rounded-[6px] border border-[#1C1C1C] overflow-hidden">
+      <div className="bg-[var(--card-bg)] rounded-[6px] border border-[var(--card-border)] overflow-hidden">
         {/* Gradient header */}
         <div className={`h-20 bg-gradient-to-br ${place.gradient} relative`}>
           <div className="absolute inset-0 bg-black/30" />
-          <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-2.5 bg-gradient-to-t from-[#141414] to-transparent">
-            <span className="inline-block text-[9px] text-[#C9A84C] bg-[#C9A84C]/10 border border-[#C9A84C]/25 rounded-[4px] px-2 py-[2px] mb-1 uppercase tracking-wider">
+          <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-2.5 bg-gradient-to-t from-[var(--card-bg)] to-transparent">
+            <span className="inline-block text-[9px] text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 rounded-[4px] px-2 py-[2px] mb-1 uppercase tracking-wider">
               {place.category}
             </span>
-            <h3 className="text-[13px] font-medium text-gray-100 tracking-wide">{place.name}</h3>
+            <h3 className="text-[13px] font-medium text-[var(--text-primary)] tracking-wide">{place.name}</h3>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ function PlaceDetailsCard({
           {/* Rating & Distance */}
           <div className="flex items-center justify-between">
             <StarRating rating={place.rating} />
-            <span className="text-[10px] text-gray-500 flex items-center space-x-1">
+            <span className="text-[10px] text-[var(--text-muted)] flex items-center space-x-1">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                 <circle cx="12" cy="10" r="3" />
@@ -87,17 +87,17 @@ function PlaceDetailsCard({
           </div>
 
           {/* Description */}
-          <p className="text-[11px] text-gray-300 leading-[1.7]">
+          <p className="text-[11px] text-[var(--text-secondary)] leading-[1.7]">
             {place.description}
           </p>
 
           {/* AI Rundown */}
-          <div className="bg-[#0F0F0F] rounded-[5px] p-3 border border-[#1A1A1A]">
+          <div className="bg-[var(--panel-bg)] rounded-[5px] p-3 border border-[var(--charcoal-light)]">
             <div className="flex items-center space-x-1.5 mb-2">
-              <span className="text-[9px] text-[#C9A84C]">✦</span>
-              <span className="text-[9px] text-gray-500 uppercase tracking-wider font-medium">Concierge Notes</span>
+              <span className="text-[9px] text-[var(--gold)]">✦</span>
+              <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-medium">Concierge Notes</span>
             </div>
-            <p className="text-[10px] text-gray-400 leading-[1.7]">
+            <p className="text-[10px] text-[var(--text-secondary)] leading-[1.7]">
               {place.aiRundown}
             </p>
           </div>
@@ -109,7 +109,7 @@ function PlaceDetailsCard({
               href={place.bookingUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center space-x-2 w-full bg-[#C9A84C] hover:bg-[#D4B85C] text-[#0A0A0A] text-[11px] font-medium py-2.5 rounded-[6px] transition-colors duration-200 tracking-wide"
+              className="flex items-center justify-center space-x-2 w-full bg-[var(--gold)] hover:opacity-90 text-[var(--background)] text-[11px] font-medium py-2.5 rounded-[6px] transition-all duration-200 tracking-wide"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -122,7 +122,7 @@ function PlaceDetailsCard({
             {/* Add to itinerary */}
             <button
               onClick={onAddToItinerary}
-              className="flex items-center justify-center space-x-2 w-full border border-[#C9A84C]/25 hover:border-[#C9A84C]/50 text-[#C9A84C] text-[11px] py-2.5 rounded-[6px] transition-all duration-200 tracking-wide hover:bg-[#C9A84C]/5"
+              className="flex items-center justify-center space-x-2 w-full border border-[var(--gold)]/25 hover:border-[var(--gold)]/50 text-[var(--gold)] text-[11px] py-2.5 rounded-[6px] transition-all duration-200 tracking-wide hover:bg-[var(--gold)]/5"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -151,17 +151,17 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       <div
         className={`max-w-[90%] rounded-[6px] px-3.5 py-2.5 ${
           isAssistant
-            ? 'bg-[#141414] border border-[#1C1C1C]'
-            : 'bg-[#C9A84C]/10 border border-[#C9A84C]/20'
+            ? 'bg-[var(--card-bg)] border border-[var(--card-border)]'
+            : 'bg-[var(--gold)]/10 border border-[var(--gold)]/20'
         }`}
       >
         {isAssistant && (
           <div className="flex items-center space-x-1.5 mb-1.5">
-            <span className="text-[9px] text-[#C9A84C]">✦</span>
-            <span className="text-[9px] text-gray-500 uppercase tracking-wider font-medium">Stayscape</span>
+            <span className="text-[9px] text-[var(--gold)]">✦</span>
+            <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-medium">Stayscape</span>
           </div>
         )}
-        <p className={`text-[11px] leading-[1.7] ${isAssistant ? 'text-gray-300' : 'text-gray-200'}`}>
+        <p className={`text-[11px] leading-[1.7] ${isAssistant ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
           {message.text}
         </p>
       </div>
@@ -250,28 +250,28 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#0F0F0F] animate-slide-in-right">
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--panel-bg)] animate-slide-in-right">
         {/* Panel Header */}
-        <div className="px-4 pt-4 pb-3.5 border-b border-[#1A1A1A] flex-shrink-0">
+        <div className="px-4 pt-4 pb-3.5 border-b border-[var(--charcoal-light)] flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 rounded-[4px] bg-[#C9A84C]/8 border border-[#C9A84C]/15 flex items-center justify-center">
-                <span className="text-[10px] text-[#C9A84C]">✦</span>
+              <div className="w-5 h-5 rounded-[4px] bg-[var(--gold)]/8 border border-[var(--gold)]/15 flex items-center justify-center">
+                <span className="text-[10px] text-[var(--gold)]">✦</span>
               </div>
               <div>
-                <h2 className="text-[12px] font-medium text-gray-200 tracking-wide">Travel Assistant</h2>
+                <h2 className="text-[12px] font-medium text-[var(--text-primary)] tracking-wide">Travel Assistant</h2>
               </div>
             </div>
             {selectedPlace && (
               <button
                 onClick={onClearSelection}
-                className="text-[10px] text-gray-500 hover:text-gray-300 bg-[#141414] border border-[#1C1C1C] rounded-[5px] px-2.5 py-1 transition-colors duration-200 tracking-wide"
+                className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[5px] px-2.5 py-1 transition-colors duration-200 tracking-wide"
               >
                 Back to chat
               </button>
             )}
           </div>
-          <p className="text-[9px] text-gray-600 mt-1.5 ml-7 tracking-wide">
+          <p className="text-[9px] text-[var(--text-faint)] mt-1.5 ml-7 tracking-wide">
             Your personal concierge · Ask anything
           </p>
         </div>
@@ -281,13 +281,13 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
           {/* Default greeting when no interaction yet */}
           {!hasInteracted && (
             <div className="flex flex-col items-center justify-center h-full text-center px-2">
-              <div className="w-12 h-12 rounded-[8px] bg-[#C9A84C]/8 border border-[#C9A84C]/15 flex items-center justify-center mb-4">
-                <span className="text-[18px] text-[#C9A84C]">✦</span>
+              <div className="w-12 h-12 rounded-[8px] bg-[var(--gold)]/8 border border-[var(--gold)]/15 flex items-center justify-center mb-4">
+                <span className="text-[18px] text-[var(--gold)]">✦</span>
               </div>
-              <h3 className="text-[14px] font-medium text-gray-200 tracking-wide mb-2">
+              <h3 className="text-[14px] font-medium text-[var(--text-primary)] tracking-wide mb-2">
                 Welcome to Stayscape
               </h3>
-              <p className="text-[11px] text-gray-500 leading-[1.7] max-w-[240px] mb-6">
+              <p className="text-[11px] text-[var(--text-muted)] leading-[1.7] max-w-[240px] mb-6">
                 I&apos;m your personal travel assistant. Ask me anything about your stay, nearby places, dining, activities, or select a place on the map to learn more.
               </p>
               {/* Suggestion chips */}
@@ -296,7 +296,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                   <button
                     key={suggestion}
                     onClick={() => handleSend(suggestion)}
-                    className="text-[10px] text-gray-400 bg-[#141414] border border-[#1C1C1C] rounded-[5px] px-2.5 py-[5px] hover:border-[#C9A84C]/20 hover:text-gray-300 transition-all duration-200 tracking-wide"
+                    className="text-[10px] text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[5px] px-2.5 py-[5px] hover:border-[var(--gold)]/20 hover:text-[var(--text-primary)] transition-all duration-200 tracking-wide"
                   >
                     {suggestion}
                   </button>
@@ -328,9 +328,9 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
         </div>
 
         {/* Chat input — always visible at bottom */}
-        <div className="px-4 py-3 border-t border-[#1A1A1A] flex-shrink-0">
-          <div className="flex items-center space-x-2 bg-[#141414] border border-[#1C1C1C] rounded-[6px] px-3 py-2.5 focus-within:border-[#C9A84C]/20 transition-colors duration-200">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+        <div className="px-4 py-3 border-t border-[var(--charcoal-light)] flex-shrink-0">
+          <div className="flex items-center space-x-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[6px] px-3 py-2.5 focus-within:border-[var(--gold)]/20 transition-colors duration-200">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             <input
@@ -339,11 +339,11 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your stay…"
-              className="flex-1 bg-transparent text-[11px] text-gray-300 placeholder-gray-600 focus:outline-none tracking-wide"
+              className="flex-1 bg-transparent text-[11px] text-[var(--text-secondary)] placeholder-[var(--text-faint)] focus:outline-none tracking-wide"
             />
             <button
               onClick={() => handleSend()}
-              className="text-gray-600 hover:text-[#C9A84C] transition-colors duration-200"
+              className="text-[var(--text-faint)] hover:text-[var(--gold)] transition-colors duration-200"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m5 12 14-7-4 7 4 7z" />
