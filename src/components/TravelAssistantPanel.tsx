@@ -109,7 +109,7 @@ function PlaceDetailsCard({
               href={place.bookingUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center space-x-2 w-full bg-[var(--gold)] hover:brightness-110 text-[var(--background)] text-[11px] font-medium py-2.5 rounded-[6px] transition-all duration-200 tracking-wide"
+              className="flex items-center justify-center space-x-2 w-full bg-[var(--gold)] hover:opacity-90 text-[var(--background)] text-[11px] font-medium py-2.5 rounded-[6px] transition-all duration-200 tracking-wide"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />

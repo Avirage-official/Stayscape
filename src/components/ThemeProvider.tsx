@@ -22,6 +22,7 @@ function getInitialTheme(): Theme {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('stayscape-theme');
     if (stored === 'light' || stored === 'dark') return stored;
+    if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
   }
   return 'dark';
 }

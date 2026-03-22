@@ -410,7 +410,7 @@ export default function DiscoverPanel() {
                 >
                   {/* Image area — top on mobile, left on desktop */}
                   <div
-                    className={`h-[120px] sm:h-auto sm:w-[180px] flex-shrink-0 bg-gradient-to-br ${place.gradient}`}
+                    className={`h-32 sm:h-auto sm:w-[180px] flex-shrink-0 bg-gradient-to-br ${place.gradient}`}
                   >
                     <div
                       className="w-full h-full flex items-center justify-center"
