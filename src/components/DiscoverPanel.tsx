@@ -4,13 +4,13 @@ import { useState, useRef, useCallback } from 'react';
 
 /* ─── Design tokens (Discover page spec) ─── */
 const COLORS = {
-  bg: '#0E0F14',
-  surface: '#171922',
-  card: '#1D2030',
-  border: '#2A2E42',
-  gold: '#C8A85A',
-  titleText: '#E8E6E1',
-  bodyText: '#8B8D98',
+  bg: 'var(--discover-bg)',
+  surface: 'var(--discover-surface)',
+  card: 'var(--discover-card)',
+  border: 'var(--discover-border)',
+  gold: 'var(--discover-gold)',
+  titleText: 'var(--discover-title)',
+  bodyText: 'var(--discover-body)',
 } as const;
 
 /* ─── Category data ─── */
@@ -146,7 +146,7 @@ function CategoryCard({
       onClick={onClick}
       className="flex-shrink-0 flex flex-col items-center justify-center w-[88px] h-[88px] rounded-[18px] border transition-all duration-200 cursor-pointer"
       style={{
-        background: active ? '#242638' : COLORS.card,
+        background: active ? 'var(--discover-active-card)' : COLORS.card,
         borderColor: active ? COLORS.gold : COLORS.border,
       }}
     >
@@ -223,12 +223,12 @@ function BookingConfirmation({
     <div className="discover-card-fade-in">
       <div
         className="rounded-[12px] border p-3 mt-2"
-        style={{ background: `${COLORS.gold}0D`, borderColor: `${COLORS.gold}33` }}
+        style={{ background: 'var(--discover-gold-5)', borderColor: 'var(--discover-gold-20)' }}
       >
         <div className="flex items-start space-x-2 mb-3">
           <span
             className="inline-flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0 mt-0.5"
-            style={{ background: `${COLORS.gold}1F`, border: `1px solid ${COLORS.gold}40` }}
+            style={{ background: 'var(--discover-gold-12)', border: '1px solid var(--discover-gold-25)' }}
           >
             <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style={{ color: COLORS.gold }}>
               <path d="M2 5.5L4 7.5L8 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -318,7 +318,7 @@ export default function DiscoverPanel() {
     >
       {/* ── Top label row ── */}
       <div
-        className="px-6 pt-5 pb-3 flex-shrink-0"
+        className="px-4 sm:px-6 pt-5 pb-3 flex-shrink-0"
         style={{ borderBottom: `1px solid ${COLORS.border}` }}
       >
         <div className="flex items-center space-x-2.5 mb-1">
@@ -336,7 +336,7 @@ export default function DiscoverPanel() {
       </div>
 
       {/* ── Scrollable content ── */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 space-y-6">
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 sm:px-6 py-5 space-y-6">
         {/* ── Category carousel ── */}
         <div>
           <SectionLabel>Places to Explore</SectionLabel>
@@ -347,7 +347,7 @@ export default function DiscoverPanel() {
               onClick={() => scrollCarousel('left')}
               className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover/carousel:opacity-100 cursor-pointer"
               style={{
-                background: `${COLORS.bg}E6`,
+                background: 'var(--discover-bg-overlay)',
                 border: `1px solid ${COLORS.border}`,
                 color: COLORS.bodyText,
               }}
@@ -378,7 +378,7 @@ export default function DiscoverPanel() {
               onClick={() => scrollCarousel('right')}
               className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover/carousel:opacity-100 cursor-pointer"
               style={{
-                background: `${COLORS.bg}E6`,
+                background: 'var(--discover-bg-overlay)',
                 border: `1px solid ${COLORS.border}`,
                 color: COLORS.bodyText,
               }}
@@ -401,17 +401,16 @@ export default function DiscoverPanel() {
               {places.map((place, idx) => (
                 <div
                   key={place.id}
-                  className="flex h-[180px] rounded-[16px] border overflow-hidden discover-hover-lift discover-card-fade-in"
+                  className="flex flex-col sm:flex-row sm:h-[180px] rounded-[16px] border overflow-hidden discover-hover-lift discover-card-fade-in"
                   style={{
                     background: COLORS.card,
                     borderColor: COLORS.border,
                     animationDelay: `${idx * 0.06}s`,
                   }}
                 >
-                  {/* Image area — left side */}
+                  {/* Image area — top on mobile, left on desktop */}
                   <div
-                    className={`w-[180px] flex-shrink-0 bg-gradient-to-br ${place.gradient}`}
-                    style={{ minWidth: 180 }}
+                    className={`h-[120px] sm:h-auto sm:w-[180px] flex-shrink-0 bg-gradient-to-br ${place.gradient}`}
                   >
                     <div
                       className="w-full h-full flex items-center justify-center"
@@ -440,8 +439,8 @@ export default function DiscoverPanel() {
                           className="text-[9px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-[4px]"
                           style={{
                             color: COLORS.gold,
-                            background: `${COLORS.gold}15`,
-                            border: `1px solid ${COLORS.gold}25`,
+                            background: 'var(--discover-gold-8)',
+                            border: '1px solid var(--discover-gold-15)',
                           }}
                         >
                           {place.category}
@@ -508,8 +507,8 @@ export default function DiscoverPanel() {
             <div
               className="w-12 h-12 rounded-[12px] flex items-center justify-center mb-3"
               style={{
-                background: `${COLORS.gold}12`,
-                border: `1px solid ${COLORS.gold}25`,
+                background: 'var(--discover-gold-8)',
+                border: '1px solid var(--discover-gold-15)',
               }}
             >
               <span className="text-[20px]">✦</span>

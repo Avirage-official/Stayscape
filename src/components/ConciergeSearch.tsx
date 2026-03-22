@@ -11,15 +11,15 @@ export default function ConciergeSearch() {
       <div
         className={`
           relative flex items-center
-          bg-[#141414] border rounded-[8px]
+          bg-[var(--card-bg)] border rounded-[8px]
           transition-all duration-300 ease-out
           ${isFocused
-            ? 'border-[#C9A84C]/35 shadow-[0_6px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(201,168,76,0.1)] -translate-y-0.5'
-            : 'border-[#222222] shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
+            ? 'border-[var(--gold)]/35 shadow-[0_6px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(201,168,76,0.1)] -translate-y-0.5'
+            : 'border-[var(--border)] shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
           }
         `}
       >
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/>
             <path d="m21 21-4.35-4.35"/>
@@ -32,10 +32,10 @@ export default function ConciergeSearch() {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Search guests, venues, services, or ask the concierge…"
-          className="w-full bg-transparent py-3 pl-11 pr-12 text-[13px] text-gray-200 placeholder-gray-600 focus:outline-none tracking-wide"
+          className="w-full bg-transparent py-3 pl-11 pr-12 text-[13px] text-[var(--text-primary)] placeholder-[var(--text-faint)] focus:outline-none tracking-wide"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1.5">
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9px] text-gray-600 bg-[#1A1A1A] border border-[#252525] rounded font-mono">⌘K</kbd>
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9px] text-[var(--text-faint)] bg-[var(--surface-raised)] border border-[var(--border)] rounded font-mono">⌘K</kbd>
         </div>
       </div>
     </div>

@@ -2,7 +2,8 @@
 
 @config "../../tailwind.config.ts";
 
-:root {
+:root,
+[data-theme="dark"] {
   --background: #0A0A0A;
   --foreground: #F5F5F0;
   --gold: #C9A84C;
@@ -13,6 +14,81 @@
   --surface-raised: #1C1C1C;
   --border: #222222;
   --border-subtle: #1C1C1C;
+  --header-bg: #0C0C0C;
+  --header-border: #181818;
+  --panel-bg: #0F0F0F;
+  --card-bg: #141414;
+  --card-border: #1C1C1C;
+  --input-bg: #141414;
+  --text-primary: #E8E6E1;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --text-faint: #4B5563;
+  --text-dim: #374151;
+  --map-bg: #0A0E13;
+  --map-label-bg: #111519;
+  --map-zoom-bg: #111519;
+  --map-zoom-border: #1C2230;
+  --tab-hover: #161616;
+  --discover-bg: #0E0F14;
+  --discover-surface: #171922;
+  --discover-card: #1D2030;
+  --discover-border: #2A2E42;
+  --discover-gold: #C8A85A;
+  --discover-title: #E8E6E1;
+  --discover-body: #8B8D98;
+  --discover-gold-5: rgba(200, 168, 90, 0.05);
+  --discover-gold-8: rgba(200, 168, 90, 0.08);
+  --discover-gold-12: rgba(200, 168, 90, 0.12);
+  --discover-gold-15: rgba(200, 168, 90, 0.15);
+  --discover-gold-20: rgba(200, 168, 90, 0.2);
+  --discover-gold-25: rgba(200, 168, 90, 0.25);
+  --discover-bg-overlay: rgba(14, 15, 20, 0.9);
+  --discover-active-card: #242638;
+}
+
+[data-theme="light"] {
+  --background: #F8F7F4;
+  --foreground: #1A1A1A;
+  --gold: #B8941F;
+  --gold-soft: #A68518;
+  --charcoal: #F0EDE6;
+  --charcoal-light: #E8E4DC;
+  --surface: #FFFFFF;
+  --surface-raised: #F5F3EE;
+  --border: #E0DCD3;
+  --border-subtle: #EAE7E0;
+  --header-bg: #FAFAF8;
+  --header-border: #E8E5DC;
+  --panel-bg: #F7F6F3;
+  --card-bg: #FFFFFF;
+  --card-border: #E8E5DC;
+  --input-bg: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #555555;
+  --text-muted: #777777;
+  --text-faint: #999999;
+  --text-dim: #BBBBBB;
+  --map-bg: #E8EDF3;
+  --map-label-bg: #FFFFFF;
+  --map-zoom-bg: #FFFFFF;
+  --map-zoom-border: #D0D5DD;
+  --tab-hover: #F0EDE6;
+  --discover-bg: #F5F4F1;
+  --discover-surface: #FFFFFF;
+  --discover-card: #FFFFFF;
+  --discover-border: #E0DDD5;
+  --discover-gold: #B08D20;
+  --discover-title: #1A1A1A;
+  --discover-body: #666666;
+  --discover-gold-5: rgba(176, 141, 32, 0.06);
+  --discover-gold-8: rgba(176, 141, 32, 0.08);
+  --discover-gold-12: rgba(176, 141, 32, 0.12);
+  --discover-gold-15: rgba(176, 141, 32, 0.15);
+  --discover-gold-20: rgba(176, 141, 32, 0.2);
+  --discover-gold-25: rgba(176, 141, 32, 0.25);
+  --discover-bg-overlay: rgba(245, 244, 241, 0.9);
+  --discover-active-card: #F0EDE4;
 }
 
 body {
