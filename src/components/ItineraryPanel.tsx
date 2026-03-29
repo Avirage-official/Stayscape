@@ -21,14 +21,16 @@ const STAY_CHECK_IN = new Date(2025, 11, 14); // Dec 14
 const STAY_CHECK_OUT = new Date(2025, 11, 19); // Dec 19
 
 /* ─── Stay days array ─── */
-const stayDays: Date[] = [];
-{
+function generateStayDays(): Date[] {
+  const days: Date[] = [];
   let d = new Date(STAY_CHECK_IN);
   while (d <= STAY_CHECK_OUT) {
-    stayDays.push(new Date(d));
+    days.push(new Date(d));
     d = addDays(d, 1);
   }
+  return days;
 }
+const stayDays = generateStayDays();
 
 /* ─── Time / Duration options ─── */
 const TIME_OPTIONS = [
@@ -304,7 +306,6 @@ function ItineraryCard({
               <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-[18px] rounded-md font-medium">
                 {item.category}
               </Badge>
-              <span className="text-[10px] text-[var(--discover-body)]">{durationLabel}</span>
             </div>
             {/* Quick actions — visible on hover */}
             <div className="flex items-center gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
