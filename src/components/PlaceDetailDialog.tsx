@@ -360,11 +360,11 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[520px] sm:max-w-[580px] max-h-[90vh] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-[520px] sm:max-w-[580px] max-h-[90vh] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0 flex flex-col">
 
         {view === 'detail' ? (
-          <>
-            {/* Hero image */}
+          <div className="flex flex-col max-h-[90vh]">
+            {/* Hero image — fixed header */}
             <div className="relative h-[200px] sm:h-[240px] overflow-hidden flex-shrink-0">
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out"
@@ -397,8 +397,8 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
               </div>
             </div>
 
-            {/* Scrollable content */}
-            <ScrollArea className="flex-1 max-h-[calc(90vh-200px)] sm:max-h-[calc(90vh-240px)]">
+            {/* Scrollable content body */}
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-5 sm:p-6 space-y-6">
                 {/* Editorial description */}
                 <p className="text-[13px] sm:text-[14px] leading-[1.75] text-[var(--discover-title)]">
@@ -434,36 +434,36 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
                 <Separator />
 
                 <DetailSection title="What to bring" items={detail.whatToBring} />
-
-                <Separator />
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-3 pb-1">
-                  <Button
-                    onClick={() => setView('schedule')}
-                    className="flex-1 h-11 rounded-xl text-[13px] font-semibold bg-[var(--discover-gold)] text-[var(--discover-bg)] hover:bg-[var(--discover-gold)]/90"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1.5">
-                      <path d="M7 3V11M3 7H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                    Add to itinerary
-                  </Button>
-                  <Button
-                    variant="outline"
-                    asChild
-                    className="h-11 rounded-xl text-[13px] font-medium border-[var(--discover-border)] text-[var(--discover-body)] hover:text-[var(--discover-title)] hover:border-[var(--discover-gold)]/40 px-5"
-                  >
-                    <a href={detail.bookingUrl} target="_blank" rel="noopener noreferrer">
-                      Visit website
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="ml-1.5">
-                        <path d="M4.5 2.5H9.5V7.5M9.5 2.5L2.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </a>
-                  </Button>
-                </div>
               </div>
             </ScrollArea>
-          </>
+
+            {/* Sticky action footer */}
+            <div className="flex-shrink-0 border-t border-[var(--discover-border)] bg-[var(--discover-surface)] px-5 sm:px-6 py-4">
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => setView('schedule')}
+                  className="flex-1 h-11 rounded-xl text-[13px] font-semibold bg-[var(--discover-gold)] text-[var(--discover-bg)] hover:bg-[var(--discover-gold)]/90"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1.5">
+                    <path d="M7 3V11M3 7H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  Add to itinerary
+                </Button>
+                <Button
+                  variant="outline"
+                  asChild
+                  className="h-11 rounded-xl text-[13px] font-medium border-[var(--discover-border)] text-[var(--discover-body)] hover:text-[var(--discover-title)] hover:border-[var(--discover-gold)]/40 px-5"
+                >
+                  <a href={detail.bookingUrl} target="_blank" rel="noopener noreferrer">
+                    Visit website
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="ml-1.5">
+                      <path d="M4.5 2.5H9.5V7.5M9.5 2.5L2.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : (
           /* ─── Schedule step ─── */
           <ScheduleStep
