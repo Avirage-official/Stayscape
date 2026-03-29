@@ -16,6 +16,7 @@ export interface ItineraryItem {
 interface ItineraryContextType {
   items: ItineraryItem[];
   addItem: (item: Omit<ItineraryItem, 'id'>) => void;
+  updateItem: (id: string, updates: Partial<Omit<ItineraryItem, 'id'>>) => void;
   removeItem: (id: string) => void;
 }
 
@@ -40,13 +41,19 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => [...prev, newItem]);
   }, []);
 
+  const updateItem = useCallback((id: string, updates: Partial<Omit<ItineraryItem, 'id'>>) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+    );
+  }, []);
+
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
   const value = useMemo(
-    () => ({ items, addItem, removeItem }),
-    [items, addItem, removeItem],
+    () => ({ items, addItem, updateItem, removeItem }),
+    [items, addItem, updateItem, removeItem],
   );
 
   return (
