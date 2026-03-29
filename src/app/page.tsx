@@ -7,10 +7,12 @@ import CustomerPanel from '@/components/CustomerPanel';
 import TravelAssistantPanel, { TravelAssistantPanelHandle } from '@/components/TravelAssistantPanel';
 import ConciergeSearch from '@/components/ConciergeSearch';
 import DiscoverPanel from '@/components/DiscoverPanel';
+import ItineraryPanel from '@/components/ItineraryPanel';
+import { ItineraryProvider } from '@/components/ItineraryContext';
 import Footer from '@/components/Footer';
 import { Place } from '@/types';
 
-type ActiveTab = 'concierge' | 'discover';
+type ActiveTab = 'concierge' | 'discover' | 'itinerary';
 type MobileView = 'map' | 'guest' | 'assistant';
 
 export default function Home() {
@@ -25,6 +27,7 @@ export default function Home() {
   }, []);
 
   return (
+    <ItineraryProvider>
     <div className="flex flex-col h-screen bg-[var(--background)] overflow-hidden">
       <Header />
 
@@ -52,6 +55,17 @@ export default function Home() {
             }`}
           >
             Discover
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('itinerary')}
+            className={`px-3.5 py-1.5 rounded-[5px] text-[10px] font-medium tracking-wide transition-all duration-200 cursor-pointer ${
+              activeTab === 'itinerary'
+                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
+            }`}
+          >
+            Itinerary
           </button>
         </div>
       </div>
@@ -83,9 +97,12 @@ export default function Home() {
                 />
               </div>
             </>
-          ) : (
+          ) : activeTab === 'discover' ? (
             /* Discover tab — full remaining width */
             <DiscoverPanel />
+          ) : (
+            /* Itinerary tab — full remaining width */
+            <ItineraryPanel />
           )}
         </main>
         <Footer />
@@ -136,5 +153,6 @@ export default function Home() {
         </div>
       )}
     </div>
+    </ItineraryProvider>
   );
 }

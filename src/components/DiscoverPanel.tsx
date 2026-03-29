@@ -18,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import PlaceDetailDialog from '@/components/PlaceDetailDialog';
 
 /* ─── Category data ─── */
 
@@ -219,11 +220,13 @@ function CategoryCarouselCard({
 function HeroPlaceCard({
   place,
   onAdd,
+  onClick,
   isFirst,
   idx,
 }: {
   place: PlaceCard;
   onAdd: (placeId: string) => void;
+  onClick: () => void;
   isFirst: boolean;
   idx: number;
 }) {
@@ -231,11 +234,15 @@ function HeroPlaceCard({
     <div
       className={`
         relative overflow-hidden rounded-2xl border border-[var(--discover-border)]
-        transition-all duration-300 ease-out
+        transition-all duration-300 ease-out cursor-pointer
         group discover-card-fade-in discover-hover-lift
         ${isFirst ? 'h-[280px] sm:h-[320px]' : 'h-[220px] sm:h-[260px]'}
       `}
       style={{ animationDelay: `${idx * 0.08}s` }}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
     >
       {/* Background image */}
       <div
@@ -277,7 +284,7 @@ function HeroPlaceCard({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onAdd(place.id)}
+            onClick={(e) => { e.stopPropagation(); onAdd(place.id); }}
             className="
               border-[var(--discover-gold)]/60 text-[var(--discover-gold)]
               bg-[var(--discover-gold)]/10 backdrop-blur-sm
@@ -495,11 +502,18 @@ export default function DiscoverPanel() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingPlace, setAddingPlace] = useState<PlaceCard | null>(null);
   const [successToast, setSuccessToast] = useState<{ placeName: string; dayValue: string; bookingUrl: string } | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailPlace, setDetailPlace] = useState<PlaceCard | null>(null);
 
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const handleCategoryClick = useCallback((item: CategoryItem) => {
     setActiveCategory(item.id);
+  }, []);
+
+  const handleCardClick = useCallback((place: PlaceCard) => {
+    setDetailPlace(place);
+    setDetailDialogOpen(true);
   }, []);
 
   const handleAddClick = useCallback((placeId: string) => {
@@ -667,6 +681,7 @@ export default function DiscoverPanel() {
                       key={place.id}
                       place={place}
                       onAdd={handleAddClick}
+                      onClick={() => handleCardClick(place)}
                       isFirst={idx === 0}
                       idx={idx}
                     />
@@ -707,6 +722,13 @@ export default function DiscoverPanel() {
           onOpenChange={setAddDialogOpen}
           place={addingPlace}
           onConfirm={handleConfirmAdd}
+        />
+
+        {/* ── Place detail dialog ── */}
+        <PlaceDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          place={detailPlace}
         />
 
         {/* ── Success toast ── */}
