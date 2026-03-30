@@ -147,12 +147,12 @@ export default function HeroSection() {
       {/* Scroll indicator — bottom center */}
       <motion.div
         className="absolute bottom-8 left-1/2 z-[2] -translate-x-1/2"
-        animate={{ y: [0, 8, 0] }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
+        animate={prefersReducedMotion ? {} : { y: [0, 8, 0] }}
+        transition={
+          prefersReducedMotion
+            ? undefined
+            : { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+        }
         style={{ color: '#8a8580', opacity: 0.5 }}
       >
         <svg
@@ -177,12 +177,12 @@ export default function HeroSection() {
             cy="9"
             r="2.5"
             fill="currentColor"
-            animate={{ cy: [9, 17, 9] }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
+            animate={prefersReducedMotion ? {} : { cy: [9, 17, 9] }}
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+            }
           />
         </svg>
       </motion.div>
