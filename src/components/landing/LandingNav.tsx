@@ -60,9 +60,7 @@ export default function LandingNav() {
             For Hotels
           </a>
           <a
-            href="https://stayscape-kohl.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/app"
             className="text-sm font-medium"
             style={{
               backgroundColor: '#c9a96e',

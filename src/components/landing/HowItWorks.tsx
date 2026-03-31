@@ -7,23 +7,23 @@ const REVEAL_EASE = [0.16, 1, 0.3, 1] as const
 const STEPS = [
   {
     number: '01',
-    headline: 'We set up your property profile',
-    body: 'Your check-in dates, hotel name, timezone, and branding — configured in minutes.',
+    headline: 'We understand your property',
+    body: 'We learn your brand, guest profile, stay journey, and operational model — so the experience reflects how your hotel actually works.',
   },
   {
     number: '02',
-    headline: 'We curate your discovery content',
-    body: 'We load your city\u2019s best places, activities, and local insights into a beautiful feed.',
+    headline: 'We shape the discovery experience',
+    body: 'We curate places, activities, and local insights that fit your location, audience, and the level of hospitality you stand for.',
   },
   {
     number: '03',
-    headline: 'Guests get access at check-in',
-    body: 'Via QR code, link in booking confirmation, or room card — no app download required.',
+    headline: 'We adapt the product to your needs',
+    body: 'We configure Stayscape around your workflows, guest touchpoints, and the details that matter most to your team.',
   },
   {
     number: '04',
-    headline: 'You watch your guest satisfaction rise',
-    body: 'With zero ongoing management required. We handle the content, you enjoy the results.',
+    headline: 'We refine it through real usage',
+    body: 'We improve the experience over time using guest behavior, engagement patterns, and operational feedback.',
   },
 ] as const
 
@@ -68,7 +68,7 @@ export default function HowItWorks() {
               color: '#e8e4dc',
             }}
           >
-            Setup in a Day
+            Tailored to Your Property
           </h2>
         </motion.div>
 
