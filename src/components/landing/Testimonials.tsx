@@ -54,7 +54,7 @@ export default function Testimonials() {
           className="mb-16 text-xs uppercase"
           style={{ letterSpacing: '0.08em', color: '#c9a96e' }}
         >
-          Testimonials
+          Perspectives
         </p>
 
         {/* Primary quote */}
@@ -79,9 +79,9 @@ export default function Testimonials() {
             }}
             {...primaryReveal(prefersReducedMotion)}
           >
-            &ldquo;Stayscape transformed how our guests experience the city.
-            Our concierge team now focuses on what matters — personal touches,
-            not restaurant lists.&rdquo;
+            &ldquo;Great hospitality doesn&rsquo;t end at the lobby.
+            The best hotels guide their guests through the entire stay —
+            not just the check-in.&rdquo;
           </motion.blockquote>
 
           <motion.p
@@ -89,7 +89,7 @@ export default function Testimonials() {
             style={{ color: '#8a8580' }}
             {...cardFade(prefersReducedMotion, 0.3)}
           >
-            — Sarah Chen, Director of Guest Experience, The Langham, Tokyo
+            — A principle behind every Stayscape partnership
           </motion.p>
         </div>
 
@@ -105,11 +105,12 @@ export default function Testimonials() {
             {...cardFade(prefersReducedMotion, 0)}
           >
             <p className="text-lg" style={{ color: '#e8e4dc' }}>
-              &ldquo;We saw a 23% increase in guest-booked local experiences
-              within the first month. The ROI speaks for itself.&rdquo;
+              &ldquo;Guests don&rsquo;t need more options — they need better
+              guidance. When a hotel curates the journey, confidence goes up,
+              planning friction goes down, and on-property spend follows.&rdquo;
             </p>
             <p className="mt-4 text-sm" style={{ color: '#8a8580' }}>
-              — Marcus Rivera, General Manager, 1 Hotel Brooklyn Bridge
+              — On personalization and guest spend
             </p>
           </motion.div>
 
@@ -123,12 +124,13 @@ export default function Testimonials() {
             {...cardFade(prefersReducedMotion, 0.12)}
           >
             <p className="text-lg" style={{ color: '#e8e4dc' }}>
-              &ldquo;Finally, a tool that makes our guests feel like insiders,
-              not tourists. It&rsquo;s the concierge they never knew they
-              needed.&rdquo;
+              &ldquo;Every hotel sits in a destination worth exploring.
+              The ones that own that narrative — instead of losing it to
+              search engines and travel apps — build deeper guest
+              loyalty.&rdquo;
             </p>
             <p className="mt-4 text-sm" style={{ color: '#8a8580' }}>
-              — Isabelle Moreau, Head of Hospitality, Hôtel de Crillon, Paris
+              — On owning the guest journey
             </p>
           </motion.div>
         </div>

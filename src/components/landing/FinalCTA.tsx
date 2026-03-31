@@ -86,9 +86,7 @@ export default function FinalCTA() {
           </button>
 
           <a
-            href="https://stayscape-kohl.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/app"
             style={{
               border: '1px solid rgba(255,255,255,0.3)',
               background: 'transparent',
@@ -98,7 +96,7 @@ export default function FinalCTA() {
               display: 'inline-block',
             }}
           >
-            Explore the Live App
+            Try the App
           </a>
         </motion.div>
 
