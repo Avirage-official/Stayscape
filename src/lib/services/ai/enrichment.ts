@@ -49,9 +49,11 @@ export interface AIEnrichmentProvider {
  * the API key is configured.
  */
 class PlaceholderAIProvider implements AIEnrichmentProvider {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async enrichPlace(_place: InternalPlace): Promise<EnrichmentResult> {
     return { editorial_summary: '', tags: [] };
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async enrichEvent(_event: InternalEvent): Promise<EnrichmentResult> {
     return { editorial_summary: '', tags: [] };
   }

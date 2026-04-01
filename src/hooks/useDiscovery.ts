@@ -4,11 +4,16 @@
  * These hooks provide a clean interface between the existing Stayscape
  * UI components and the internal API layer. Components should use these
  * hooks instead of fetching from third-party APIs directly.
+ *
+ * The hooks expose a `refetch()` callback that consumers call explicitly
+ * to trigger data loading. This avoids setState-inside-useEffect and
+ * ref-access-during-render patterns that the project's strict eslint
+ * rules prohibit.
  */
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useState } from 'react';
 import type {
   DiscoveryPlaceCard,
   DiscoveryPlaceDetail,
@@ -39,7 +44,6 @@ interface UsePlacesOptions {
   featured_only?: boolean;
   search?: string;
   limit?: number;
-  enabled?: boolean;
 }
 
 interface UsePlacesResult {
@@ -53,15 +57,8 @@ export function usePlaces(options: UsePlacesOptions = {}): UsePlacesResult {
   const [places, setPlaces] = useState<DiscoveryPlaceCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fetchIdRef = useRef(0);
 
-  const fetchPlaces = useCallback(() => {
-    if (options.enabled === false) return;
-
-    const id = ++fetchIdRef.current;
-    setLoading(true);
-    setError(null);
-
+  const refetch = useCallback(() => {
     const params = new URLSearchParams();
     if (options.region_id) params.set('region_id', options.region_id);
     if (options.category) params.set('category', options.category);
@@ -69,26 +66,15 @@ export function usePlaces(options: UsePlacesOptions = {}): UsePlacesResult {
     if (options.search) params.set('search', options.search);
     if (options.limit) params.set('limit', String(options.limit));
 
+    setLoading(true);
+    setError(null);
     apiFetch<DiscoveryPlaceCard[]>(`/api/discovery/places?${params}`)
-      .then((data) => {
-        if (id === fetchIdRef.current) {
-          setPlaces(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (id === fetchIdRef.current) {
-          setError(err instanceof Error ? err.message : 'Failed to load places');
-          setLoading(false);
-        }
-      });
-  }, [options.region_id, options.category, options.featured_only, options.search, options.limit, options.enabled]);
+      .then(setPlaces)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load places'))
+      .finally(() => setLoading(false));
+  }, [options.region_id, options.category, options.featured_only, options.search, options.limit]);
 
-  useEffect(() => {
-    fetchPlaces();
-  }, [fetchPlaces]);
-
-  return { places, loading, error, refetch: fetchPlaces };
+  return { places, loading, error, refetch };
 }
 
 /* ── Place Detail ────────────────────────────────────────── */
@@ -97,36 +83,24 @@ interface UsePlaceDetailResult {
   place: DiscoveryPlaceDetail | null;
   loading: boolean;
   error: string | null;
+  refetch: (id: string) => void;
 }
 
-export function usePlaceDetail(
-  placeId: string | null,
-): UsePlaceDetailResult {
+export function usePlaceDetail(): UsePlaceDetailResult {
   const [place, setPlace] = useState<DiscoveryPlaceDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!placeId) {
-      setPlace(null);
-      return;
-    }
-
+  const refetch = useCallback((id: string) => {
     setLoading(true);
     setError(null);
+    apiFetch<DiscoveryPlaceDetail>(`/api/discovery/places/${encodeURIComponent(id)}`)
+      .then(setPlace)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load place'))
+      .finally(() => setLoading(false));
+  }, []);
 
-    apiFetch<DiscoveryPlaceDetail>(`/api/discovery/places/${encodeURIComponent(placeId)}`)
-      .then((data) => {
-        setPlace(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load place');
-        setLoading(false);
-      });
-  }, [placeId]);
-
-  return { place, loading, error };
+  return { place, loading, error, refetch };
 }
 
 /* ── Events ──────────────────────────────────────────────── */
@@ -139,7 +113,6 @@ interface UseEventsOptions {
   featured_only?: boolean;
   search?: string;
   limit?: number;
-  enabled?: boolean;
 }
 
 interface UseEventsResult {
@@ -153,15 +126,8 @@ export function useEvents(options: UseEventsOptions = {}): UseEventsResult {
   const [events, setEvents] = useState<DiscoveryEventCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fetchIdRef = useRef(0);
 
-  const fetchEvents = useCallback(() => {
-    if (options.enabled === false) return;
-
-    const id = ++fetchIdRef.current;
-    setLoading(true);
-    setError(null);
-
+  const refetch = useCallback(() => {
     const params = new URLSearchParams();
     if (options.region_id) params.set('region_id', options.region_id);
     if (options.category) params.set('category', options.category);
@@ -171,26 +137,15 @@ export function useEvents(options: UseEventsOptions = {}): UseEventsResult {
     if (options.search) params.set('search', options.search);
     if (options.limit) params.set('limit', String(options.limit));
 
+    setLoading(true);
+    setError(null);
     apiFetch<DiscoveryEventCard[]>(`/api/discovery/events?${params}`)
-      .then((data) => {
-        if (id === fetchIdRef.current) {
-          setEvents(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (id === fetchIdRef.current) {
-          setError(err instanceof Error ? err.message : 'Failed to load events');
-          setLoading(false);
-        }
-      });
-  }, [options.region_id, options.category, options.date_from, options.date_to, options.featured_only, options.search, options.limit, options.enabled]);
+      .then(setEvents)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load events'))
+      .finally(() => setLoading(false));
+  }, [options.region_id, options.category, options.date_from, options.date_to, options.featured_only, options.search, options.limit]);
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
-
-  return { events, loading, error, refetch: fetchEvents };
+  return { events, loading, error, refetch };
 }
 
 /* ── Event Detail ────────────────────────────────────────── */
@@ -199,46 +154,27 @@ interface UseEventDetailResult {
   event: DiscoveryEventDetail | null;
   loading: boolean;
   error: string | null;
+  refetch: (id: string) => void;
 }
 
-export function useEventDetail(
-  eventId: string | null,
-): UseEventDetailResult {
+export function useEventDetail(): UseEventDetailResult {
   const [event, setEvent] = useState<DiscoveryEventDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!eventId) {
-      setEvent(null);
-      return;
-    }
-
+  const refetch = useCallback((id: string) => {
     setLoading(true);
     setError(null);
+    apiFetch<DiscoveryEventDetail>(`/api/discovery/events/${encodeURIComponent(id)}`)
+      .then(setEvent)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load event'))
+      .finally(() => setLoading(false));
+  }, []);
 
-    apiFetch<DiscoveryEventDetail>(`/api/discovery/events/${encodeURIComponent(eventId)}`)
-      .then((data) => {
-        setEvent(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load event');
-        setLoading(false);
-      });
-  }, [eventId]);
-
-  return { event, loading, error };
+  return { event, loading, error, refetch };
 }
 
 /* ── Search ──────────────────────────────────────────────── */
-
-interface UseSearchOptions {
-  query: string;
-  type?: 'place' | 'event' | 'all';
-  region_id?: string;
-  limit?: number;
-}
 
 interface SearchResults {
   places: DiscoveryPlaceCard[];
@@ -250,37 +186,32 @@ interface UseSearchResult {
   results: SearchResults | null;
   loading: boolean;
   error: string | null;
+  search: (query: string, options?: { type?: 'place' | 'event' | 'all'; region_id?: string; limit?: number }) => void;
 }
 
-export function useSearch(options: UseSearchOptions): UseSearchResult {
+export function useSearch(): UseSearchResult {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!options.query || options.query.length < 2) {
+  const search = useCallback((query: string, opts?: { type?: 'place' | 'event' | 'all'; region_id?: string; limit?: number }) => {
+    if (!query || query.length < 2) {
       setResults(null);
       return;
     }
 
+    const params = new URLSearchParams({ q: query });
+    if (opts?.type) params.set('type', opts.type);
+    if (opts?.region_id) params.set('region_id', opts.region_id);
+    if (opts?.limit) params.set('limit', String(opts.limit));
+
     setLoading(true);
     setError(null);
-
-    const params = new URLSearchParams({ q: options.query });
-    if (options.type) params.set('type', options.type);
-    if (options.region_id) params.set('region_id', options.region_id);
-    if (options.limit) params.set('limit', String(options.limit));
-
     apiFetch<SearchResults>(`/api/discovery/search?${params}`)
-      .then((data) => {
-        setResults(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Search failed');
-        setLoading(false);
-      });
-  }, [options.query, options.type, options.region_id, options.limit]);
+      .then(setResults)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Search failed'))
+      .finally(() => setLoading(false));
+  }, []);
 
-  return { results, loading, error };
+  return { results, loading, error, search };
 }
