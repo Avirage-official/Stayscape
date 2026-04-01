@@ -166,6 +166,19 @@ export class TicketmasterProvider implements EventProvider {
     const startDate = e.dates?.start?.dateTime ?? e.dates?.start?.localDate;
     const endDate = e.dates?.end?.dateTime ?? e.dates?.end?.localDate ?? null;
 
+    // Skip events without a valid start date
+    if (!startDate) {
+      return {
+        name: e.name,
+        slug: slugify(e.name),
+        description: e.description ?? e.info ?? '',
+        category: mapTmCategory(e.classifications),
+        start_date: new Date(0).toISOString(), // sentinel — filtered downstream
+        external_source: 'ticketmaster' as const,
+        external_id: e.id,
+      };
+    }
+
     return {
       name: e.name,
       slug: slugify(e.name),
@@ -188,7 +201,7 @@ export class TicketmasterProvider implements EventProvider {
       price_min: price?.min ?? null,
       price_max: price?.max ?? null,
       currency: price?.currency ?? 'USD',
-      start_date: startDate ?? new Date().toISOString(),
+      start_date: startDate,
       end_date: endDate,
       start_time: e.dates?.start?.localTime ?? null,
       end_time: e.dates?.end?.localTime ?? null,

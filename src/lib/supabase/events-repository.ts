@@ -31,8 +31,9 @@ export async function queryEvents(
   if (params.date_from) query = query.gte('start_date', params.date_from);
   if (params.date_to) query = query.lte('start_date', params.date_to);
   if (params.search) query = query.ilike('name', `%${params.search}%`);
-  if (params.limit) query = query.limit(params.limit);
-  if (params.offset) query = query.range(params.offset, params.offset + (params.limit ?? 20) - 1);
+  const limit = params.limit ?? 20;
+  query = query.limit(limit);
+  if (params.offset) query = query.range(params.offset, params.offset + limit - 1);
 
   const { data, error } = await query;
   if (error) throw new Error(`queryEvents failed: ${error.message}`);
