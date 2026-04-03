@@ -129,6 +129,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const markerElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const initializedRef = useRef(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const styleFallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSelectPlaceRef = useRef(onSelectPlace);
   useEffect(() => { onSelectPlaceRef.current = onSelectPlace; }, [onSelectPlace]);
 
@@ -172,12 +173,14 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         // Timeout-based fallback: if the style hasn't loaded within 8 s,
         // switch to the guaranteed-public dark-v11 style.
         const styleFallbackTimeout = setTimeout(() => {
+          styleFallbackTimeoutRef.current = null;
           if (!styleLoaded && !usingFallbackStyle) {
             console.warn('[Stayscape Map] Style load timed out, falling back to mapbox/dark-v11');
             usingFallbackStyle = true;
             map.setStyle(MAPBOX_DARK_STYLE_FALLBACK);
           }
         }, 8_000);
+        styleFallbackTimeoutRef.current = styleFallbackTimeout;
 
         map.on('error', (e) => {
           const msg = e.error?.message ?? String(e.error ?? '');
@@ -278,10 +281,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const markerElements = markerElementsRef;
     const mapInstance = mapInstanceRef;
     const resizeObs = resizeObserverRef;
+    const fallbackTimeout = styleFallbackTimeoutRef;
     return () => {
       markers.current.forEach((m) => m.remove());
       markers.current = [];
       markerElements.current.clear();
+      if (fallbackTimeout.current) {
+        clearTimeout(fallbackTimeout.current);
+        fallbackTimeout.current = null;
+      }
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
@@ -304,9 +312,10 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         const observer = new ResizeObserver((entries) => {
           for (const entry of entries) {
             if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-              initMap();
-              observer.disconnect();
-              resizeObserverRef.current = null;
+              if (initMap()) {
+                observer.disconnect();
+                resizeObserverRef.current = null;
+              }
               break;
             }
           }
