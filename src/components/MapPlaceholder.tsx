@@ -343,15 +343,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           });
         });
 
-        /* Track user panning to show/hide the re-center button */
+        /* Track user panning to show/hide the re-center button.
+           Compare squared distance to avoid unnecessary sqrt on every moveend. */
         map.on('moveend', () => {
           if (!userLocationRef.current) return;
           const center = map.getCenter();
-          const dist = Math.sqrt(
+          const distSq =
             Math.pow(center.lat - userLocationRef.current.lat, 2) +
-            Math.pow(center.lng - userLocationRef.current.lng, 2),
-          );
-          setShowRecenter(dist > GEOLOCATION_RECENTER_THRESHOLD);
+            Math.pow(center.lng - userLocationRef.current.lng, 2);
+          setShowRecenter(distSq > GEOLOCATION_RECENTER_THRESHOLD * GEOLOCATION_RECENTER_THRESHOLD);
         });
 
         /* Keep canvas sized correctly on window resize */
@@ -478,12 +478,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           userMapMarkerRef.current = marker;
 
           map.flyTo({ center: [longitude, latitude], zoom: GEOLOCATION_ZOOM, duration: GEOLOCATION_FLY_DURATION });
+        }).catch((err) => {
+          console.warn('[Stayscape Map] Failed to place user location marker:', err);
         });
       },
       () => {
         /* Permission denied — fall back gracefully, no error shown to user */
         setLocationState('denied');
       },
+      /* 12 s timeout covers slow GPS cold starts; 5 min cache reduces battery drain on re-requests */
       { timeout: 12_000, maximumAge: 300_000 },
     );
   }, [locationState]);
