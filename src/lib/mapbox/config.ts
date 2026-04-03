@@ -12,7 +12,6 @@
  * - Support viewport bounds extraction for nearby queries
  */
 
-import { NEXT_PUBLIC_MAPBOX_TOKEN } from '@/lib/env';
 import type { ViewportBounds, MapMarker } from '@/types/database';
 
 /* ── Token ───────────────────────────────────────────────── */
@@ -20,16 +19,18 @@ import type { ViewportBounds, MapMarker } from '@/types/database';
 /**
  * Returns the Mapbox public token, or empty string if not configured.
  * Safe for client-side use — this is a public token.
+ * Read directly from process.env so Next.js inlines the value at build time.
  */
 export function getMapboxToken(): string {
-  return NEXT_PUBLIC_MAPBOX_TOKEN;
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 }
 
 /**
  * Check whether Mapbox is configured and available.
+ * Read directly from process.env so Next.js inlines the value at build time.
  */
 export function isMapboxAvailable(): boolean {
-  return NEXT_PUBLIC_MAPBOX_TOKEN.length > 0;
+  return (process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '').length > 0;
 }
 
 /* ── Dark style (always used — per Stayscape design rules) ─ */

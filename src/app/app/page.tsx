@@ -82,7 +82,7 @@ export default function Home() {
           {activeTab === 'concierge' ? (
             <>
               {/* Center — Map workspace */}
-              <div className={`flex-1 relative ${mobileView === 'map' ? 'flex' : 'hidden'} lg:flex flex-col`}>
+              <div className={`flex-1 relative min-h-0 ${mobileView === 'map' ? 'flex' : 'hidden'} lg:flex flex-col`}>
                 <MapPlaceholder
                   onSelectPlace={handleSelectPlace}
                   selectedPlaceId={selectedPlace?.id ?? null}

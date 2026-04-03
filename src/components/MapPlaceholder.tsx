@@ -1,5 +1,6 @@
 'use client';
 
+import type mapboxgl from 'mapbox-gl';
 import { useRef, useCallback, useEffect } from 'react';
 import { Place } from '@/types';
 import { getMapboxToken, isMapboxAvailable, MAPBOX_DARK_STYLE, MAPBOX_DARK_STYLE_FALLBACK, MARKER_COLOR_GOLD, MARKER_COLOR_DEFAULT } from '@/lib/mapbox/config';
@@ -130,6 +131,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const initializedRef = useRef(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const styleFallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const windowResizeHandlerRef = useRef<(() => void) | null>(null);
   const onSelectPlaceRef = useRef(onSelectPlace);
   useEffect(() => { onSelectPlaceRef.current = onSelectPlace; }, [onSelectPlace]);
 
@@ -256,6 +258,17 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           });
         });
 
+        // Keep the canvas sized correctly whenever the browser window resizes.
+        // Store the handler in a ref so the cleanup useEffect can also remove
+        // it if the component unmounts before the map fires its 'remove' event.
+        const handleWindowResize = () => map.resize();
+        windowResizeHandlerRef.current = handleWindowResize;
+        window.addEventListener('resize', handleWindowResize);
+        map.on('remove', () => {
+          window.removeEventListener('resize', handleWindowResize);
+          windowResizeHandlerRef.current = null;
+        });
+
         return map;
       };
 
@@ -282,6 +295,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const mapInstance = mapInstanceRef;
     const resizeObs = resizeObserverRef;
     const fallbackTimeout = styleFallbackTimeoutRef;
+    const windowResizeHandler = windowResizeHandlerRef;
     return () => {
       markers.current.forEach((m) => m.remove());
       markers.current = [];
@@ -289,6 +303,10 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       if (fallbackTimeout.current) {
         clearTimeout(fallbackTimeout.current);
         fallbackTimeout.current = null;
+      }
+      if (windowResizeHandler.current) {
+        window.removeEventListener('resize', windowResizeHandler.current);
+        windowResizeHandler.current = null;
       }
       if (mapInstance.current) {
         mapInstance.current.remove();
@@ -332,8 +350,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   }
 
   return (
-    <div className="relative w-full h-full bg-[var(--map-bg)] overflow-hidden animate-fade-in">
-      <div ref={setContainerRef} className="absolute inset-0" />
+    <div className="relative w-full h-full flex-1 bg-[var(--map-bg)] overflow-hidden animate-fade-in">
+      <div ref={setContainerRef} className="absolute inset-0" style={{ width: '100%', height: '100%' }} />
 
       {/* Selected place label */}
       {selectedPlaceId && (() => {
@@ -554,7 +572,7 @@ function MapFallback({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
 
       {/* Map attribution */}
       <div className="absolute bottom-4 left-4 text-[9px] text-[var(--text-dim)] tracking-wide">
-        © Stayscape Maps
+        © Stayscape Maps · <span className="opacity-50">preview</span>
       </div>
     </div>
   );
