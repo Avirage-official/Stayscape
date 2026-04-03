@@ -1,10 +1,12 @@
 'use client';
 
+import { useRef, useCallback } from 'react';
 import { Place } from '@/types';
+import { getMapboxToken, isMapboxAvailable, MAPBOX_DARK_STYLE, MARKER_COLOR_GOLD, MARKER_COLOR_DEFAULT } from '@/lib/mapbox/config';
 
-/* ─── Sample places with map coordinates ─── */
+/* ─── Sample places with real lat/lng coordinates ─── */
 
-const mapPlaces: (Place & { cx: number; cy: number })[] = [
+const mapPlaces: (Place & { lat: number; lng: number; cx: number; cy: number })[] = [
   {
     id: '1',
     name: 'Nobu Restaurant',
@@ -16,6 +18,8 @@ const mapPlaces: (Place & { cx: number; cy: number })[] = [
       "Nobu is the crown jewel of NYC dining—Chef Nobu Matsuhisa's legendary fusion cuisine awaits. We recommend the black cod with miso and the signature yellowtail jalapeño. Reservations are highly sought after; our concierge has secured priority access for hotel guests.",
     gradient: 'from-amber-900 to-red-900',
     bookingUrl: 'https://www.noburestaurants.com/new-york',
+    lat: 40.7614,
+    lng: -73.9776,
     cx: 350,
     cy: 270,
   },
@@ -30,6 +34,8 @@ const mapPlaces: (Place & { cx: number; cy: number })[] = [
       'Just steps from the hotel, The Rooftop Bar offers an unparalleled cocktail experience above the Manhattan skyline. The sommelier-curated champagne selection and the signature "Golden Hour" cocktail are not to be missed. Best enjoyed at sunset.',
     gradient: 'from-blue-900 to-purple-900',
     bookingUrl: 'https://example.com/rooftop-bar',
+    lat: 40.7580,
+    lng: -73.9712,
     cx: 520,
     cy: 340,
   },
@@ -44,6 +50,8 @@ const mapPlaces: (Place & { cx: number; cy: number })[] = [
       "Central Park in December is particularly magical—the Wollman Rink ice skating is in full swing and the holiday atmosphere is serene. We suggest the path along the Mall for the most scenic morning walk. Our concierge can arrange a private carriage ride.",
     gradient: 'from-green-900 to-teal-900',
     bookingUrl: 'https://www.centralparknyc.org',
+    lat: 40.7829,
+    lng: -73.9654,
     cx: 450,
     cy: 180,
   },
@@ -58,6 +66,8 @@ const mapPlaces: (Place & { cx: number; cy: number })[] = [
       "Fifth Avenue is the pinnacle of luxury retail—from Bergdorf Goodman's impeccable personal shopping service to the flagship stores of the world's finest houses. The hotel's concierge team has personal relationships with the store managers for VIP access.",
     gradient: 'from-pink-900 to-rose-900',
     bookingUrl: 'https://example.com/fifth-avenue',
+    lat: 40.7644,
+    lng: -73.9732,
     cx: 280,
     cy: 410,
   },
@@ -72,6 +82,8 @@ const mapPlaces: (Place & { cx: number; cy: number })[] = [
       "Chef Éric Ripert's three-Michelin-star temple of French seafood is widely considered the finest restaurant in New York. The tasting menu is a transcendent experience—langoustine, halibut, and tuna prepared with extraordinary precision. We have a longstanding relationship with the maitre d'.",
     gradient: 'from-slate-800 to-blue-950',
     bookingUrl: 'https://www.le-bernardin.com',
+    lat: 40.7618,
+    lng: -73.9815,
     cx: 650,
     cy: 200,
   },
@@ -86,10 +98,15 @@ const mapPlaces: (Place & { cx: number; cy: number })[] = [
       "Bemelmans Bar at The Carlyle is one of New York's most storied establishments—the Ludwig Bemelmans murals, live jazz piano, and the perfectly mixed Martinis create an atmosphere of effortless Old World glamour. Arrive early evening for the full experience.",
     gradient: 'from-yellow-900 to-orange-900',
     bookingUrl: 'https://www.rosewoodhotels.com/en/the-carlyle-new-york/dining/bemelmans-bar',
+    lat: 40.7741,
+    lng: -73.9632,
     cx: 560,
     cy: 480,
   },
 ];
+
+/* ─── Hotel center coordinates ─── */
+const HOTEL_CENTER = { lat: 40.7649, lng: -73.9733 };
 
 interface MapPlaceholderProps {
   onSelectPlace?: (place: Place) => void;
@@ -97,6 +114,125 @@ interface MapPlaceholderProps {
 }
 
 export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const initializedRef = useRef(false);
+
+  const initMap = useCallback(() => {
+    if (initializedRef.current || !mapContainerRef.current || !isMapboxAvailable()) return;
+    initializedRef.current = true;
+
+    import('mapbox-gl').then((mapboxgl) => {
+      mapboxgl.default.accessToken = getMapboxToken();
+
+      const map = new mapboxgl.default.Map({
+        container: mapContainerRef.current!,
+        style: MAPBOX_DARK_STYLE,
+        center: [HOTEL_CENTER.lng, HOTEL_CENTER.lat],
+        zoom: 14,
+        attributionControl: false,
+      });
+
+      // Add minimal navigation control
+      map.addControl(new mapboxgl.default.NavigationControl({ showCompass: false }), 'bottom-right');
+
+      mapInstanceRef.current = map;
+
+      map.on('load', () => {
+        // Add hotel marker
+        const hotelEl = document.createElement('div');
+        hotelEl.className = 'stayscape-hotel-marker';
+        hotelEl.innerHTML = `
+          <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+            <span style="position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(201,168,76,0.06);animation:gentlePulse 3s ease-in-out infinite;"></span>
+            <span style="position:absolute;width:28px;height:28px;border-radius:50%;border:1px solid rgba(201,168,76,0.15);"></span>
+            <span style="position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid rgba(201,168,76,0.25);"></span>
+            <div style="width:12px;height:12px;border-radius:50%;background:${MARKER_COLOR_GOLD};box-shadow:0 0 12px rgba(201,168,76,0.5),0 0 4px rgba(201,168,76,0.8);"></div>
+          </div>
+        `;
+        new mapboxgl.default.Marker({ element: hotelEl })
+          .setLngLat([HOTEL_CENTER.lng, HOTEL_CENTER.lat])
+          .addTo(map);
+
+        // Add place markers
+        mapPlaces.forEach((place) => {
+          const el = document.createElement('div');
+          el.className = 'stayscape-place-marker';
+          el.style.cursor = 'pointer';
+          el.style.width = '12px';
+          el.style.height = '12px';
+
+          const isSelected = selectedPlaceId === place.id;
+          el.innerHTML = `
+            <div style="
+              width:${isSelected ? '10px' : '8px'};
+              height:${isSelected ? '10px' : '8px'};
+              border-radius:50%;
+              background:${isSelected ? MARKER_COLOR_GOLD : MARKER_COLOR_DEFAULT};
+              ${isSelected ? `border:1px solid ${MARKER_COLOR_GOLD};box-shadow:0 0 6px rgba(201,168,76,0.5);` : ''}
+              transition:all 0.2s ease;
+            "></div>
+          `;
+
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            onSelectPlace?.(place);
+          });
+
+          const marker = new mapboxgl.default.Marker({ element: el })
+            .setLngLat([place.lng, place.lat])
+            .addTo(map);
+
+          markersRef.current.push(marker);
+        });
+      });
+    });
+  }, [onSelectPlace, selectedPlaceId]);
+
+  /* ─── Ref callback for the container ─── */
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    (mapContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (node) {
+      initMap();
+    }
+  }, [initMap]);
+
+  /* ─── Fallback to SVG if Mapbox is not available ─── */
+  if (!isMapboxAvailable()) {
+    return <MapFallback onSelectPlace={onSelectPlace} selectedPlaceId={selectedPlaceId} />;
+  }
+
+  return (
+    <div className="relative w-full h-full bg-[var(--map-bg)] overflow-hidden animate-fade-in">
+      <div ref={setContainerRef} className="absolute inset-0" />
+
+      {/* Selected place label */}
+      {selectedPlaceId && (() => {
+        const activePlace = mapPlaces.find((p) => p.id === selectedPlaceId);
+        if (!activePlace) return null;
+        return (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap pointer-events-none">
+            <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
+              <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">{activePlace.name}</span>
+              <span className="text-[9px] text-[var(--text-faint)]">·</span>
+              <span className="text-[9px] text-[var(--text-muted)]">{activePlace.distance}</span>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Map attribution */}
+      <div className="absolute bottom-4 left-4 text-[9px] text-[var(--text-dim)] tracking-wide z-10">
+        © Stayscape · Mapbox
+      </div>
+    </div>
+  );
+}
+
+/* ─── SVG fallback when Mapbox token is not configured ─── */
+function MapFallback({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
   return (
     <div className="relative w-full h-full bg-[var(--map-bg)] overflow-hidden animate-fade-in">
       {/* Subtle grid background */}
