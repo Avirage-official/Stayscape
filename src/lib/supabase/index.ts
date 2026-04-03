@@ -26,3 +26,18 @@ export {
   failSyncRun,
   getLatestSyncRun,
 } from './sync-repository';
+export {
+  fetchCategories,
+  fetchItemsByCategory,
+  fetchAllItems,
+  fetchLocalInsights,
+  fetchItemDetail,
+} from './discover-repository';
+export {
+  getOrCreateItinerary,
+  insertItineraryItem,
+  updateItineraryItem,
+  removeItineraryItem,
+  fetchItineraryItems,
+} from './itinerary-repository';
+export type { DbItinerary, DbItineraryItem } from './itinerary-repository';

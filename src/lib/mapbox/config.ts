@@ -39,7 +39,7 @@ export function isMapboxAvailable(): boolean {
  * This preserves the Stayscape design rule that the map stays dark
  * in both light and dark mode.
  */
-export const MAPBOX_DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
+export const MAPBOX_DARK_STYLE = 'mapbox://styles/benobaj/cmnihne6s006s01se1eqtedtm';
 
 /* ── Viewport bounds ─────────────────────────────────────── */
 
