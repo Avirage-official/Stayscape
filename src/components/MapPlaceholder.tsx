@@ -128,22 +128,23 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const markerElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const initializedRef = useRef(false);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const onSelectPlaceRef = useRef(onSelectPlace);
   useEffect(() => { onSelectPlaceRef.current = onSelectPlace; }, [onSelectPlace]);
 
-  const initMap = useCallback(() => {
-    if (initializedRef.current || !mapContainerRef.current || !isMapboxAvailable()) return;
+  const initMap = useCallback((): boolean => {
+    if (initializedRef.current || !mapContainerRef.current || !isMapboxAvailable()) return false;
 
     // Guard against zero-size container
     const rect = mapContainerRef.current.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    if (rect.width === 0 || rect.height === 0) return false;
 
     initializedRef.current = true;
 
     const token = getMapboxToken();
     if (!token) {
       console.warn('[Stayscape Map] Mapbox token is empty at runtime');
-      return;
+      return false;
     }
 
     import('mapbox-gl').then((mapboxgl) => {
@@ -152,6 +153,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       mapboxgl.default.accessToken = token;
 
       let usingFallbackStyle = false;
+      let styleLoaded = false;
 
       const createMap = (styleUrl: string) => {
         const map = new mapboxgl.default.Map({
@@ -167,22 +169,33 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
         mapInstanceRef.current = map;
 
+        // Timeout-based fallback: if the style hasn't loaded within 8 s,
+        // switch to the guaranteed-public dark-v11 style.
+        const styleFallbackTimeout = setTimeout(() => {
+          if (!styleLoaded && !usingFallbackStyle) {
+            console.warn('[Stayscape Map] Style load timed out, falling back to mapbox/dark-v11');
+            usingFallbackStyle = true;
+            map.setStyle(MAPBOX_DARK_STYLE_FALLBACK);
+          }
+        }, 8_000);
+
         map.on('error', (e) => {
           const msg = e.error?.message ?? String(e.error ?? '');
           console.warn('[Stayscape Map] Map error:', msg);
 
-          // If the custom style fails, fall back to the default dark style
-          if (!usingFallbackStyle && (
-            msg.includes('Style') || msg.includes('style') ||
-            msg.includes('Not Found') || msg.includes('403') || msg.includes('401')
-          )) {
+          // Any error before the first style.load triggers the fallback
+          if (!usingFallbackStyle && !styleLoaded) {
             console.warn('[Stayscape Map] Custom style failed, falling back to mapbox/dark-v11');
             usingFallbackStyle = true;
+            clearTimeout(styleFallbackTimeout);
             map.setStyle(MAPBOX_DARK_STYLE_FALLBACK);
           }
         });
 
         map.on('style.load', () => {
+          styleLoaded = true;
+          clearTimeout(styleFallbackTimeout);
+
           // Ensure the map resizes to fit its container
           requestAnimationFrame(() => {
             map.resize();
@@ -223,8 +236,9 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             el.appendChild(innerDiv);
             markerElementsRef.current.set(place.id, innerDiv);
 
-            // Apply initial selected state
-            applyMarkerStyle(innerDiv, selectedPlaceId === place.id);
+            // Apply initial selected state — read from the ref
+            // which is kept in sync by the selectedPlaceId effect
+            applyMarkerStyle(innerDiv, false);
 
             el.addEventListener('click', (e) => {
               e.stopPropagation();
@@ -247,7 +261,9 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       console.error('[Stayscape Map] Failed to load mapbox-gl:', err);
       initializedRef.current = false;
     });
-  }, [selectedPlaceId]);
+
+    return true;
+  }, []);
 
   /* ─── Update marker styles when selectedPlaceId changes ─── */
   useEffect(() => {
@@ -261,6 +277,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const markers = markersRef;
     const markerElements = markerElementsRef;
     const mapInstance = mapInstanceRef;
+    const resizeObs = resizeObserverRef;
     return () => {
       markers.current.forEach((m) => m.remove());
       markers.current = [];
@@ -268,6 +285,10 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
+      }
+      if (resizeObs.current) {
+        resizeObs.current.disconnect();
+        resizeObs.current = null;
       }
       initializedRef.current = false;
     };
@@ -277,7 +298,22 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const setContainerRef = useCallback((node: HTMLDivElement | null) => {
     (mapContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
     if (node) {
-      initMap();
+      // Try immediately; if the container has zero size, use a
+      // ResizeObserver to retry once it gets a non-zero layout.
+      if (!initMap()) {
+        const observer = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+              initMap();
+              observer.disconnect();
+              resizeObserverRef.current = null;
+              break;
+            }
+          }
+        });
+        observer.observe(node);
+        resizeObserverRef.current = observer;
+      }
     }
   }, [initMap]);
 
