@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useItinerary } from '@/components/ItineraryContext';
 import { format } from 'date-fns';
+import { fetchItemDetail } from '@/lib/supabase/discover-repository';
+import { FALLBACK_PLACE_DETAILS, type PlaceDetailExtra } from '@/lib/data/discover-fallback';
 
 /* ─── Extended place detail data ─── */
 
@@ -40,73 +42,7 @@ interface PlaceDetail {
 
 /* ─── Rich editorial data keyed by place id ─── */
 
-const placeDetails: Record<string, Omit<PlaceDetail, 'id' | 'name' | 'category' | 'description' | 'rating' | 'distance' | 'gradient' | 'image' | 'bookingUrl'>> = {
-  /* Top Places */
-  'tp-1': {
-    locationLine: 'Central Manhattan · New York',
-    editorialDescription: 'Central Park is the green heart of Manhattan — 843 acres of winding paths, serene lakes, and sculpted gardens that offer a tranquil counterpoint to the city\'s relentless energy. Whether you\'re drawn to the quiet reflection of the Bethesda Fountain or the playful energy of the Sheep Meadow, the park reveals a different character with every visit.',
-    thingsToDo: ['Walk the Jacqueline Kennedy Onassis Reservoir loop', 'Visit Bethesda Terrace and Fountain', 'Row a boat on The Lake', 'Explore the Conservatory Garden'],
-    whatToLookOutFor: ['Street performers near Bethesda Fountain', 'Seasonal flower displays in the Shakespeare Garden', 'Red-tailed hawks nesting in winter months'],
-    whatToBring: ['Comfortable walking shoes', 'A light jacket for breezy afternoons', 'A camera for the scenic views'],
-    recommendedDuration: '2–4 hours',
-    bestTimeToGo: 'Early morning or golden hour',
-  },
-  'tp-2': {
-    locationLine: 'Midtown Manhattan · New York',
-    editorialDescription: 'Rising 1,454 feet above Fifth Avenue, the Empire State Building remains one of the most recognizable structures on earth. The Art Deco masterpiece offers sweeping 360-degree views from the 86th-floor observatory, and the recently restored lobby is itself worth the visit — a cathedral of geometric marble and metalwork.',
-    thingsToDo: ['Take in the 86th-floor open-air observation deck', 'Visit the Art Deco lobby exhibit', 'Catch the sunset for golden-hour views'],
-    whatToLookOutFor: ['Tower lighting changes nightly — check the schedule', 'Clear days offer visibility up to 80 miles', 'The building\'s distinctive silhouette after dark'],
-    whatToBring: ['Valid photo ID for security', 'A warm layer — the observation deck is open-air', 'Your best camera lens'],
-    recommendedDuration: '1.5–2 hours',
-    bestTimeToGo: 'Late afternoon into sunset',
-  },
-  'tp-3': {
-    locationLine: 'Theater District · New York',
-    editorialDescription: 'Times Square is sensory immersion at its most vivid — cascading LED displays, Broadway marquees, and the constant hum of millions of visitors from every corner of the world. It\'s best experienced on foot, at night, when the neon transforms the crossroads into something closer to art installation than intersection.',
-    thingsToDo: ['Walk through the pedestrian plazas', 'Browse the TKTS booth for same-day Broadway tickets', 'People-watch from the red glass steps'],
-    whatToLookOutFor: ['Costumed performers expecting tips for photos', 'Flash sales at the TKTS booth for matinees', 'The midnight countdown ball at One Times Square'],
-    whatToBring: ['Comfortable shoes for walking on pavement', 'A secure bag — it gets crowded', 'Your sense of wonder'],
-    recommendedDuration: '1–2 hours',
-    bestTimeToGo: 'After dark for the full neon effect',
-  },
-  'tp-4': {
-    locationLine: 'Lower Manhattan to Brooklyn · New York',
-    editorialDescription: 'The Brooklyn Bridge is more than a crossing — it\'s a 1.1-mile promenade suspended between two of New York\'s most vibrant boroughs. Walking its wooden planks above the East River, framed by Gothic stone arches and steel cables, is one of the city\'s most iconic experiences. Start from Brooklyn for the best Manhattan skyline views.',
-    thingsToDo: ['Walk the full span from Brooklyn to Manhattan', 'Photograph the skyline from the Brooklyn side', 'Explore DUMBO and Brooklyn Bridge Park after crossing'],
-    whatToLookOutFor: ['Cyclists sharing the path — stay in the pedestrian lane', 'Best skyline photos come facing Manhattan (walk from Brooklyn)', 'Historic plaques embedded in the stone towers'],
-    whatToBring: ['Comfortable walking shoes', 'Wind protection — it\'s breezy over the river', 'A camera with a wide-angle lens'],
-    recommendedDuration: '1–2 hours',
-    bestTimeToGo: 'Sunrise or sunset',
-  },
-  /* Historical */
-  'hi-1': {
-    locationLine: 'Upper East Side · New York',
-    editorialDescription: 'The Metropolitan Museum of Art houses over two million works spanning 5,000 years of human creativity. From Egyptian temples to Impressionist masterworks, each gallery unfolds like a chapter of civilization\'s story. Give yourself permission to wander without a plan — the Met rewards curiosity above all.',
-    thingsToDo: ['Visit the Temple of Dendur in the Egyptian Wing', 'Explore the European Paintings galleries', 'Walk through the rooftop garden in season'],
-    whatToLookOutFor: ['The "pay what you wish" admission for NY residents', 'Friday and Saturday late hours with live music', 'Rotating special exhibitions'],
-    whatToBring: ['Comfortable shoes — the museum is enormous', 'A light bag for security screening', 'A sketchbook if you\'re artistically inclined'],
-    recommendedDuration: '3–5 hours',
-    bestTimeToGo: 'Weekday mornings for fewer crowds',
-  },
-  'hi-2': {
-    locationLine: 'Liberty Island · New York Harbor',
-    editorialDescription: 'Lady Liberty has greeted arrivals to New York Harbor since 1886. Standing 305 feet from base to torch, she remains an enduring symbol of possibility. The pedestal museum tells her story from French gift to American icon, while the crown offers intimate views you\'ll remember forever.',
-    thingsToDo: ['Visit the pedestal museum', 'Book a crown access ticket well in advance', 'Take the audio tour for historical context'],
-    whatToLookOutFor: ['Crown tickets sell out months ahead', 'The ferry ride itself offers stunning harbor views', 'Security screening is airport-level — plan accordingly'],
-    whatToBring: ['Valid photo ID', 'Sunscreen and water for outdoor wait times', 'Comfortable shoes for stair climbing'],
-    recommendedDuration: '3–4 hours (including ferry)',
-    bestTimeToGo: 'First ferry of the morning',
-  },
-  'hi-3': {
-    locationLine: 'Upper New York Bay · New York Harbor',
-    editorialDescription: 'Ellis Island processed over 12 million immigrants between 1892 and 1954. The restored main hall — with its soaring vaulted ceiling and tiled arches — is now a museum that traces the deeply personal stories of those who arrived seeking a new life. It\'s moving, beautifully curated, and impossible to forget.',
-    thingsToDo: ['Tour the main immigration hall', 'Search for family names on the American Immigrant Wall of Honor', 'Watch the documentary film in the theater'],
-    whatToLookOutFor: ['The free ranger-led tours are excellent', 'Allow time for the ferry schedule back', 'The hospital complex (hard hat tour) for the adventurous'],
-    whatToBring: ['Family immigration records if you have them', 'Comfortable shoes', 'Tissues — it can be emotional'],
-    recommendedDuration: '2–3 hours',
-    bestTimeToGo: 'Morning, paired with Statue of Liberty',
-  },
-};
+const placeDetails = FALLBACK_PLACE_DETAILS;
 
 /* ─── Fallback detail generator ─── */
 function getPlaceDetail(place: { id: string; name: string; category: string; description: string; rating: number; distance: string; gradient: string; image: string; bookingUrl: string }): PlaceDetail {
@@ -340,14 +276,33 @@ interface PlaceDetailDialogProps {
 
 export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDetailDialogProps) {
   const [view, setView] = useState<'detail' | 'schedule'>('detail');
+  const [dbDetail, setDbDetail] = useState<PlaceDetailExtra | null>(null);
+  const fetchedForRef = useRef<string | null>(null);
 
   const handleOpenChange = useCallback((value: boolean) => {
     if (!value) {
       // Reset to detail view on close
       setTimeout(() => setView('detail'), 200);
+      setDbDetail(null);
+      fetchedForRef.current = null;
     }
     onOpenChange(value);
   }, [onOpenChange]);
+
+  // Trigger DB fetch when the detail view mounts (via onLoad of hero image area)
+  const triggerDbFetch = useCallback((placeId: string) => {
+    if (fetchedForRef.current === placeId) return;
+    fetchedForRef.current = placeId;
+    fetchItemDetail(placeId)
+      .then((result) => {
+        if (result) {
+          setDbDetail(result.detail);
+        }
+      })
+      .catch(() => {
+        // Supabase unavailable — use fallback
+      });
+  }, []);
 
   const handleScheduleConfirm = useCallback(() => {
     setTimeout(() => setView('detail'), 200);
@@ -356,11 +311,17 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
 
   if (!place) return null;
 
-  const detail = getPlaceDetail(place);
+  // DB-first: use Supabase detail if available, otherwise local fallback
+  const detail: PlaceDetail = dbDetail
+    ? { ...place, ...dbDetail }
+    : getPlaceDetail(place);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[520px] sm:max-w-[580px] max-h-[90vh] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0 flex flex-col">
+      <DialogContent
+        className="max-w-[520px] sm:max-w-[580px] max-h-[90vh] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0 flex flex-col"
+        ref={() => { if (place) triggerDbFetch(place.id); }}
+      >
 
         {view === 'detail' ? (
           <div className="flex flex-col max-h-[90vh]">
