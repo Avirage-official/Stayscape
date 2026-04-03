@@ -105,3 +105,22 @@ export function markersToGeoJSON(markers: MapMarker[]): GeoJSON.FeatureCollectio
 export const MARKER_COLOR_GOLD = '#C9A84C';
 export const MARKER_COLOR_DEFAULT = '#6B7280';
 export const MARKER_COLOR_EVENT = '#8B5CF6';
+
+/**
+ * Category-specific marker colors for the premium place markers.
+ */
+export const CATEGORY_COLORS: Record<string, string> = {
+  'Restaurants': '#F59E0B',
+  'Bars & Drinks': '#8B5CF6',
+  'Activities': '#14B8A6',
+  'Shopping': '#F43F5E',
+};
+
+/**
+ * Geolocation constants.
+ */
+export const GEOLOCATION_ZOOM = 15;
+export const GEOLOCATION_FLY_DURATION = 1800;
+export const GEOLOCATION_RECENTER_DURATION = 1200;
+/** Distance threshold (in degrees ~0.003° ≈ 300 m) above which the re-center button appears. */
+export const GEOLOCATION_RECENTER_THRESHOLD = 0.003;
