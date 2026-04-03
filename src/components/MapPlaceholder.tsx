@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { Place } from '@/types';
-import { getMapboxToken, isMapboxAvailable, MAPBOX_DARK_STYLE, MARKER_COLOR_GOLD, MARKER_COLOR_DEFAULT } from '@/lib/mapbox/config';
+import { getMapboxToken, isMapboxAvailable, MAPBOX_DARK_STYLE, MAPBOX_DARK_STYLE_FALLBACK, MARKER_COLOR_GOLD, MARKER_COLOR_DEFAULT } from '@/lib/mapbox/config';
 
 /* ─── Sample places with real lat/lng coordinates ─── */
 
@@ -113,82 +113,165 @@ interface MapPlaceholderProps {
   selectedPlaceId?: string | null;
 }
 
+/** Apply selected/unselected styles to a marker's inner div */
+function applyMarkerStyle(el: HTMLDivElement, isSelected: boolean) {
+  el.style.width = isSelected ? '10px' : '8px';
+  el.style.height = isSelected ? '10px' : '8px';
+  el.style.background = isSelected ? MARKER_COLOR_GOLD : MARKER_COLOR_DEFAULT;
+  el.style.border = isSelected ? `1px solid ${MARKER_COLOR_GOLD}` : 'none';
+  el.style.boxShadow = isSelected ? '0 0 6px rgba(201,168,76,0.5)' : 'none';
+}
+
 export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markerElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const initializedRef = useRef(false);
+  const onSelectPlaceRef = useRef(onSelectPlace);
+  useEffect(() => { onSelectPlaceRef.current = onSelectPlace; }, [onSelectPlace]);
 
   const initMap = useCallback(() => {
     if (initializedRef.current || !mapContainerRef.current || !isMapboxAvailable()) return;
+
+    // Guard against zero-size container
+    const rect = mapContainerRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     initializedRef.current = true;
 
+    const token = getMapboxToken();
+    if (!token) {
+      console.warn('[Stayscape Map] Mapbox token is empty at runtime');
+      return;
+    }
+
     import('mapbox-gl').then((mapboxgl) => {
-      mapboxgl.default.accessToken = getMapboxToken();
+      if (!mapContainerRef.current) return;
 
-      const map = new mapboxgl.default.Map({
-        container: mapContainerRef.current!,
-        style: MAPBOX_DARK_STYLE,
-        center: [HOTEL_CENTER.lng, HOTEL_CENTER.lat],
-        zoom: 14,
-        attributionControl: false,
-      });
+      mapboxgl.default.accessToken = token;
 
-      // Add minimal navigation control
-      map.addControl(new mapboxgl.default.NavigationControl({ showCompass: false }), 'bottom-right');
+      let usingFallbackStyle = false;
 
-      mapInstanceRef.current = map;
+      const createMap = (styleUrl: string) => {
+        const map = new mapboxgl.default.Map({
+          container: mapContainerRef.current!,
+          style: styleUrl,
+          center: [HOTEL_CENTER.lng, HOTEL_CENTER.lat],
+          zoom: 14,
+          attributionControl: false,
+        });
 
-      map.on('load', () => {
-        // Add hotel marker
-        const hotelEl = document.createElement('div');
-        hotelEl.className = 'stayscape-hotel-marker';
-        hotelEl.innerHTML = `
-          <div style="position:relative;display:flex;align-items:center;justify-content:center;">
-            <span style="position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(201,168,76,0.06);animation:gentlePulse 3s ease-in-out infinite;"></span>
-            <span style="position:absolute;width:28px;height:28px;border-radius:50%;border:1px solid rgba(201,168,76,0.15);"></span>
-            <span style="position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid rgba(201,168,76,0.25);"></span>
-            <div style="width:12px;height:12px;border-radius:50%;background:${MARKER_COLOR_GOLD};box-shadow:0 0 12px rgba(201,168,76,0.5),0 0 4px rgba(201,168,76,0.8);"></div>
-          </div>
-        `;
-        new mapboxgl.default.Marker({ element: hotelEl })
-          .setLngLat([HOTEL_CENTER.lng, HOTEL_CENTER.lat])
-          .addTo(map);
+        // Add minimal navigation control
+        map.addControl(new mapboxgl.default.NavigationControl({ showCompass: false }), 'bottom-right');
 
-        // Add place markers
-        mapPlaces.forEach((place) => {
-          const el = document.createElement('div');
-          el.className = 'stayscape-place-marker';
-          el.style.cursor = 'pointer';
-          el.style.width = '12px';
-          el.style.height = '12px';
+        mapInstanceRef.current = map;
 
-          const isSelected = selectedPlaceId === place.id;
-          el.innerHTML = `
-            <div style="
-              width:${isSelected ? '10px' : '8px'};
-              height:${isSelected ? '10px' : '8px'};
-              border-radius:50%;
-              background:${isSelected ? MARKER_COLOR_GOLD : MARKER_COLOR_DEFAULT};
-              ${isSelected ? `border:1px solid ${MARKER_COLOR_GOLD};box-shadow:0 0 6px rgba(201,168,76,0.5);` : ''}
-              transition:all 0.2s ease;
-            "></div>
-          `;
+        map.on('error', (e) => {
+          const msg = e.error?.message ?? String(e.error ?? '');
+          console.warn('[Stayscape Map] Map error:', msg);
 
-          el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            onSelectPlace?.(place);
+          // If the custom style fails, fall back to the default dark style
+          if (!usingFallbackStyle && (
+            msg.includes('Style') || msg.includes('style') ||
+            msg.includes('Not Found') || msg.includes('403') || msg.includes('401')
+          )) {
+            console.warn('[Stayscape Map] Custom style failed, falling back to mapbox/dark-v11');
+            usingFallbackStyle = true;
+            map.setStyle(MAPBOX_DARK_STYLE_FALLBACK);
+          }
+        });
+
+        map.on('style.load', () => {
+          // Ensure the map resizes to fit its container
+          requestAnimationFrame(() => {
+            map.resize();
           });
 
-          const marker = new mapboxgl.default.Marker({ element: el })
-            .setLngLat([place.lng, place.lat])
+          // Clear any previous markers (e.g. after style fallback reload)
+          markersRef.current.forEach((m) => m.remove());
+          markersRef.current = [];
+          markerElementsRef.current.clear();
+
+          // Add hotel marker
+          const hotelEl = document.createElement('div');
+          hotelEl.className = 'stayscape-hotel-marker';
+          hotelEl.innerHTML = `
+            <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+              <span style="position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(201,168,76,0.06);animation:gentlePulse 3s ease-in-out infinite;"></span>
+              <span style="position:absolute;width:28px;height:28px;border-radius:50%;border:1px solid rgba(201,168,76,0.15);"></span>
+              <span style="position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid rgba(201,168,76,0.25);"></span>
+              <div style="width:12px;height:12px;border-radius:50%;background:${MARKER_COLOR_GOLD};box-shadow:0 0 12px rgba(201,168,76,0.5),0 0 4px rgba(201,168,76,0.8);"></div>
+            </div>
+          `;
+          new mapboxgl.default.Marker({ element: hotelEl })
+            .setLngLat([HOTEL_CENTER.lng, HOTEL_CENTER.lat])
             .addTo(map);
 
-          markersRef.current.push(marker);
+          // Add place markers
+          mapPlaces.forEach((place) => {
+            const el = document.createElement('div');
+            el.className = 'stayscape-place-marker';
+            el.style.cursor = 'pointer';
+            el.style.width = '12px';
+            el.style.height = '12px';
+
+            // Store inner div reference for later style updates
+            const innerDiv = document.createElement('div');
+            innerDiv.style.borderRadius = '50%';
+            innerDiv.style.transition = 'all 0.2s ease';
+            el.appendChild(innerDiv);
+            markerElementsRef.current.set(place.id, innerDiv);
+
+            // Apply initial selected state
+            applyMarkerStyle(innerDiv, selectedPlaceId === place.id);
+
+            el.addEventListener('click', (e) => {
+              e.stopPropagation();
+              onSelectPlaceRef.current?.(place);
+            });
+
+            const marker = new mapboxgl.default.Marker({ element: el })
+              .setLngLat([place.lng, place.lat])
+              .addTo(map);
+
+            markersRef.current.push(marker);
+          });
         });
-      });
+
+        return map;
+      };
+
+      createMap(MAPBOX_DARK_STYLE);
+    }).catch((err) => {
+      console.error('[Stayscape Map] Failed to load mapbox-gl:', err);
+      initializedRef.current = false;
     });
-  }, [onSelectPlace, selectedPlaceId]);
+  }, [selectedPlaceId]);
+
+  /* ─── Update marker styles when selectedPlaceId changes ─── */
+  useEffect(() => {
+    markerElementsRef.current.forEach((innerDiv, placeId) => {
+      applyMarkerStyle(innerDiv, selectedPlaceId === placeId);
+    });
+  }, [selectedPlaceId]);
+
+  /* ─── Cleanup on unmount ─── */
+  useEffect(() => {
+    const markers = markersRef;
+    const markerElements = markerElementsRef;
+    const mapInstance = mapInstanceRef;
+    return () => {
+      markers.current.forEach((m) => m.remove());
+      markers.current = [];
+      markerElements.current.clear();
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+      initializedRef.current = false;
+    };
+  }, []);
 
   /* ─── Ref callback for the container ─── */
   const setContainerRef = useCallback((node: HTMLDivElement | null) => {

@@ -41,6 +41,12 @@ export function isMapboxAvailable(): boolean {
  */
 export const MAPBOX_DARK_STYLE = 'mapbox://styles/benobaj/cmnihne6s006s01se1eqtedtm';
 
+/**
+ * Fallback dark style from Mapbox's public gallery.
+ * Used automatically if the custom style above fails to load.
+ */
+export const MAPBOX_DARK_STYLE_FALLBACK = 'mapbox://styles/mapbox/dark-v11';
+
 /* ── Viewport bounds ─────────────────────────────────────── */
 
 /**
