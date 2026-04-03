@@ -237,3 +237,51 @@ body {
 .discover-slide-in {
   animation: discoverSlideIn 0.4s ease-out both;
 }
+
+/* ── Map UI — Glassmorphism utility ─────────────────────── */
+.glass-dark {
+  background: rgba(10, 14, 19, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 168, 76, 0.12);
+}
+
+/* ── Map UI — Animations ────────────────────────────────── */
+
+/* User location blue dot pulse */
+@keyframes userDotPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0); }
+}
+.animate-user-dot-pulse {
+  animation: userDotPulse 2s ease-in-out infinite;
+}
+
+/* User location outer halo */
+@keyframes userHaloPulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%       { opacity: 0.5;  transform: scale(1.15); }
+}
+.animate-user-halo-pulse {
+  animation: userHaloPulse 2.4s ease-in-out infinite;
+}
+
+/* Selected marker gold ring pulse */
+@keyframes markerRingPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(201, 168, 76, 0.45); }
+  70%  { box-shadow: 0 0 0 8px rgba(201, 168, 76, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(201, 168, 76, 0); }
+}
+.animate-marker-ring-pulse {
+  animation: markerRingPulse 1.6s ease-out infinite;
+}
+
+/* Place info card entrance */
+@keyframes cardEntrance {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.animate-card-entrance {
+  animation: cardEntrance 0.22s ease-out both;
+}
