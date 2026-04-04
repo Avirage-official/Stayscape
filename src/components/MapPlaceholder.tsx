@@ -12,7 +12,7 @@ import {
   CATEGORY_COLORS,
   GEOLOCATION_ZOOM,
   GEOLOCATION_FLY_DURATION,
-  GEOLOCATION_AUTO_REQUEST_DELAY,
+  GEOLOCATION_RECENTER_DURATION,
 } from '@/lib/mapbox/config';
 import { getDistanceFromHotel } from '@/lib/mapbox/directions';
 import MapSearch from '@/components/MapSearch';
@@ -333,9 +333,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
             markersRef.current.push(marker);
           });
-
-          /* Auto-request geolocation after map renders */
-          setTimeout(() => { requestGeolocationRef.current(); }, GEOLOCATION_AUTO_REQUEST_DELAY);
         });
 
         /* Keep canvas sized correctly on window resize */
@@ -428,7 +425,19 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
   /* ─── Geolocation — request user location ─── */
   const requestGeolocation = useCallback(() => {
-    if (!navigator.geolocation || locationState === 'requesting') return;
+    if (!navigator.geolocation) return;
+
+    /* If location is already known, just re-center the map */
+    if (locationState === 'granted' && userLocationRef.current) {
+      const map = mapInstanceRef.current;
+      if (map) {
+        const { lat, lng } = userLocationRef.current;
+        map.flyTo({ center: [lng, lat], zoom: GEOLOCATION_ZOOM, duration: GEOLOCATION_RECENTER_DURATION });
+      }
+      return;
+    }
+
+    if (locationState === 'requesting' || locationState === 'denied') return;
     setLocationState('requesting');
 
     navigator.geolocation.getCurrentPosition(
@@ -683,6 +692,96 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           </div>
         </div>
       )}
+
+      {/* ── My Location button (Google Maps style, bottom-right) ── */}
+      <div className="absolute bottom-4 right-4 z-10">
+        <button
+          type="button"
+          onClick={requestGeolocation}
+          disabled={locationState === 'requesting' || locationState === 'denied'}
+          aria-label={
+            locationState === 'granted'
+              ? 'Re-center on my location'
+              : locationState === 'requesting'
+              ? 'Getting your location…'
+              : locationState === 'denied'
+              ? 'Location access denied'
+              : 'Show my location'
+          }
+          title={
+            locationState === 'denied'
+              ? 'Location access was denied. Please enable it in browser settings.'
+              : undefined
+          }
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 9,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: locationState === 'denied' ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease',
+            background:
+              locationState === 'granted'
+                ? 'rgba(59,130,246,0.15)'
+                : 'rgba(10,14,19,0.82)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border:
+              locationState === 'granted'
+                ? '1px solid rgba(59,130,246,0.4)'
+                : locationState === 'denied'
+                ? '1px solid rgba(255,255,255,0.05)'
+                : '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+            color:
+              locationState === 'granted'
+                ? '#3B82F6'
+                : locationState === 'denied'
+                ? 'rgba(255,255,255,0.2)'
+                : 'rgba(232,230,225,0.6)',
+            opacity: locationState === 'requesting' ? 0.65 : 1,
+          }}
+        >
+          {locationState === 'requesting' ? (
+            /* Loading spinner */
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              style={{ animation: 'locSpin 0.9s linear infinite' }}
+            >
+              <circle cx="12" cy="12" r="10" stroke="rgba(232,230,225,0.2)" strokeWidth="2" fill="none" />
+              <path
+                d="M12 2a10 10 0 0 1 10 10"
+                stroke="#3B82F6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </svg>
+          ) : locationState === 'denied' ? (
+            /* Denied — crossed-out location icon */
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+              <circle cx="12" cy="9" r="2.5" />
+              <line x1="3" y1="3" x2="21" y2="21" />
+            </svg>
+          ) : (
+            /* Crosshair / target icon */
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="2" x2="12" y2="7" />
+              <line x1="12" y1="17" x2="12" y2="22" />
+              <line x1="2" y1="12" x2="7" y2="12" />
+              <line x1="17" y1="12" x2="22" y2="12" />
+            </svg>
+          )}
+        </button>
+        <style>{`@keyframes locSpin { to { transform: rotate(360deg); } }`}</style>
+      </div>
 
       {/* ── Map attribution ── */}
       <div className="absolute bottom-2 left-3 text-[8px] tracking-wide z-10" style={{ color: 'rgba(107,114,128,0.5)' }}>
