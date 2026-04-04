@@ -116,6 +116,23 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'Shopping': '#F43F5E',
 };
 
+/* ── Geocoding & Directions API ──────────────────────────── */
+
+export const MAPBOX_GEOCODING_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
+export const MAPBOX_DIRECTIONS_URL = 'https://api.mapbox.com/directions/v5/mapbox';
+export const SEARCH_DEBOUNCE_MS = 300;
+export const DEFAULT_SEARCH_LIMIT = 5;
+export const DEFAULT_DIRECTIONS_PROFILE = 'walking';
+
+/* ── Route line styling ─────────────────────────────────── */
+
+export const ROUTE_LINE_COLOR = '#C9A84C'; // gold — matches design system
+export const ROUTE_LINE_OPACITY = 0.6;
+export const ROUTE_LINE_WIDTH = 3;
+export const ROUTE_LINE_DASH = [2, 4]; // dashed pattern
+
+/* ── Geolocation constants ───────────────────────────────── */
+
 /**
  * Geolocation constants.
  */
