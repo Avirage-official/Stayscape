@@ -141,3 +141,5 @@ export const GEOLOCATION_FLY_DURATION = 1800;
 export const GEOLOCATION_RECENTER_DURATION = 1200;
 /** Distance threshold (in degrees ~0.003° ≈ 300 m) above which the re-center button appears. */
 export const GEOLOCATION_RECENTER_THRESHOLD = 0.003;
+/** Delay (ms) before auto-requesting geolocation on map load, so the map renders first. */
+export const GEOLOCATION_AUTO_REQUEST_DELAY = 1000;
