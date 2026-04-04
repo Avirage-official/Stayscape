@@ -12,8 +12,7 @@ import {
   CATEGORY_COLORS,
   GEOLOCATION_ZOOM,
   GEOLOCATION_FLY_DURATION,
-  GEOLOCATION_RECENTER_DURATION,
-  GEOLOCATION_RECENTER_THRESHOLD,
+  GEOLOCATION_AUTO_REQUEST_DELAY,
 } from '@/lib/mapbox/config';
 import { getDistanceFromHotel } from '@/lib/mapbox/directions';
 import MapSearch from '@/components/MapSearch';
@@ -124,12 +123,7 @@ const mapPlaces: (Place & { lat: number; lng: number; cx: number; cy: number })[
 /* ─── Hotel center coordinates ─── */
 const HOTEL_CENTER = { lat: 40.7649, lng: -73.9733 };
 
-/* ─── Category filter options ─── */
-const CATEGORIES = ['All', 'Restaurants', 'Bars & Drinks', 'Activities', 'Shopping'] as const;
-type Category = (typeof CATEGORIES)[number];
-
 const CATEGORY_ICONS: Record<string, string> = {
-  All: '🗺️',
   Restaurants: '🍽️',
   'Bars & Drinks': '🍸',
   Activities: '🏃',
@@ -192,9 +186,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   /* ─── Geolocation refs & state ─── */
   const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   const userMapMarkerRef = useRef<mapboxgl.Marker | null>(null);
-
-  /* ─── Category filter ref — kept in sync for use inside Mapbox event handlers ─── */
-  const selectedCategoryRef = useRef<Category>('All');
+  const requestGeolocationRef = useRef<() => void>(() => {});
 
   /* ─── Search refs & state ─── */
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -206,14 +198,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
   /* ─── React state ─── */
   const [locationState, setLocationState] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
-  const [showRecenter, setShowRecenter] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category>('All');
-
-  /* ─── Visible place count (derived from current filter) ─── */
-  const visibleCount =
-    selectedCategory === 'All'
-      ? mapPlaces.length
-      : mapPlaces.filter((p) => p.category === selectedCategory).length;
 
   /* ─── initMap ─── */
   const initMap = useCallback((): boolean => {
@@ -322,10 +306,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             const data: MarkerData = { container, inner, ring, category: place.category, color };
             markerDataRef.current.set(place.id, data);
 
-            /* Apply initial visibility based on current category filter */
-            const catNow = selectedCategoryRef.current;
-            container.style.display = catNow === 'All' || catNow === place.category ? '' : 'none';
-
             /* Hover effects */
             container.addEventListener('mouseenter', () => {
               inner.style.transform = 'scale(1.7)';
@@ -353,17 +333,9 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
             markersRef.current.push(marker);
           });
-        });
 
-        /* Track user panning to show/hide the re-center button.
-           Compare squared distance to avoid unnecessary sqrt on every moveend. */
-        map.on('moveend', () => {
-          if (!userLocationRef.current) return;
-          const center = map.getCenter();
-          const distSq =
-            Math.pow(center.lat - userLocationRef.current.lat, 2) +
-            Math.pow(center.lng - userLocationRef.current.lng, 2);
-          setShowRecenter(distSq > GEOLOCATION_RECENTER_THRESHOLD * GEOLOCATION_RECENTER_THRESHOLD);
+          /* Auto-request geolocation after map renders */
+          setTimeout(() => { requestGeolocationRef.current(); }, GEOLOCATION_AUTO_REQUEST_DELAY);
         });
 
         /* Keep canvas sized correctly on window resize */
@@ -393,15 +365,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       applyMarkerStyle(data, selectedPlaceId === placeId);
     });
   }, [selectedPlaceId]);
-
-  /* ─── Filter markers when selectedCategory changes ─── */
-  useEffect(() => {
-    selectedCategoryRef.current = selectedCategory;
-    markerDataRef.current.forEach((data) => {
-      const visible = selectedCategory === 'All' || data.category === selectedCategory;
-      data.container.style.display = visible ? '' : 'none';
-    });
-  }, [selectedCategory]);
 
   /* ─── Cleanup on unmount ─── */
   useEffect(() => {
@@ -473,7 +436,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         const { latitude, longitude } = position.coords;
         userLocationRef.current = { lat: latitude, lng: longitude };
         setLocationState('granted');
-        setShowRecenter(false);
 
         const map = mapInstanceRef.current;
         if (!map) return;
@@ -506,16 +468,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     );
   }, [locationState]);
 
-  /* ─── Re-center map on user location ─── */
-  const recenterOnUser = useCallback(() => {
-    if (!userLocationRef.current || !mapInstanceRef.current) return;
-    mapInstanceRef.current.flyTo({
-      center: [userLocationRef.current.lng, userLocationRef.current.lat],
-      zoom: GEOLOCATION_ZOOM,
-      duration: GEOLOCATION_RECENTER_DURATION,
-    });
-    setShowRecenter(false);
-  }, []);
+  /* ─── Keep requestGeolocationRef in sync for use inside map callbacks ─── */
+  useEffect(() => { requestGeolocationRef.current = requestGeolocation; }, [requestGeolocation]);
 
   /* ─── Search — select a geocoded place ─── */
   const handleSearchSelect = useCallback((result: SearchResult) => {
@@ -591,148 +545,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
       {/* ── Map search overlay (floating, centered) ── */}
       <MapSearch onSelect={handleSearchSelect} onClear={handleSearchClear} />
-
-      {/* ── Map header / status bar (left-aligned, beneath search) ── */}
-      <div className="absolute top-12 left-3 right-3 z-10 flex items-start gap-2 flex-wrap">
-        <div
-          className="flex items-center gap-2 rounded-[7px] px-3 py-1.5 glass-dark"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.45)' }}
-        >
-          <span className="text-[10px] text-[var(--text-muted)] tracking-wide">Near The Grand Palace Hotel</span>
-          <span className="text-[var(--text-dim)] text-[9px]">·</span>
-          <span className="text-[10px] font-medium" style={{ color: MARKER_COLOR_GOLD }}>
-            {visibleCount} place{visibleCount !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* Category filter pills */}
-        <div className="flex gap-1 flex-wrap">
-          {CATEGORIES.map((cat) => {
-            const isActive = selectedCategory === cat;
-            const catColor = cat === 'All' ? MARKER_COLOR_GOLD : getCategoryColor(cat);
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className="rounded-full px-2.5 py-1 text-[9px] tracking-wide font-medium transition-all duration-200 cursor-pointer"
-                style={{
-                  background: isActive ? `${catColor}22` : 'rgba(10,14,19,0.72)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: isActive ? `1px solid ${catColor}55` : '1px solid rgba(255,255,255,0.07)',
-                  color: isActive ? catColor : 'var(--text-muted)',
-                  boxShadow: '0 1px 6px rgba(0,0,0,0.4)',
-                }}
-              >
-                {CATEGORY_ICONS[cat]} {cat}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Custom floating toolbar — bottom-right ── */}
-      <div className="absolute bottom-8 right-4 z-10 flex flex-col gap-1.5">
-        <button
-          type="button"
-          aria-label="Zoom in"
-          onClick={() => mapInstanceRef.current?.zoomIn()}
-          className="w-9 h-9 rounded-[7px] flex items-center justify-center text-base font-light transition-all duration-200 cursor-pointer select-none"
-          style={{
-            background: 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,168,76,0.12)',
-            color: 'var(--text-secondary)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.4)';
-            (e.currentTarget as HTMLButtonElement).style.color = MARKER_COLOR_GOLD;
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.12)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
-          }}
-        >
-          +
-        </button>
-
-        <button
-          type="button"
-          aria-label="Zoom out"
-          onClick={() => mapInstanceRef.current?.zoomOut()}
-          className="w-9 h-9 rounded-[7px] flex items-center justify-center text-base font-light transition-all duration-200 cursor-pointer select-none"
-          style={{
-            background: 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,168,76,0.12)',
-            color: 'var(--text-secondary)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.4)';
-            (e.currentTarget as HTMLButtonElement).style.color = MARKER_COLOR_GOLD;
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.12)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
-          }}
-        >
-          −
-        </button>
-
-        <div className="h-px mx-1" style={{ background: 'rgba(201,168,76,0.12)' }} />
-
-        {/* Locate Me button */}
-        <button
-          type="button"
-          aria-label={locationState === 'requesting' ? 'Locating…' : 'Show my location'}
-          title="Show my location"
-          onClick={requestGeolocation}
-          className="w-9 h-9 rounded-[7px] flex items-center justify-center transition-all duration-200 cursor-pointer"
-          style={{
-            background: locationState === 'granted' ? 'rgba(59,130,246,0.18)' : 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: locationState === 'granted' ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(201,168,76,0.12)',
-            color: locationState === 'granted' ? '#3B82F6' : 'var(--text-secondary)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-            opacity: locationState === 'requesting' ? 0.65 : 1,
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-            <circle cx="12" cy="12" r="7" strokeOpacity="0.35" />
-          </svg>
-        </button>
-      </div>
-
-      {/* ── Re-center on me button ── */}
-      {showRecenter && locationState === 'granted' && (
-        <button
-          type="button"
-          onClick={recenterOnUser}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-medium tracking-wide transition-all duration-200 animate-fade-in cursor-pointer"
-          style={{
-            background: 'rgba(10,14,19,0.85)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(59,130,246,0.4)',
-            color: '#3B82F6',
-            boxShadow: '0 3px 12px rgba(0,0,0,0.5)',
-          }}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-          </svg>
-          Re-center on me
-        </button>
-      )}
 
       {/* ── Selected place info card ── */}
       {activePlace && (
