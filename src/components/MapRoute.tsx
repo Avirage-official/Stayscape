@@ -79,23 +79,13 @@ export default function MapRoute({
     }
   }, [getMap, destination, showRoute, loadRoute]);
 
-  /* ── Clean up when destination changes or unmounts ─────── */
+  /* ── Clean up route layer when unmounting or destination changes ── */
   useEffect(() => {
-    const map = getMap();
     return () => {
-      if (map) removeRouteFromMap(map);
+      const m = getMap();
+      if (m) removeRouteFromMap(m);
     };
-  // getMap is stable (useCallback with no deps in parent)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination]);
-
-  useEffect(() => {
-    setShowRoute(false);
-    setDuration(null);
-    const map = getMap();
-    if (map) removeRouteFromMap(map);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination]);
+  }, [destination, getMap]);
 
   if (!destination) return null;
 

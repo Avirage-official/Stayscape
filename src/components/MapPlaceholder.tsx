@@ -806,6 +806,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             {/* Route toggle */}
             <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               <MapRoute
+                key={activePlace.id}
                 getMap={getMap}
                 destination={{ lat: activePlace.lat, lng: activePlace.lng }}
                 onRouteLoad={setWalkingTime}
@@ -862,6 +863,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             {/* Route toggle for searched place */}
             <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               <MapRoute
+                key={searchedPlace.id}
                 getMap={getMap}
                 destination={{ lat: searchedPlace.lat, lng: searchedPlace.lng }}
               />
