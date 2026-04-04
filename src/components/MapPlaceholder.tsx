@@ -15,6 +15,10 @@ import {
   GEOLOCATION_RECENTER_DURATION,
   GEOLOCATION_RECENTER_THRESHOLD,
 } from '@/lib/mapbox/config';
+import { getDistanceFromHotel } from '@/lib/mapbox/directions';
+import MapSearch from '@/components/MapSearch';
+import MapRoute from '@/components/MapRoute';
+import type { SearchResult } from '@/types/mapbox';
 
 /* ─── Sample places with real lat/lng coordinates ─── */
 
@@ -191,6 +195,14 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
   /* ─── Category filter ref — kept in sync for use inside Mapbox event handlers ─── */
   const selectedCategoryRef = useRef<Category>('All');
+
+  /* ─── Search refs & state ─── */
+  const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const [searchedPlace, setSearchedPlace] = useState<SearchResult | null>(null);
+  const [walkingTime, setWalkingTime] = useState<string | null>(null);
+
+  /* ─── Stable getter for map instance — avoids ref access during render ─── */
+  const getMap = useCallback(() => mapInstanceRef.current, []);
 
   /* ─── React state ─── */
   const [locationState, setLocationState] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
@@ -400,12 +412,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const fallbackTimeout = styleFallbackTimeoutRef;
     const windowResizeHandler = windowResizeHandlerRef;
     const userMarker = userMapMarkerRef;
+    const searchMarker = searchMarkerRef;
     return () => {
       markers.current.forEach((m) => m.remove());
       markers.current = [];
       markerData.current.clear();
       userMarker.current?.remove();
       userMarker.current = null;
+      searchMarker.current?.remove();
+      searchMarker.current = null;
       if (fallbackTimeout.current) {
         clearTimeout(fallbackTimeout.current);
         fallbackTimeout.current = null;
@@ -502,6 +517,59 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     setShowRecenter(false);
   }, []);
 
+  /* ─── Search — select a geocoded place ─── */
+  const handleSearchSelect = useCallback((result: SearchResult) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    searchMarkerRef.current?.remove();
+
+    import('mapbox-gl').then((mapboxgl) => {
+      const el = document.createElement('div');
+      el.style.cssText = 'cursor:default;width:28px;height:28px;display:flex;align-items:center;justify-content:center;position:relative;';
+      el.innerHTML = [
+        `<div style="position:absolute;width:22px;height:22px;border-radius:50%;border:1.5px solid ${MARKER_COLOR_GOLD}55;"></div>`,
+        `<div style="width:9px;height:9px;border-radius:50%;background:${MARKER_COLOR_GOLD};box-shadow:0 0 8px ${MARKER_COLOR_GOLD}90;"></div>`,
+      ].join('');
+
+      const marker = new mapboxgl.default.Marker({ element: el, anchor: 'center' })
+        .setLngLat([result.lng, result.lat])
+        .addTo(map);
+      searchMarkerRef.current = marker;
+
+      map.flyTo({ center: [result.lng, result.lat], zoom: 15, duration: 1500 });
+    }).catch((err) => {
+      console.warn('[Stayscape Map] Failed to place search result marker:', err);
+    });
+
+    setSearchedPlace(result);
+  }, []);
+
+  /* ─── Search — clear ─── */
+  const handleSearchClear = useCallback(() => {
+    searchMarkerRef.current?.remove();
+    searchMarkerRef.current = null;
+    setSearchedPlace(null);
+  }, []);
+
+  /* ─── Walking time — fetch when a sample place is selected ─── */
+  useEffect(() => {
+    if (!selectedPlaceId) {
+      setWalkingTime(null);
+      return;
+    }
+    const place = mapPlaces.find((p) => p.id === selectedPlaceId);
+    if (!place) {
+      setWalkingTime(null);
+      return;
+    }
+    let cancelled = false;
+    getDistanceFromHotel({ lat: place.lat, lng: place.lng }).then((t) => {
+      if (!cancelled) setWalkingTime(t);
+    });
+    return () => { cancelled = true; };
+  }, [selectedPlaceId]);
+
   /* ─── Fallback to SVG if Mapbox is not available ─── */
   if (!isMapboxAvailable()) {
     return <MapFallback onSelectPlace={onSelectPlace} selectedPlaceId={selectedPlaceId} />;
@@ -521,8 +589,11 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       />
       <div className="absolute inset-0 pointer-events-none z-[1] bg-gradient-to-b from-[var(--map-bg)]/30 via-transparent to-[var(--map-bg)]/20" />
 
-      {/* ── Map header / status bar ── */}
-      <div className="absolute top-3 left-3 right-3 z-10 flex items-start gap-2 flex-wrap">
+      {/* ── Map search overlay (floating, centered) ── */}
+      <MapSearch onSelect={handleSearchSelect} onClear={handleSearchClear} />
+
+      {/* ── Map header / status bar (left-aligned, beneath search) ── */}
+      <div className="absolute top-12 left-3 right-3 z-10 flex items-start gap-2 flex-wrap">
         <div
           className="flex items-center gap-2 rounded-[7px] px-3 py-1.5 glass-dark"
           style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.45)' }}
@@ -718,6 +789,27 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                 </svg>
                 <span className="text-[9.5px] text-[var(--text-muted)]">{activePlace.distance}</span>
               </div>
+
+              {walkingTime && (
+                <>
+                  <span className="text-[var(--text-dim)] text-[9px]">·</span>
+                  <span
+                    className="text-[9.5px] font-medium"
+                    style={{ color: MARKER_COLOR_GOLD }}
+                  >
+                    {walkingTime}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Route toggle */}
+            <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <MapRoute
+                getMap={getMap}
+                destination={{ lat: activePlace.lat, lng: activePlace.lng }}
+                onRouteLoad={setWalkingTime}
+              />
             </div>
           </div>
           {/* Arrow pointer */}
@@ -730,6 +822,51 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               borderLeft: 'none',
             }}
           />
+        </div>
+      )}
+
+      {/* ── Searched place info card (geocoding result) ── */}
+      {searchedPlace && !activePlace && (
+        <div
+          className="absolute bottom-20 left-4 z-10 animate-card-entrance"
+          style={{ maxWidth: 'min(280px, calc(100% - 80px))' }}
+        >
+          <div
+            className="rounded-[9px] p-3.5 glass-dark"
+            style={{
+              border: `1px solid ${MARKER_COLOR_GOLD}30`,
+              boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_GOLD}10`,
+            }}
+          >
+            <div className="flex items-start gap-2 mb-2">
+              <span className="text-base leading-none mt-0.5">📍</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
+                  {searchedPlace.name}
+                </p>
+                {searchedPlace.subtitle && (
+                  <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
+                    {searchedPlace.subtitle}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[9.5px] font-medium"
+                style={{ color: MARKER_COLOR_GOLD }}
+              >
+                {searchedPlace.distanceDisplay} from hotel
+              </span>
+            </div>
+            {/* Route toggle for searched place */}
+            <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <MapRoute
+                getMap={getMap}
+                destination={{ lat: searchedPlace.lat, lng: searchedPlace.lng }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
