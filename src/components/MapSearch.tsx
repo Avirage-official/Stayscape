@@ -125,102 +125,16 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
   return (
     <div
       data-mapsearch=""
-      className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[min(340px,calc(100%-96px))]"
+      className="absolute bottom-[4.5rem] left-1/2 -translate-x-1/2 z-20 w-[min(340px,calc(100%-96px))]"
     >
-      {/* Search input */}
-      <div
-        className="flex items-center gap-2 rounded-[9px] px-3 py-2"
-        style={{
-          background: 'rgba(10,14,19,0.82)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-          border: `1px solid ${isOpen || query ? `${MARKER_COLOR_GOLD}40` : 'rgba(255,255,255,0.09)'}`,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.55)',
-          transition: 'border-color 0.2s',
-        }}
-      >
-        {/* Search icon */}
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-          style={{ flexShrink: 0, opacity: 0.5 }}
-        >
-          <circle cx="6.5" cy="6.5" r="5" stroke="#E8E6E1" strokeWidth="1.5" />
-          <path d="M10.5 10.5L14 14" stroke="#E8E6E1" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-
-        <input
-          ref={inputRef}
-          type="text"
-          role="combobox"
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
-          placeholder="Search places nearby…"
-          aria-label="Search places on map"
-          aria-autocomplete="list"
-          aria-expanded={isOpen}
-          aria-activedescendant={activeIndex >= 0 ? `mapsearch-item-${activeIndex}` : undefined}
-          aria-controls="mapsearch-listbox"
-          autoComplete="off"
-          className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-[rgba(232,230,225,0.3)] text-[var(--text-primary)] min-w-0"
-        />
-
-        {/* Loading spinner */}
-        {isLoading && (
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            style={{ flexShrink: 0, opacity: 0.5, animation: 'spin 0.9s linear infinite' }}
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="10"
-              stroke={MARKER_COLOR_GOLD}
-              strokeWidth="3"
-              fill="none"
-              strokeDasharray="40"
-              strokeDashoffset="15"
-            />
-          </svg>
-        )}
-
-        {/* Clear button */}
-        {query && !isLoading && (
-          <button
-            type="button"
-            onClick={handleClear}
-            aria-label="Clear search"
-            className="flex-shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-pointer"
-            style={{ lineHeight: 1 }}
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M4 4l8 8M12 4l-8 8"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Results dropdown */}
+      {/* Results dropdown — opens upward when bar is at the bottom */}
       {isOpen && results.length > 0 && (
         <ul
           ref={listRef}
           id="mapsearch-listbox"
           role="listbox"
           aria-label="Search results"
-          className="mt-1.5 rounded-[9px] overflow-hidden overflow-y-auto max-h-[220px]"
+          className="mb-1.5 rounded-[9px] overflow-hidden overflow-y-auto max-h-[220px]"
           style={{
             background: 'rgba(10,14,19,0.9)',
             backdropFilter: 'blur(16px)',
@@ -313,6 +227,92 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
           })}
         </ul>
       )}
+
+      {/* Search input */}
+      <div
+        className="flex items-center gap-2 rounded-[9px] px-3 py-2"
+        style={{
+          background: 'rgba(10,14,19,0.82)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          border: `1px solid ${isOpen || query ? `${MARKER_COLOR_GOLD}40` : 'rgba(255,255,255,0.09)'}`,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.55)',
+          transition: 'border-color 0.2s',
+        }}
+      >
+        {/* Search icon */}
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+          style={{ flexShrink: 0, opacity: 0.5 }}
+        >
+          <circle cx="6.5" cy="6.5" r="5" stroke="#E8E6E1" strokeWidth="1.5" />
+          <path d="M10.5 10.5L14 14" stroke="#E8E6E1" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+
+        <input
+          ref={inputRef}
+          type="text"
+          role="combobox"
+          value={query}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
+          placeholder="Search places nearby…"
+          aria-label="Search places on map"
+          aria-autocomplete="list"
+          aria-expanded={isOpen}
+          aria-activedescendant={activeIndex >= 0 ? `mapsearch-item-${activeIndex}` : undefined}
+          aria-controls="mapsearch-listbox"
+          autoComplete="off"
+          className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-[rgba(232,230,225,0.3)] text-[var(--text-primary)] min-w-0"
+        />
+
+        {/* Loading spinner */}
+        {isLoading && (
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            style={{ flexShrink: 0, opacity: 0.5, animation: 'spin 0.9s linear infinite' }}
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke={MARKER_COLOR_GOLD}
+              strokeWidth="3"
+              fill="none"
+              strokeDasharray="40"
+              strokeDashoffset="15"
+            />
+          </svg>
+        )}
+
+        {/* Clear button */}
+        {query && !isLoading && (
+          <button
+            type="button"
+            onClick={handleClear}
+            aria-label="Clear search"
+            className="flex-shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-pointer"
+            style={{ lineHeight: 1 }}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M4 4l8 8M12 4l-8 8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
