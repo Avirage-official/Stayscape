@@ -35,6 +35,15 @@ const LABEL_LAYER = 'stayscape-labels';
 /* ─── Dot / marker colors ─── */
 const MARKER_COLOR_GREEN = '#22C55E'; /* bright green — individual place dots */
 const SELECTED_DOT_COLOR = '#FFFFFF'; /* selected dot — white with glow */
+const ANIMATION_GREEN = '#4ADE80'; /* bright green used in sonar ping and itinerary fly animation */
+
+/* ─── 3D buildings layer styling ─── */
+const BUILDINGS_3D_COLOR = '#1a1a2e'; /* dark blue-black to match Stayscape aesthetic */
+const BUILDINGS_3D_OPACITY = 0.7;
+const BUILDINGS_3D_MINZOOM = 13;
+
+/* ─── Itinerary fly animation ─── */
+const ITINERARY_CORNER_OFFSET = 28; /* px from bottom-right edge of container */
 
 /* ─── Filter panel positioning ─── */
 const FILTER_PANEL_TOP = '33%'; /* left-side toggle button vertical position */
@@ -135,6 +144,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
   /* ─── Filter panel open/close state ─── */
   const [filterOpen, setFilterOpen] = useState(false);
+  const filterOpenRef = useRef(false);
+  useEffect(() => { filterOpenRef.current = filterOpen; }, [filterOpen]);
   const filterPanelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!filterOpen) return;
@@ -147,8 +158,105 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [filterOpen]);
 
+  /* ─── 3D filter toggle animation ─── */
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (filterOpen) {
+      /* Tilt + rotate into 3D view */
+      map.flyTo({ pitch: 60, bearing: 20, duration: 800 });
+      /* Add 3D buildings from composite source */
+      try {
+        if (!map.getLayer('stayscape-3d-buildings')) {
+          map.addLayer({
+            id: 'stayscape-3d-buildings',
+            source: 'composite',
+            'source-layer': 'building',
+            filter: ['==', ['get', 'extrude'], 'true'],
+            type: 'fill-extrusion',
+            minzoom: BUILDINGS_3D_MINZOOM,
+            paint: {
+              'fill-extrusion-color': BUILDINGS_3D_COLOR,
+              'fill-extrusion-height': ['get', 'height'],
+              'fill-extrusion-base': ['get', 'min_height'],
+              'fill-extrusion-opacity': BUILDINGS_3D_OPACITY,
+            },
+          });
+        }
+      } catch { /* composite source unavailable on fallback style */ }
+    } else {
+      /* Remove 3D buildings and settle back to flat view */
+      try {
+        if (map.getLayer('stayscape-3d-buildings')) {
+          map.removeLayer('stayscape-3d-buildings');
+        }
+      } catch { /* ignore */ }
+      map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+    }
+  }, [filterOpen]);
+
   /* ─── Stable getter for map instance — avoids ref access during render ─── */
   const getMap = useCallback(() => mapInstanceRef.current, []);
+
+  /* ─── Sonar ping: expanding ring at a map coordinate ─── */
+  const showSonarPing = useCallback((lng: number, lat: number, color: string = ANIMATION_GREEN) => {
+    const map = mapInstanceRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !container) return;
+    const projected = map.project([lng, lat]);
+    const ping = document.createElement('div');
+    ping.style.cssText = [
+      'position:absolute',
+      `left:${projected.x}px`,
+      `top:${projected.y}px`,
+      'width:0',
+      'height:0',
+      'border-radius:50%',
+      `border:2px solid ${color}`,
+      'animation:sonarPing 0.8s ease-out forwards',
+      'transform:translate(-50%,-50%)',
+      'pointer-events:none',
+      'z-index:50',
+    ].join(';');
+    container.appendChild(ping);
+    setTimeout(() => ping.remove(), 900);
+  }, []);
+
+  /* ─── Itinerary fly: dot animates from place to bottom-right corner ─── */
+  const showItineraryFlyAnimation = useCallback((lng: number, lat: number) => {
+    const map = mapInstanceRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !container) return;
+    const projected = map.project([lng, lat]);
+    const rect = container.getBoundingClientRect();
+    const targetX = rect.width - ITINERARY_CORNER_OFFSET;
+    const targetY = rect.height - ITINERARY_CORNER_OFFSET;
+    const dot = document.createElement('div');
+    dot.style.cssText = [
+      'position:absolute',
+      `left:${projected.x}px`,
+      `top:${projected.y}px`,
+      'width:9px',
+      'height:9px',
+      'border-radius:50%',
+      `background:${ANIMATION_GREEN}`,
+      'transform:translate(-50%,-50%) scale(1)',
+      'transition:left 0.6s cubic-bezier(0.4,0,0.2,1),top 0.6s cubic-bezier(0.4,0,0.2,1),opacity 0.6s ease,transform 0.6s ease',
+      'pointer-events:none',
+      'z-index:50',
+      'opacity:1',
+    ].join(';');
+    container.appendChild(dot);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        dot.style.left = `${targetX}px`;
+        dot.style.top = `${targetY}px`;
+        dot.style.opacity = '0';
+        dot.style.transform = 'translate(-50%,-50%) scale(0.3)';
+      });
+    });
+    setTimeout(() => dot.remove(), 700);
+  }, []);
 
   /* ─── React state ─── */
   const [locationState, setLocationState] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
@@ -165,6 +273,42 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       setActivePlace(null);
     }
   }, [selectedPlaceId]);
+
+  /* ─── Spotlight: fly to selected place, dim others, restore on dismiss ─── */
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (activePlace) {
+      /* Fly camera to the selected place */
+      map.flyTo({
+        center: [activePlace.longitude, activePlace.latitude],
+        zoom: 16,
+        pitch: 45,
+        bearing: -15,
+        duration: 1200,
+      });
+      /* Dim all other dots */
+      if (sourceAddedRef.current) {
+        try {
+          map.setPaintProperty(UNCLUSTERED_LAYER, 'circle-opacity', [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false], 1.0,
+            0.3,
+          ]);
+        } catch { /* layer may not exist yet */ }
+      }
+    } else {
+      /* Restore full opacity and settle camera */
+      if (sourceAddedRef.current) {
+        try {
+          map.setPaintProperty(UNCLUSTERED_LAYER, 'circle-opacity', 1.0);
+        } catch { /* ignore */ }
+      }
+      if (!filterOpenRef.current) {
+        map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+      }
+    }
+  }, [activePlace]);
 
   /* ─── Update selected marker via Mapbox feature state ─── */
   useEffect(() => {
@@ -648,13 +792,18 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         .addTo(map);
       searchMarkerRef.current = marker;
 
-      map.flyTo({ center: [result.lng, result.lat], zoom: 15, duration: 1500 });
+      /* Swoop over the city: fly with pitch, then settle flat + show ripple */
+      map.flyTo({ center: [result.lng, result.lat], zoom: 16, pitch: 45, duration: 1500 });
+      map.once('moveend', () => {
+        map.easeTo({ pitch: 0, duration: 600 });
+        showSonarPing(result.lng, result.lat, MARKER_COLOR_GOLD);
+      });
     }).catch((err) => {
       console.warn('[Stayscape Map] Failed to place search result marker:', err);
     });
 
     setSearchedPlace(result);
-  }, []);
+  }, [showSonarPing]);
 
   /* ─── Search — clear ─── */
   const handleSearchClear = useCallback(() => {
@@ -716,7 +865,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           </svg>
         </button>
 
-        {/* Dropdown panel */}
+        {/* Dropdown panel — slides in from left */}
         {filterOpen && (
           <div
             style={{
@@ -731,6 +880,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               borderRadius: 9,
               boxShadow: '0 6px 24px rgba(0,0,0,0.55)',
               overflow: 'hidden',
+              animation: 'filterSlideIn 0.22s ease forwards',
             }}
           >
             {CATEGORY_FILTERS.map(({ key, label }) => {
@@ -898,6 +1048,9 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                   setItinAdded(activePlace.id);
                   if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
                   itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
+                  /* Sonar ping on the map dot + fly animation to itinerary corner */
+                  showSonarPing(activePlace.longitude, activePlace.latitude);
+                  showItineraryFlyAnimation(activePlace.longitude, activePlace.latitude);
                 }}
                 className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
                 style={{
@@ -1104,7 +1257,17 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             </svg>
           )}
         </button>
-        <style>{`@keyframes locSpin { to { transform: rotate(360deg); } }`}</style>
+        <style>{`
+          @keyframes locSpin { to { transform: rotate(360deg); } }
+          @keyframes sonarPing {
+            0%   { width: 0;    height: 0;    opacity: 1; }
+            100% { width: 40px; height: 40px; opacity: 0; }
+          }
+          @keyframes filterSlideIn {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+          }
+        `}</style>
       </div>
 
       {/* ── Map attribution ── */}
