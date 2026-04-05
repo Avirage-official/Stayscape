@@ -68,6 +68,10 @@ function placesToGeoJSON(places: MapPlace[]): GeoJSON.FeatureCollection {
   };
 }
 
+function filterPlaces(places: MapPlace[], category: string): MapPlace[] {
+  return category === 'all' ? places : places.filter((p) => p.category === category);
+}
+
 interface MapPlaceholderProps {
   onSelectPlace?: (place: MapPlace) => void;
   selectedPlaceId?: string | null;
@@ -156,10 +160,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     if (!map || !sourceAddedRef.current) return;
     const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
-    const filtered = activeCategory === 'all'
-      ? placesRef.current
-      : placesRef.current.filter((p) => p.category === activeCategory);
-    source.setData(placesToGeoJSON(filtered));
+    source.setData(placesToGeoJSON(filterPlaces(placesRef.current, activeCategory)));
     /* Feature states reset on setData — clear tracking refs */
     prevSelectedIdRef.current = null;
     hoveredIdRef.current = null;
@@ -275,9 +276,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                 placesRef.current = places;
 
                 /* Apply active category filter */
-                const filtered = activeCategoryRef.current === 'all'
-                  ? places
-                  : places.filter((p) => p.category === activeCategoryRef.current);
+                const filtered = filterPlaces(places, activeCategoryRef.current);
 
                 /* ── GeoJSON source with built-in clustering ── */
                 map.addSource(SOURCE_ID, {
