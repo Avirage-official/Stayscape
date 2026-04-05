@@ -15,13 +15,15 @@ import {
 } from '@/lib/mapbox/config';
 import { haversineMetres, formatDistanceDisplay } from '@/lib/mapbox/geocoding';
 import MapSearch from '@/components/MapSearch';
-import MapRoute from '@/components/MapRoute';
+import { useItinerary } from '@/components/ItineraryContext';
 import type { SearchResult } from '@/types/mapbox';
 import { useRegion } from '@/lib/context/region-context';
 import type { MapPlace } from '@/types';
 
 /* ─── Default center coordinates (Singapore Central) ─── */
 const DEFAULT_CENTER = { lat: 1.2897, lng: 103.8501 };
+const DEFAULT_ITINERARY_TIME = '10:00';
+const DEFAULT_ITINERARY_DURATION_HOURS = 2;
 
 const CATEGORY_ICONS: Record<string, string> = {
   dining: '🍽️',
@@ -29,12 +31,12 @@ const CATEGORY_ICONS: Record<string, string> = {
   shopping: '🛍️',
   nature: '🌿',
   historical: '🏛️',
-  wellness: '🧘',
+  wellness: '💆',
   family: '👨‍👩‍👧',
   events: '🎉',
   local_spots: '📍',
-  fun_places: '🎠',
-  top_places: '⭐',
+  fun_places: '📍',
+  top_places: '📍',
   /* Legacy display-name keys */
   Restaurants: '🍽️',
   'Bars & Drinks': '🍸',
@@ -48,29 +50,24 @@ function getCategoryColor(category: string): string {
 
 interface MarkerData {
   container: HTMLDivElement;
-  inner: HTMLDivElement;
-  ring: HTMLDivElement;
+  badge: HTMLDivElement;
   category: string;
   color: string;
 }
 
 /** Apply selected/unselected styles to a marker */
 function applyMarkerStyle(data: MarkerData, isSelected: boolean) {
-  const { inner, ring, color } = data;
+  const { badge, color } = data;
   if (isSelected) {
-    inner.style.transform = 'scale(1.6)';
-    inner.style.background = MARKER_COLOR_GOLD;
-    inner.style.boxShadow = `0 0 12px ${MARKER_COLOR_GOLD}99, 0 0 4px ${MARKER_COLOR_GOLD}`;
-    ring.style.border = `1.5px solid ${MARKER_COLOR_GOLD}70`;
-    ring.style.transform = 'scale(1.5)';
-    ring.classList.add('animate-marker-ring-pulse');
+    badge.style.transform = 'scale(1.25)';
+    badge.style.borderColor = MARKER_COLOR_GOLD;
+    badge.style.boxShadow = `0 0 14px ${MARKER_COLOR_GOLD}90, 0 0 5px ${MARKER_COLOR_GOLD}, 0 2px 8px rgba(0,0,0,0.5)`;
+    badge.style.background = 'rgba(10,14,19,0.96)';
   } else {
-    inner.style.transform = 'scale(1)';
-    inner.style.background = color;
-    inner.style.boxShadow = `0 0 4px ${color}80`;
-    ring.style.border = `1px solid ${color}50`;
-    ring.style.transform = 'scale(1)';
-    ring.classList.remove('animate-marker-ring-pulse');
+    badge.style.transform = 'scale(1)';
+    badge.style.borderColor = `${color}90`;
+    badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.45)';
+    badge.style.background = 'rgba(10,14,19,0.88)';
   }
 }
 
@@ -81,6 +78,7 @@ interface MapPlaceholderProps {
 
 export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
   const { region } = useRegion();
+  const { addItem } = useItinerary();
   /* Keep region in a ref so initMap (stable callback) can read the latest value */
   const regionRef = useRef(region);
   useEffect(() => { regionRef.current = region; }, [region]);
@@ -109,7 +107,10 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   /* ─── Search refs & state ─── */
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [searchedPlace, setSearchedPlace] = useState<SearchResult | null>(null);
-  const [walkingTime, setWalkingTime] = useState<string | null>(null);
+
+  /* ─── Itinerary add confirmation state ─── */
+  const [itinAdded, setItinAdded] = useState<string | null>(null);
+  const itinAddedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ─── Stable getter for map instance — avoids ref access during render ─── */
   const getMap = useCallback(() => mapInstanceRef.current, []);
@@ -237,35 +238,42 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
                 places.forEach((place) => {
                   const color = getCategoryColor(place.category);
+                  const icon = CATEGORY_ICONS[place.category] ?? '📍';
+
                   const container = document.createElement('div');
                   container.className = 'stayscape-place-marker';
-                  container.style.cssText = 'cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;position:relative;';
+                  container.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;';
 
-                  const ring = document.createElement('div');
-                  ring.style.cssText = `position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid ${color}50;transition:all 0.2s ease;`;
+                  const badge = document.createElement('div');
+                  badge.style.cssText = [
+                    'background:rgba(10,14,19,0.88)',
+                    `border:1.5px solid ${color}90`,
+                    'border-radius:8px',
+                    'padding:5px 6px',
+                    'font-size:16px',
+                    'line-height:1',
+                    'transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.15s ease,background 0.15s ease',
+                    'box-shadow:0 2px 8px rgba(0,0,0,0.45)',
+                    'user-select:none',
+                  ].join(';');
+                  badge.textContent = icon;
 
-                  const inner = document.createElement('div');
-                  inner.style.cssText = `width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 5px ${color}80;transition:all 0.2s ease;position:relative;z-index:1;`;
+                  container.appendChild(badge);
 
-                  container.appendChild(ring);
-                  container.appendChild(inner);
-
-                  const data: MarkerData = { container, inner, ring, category: place.category, color };
+                  const data: MarkerData = { container, badge, category: place.category, color };
                   markerDataRef.current.set(place.id, data);
 
                   /* Hover effects */
                   container.addEventListener('mouseenter', () => {
-                    inner.style.transform = 'scale(1.7)';
-                    inner.style.boxShadow = `0 0 10px ${color}99, 0 0 20px ${color}50`;
-                    ring.style.transform = 'scale(1.4)';
-                    ring.style.borderColor = `${color}80`;
+                    if (selectedPlaceIdRef.current !== place.id) {
+                      badge.style.transform = 'scale(1.12)';
+                      badge.style.boxShadow = `0 0 10px ${color}60,0 4px 12px rgba(0,0,0,0.5)`;
+                    }
                   });
                   container.addEventListener('mouseleave', () => {
                     if (selectedPlaceIdRef.current !== place.id) {
-                      inner.style.transform = 'scale(1)';
-                      inner.style.boxShadow = `0 0 5px ${color}80`;
-                      ring.style.transform = 'scale(1)';
-                      ring.style.borderColor = `${color}50`;
+                      badge.style.transform = 'scale(1)';
+                      badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.45)';
                     }
                   });
 
@@ -325,6 +333,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const windowResizeHandler = windowResizeHandlerRef;
     const userMarker = userMapMarkerRef;
     const searchMarker = searchMarkerRef;
+    const itinAddedTimer = itinAddedTimerRef;
     return () => {
       markers.current.forEach((m) => m.remove());
       markers.current = [];
@@ -333,6 +342,10 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       userMarker.current = null;
       searchMarker.current?.remove();
       searchMarker.current = null;
+      if (itinAddedTimer.current) {
+        clearTimeout(itinAddedTimer.current);
+        itinAddedTimer.current = null;
+      }
       if (fallbackTimeout.current) {
         clearTimeout(fallbackTimeout.current);
         fallbackTimeout.current = null;
@@ -552,48 +565,88 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                   </span>
                 </div>
               )}
-
-              {walkingTime && (
-                <>
-                  <span className="text-[var(--text-dim)] text-[9px]">·</span>
-                  <span
-                    className="text-[9.5px] font-medium"
-                    style={{ color: MARKER_COLOR_GOLD }}
-                  >
-                    {walkingTime}
-                  </span>
-                </>
-              )}
             </div>
 
-            {/* Route toggle */}
-            <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <MapRoute
-                key={activePlace.id}
-                getMap={getMap}
-                origin={region ? { lat: region.latitude, lng: region.longitude } : undefined}
-                destination={{ lat: activePlace.latitude, lng: activePlace.longitude }}
-                onRouteLoad={setWalkingTime}
-              />
-            </div>
-
-            {activePlace.booking_url && (
-              <div className="mt-2">
+            {/* Action buttons */}
+            <div className="mt-2.5 pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              {/* Book button */}
+              {(activePlace.booking_url || activePlace.website) ? (
                 <a
-                  href={activePlace.booking_url}
+                  href={(activePlace.booking_url || activePlace.website) as string}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
                   style={{
                     color: MARKER_COLOR_GOLD,
-                    background: `${MARKER_COLOR_GOLD}14`,
-                    border: `1px solid ${MARKER_COLOR_GOLD}30`,
+                    background: `${MARKER_COLOR_GOLD}18`,
+                    border: `1px solid ${MARKER_COLOR_GOLD}40`,
                   }}
                 >
-                  Book now ↗
+                  <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+                    <path d="M5 3V2M11 3V2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    <path d="M2 7h12" stroke="currentColor" strokeWidth="1.4" />
+                  </svg>
+                  Book
                 </a>
-              </div>
-            )}
+              ) : null}
+
+              {/* Add to Itinerary button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (itinAdded === activePlace.id) return;
+                  addItem({
+                    placeId: activePlace.id,
+                    name: activePlace.name,
+                    category: activePlace.category,
+                    image: activePlace.image_url ?? '',
+                    date: new Date(),
+                    time: DEFAULT_ITINERARY_TIME,
+                    durationHours: DEFAULT_ITINERARY_DURATION_HOURS,
+                  });
+                  setItinAdded(activePlace.id);
+                  if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
+                  itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
+                }}
+                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
+                style={{
+                  color: itinAdded === activePlace.id ? '#4ADE80' : 'var(--text-muted)',
+                  background: itinAdded === activePlace.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${itinAdded === activePlace.id ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                }}
+              >
+                {itinAdded === activePlace.id ? (
+                  <>✓ Added</>
+                ) : (
+                  <>
+                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    Itinerary
+                  </>
+                )}
+              </button>
+
+              {/* Get Directions button */}
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${activePlace.latitude},${activePlace.longitude}&travelmode=walking`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
+                style={{
+                  color: 'var(--text-muted)',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 1L15 8L8 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                Directions
+              </a>
+            </div>
           </div>
           {/* Arrow pointer */}
           <div
@@ -642,14 +695,25 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                 {searchedPlace.distanceDisplay} from here
               </span>
             </div>
-            {/* Route toggle for searched place */}
-            <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <MapRoute
-                key={searchedPlace.id}
-                getMap={getMap}
-                origin={region ? { lat: region.latitude, lng: region.longitude } : undefined}
-                destination={{ lat: searchedPlace.lat, lng: searchedPlace.lng }}
-              />
+            {/* Get Directions for searched place */}
+            <div className="mt-2 pt-2 flex items-center gap-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${searchedPlace.lat},${searchedPlace.lng}&travelmode=walking`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
+                style={{
+                  color: 'var(--text-muted)',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 1L15 8L8 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                Directions
+              </a>
             </div>
           </div>
         </div>
