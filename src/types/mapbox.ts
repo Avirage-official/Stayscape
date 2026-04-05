@@ -46,56 +46,6 @@ export interface GeocodingResponse {
 }
 
 /* ════════════════════════════════════════════════════════════
-   Directions API
-   ════════════════════════════════════════════════════════════ */
-
-export interface RouteStep {
-  maneuver: {
-    instruction: string;
-    type: string;
-    modifier?: string;
-    bearing_after: number;
-    bearing_before: number;
-    location: [number, number];
-  };
-  distance: number; // metres
-  duration: number; // seconds
-  name: string;
-  mode: string;
-}
-
-export interface RouteLeg {
-  distance: number; // metres
-  duration: number; // seconds
-  steps: RouteStep[];
-  summary: string;
-}
-
-export interface DirectionsRoute {
-  distance: number; // metres
-  duration: number; // seconds
-  geometry: {
-    type: 'LineString';
-    coordinates: [number, number][]; // [lng, lat] pairs
-  };
-  legs: RouteLeg[];
-  weight: number;
-  weight_name: string;
-}
-
-export interface DirectionsWaypoint {
-  name: string;
-  location: [number, number];
-}
-
-export interface DirectionsResponse {
-  code: string; // 'Ok' | 'NoRoute' | 'NoSegment' | ...
-  routes: DirectionsRoute[];
-  waypoints: DirectionsWaypoint[];
-  uuid: string;
-}
-
-/* ════════════════════════════════════════════════════════════
    UI Search Result (normalized shape used in MapSearch)
    ════════════════════════════════════════════════════════════ */
 
@@ -118,5 +68,3 @@ export interface SearchResult {
   /** Origin of this result — 'supabase' for local places, 'mapbox' for geocoding */
   source?: 'supabase' | 'mapbox';
 }
-
-export type DirectionsProfile = 'walking' | 'driving' | 'cycling';

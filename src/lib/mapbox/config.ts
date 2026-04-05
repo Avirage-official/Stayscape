@@ -12,8 +12,6 @@
  * - Support viewport bounds extraction for nearby queries
  */
 
-import type { ViewportBounds, MapMarker } from '@/types/database';
-
 /* ── Token ───────────────────────────────────────────────── */
 
 /**
@@ -48,63 +46,10 @@ export const MAPBOX_DARK_STYLE = 'mapbox://styles/benobaj/cmnihne6s006s01se1eqte
  */
 export const MAPBOX_DARK_STYLE_FALLBACK = 'mapbox://styles/mapbox/dark-v11';
 
-/* ── Viewport bounds ─────────────────────────────────────── */
-
-/**
- * Extract viewport bounds from a Mapbox map instance.
- * Useful for triggering nearby-places queries based on what
- * the user is currently viewing.
- */
-export function extractViewportBounds(map: {
-  getBounds: () => {
-    getNorth: () => number;
-    getSouth: () => number;
-    getEast: () => number;
-    getWest: () => number;
-  };
-}): ViewportBounds {
-  const bounds = map.getBounds();
-  return {
-    north: bounds.getNorth(),
-    south: bounds.getSouth(),
-    east: bounds.getEast(),
-    west: bounds.getWest(),
-  };
-}
-
-/* ── Marker helpers ──────────────────────────────────────── */
-
-/**
- * Convert internal map markers to GeoJSON FeatureCollection
- * for use with Mapbox sources.
- */
-export function markersToGeoJSON(markers: MapMarker[]): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: markers.map((marker) => ({
-      type: 'Feature' as const,
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [marker.longitude, marker.latitude],
-      },
-      properties: {
-        id: marker.id,
-        type: marker.type,
-        name: marker.name,
-        category: marker.category,
-        rating: marker.rating,
-        is_featured: marker.is_featured,
-      },
-    })),
-  };
-}
-
 /**
  * Stayscape gold color for map markers — matches the design system.
  */
 export const MARKER_COLOR_GOLD = '#C9A84C';
-export const MARKER_COLOR_DEFAULT = '#6B7280';
-export const MARKER_COLOR_EVENT = '#8B5CF6';
 
 /**
  * Category-specific marker colors for the premium place markers.
@@ -130,20 +75,11 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'Shopping': '#F43F5E',
 };
 
-/* ── Geocoding & Directions API ──────────────────────────── */
+/* ── Geocoding API ───────────────────────────────────────── */
 
 export const MAPBOX_GEOCODING_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
-export const MAPBOX_DIRECTIONS_URL = 'https://api.mapbox.com/directions/v5/mapbox';
 export const SEARCH_DEBOUNCE_MS = 300;
 export const DEFAULT_SEARCH_LIMIT = 5;
-export const DEFAULT_DIRECTIONS_PROFILE = 'walking';
-
-/* ── Route line styling ─────────────────────────────────── */
-
-export const ROUTE_LINE_COLOR = '#C9A84C'; // gold — matches design system
-export const ROUTE_LINE_OPACITY = 0.6;
-export const ROUTE_LINE_WIDTH = 3;
-export const ROUTE_LINE_DASH = [2, 4]; // dashed pattern
 
 /* ── Geolocation constants ───────────────────────────────── */
 

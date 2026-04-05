@@ -412,23 +412,3 @@ export interface SearchQueryParams {
   type?: 'place' | 'event' | 'all';
   limit?: number;
 }
-
-/** Bounds for viewport-based nearby queries. */
-export interface ViewportBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
-
-/** Map marker data for the presentation layer. */
-export interface MapMarker {
-  id: string;
-  type: 'place' | 'event';
-  name: string;
-  category: string;
-  latitude: number;
-  longitude: number;
-  rating: number | null;
-  is_featured: boolean;
-}
