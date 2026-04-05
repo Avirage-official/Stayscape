@@ -34,6 +34,7 @@ const LABEL_LAYER = 'stayscape-labels';
 
 /* ─── Dot / marker colors ─── */
 const MARKER_COLOR_GREEN = '#22C55E'; /* bright green — individual place dots */
+const MARKER_COLOR_PINK = CATEGORY_COLORS['events']; /* #EC4899 — event dots */
 const SELECTED_DOT_COLOR = '#FFFFFF'; /* selected dot — white with glow */
 const ANIMATION_GREEN = '#4ADE80'; /* bright green used in sonar ping and itinerary fly animation */
 
@@ -84,6 +85,7 @@ function buildGeoJSONData(places: MapPlace[]): { geojson: GeoJSON.FeatureCollect
         id: p.id,
         name: p.name,
         category: p.category,
+        isEvent: p.isEvent ?? false,
       },
     };
   });
@@ -121,6 +123,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const hotelMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const placesRef = useRef<MapPlace[]>([]); /* cached Supabase places */
+  const eventsRef = useRef<MapPlace[]>([]); /* cached events (fetched once per region) */
   const initializedRef = useRef(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const styleFallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -281,11 +284,17 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   /* ─── Active place: looked up from cached places ref ─── */
   const [activePlace, setActivePlace] = useState<MapPlace | null>(null);
 
+  /* ─── Active event: set when user clicks an event dot ─── */
+  const [activeEvent, setActiveEvent] = useState<MapPlace | null>(null);
+  const setActiveEventRef = useRef<(e: MapPlace | null) => void>(setActiveEvent);
+  useEffect(() => { setActiveEventRef.current = setActiveEvent; }, [setActiveEvent]);
+
   /* Sync activePlace when selectedPlaceId changes */
   useEffect(() => {
     if (selectedPlaceId) {
       const found = placesRef.current.find((p) => p.id === selectedPlaceId) ?? null;
       setActivePlace(found);
+      setActiveEvent(null); /* clear event card when place is selected externally */
     } else {
       setActivePlace(null);
     }
@@ -353,7 +362,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     if (!map || !sourceAddedRef.current) return;
     const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
-    const { geojson, idMap } = buildGeoJSONData(filterPlaces(placesRef.current, activeCategory));
+    const allItems = [...placesRef.current, ...eventsRef.current];
+    const { geojson, idMap } = buildGeoJSONData(filterPlaces(allItems, activeCategory));
     uuidToFeatureIdRef.current = idMap;
     source.setData(geojson);
     /* Feature states reset on setData — clear tracking refs */
@@ -462,7 +472,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             },
           });
 
-          /* ── Individual place dots — bright green, bold, visible ── */
+          /* ── Individual place dots — bright green, bold, visible; pink for events ── */
           m.addLayer({
             id: UNCLUSTERED_LAYER,
             type: 'circle',
@@ -472,6 +482,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               'circle-color': [
                 'case',
                 ['boolean', ['feature-state', 'selected'], false], SELECTED_DOT_COLOR,
+                ['boolean', ['get', 'isEvent'], false], MARKER_COLOR_PINK,
                 MARKER_COLOR_GREEN,
               ],
               'circle-radius': [
@@ -531,14 +542,23 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             });
           });
 
-          /* ── Individual place click: show info card ── */
+          /* ── Individual place/event click: show info card ── */
           m.on('click', UNCLUSTERED_LAYER, (e) => {
             const feature = e.features?.[0];
             if (!feature) return;
             e.originalEvent.stopPropagation();
-            const placeId = feature.properties?.id as string;
-            const place = placesRef.current.find((p) => p.id === placeId);
-            if (place) onSelectPlaceRef.current?.(place);
+            const itemId = feature.properties?.id as string;
+            const isEventDot = feature.properties?.isEvent as boolean;
+            if (isEventDot) {
+              const event = eventsRef.current.find((ev) => ev.id === itemId);
+              if (event) setActiveEventRef.current(event);
+            } else {
+              const place = placesRef.current.find((p) => p.id === itemId);
+              if (place) {
+                onSelectPlaceRef.current?.(place);
+                setActiveEventRef.current(null); /* clear event card when place is clicked */
+              }
+            }
           });
 
           /* ── Hover: pointer cursor + glow ── */
@@ -569,7 +589,9 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
         /* ── Update map source data; add layers on first call ── */
         const updateMapSource = (m: mapboxgl.Map, places: MapPlace[]) => {
-          const filtered = filterPlaces(places, activeCategoryRef.current);
+          /* Merge places and events into a single list for clustering */
+          const allItems = [...places, ...eventsRef.current];
+          const filtered = filterPlaces(allItems, activeCategoryRef.current);
           const { geojson, idMap } = buildGeoJSONData(filtered);
           uuidToFeatureIdRef.current = idMap;
 
@@ -677,6 +699,51 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
           /* ── Initial viewport fetch ── */
           fetchPlacesForViewport(map);
+
+          /* ── Fetch events once for this region (not on every moveend) ── */
+          const fetchEventsForRegion = () => {
+            const activeRegionId = regionRef.current?.id;
+            if (!activeRegionId) return;
+            fetch(`/api/discovery/events?region_id=${encodeURIComponent(activeRegionId)}&limit=100`)
+              .then((res) => res.json())
+              .then((body: { data?: Array<{ id: string; name: string; category: string; description: string; editorial_summary: string | null; venue_name: string | null; latitude: number | null; longitude: number | null; image_url: string | null; start_date: string; end_date: string | null; start_time: string | null; price_min: number | null; price_max: number | null; currency: string | null; ticket_url: string | null }>; error?: string }) => {
+                if (body.error) {
+                  console.warn('[Stayscape Map] Events API error:', body.error);
+                  return;
+                }
+                eventsRef.current = (body.data ?? [])
+                  .filter((ev) => ev.latitude != null && ev.longitude != null)
+                  .map((ev) => ({
+                    id: ev.id,
+                    name: ev.name,
+                    category: 'events',
+                    description: ev.description ?? null,
+                    editorial_summary: ev.editorial_summary ?? null,
+                    latitude: ev.latitude as number,
+                    longitude: ev.longitude as number,
+                    address: null,
+                    rating: null,
+                    booking_url: ev.ticket_url ?? null,
+                    website: ev.ticket_url ?? null,
+                    image_url: ev.image_url ?? null,
+                    isEvent: true,
+                    ticket_url: ev.ticket_url ?? null,
+                    price_min: ev.price_min ?? null,
+                    price_max: ev.price_max ?? null,
+                    currency: ev.currency ?? null,
+                    venue_name: ev.venue_name ?? null,
+                    start_date: ev.start_date,
+                    end_date: ev.end_date ?? null,
+                    start_time: ev.start_time ?? null,
+                  }));
+                /* Re-render source with events merged in */
+                updateMapSource(map, placesRef.current);
+              })
+              .catch((err) => {
+                console.warn('[Stayscape Map] Failed to fetch events:', err);
+              });
+          };
+          fetchEventsForRegion();
 
           /* ── Re-fetch on pan / zoom ── */
           map.on('moveend', () => {
@@ -1002,8 +1069,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       {/* ── Map search overlay (floating, centered) ── */}
       <MapSearch onSelect={handleSearchSelect} onClear={handleSearchClear} />
 
-      {/* ── Selected place info card ── */}
-      {activePlace && (
+      {/* ── Selected place info card (hidden when event card is active) ── */}
+      {activePlace && !activeEvent && (
         <div
           key={activePlace.id}
           className="absolute bottom-20 left-4 z-10 animate-card-entrance"
@@ -1172,8 +1239,190 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         </div>
       )}
 
+      {/* ── Selected event info card ── */}
+      {activeEvent && (
+        <div
+          key={activeEvent.id}
+          className="absolute bottom-20 left-4 z-10 animate-card-entrance"
+          style={{ maxWidth: 'min(300px, calc(100% - 80px))' }}
+        >
+          <div
+            className="rounded-[9px] p-3.5 glass-dark"
+            style={{
+              border: `1px solid ${MARKER_COLOR_PINK}35`,
+              boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_PINK}15`,
+            }}
+          >
+            {/* Header row */}
+            <div className="flex items-start gap-2 mb-2">
+              <div style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: MARKER_COLOR_PINK,
+                flexShrink: 0,
+                marginTop: 3,
+                boxShadow: `0 0 6px ${MARKER_COLOR_PINK}70`,
+              }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
+                  {activeEvent.name}
+                </p>
+                {activeEvent.venue_name && (
+                  <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
+                    {activeEvent.venue_name}
+                  </p>
+                )}
+              </div>
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setActiveEvent(null)}
+                aria-label="Close event card"
+                style={{
+                  flexShrink: 0,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(232,230,225,0.5)',
+                  cursor: 'pointer',
+                }}
+              >
+                <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
+                  <path d="M7.5 2.5L2.5 7.5M2.5 2.5L7.5 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Date + price row */}
+            <div className="flex items-center gap-2.5 mb-2">
+              {activeEvent.start_date && (
+                <span className="text-[9.5px] font-medium" style={{ color: MARKER_COLOR_PINK }}>
+                  {(() => {
+                    try {
+                      const d = new Date(activeEvent.start_date + 'T00:00:00');
+                      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    } catch {
+                      return activeEvent.start_date;
+                    }
+                  })()}
+                  {activeEvent.start_time && ` · ${activeEvent.start_time.slice(0, 5)}`}
+                </span>
+              )}
+              {activeEvent.price_min != null && (
+                <>
+                  <span className="text-[var(--text-dim)] text-[9px]">·</span>
+                  <span className="text-[9.5px] text-[var(--text-muted)]">
+                    {activeEvent.price_min === 0
+                      ? 'Free'
+                      : activeEvent.price_max != null && activeEvent.price_max !== activeEvent.price_min
+                      ? `${activeEvent.currency ?? '$'}${activeEvent.price_min} – ${activeEvent.currency ?? '$'}${activeEvent.price_max}`
+                      : `${activeEvent.currency ?? '$'}${activeEvent.price_min}`}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              {/* Get Tickets button */}
+              {activeEvent.ticket_url && (
+                <a
+                  href={activeEvent.ticket_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
+                  style={{
+                    color: MARKER_COLOR_PINK,
+                    background: `${MARKER_COLOR_PINK}18`,
+                    border: `1px solid ${MARKER_COLOR_PINK}40`,
+                  }}
+                >
+                  <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M2 10l1.5-1.5a2 2 0 0 1 2.83 0L8 10.17l1.67-1.67a2 2 0 0 1 2.83 0L14 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    <rect x="1" y="4" width="14" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+                  </svg>
+                  Get Tickets
+                </a>
+              )}
+
+              {/* Add to Itinerary */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (itinAdded === activeEvent.id) return;
+                  addItem({
+                    placeId: activeEvent.id,
+                    name: activeEvent.name,
+                    category: activeEvent.category,
+                    image: activeEvent.image_url ?? '',
+                    date: new Date(),
+                    time: DEFAULT_ITINERARY_TIME,
+                    durationHours: DEFAULT_ITINERARY_DURATION_HOURS,
+                  });
+                  setItinAdded(activeEvent.id);
+                  if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
+                  itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
+                  showSonarPing(activeEvent.longitude, activeEvent.latitude, MARKER_COLOR_PINK);
+                  showItineraryFlyAnimation(activeEvent.longitude, activeEvent.latitude);
+                }}
+                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
+                style={{
+                  color: itinAdded === activeEvent.id ? '#4ADE80' : 'var(--text-muted)',
+                  background: itinAdded === activeEvent.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${itinAdded === activeEvent.id ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                }}
+              >
+                {itinAdded === activeEvent.id ? <>✓ Added</> : (
+                  <>
+                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    Itinerary
+                  </>
+                )}
+              </button>
+
+              {/* Directions */}
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${activeEvent.latitude},${activeEvent.longitude}&travelmode=walking`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
+                style={{
+                  color: 'var(--text-muted)',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 1L15 8L8 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                Directions
+              </a>
+            </div>
+          </div>
+          {/* Arrow pointer */}
+          <div
+            className="absolute bottom-[-5px] left-5 w-2.5 h-2.5 rotate-45"
+            style={{
+              background: 'rgba(10,14,19,0.78)',
+              border: `1px solid ${MARKER_COLOR_PINK}35`,
+              borderTop: 'none',
+              borderLeft: 'none',
+            }}
+          />
+        </div>
+      )}
+
       {/* ── Searched place info card (geocoding result) ── */}
-      {searchedPlace && !activePlace && (
+      {searchedPlace && !activePlace && !activeEvent && (
         <div
           className="absolute bottom-20 left-4 z-10 animate-card-entrance"
           style={{ maxWidth: 'min(280px, calc(100% - 80px))' }}

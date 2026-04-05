@@ -13,6 +13,8 @@ export interface Place {
 /**
  * Place shape returned by the /api/places endpoint (Supabase `places` table).
  * Used by MapPlaceholder markers and the map info card.
+ * Event shapes (from /api/discovery/events) are merged into this type with
+ * isEvent=true and event-specific optional fields populated.
  */
 export interface MapPlace {
   id: string;
@@ -27,4 +29,14 @@ export interface MapPlace {
   booking_url: string | null;
   website: string | null;
   image_url: string | null;
+  /* ─── Event-specific fields (undefined for regular places) ─── */
+  isEvent?: boolean;
+  ticket_url?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  currency?: string | null;
+  venue_name?: string | null;
+  start_date?: string;
+  end_date?: string | null;
+  start_time?: string | null;
 }

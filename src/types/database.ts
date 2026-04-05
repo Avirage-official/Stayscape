@@ -358,6 +358,8 @@ export interface DiscoveryEventCard {
   description: string;
   editorial_summary: string | null;
   venue_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
   image_url: string | null;
   start_date: string;
   end_date: string | null;
@@ -373,8 +375,6 @@ export interface DiscoveryEventCard {
 
 /** Event detail view. */
 export interface DiscoveryEventDetail extends DiscoveryEventCard {
-  latitude: number | null;
-  longitude: number | null;
   address: string | null;
   end_time: string | null;
   image_urls: string[];
