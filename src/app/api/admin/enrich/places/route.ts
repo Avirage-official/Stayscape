@@ -56,14 +56,11 @@ export async function POST(request: NextRequest) {
         } catch {
           failed++;
         }
-
-        // Small delay between individual calls
-        await sleep(500);
       }
 
-      // Longer delay between batches
+      // Delay between batches to respect API rate limits
       if (i + BATCH_SIZE < places.length) {
-        await sleep(BATCH_DELAY_MS);
+        await delay(BATCH_DELAY_MS);
       }
     }
 
@@ -80,6 +77,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function sleep(ms: number): Promise<void> {
+function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

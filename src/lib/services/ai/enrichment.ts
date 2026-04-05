@@ -25,6 +25,7 @@ import type {
   EventTag,
 } from '@/types/database';
 import { getPlaceDetails } from '@/lib/services/geoapify';
+import { ClaudeProvider } from './claude-provider';
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -79,11 +80,6 @@ function getActiveProvider(): AIEnrichmentProvider {
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (anthropicKey) {
-    // Lazy import to avoid loading the module when the key is absent
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { ClaudeProvider } = require('./claude-provider') as {
-      ClaudeProvider: new (key: string) => AIEnrichmentProvider;
-    };
     _provider = new ClaudeProvider(anthropicKey);
   } else {
     _provider = new PlaceholderAIProvider();
