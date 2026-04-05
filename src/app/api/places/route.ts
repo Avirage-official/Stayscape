@@ -39,6 +39,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'region_id is required' }, { status: 400 });
   }
 
+  const hasBounds = !isNaN(north) && !isNaN(south) && !isNaN(east) && !isNaN(west);
+  if (hasBounds && (south >= north || west >= east)) {
+    return NextResponse.json({ error: 'Invalid bounds: south must be < north and west must be < east' }, { status: 400 });
+  }
+
   try {
     const supabase = getSupabaseAdmin();
     let query = supabase
@@ -50,7 +55,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true);
 
     /* If bounds are provided, filter by viewport */
-    if (!isNaN(north) && !isNaN(south) && !isNaN(east) && !isNaN(west)) {
+    if (hasBounds) {
       query = query
         .gte('latitude', south)
         .lte('latitude', north)

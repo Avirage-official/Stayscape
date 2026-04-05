@@ -37,6 +37,9 @@ const MARKER_COLOR_GREEN = '#22C55E'; /* bright green — individual place dots 
 const SELECTED_DOT_COLOR = '#FFFFFF'; /* selected dot — white with glow */
 const ANIMATION_GREEN = '#4ADE80'; /* bright green used in sonar ping and itinerary fly animation */
 
+/* ─── Viewport fetch settings ─── */
+const VIEWPORT_FETCH_LIMIT = 500; /* max places fetched per viewport query */
+
 /* ─── 3D buildings layer styling ─── */
 const BUILDINGS_3D_COLOR = '#1a1a2e'; /* dark blue-black to match Stayscape aesthetic */
 const BUILDINGS_3D_OPACITY = 0.7;
@@ -610,7 +613,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               south: String(bounds.south),
               east: String(bounds.east),
               west: String(bounds.west),
-              limit: '500',
+              limit: String(VIEWPORT_FETCH_LIMIT),
             });
 
             fetch(`/api/places?${params}`)
