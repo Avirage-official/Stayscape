@@ -35,6 +35,15 @@ const LABEL_LAYER = 'stayscape-labels';
 /* ─── Dot / marker colors ─── */
 const MARKER_COLOR_GREEN = '#22C55E'; /* bright green — individual place dots */
 const SELECTED_DOT_COLOR = '#FFFFFF'; /* selected dot — white with glow */
+const ANIMATION_GREEN = '#4ADE80'; /* bright green used in sonar ping and itinerary fly animation */
+
+/* ─── 3D buildings layer styling ─── */
+const BUILDINGS_3D_COLOR = '#1a1a2e'; /* dark blue-black to match Stayscape aesthetic */
+const BUILDINGS_3D_OPACITY = 0.7;
+const BUILDINGS_3D_MINZOOM = 13;
+
+/* ─── Itinerary fly animation ─── */
+const ITINERARY_CORNER_OFFSET = 28; /* px from bottom-right edge of container */
 
 /* ─── Filter panel positioning ─── */
 const FILTER_PANEL_TOP = '33%'; /* left-side toggle button vertical position */
@@ -165,12 +174,12 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             'source-layer': 'building',
             filter: ['==', ['get', 'extrude'], 'true'],
             type: 'fill-extrusion',
-            minzoom: 13,
+            minzoom: BUILDINGS_3D_MINZOOM,
             paint: {
-              'fill-extrusion-color': '#1a1a2e',
+              'fill-extrusion-color': BUILDINGS_3D_COLOR,
               'fill-extrusion-height': ['get', 'height'],
               'fill-extrusion-base': ['get', 'min_height'],
-              'fill-extrusion-opacity': 0.7,
+              'fill-extrusion-opacity': BUILDINGS_3D_OPACITY,
             },
           });
         }
@@ -190,7 +199,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const getMap = useCallback(() => mapInstanceRef.current, []);
 
   /* ─── Sonar ping: expanding ring at a map coordinate ─── */
-  const showSonarPing = useCallback((lng: number, lat: number, color: string = '#4ADE80') => {
+  const showSonarPing = useCallback((lng: number, lat: number, color: string = ANIMATION_GREEN) => {
     const map = mapInstanceRef.current;
     const container = mapContainerRef.current;
     if (!map || !container) return;
@@ -220,8 +229,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     if (!map || !container) return;
     const projected = map.project([lng, lat]);
     const rect = container.getBoundingClientRect();
-    const targetX = rect.width - 28;
-    const targetY = rect.height - 28;
+    const targetX = rect.width - ITINERARY_CORNER_OFFSET;
+    const targetY = rect.height - ITINERARY_CORNER_OFFSET;
     const dot = document.createElement('div');
     dot.style.cssText = [
       'position:absolute',
@@ -230,7 +239,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       'width:9px',
       'height:9px',
       'border-radius:50%',
-      'background:#4ADE80',
+      `background:${ANIMATION_GREEN}`,
       'transform:translate(-50%,-50%) scale(1)',
       'transition:left 0.6s cubic-bezier(0.4,0,0.2,1),top 0.6s cubic-bezier(0.4,0,0.2,1),opacity 0.6s ease,transform 0.6s ease',
       'pointer-events:none',
