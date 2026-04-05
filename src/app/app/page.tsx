@@ -11,7 +11,7 @@ import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import Footer from '@/components/Footer';
-import { Place } from '@/types';
+import { MapPlace } from '@/types';
 import { useRegion } from '@/lib/context/region-context';
 
 type ActiveTab = 'concierge' | 'discover' | 'itinerary';
@@ -21,7 +21,7 @@ export default function Home() {
   const router = useRouter();
   const { region } = useRegion();
   const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
-  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('map');
   const panelRef = useRef<TravelAssistantPanelHandle>(null);
 
@@ -32,7 +32,7 @@ export default function Home() {
     }
   }, [region, router]);
 
-  const handleSelectPlace = useCallback((place: Place) => {
+  const handleSelectPlace = useCallback((place: MapPlace) => {
     setSelectedPlace(place);
     panelRef.current?.selectPlace(place);
   }, []);

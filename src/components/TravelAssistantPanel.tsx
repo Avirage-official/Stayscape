@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { Place } from '@/types';
+import { Place, MapPlace } from '@/types';
 
 /* ─── Types ─── */
 
@@ -9,15 +9,15 @@ interface ChatMessage {
   id: string;
   role: 'assistant' | 'user';
   text: string;
-  place?: Place;
+  place?: Place | MapPlace;
 }
 
 export interface TravelAssistantPanelHandle {
-  selectPlace: (place: Place) => void;
+  selectPlace: (place: Place | MapPlace) => void;
 }
 
 interface TravelAssistantPanelProps {
-  selectedPlace: Place | null;
+  selectedPlace: Place | MapPlace | null;
   onClearSelection: () => void;
 }
 
@@ -54,15 +54,25 @@ function PlaceDetailsCard({
   place,
   onAddToItinerary,
 }: {
-  place: Place;
+  place: Place | MapPlace;
   onAddToItinerary: () => void;
 }) {
+  /* Normalize fields that differ between Place and MapPlace */
+  const description = ('editorial_summary' in place && place.editorial_summary)
+    ? place.editorial_summary
+    : place.description ?? '';
+  const aiRundown = 'aiRundown' in place ? place.aiRundown : null;
+  const bookingUrl = 'booking_url' in place ? place.booking_url : place.bookingUrl;
+  const rating = place.rating ?? 0;
+  const gradient = 'gradient' in place ? place.gradient : 'from-slate-800 to-slate-900';
+  const distance = 'distance' in place ? place.distance : null;
+
   return (
     <div className="animate-fade-in-up stagger-1">
       <SectionLabel>Place Details</SectionLabel>
       <div className="bg-[var(--card-bg)] rounded-[6px] border border-[var(--card-border)] overflow-hidden">
         {/* Gradient header */}
-        <div className={`h-20 bg-gradient-to-br ${place.gradient} relative`}>
+        <div className={`h-20 bg-gradient-to-br ${gradient} relative`}>
           <div className="absolute inset-0 bg-black/30" />
           <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-2.5 bg-gradient-to-t from-[var(--card-bg)] to-transparent">
             <span className="inline-block text-[9px] text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 rounded-[4px] px-2 py-[2px] mb-1 uppercase tracking-wider">
@@ -76,37 +86,41 @@ function PlaceDetailsCard({
         <div className="px-3.5 py-3 space-y-3">
           {/* Rating & Distance */}
           <div className="flex items-center justify-between">
-            <StarRating rating={place.rating} />
-            <span className="text-[10px] text-[var(--text-muted)] flex items-center space-x-1">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              <span>{place.distance}</span>
-            </span>
+            <StarRating rating={rating} />
+            {distance && (
+              <span className="text-[10px] text-[var(--text-muted)] flex items-center space-x-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span>{distance}</span>
+              </span>
+            )}
           </div>
 
           {/* Description */}
           <p className="text-[11px] text-[var(--text-secondary)] leading-[1.7]">
-            {place.description}
+            {description}
           </p>
 
-          {/* AI Rundown */}
-          <div className="bg-[var(--panel-bg)] rounded-[5px] p-3 border border-[var(--charcoal-light)]">
-            <div className="flex items-center space-x-1.5 mb-2">
-              <span className="text-[9px] text-[var(--gold)]">✦</span>
-              <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-medium">Concierge Notes</span>
+          {/* AI Rundown / Concierge Notes */}
+          {aiRundown && (
+            <div className="bg-[var(--panel-bg)] rounded-[5px] p-3 border border-[var(--charcoal-light)]">
+              <div className="flex items-center space-x-1.5 mb-2">
+                <span className="text-[9px] text-[var(--gold)]">✦</span>
+                <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-medium">Concierge Notes</span>
+              </div>
+              <p className="text-[10px] text-[var(--text-secondary)] leading-[1.7]">
+                {aiRundown}
+              </p>
             </div>
-            <p className="text-[10px] text-[var(--text-secondary)] leading-[1.7]">
-              {place.aiRundown}
-            </p>
-          </div>
+          )}
 
           {/* Action buttons */}
           <div className="space-y-2 pt-1">
             {/* Book externally */}
             <a
-              href={place.bookingUrl || '#'}
+              href={bookingUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center space-x-2 w-full bg-[var(--gold)] hover:opacity-90 text-[var(--background)] text-[11px] font-medium py-2.5 rounded-[6px] transition-all duration-200 tracking-wide"
@@ -195,7 +209,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
   }, [messages]);
 
   // Expose selectPlace handler to the parent via ref
-  const addPlaceMessage = useCallback((place: Place) => {
+  const addPlaceMessage = useCallback((place: Place | MapPlace) => {
     const id = `place-${++idCounterRef.current}`;
     const placeMessage: ChatMessage = {
       id,

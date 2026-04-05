@@ -108,8 +108,22 @@ export const MARKER_COLOR_EVENT = '#8B5CF6';
 
 /**
  * Category-specific marker colors for the premium place markers.
+ * Covers all database categories (PlaceCategory in src/types/database.ts).
  */
 export const CATEGORY_COLORS: Record<string, string> = {
+  /* Database categories */
+  dining: '#F59E0B',
+  nightlife: '#8B5CF6',
+  shopping: '#F43F5E',
+  nature: '#10B981',
+  historical: '#F97316',
+  wellness: '#06B6D4',
+  family: '#3B82F6',
+  events: '#EC4899',
+  local_spots: '#84CC16',
+  fun_places: '#14B8A6',
+  top_places: '#C9A84C',
+  /* Legacy display-name categories (kept for backwards compatibility) */
   'Restaurants': '#F59E0B',
   'Bars & Drinks': '#8B5CF6',
   'Activities': '#14B8A6',

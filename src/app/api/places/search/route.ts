@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { haversineMetres, formatDistanceDisplay } from '@/lib/mapbox/geocoding';
 import type { SearchResult } from '@/types/mapbox';
 
@@ -27,10 +27,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: [] });
   }
 
-  const supabase = getSupabaseBrowser();
-  if (!supabase) {
-    return NextResponse.json({ data: [] });
-  }
+  const supabase = getSupabaseAdmin();
 
   try {
     let query = supabase
