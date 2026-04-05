@@ -27,7 +27,8 @@ interface MapRouteProps {
   onRouteLoad?: (duration: string | null) => void;
 }
 
-const HOTEL_ORIGIN: LatLng = { lat: 40.7649, lng: -73.9733 };
+/* Singapore Central — used as fallback origin when no region is passed */
+const HOTEL_ORIGIN: LatLng = { lat: 1.2897, lng: 103.8501 };
 
 export default function MapRoute({
   getMap,

@@ -18,9 +18,9 @@ import {
 } from '@/lib/mapbox/config';
 import type { DirectionsResponse, DirectionsRoute, DirectionsProfile } from '@/types/mapbox';
 
-/* ── Hotel coordinates used as default origin ─────────────── */
-const HOTEL_LAT = 40.7649;
-const HOTEL_LNG = -73.9733;
+/* ── Default origin coordinates (Singapore Central — overridden by region) ─ */
+const HOTEL_LAT = 1.2897;
+const HOTEL_LNG = 103.8501;
 
 /* ── Coordinate helper ────────────────────────────────────── */
 

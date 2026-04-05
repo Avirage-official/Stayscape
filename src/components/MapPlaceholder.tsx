@@ -2,7 +2,6 @@
 
 import type mapboxgl from 'mapbox-gl';
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Place } from '@/types';
 import {
   getMapboxToken,
   isMapboxAvailable,
@@ -14,117 +13,29 @@ import {
   GEOLOCATION_FLY_DURATION,
   GEOLOCATION_RECENTER_DURATION,
 } from '@/lib/mapbox/config';
-import { getDistanceFromHotel } from '@/lib/mapbox/directions';
+import { haversineMetres, formatDistanceDisplay } from '@/lib/mapbox/geocoding';
 import MapSearch from '@/components/MapSearch';
 import MapRoute from '@/components/MapRoute';
 import type { SearchResult } from '@/types/mapbox';
 import { useRegion } from '@/lib/context/region-context';
-
-/* ─── Sample places with real lat/lng coordinates ─── */
-
-const mapPlaces: (Place & { lat: number; lng: number; cx: number; cy: number })[] = [
-  {
-    id: '1',
-    name: 'Nobu Restaurant',
-    category: 'Restaurants',
-    distance: '0.3 mi',
-    rating: 4.8,
-    description: 'World-renowned Japanese-Peruvian fusion',
-    aiRundown:
-      "Nobu is the crown jewel of NYC dining—Chef Nobu Matsuhisa's legendary fusion cuisine awaits. We recommend the black cod with miso and the signature yellowtail jalapeño. Reservations are highly sought after; our concierge has secured priority access for hotel guests.",
-    gradient: 'from-amber-900 to-red-900',
-    bookingUrl: 'https://www.noburestaurants.com/new-york',
-    lat: 40.7614,
-    lng: -73.9776,
-    cx: 350,
-    cy: 270,
-  },
-  {
-    id: '2',
-    name: 'The Rooftop Bar',
-    category: 'Bars & Drinks',
-    distance: '0.1 mi',
-    rating: 4.6,
-    description: 'Craft cocktails with panoramic city views',
-    aiRundown:
-      'Just steps from the hotel, The Rooftop Bar offers an unparalleled cocktail experience above the Manhattan skyline. The sommelier-curated champagne selection and the signature "Golden Hour" cocktail are not to be missed. Best enjoyed at sunset.',
-    gradient: 'from-blue-900 to-purple-900',
-    bookingUrl: 'https://example.com/rooftop-bar',
-    lat: 40.7580,
-    lng: -73.9712,
-    cx: 520,
-    cy: 340,
-  },
-  {
-    id: '3',
-    name: 'Central Park',
-    category: 'Activities',
-    distance: '0.5 mi',
-    rating: 4.9,
-    description: "New York's iconic urban oasis",
-    aiRundown:
-      "Central Park in December is particularly magical—the Wollman Rink ice skating is in full swing and the holiday atmosphere is serene. We suggest the path along the Mall for the most scenic morning walk. Our concierge can arrange a private carriage ride.",
-    gradient: 'from-green-900 to-teal-900',
-    bookingUrl: 'https://www.centralparknyc.org',
-    lat: 40.7829,
-    lng: -73.9654,
-    cx: 450,
-    cy: 180,
-  },
-  {
-    id: '4',
-    name: 'Fifth Avenue Shopping',
-    category: 'Shopping',
-    distance: '0.2 mi',
-    rating: 4.7,
-    description: 'Luxury flagship stores and boutiques',
-    aiRundown:
-      "Fifth Avenue is the pinnacle of luxury retail—from Bergdorf Goodman's impeccable personal shopping service to the flagship stores of the world's finest houses. The hotel's concierge team has personal relationships with the store managers for VIP access.",
-    gradient: 'from-pink-900 to-rose-900',
-    bookingUrl: 'https://example.com/fifth-avenue',
-    lat: 40.7644,
-    lng: -73.9732,
-    cx: 280,
-    cy: 410,
-  },
-  {
-    id: '5',
-    name: 'Le Bernardin',
-    category: 'Restaurants',
-    distance: '0.4 mi',
-    rating: 4.9,
-    description: 'Three Michelin star French seafood',
-    aiRundown:
-      "Chef Éric Ripert's three-Michelin-star temple of French seafood is widely considered the finest restaurant in New York. The tasting menu is a transcendent experience—langoustine, halibut, and tuna prepared with extraordinary precision. We have a longstanding relationship with the maitre d'.",
-    gradient: 'from-slate-800 to-blue-950',
-    bookingUrl: 'https://www.le-bernardin.com',
-    lat: 40.7618,
-    lng: -73.9815,
-    cx: 650,
-    cy: 200,
-  },
-  {
-    id: '6',
-    name: 'Bemelmans Bar',
-    category: 'Bars & Drinks',
-    distance: '0.3 mi',
-    rating: 4.7,
-    description: 'Classic New York cocktail institution',
-    aiRundown:
-      "Bemelmans Bar at The Carlyle is one of New York's most storied establishments—the Ludwig Bemelmans murals, live jazz piano, and the perfectly mixed Martinis create an atmosphere of effortless Old World glamour. Arrive early evening for the full experience.",
-    gradient: 'from-yellow-900 to-orange-900',
-    bookingUrl: 'https://www.rosewoodhotels.com/en/the-carlyle-new-york/dining/bemelmans-bar',
-    lat: 40.7741,
-    lng: -73.9632,
-    cx: 560,
-    cy: 480,
-  },
-];
+import type { MapPlace } from '@/types';
 
 /* ─── Default center coordinates (Singapore Central) ─── */
 const DEFAULT_CENTER = { lat: 1.2897, lng: 103.8501 };
 
 const CATEGORY_ICONS: Record<string, string> = {
+  dining: '🍽️',
+  nightlife: '🍸',
+  shopping: '🛍️',
+  nature: '🌿',
+  historical: '🏛️',
+  wellness: '🧘',
+  family: '👨‍👩‍👧',
+  events: '🎉',
+  local_spots: '📍',
+  fun_places: '🎠',
+  top_places: '⭐',
+  /* Legacy display-name keys */
   Restaurants: '🍽️',
   'Bars & Drinks': '🍸',
   Activities: '🏃',
@@ -164,7 +75,7 @@ function applyMarkerStyle(data: MarkerData, isSelected: boolean) {
 }
 
 interface MapPlaceholderProps {
-  onSelectPlace?: (place: Place) => void;
+  onSelectPlace?: (place: MapPlace) => void;
   selectedPlaceId?: string | null;
 }
 
@@ -178,6 +89,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const markerDataRef = useRef<Map<string, MarkerData>>(new Map());
+  const placesRef = useRef<MapPlace[]>([]); /* cached Supabase places */
   const initializedRef = useRef(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const styleFallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -204,6 +116,19 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
   /* ─── React state ─── */
   const [locationState, setLocationState] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
+
+  /* ─── Active place: looked up from cached places ref ─── */
+  const [activePlace, setActivePlace] = useState<MapPlace | null>(null);
+
+  /* Sync activePlace when selectedPlaceId changes */
+  useEffect(() => {
+    if (selectedPlaceId) {
+      const found = placesRef.current.find((p) => p.id === selectedPlaceId) ?? null;
+      setActivePlace(found);
+    } else {
+      setActivePlace(null);
+    }
+  }, [selectedPlaceId]);
 
   /* ─── initMap ─── */
   const initMap = useCallback((): boolean => {
@@ -276,6 +201,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           markerDataRef.current.clear();
 
           /* ── Hotel “You Are Here” marker with permanent label ── */
+          const regionLabel = regionRef.current?.name ?? 'Your Location';
           const hotelEl = document.createElement('div');
           hotelEl.className = 'stayscape-hotel-marker';
           hotelEl.style.cssText = 'cursor:default;';
@@ -288,7 +214,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             '    <div style="position:relative;width:13px;height:13px;border-radius:50%;background:#C9A84C;box-shadow:0 0 14px rgba(201,168,76,0.6),0 0 5px rgba(201,168,76,0.9);z-index:1;"></div>',
             '  </div>',
             '  <div style="background:rgba(12,15,19,0.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(201,168,76,0.2);border-radius:5px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">',
-            '    <span style="font-size:10px;font-family:system-ui,sans-serif;color:#E8E6E1;letter-spacing:0.04em;font-weight:500;">The Grand Palace Hotel</span>',
+                `    <span style="font-size:10px;font-family:system-ui,sans-serif;color:#E8E6E1;letter-spacing:0.04em;font-weight:500;">${regionLabel}</span>`,
             '  </div>',
             '</div>',
           ].join('');
@@ -296,52 +222,69 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             .setLngLat([center.lng, center.lat])
             .addTo(map);
 
-          /* ── Place markers — premium category-colored design ── */
-          mapPlaces.forEach((place) => {
-            const color = getCategoryColor(place.category);
-            const container = document.createElement('div');
-            container.className = 'stayscape-place-marker';
-            container.style.cssText = 'cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;position:relative;';
+          /* ── Fetch places from Supabase and render markers ── */
+          const activeRegionId = regionRef.current?.id;
+          if (activeRegionId) {
+            fetch(`/api/places?region_id=${encodeURIComponent(activeRegionId)}&limit=300`)
+              .then((res) => res.json())
+              .then((body: { data?: MapPlace[]; error?: string }) => {
+                if (body.error) {
+                  console.warn('[Stayscape Map] Places API error:', body.error);
+                  return;
+                }
+                const places: MapPlace[] = body.data ?? [];
+                placesRef.current = places;
 
-            const ring = document.createElement('div');
-            ring.style.cssText = `position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid ${color}50;transition:all 0.2s ease;`;
+                places.forEach((place) => {
+                  const color = getCategoryColor(place.category);
+                  const container = document.createElement('div');
+                  container.className = 'stayscape-place-marker';
+                  container.style.cssText = 'cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;position:relative;';
 
-            const inner = document.createElement('div');
-            inner.style.cssText = `width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 5px ${color}80;transition:all 0.2s ease;position:relative;z-index:1;`;
+                  const ring = document.createElement('div');
+                  ring.style.cssText = `position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid ${color}50;transition:all 0.2s ease;`;
 
-            container.appendChild(ring);
-            container.appendChild(inner);
+                  const inner = document.createElement('div');
+                  inner.style.cssText = `width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 5px ${color}80;transition:all 0.2s ease;position:relative;z-index:1;`;
 
-            const data: MarkerData = { container, inner, ring, category: place.category, color };
-            markerDataRef.current.set(place.id, data);
+                  container.appendChild(ring);
+                  container.appendChild(inner);
 
-            /* Hover effects */
-            container.addEventListener('mouseenter', () => {
-              inner.style.transform = 'scale(1.7)';
-              inner.style.boxShadow = `0 0 10px ${color}99, 0 0 20px ${color}50`;
-              ring.style.transform = 'scale(1.4)';
-              ring.style.borderColor = `${color}80`;
-            });
-            container.addEventListener('mouseleave', () => {
-              if (selectedPlaceIdRef.current !== place.id) {
-                inner.style.transform = 'scale(1)';
-                inner.style.boxShadow = `0 0 5px ${color}80`;
-                ring.style.transform = 'scale(1)';
-                ring.style.borderColor = `${color}50`;
-              }
-            });
+                  const data: MarkerData = { container, inner, ring, category: place.category, color };
+                  markerDataRef.current.set(place.id, data);
 
-            container.addEventListener('click', (e) => {
-              e.stopPropagation();
-              onSelectPlaceRef.current?.(place);
-            });
+                  /* Hover effects */
+                  container.addEventListener('mouseenter', () => {
+                    inner.style.transform = 'scale(1.7)';
+                    inner.style.boxShadow = `0 0 10px ${color}99, 0 0 20px ${color}50`;
+                    ring.style.transform = 'scale(1.4)';
+                    ring.style.borderColor = `${color}80`;
+                  });
+                  container.addEventListener('mouseleave', () => {
+                    if (selectedPlaceIdRef.current !== place.id) {
+                      inner.style.transform = 'scale(1)';
+                      inner.style.boxShadow = `0 0 5px ${color}80`;
+                      ring.style.transform = 'scale(1)';
+                      ring.style.borderColor = `${color}50`;
+                    }
+                  });
 
-            const marker = new mapboxgl.default.Marker({ element: container, anchor: 'center' })
-              .setLngLat([place.lng, place.lat])
-              .addTo(map);
+                  container.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    onSelectPlaceRef.current?.(place);
+                  });
 
-            markersRef.current.push(marker);
-          });
+                  const marker = new mapboxgl.default.Marker({ element: container, anchor: 'center' })
+                    .setLngLat([place.longitude, place.latitude])
+                    .addTo(map);
+
+                  markersRef.current.push(marker);
+                });
+              })
+              .catch((err) => {
+                console.warn('[Stayscape Map] Failed to fetch places:', err);
+              });
+          }
         });
 
         /* Keep canvas sized correctly on window resize */
@@ -524,30 +467,12 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     setSearchedPlace(null);
   }, []);
 
-  /* ─── Walking time — fetch when a sample place is selected ─── */
-  useEffect(() => {
-    if (!selectedPlaceId) {
-      setWalkingTime(null);
-      return;
-    }
-    const place = mapPlaces.find((p) => p.id === selectedPlaceId);
-    if (!place) {
-      setWalkingTime(null);
-      return;
-    }
-    let cancelled = false;
-    getDistanceFromHotel({ lat: place.lat, lng: place.lng }).then((t) => {
-      if (!cancelled) setWalkingTime(t);
-    });
-    return () => { cancelled = true; };
-  }, [selectedPlaceId]);
 
   /* ─── Fallback to SVG if Mapbox is not available ─── */
   if (!isMapboxAvailable()) {
     return <MapFallback onSelectPlace={onSelectPlace} selectedPlaceId={selectedPlaceId} />;
   }
 
-  const activePlace = mapPlaces.find((p) => p.id === selectedPlaceId);
 
   return (
     <div className="relative w-full h-full flex-1 bg-[var(--map-bg)] overflow-hidden animate-fade-in rounded-[10px] ring-1 ring-[var(--gold)]/10 shadow-[inset_0_0_0_1px_rgba(201,168,76,0.08)]">
@@ -579,46 +504,54 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             }}
           >
             <div className="flex items-start gap-2 mb-2">
-              <span className="text-base leading-none mt-0.5">{CATEGORY_ICONS[activePlace.category]}</span>
+              <span className="text-base leading-none mt-0.5">{CATEGORY_ICONS[activePlace.category] ?? '📍'}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
                   {activePlace.name}
                 </p>
                 <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
-                  {activePlace.description}
+                  {activePlace.editorial_summary ?? activePlace.description ?? activePlace.address ?? ''}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <svg
-                    key={i}
-                    width="9"
-                    height="9"
-                    viewBox="0 0 24 24"
-                    fill={i < Math.round(activePlace.rating ?? 0) ? MARKER_COLOR_GOLD : 'none'}
-                    stroke={MARKER_COLOR_GOLD}
-                    strokeWidth="2"
-                  >
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              {activePlace.rating != null && (
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <svg
+                      key={i}
+                      width="9"
+                      height="9"
+                      viewBox="0 0 24 24"
+                      fill={i < Math.round(activePlace.rating ?? 0) ? MARKER_COLOR_GOLD : 'none'}
+                      stroke={MARKER_COLOR_GOLD}
+                      strokeWidth="2"
+                    >
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  ))}
+                  <span className="text-[9.5px] font-medium ml-0.5" style={{ color: MARKER_COLOR_GOLD }}>
+                    {activePlace.rating.toFixed(1)}
+                  </span>
+                </div>
+              )}
+
+              {region && activePlace.rating != null && (
+                <span className="text-[var(--text-dim)] text-[9px]">·</span>
+              )}
+
+              {region && (
+                <div className="flex items-center gap-1">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
                   </svg>
-                ))}
-                <span className="text-[9.5px] font-medium ml-0.5" style={{ color: MARKER_COLOR_GOLD }}>
-                  {activePlace.rating?.toFixed(1)}
-                </span>
-              </div>
-
-              <span className="text-[var(--text-dim)] text-[9px]">·</span>
-
-              <div className="flex items-center gap-1">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                <span className="text-[9.5px] text-[var(--text-muted)]">{activePlace.distance}</span>
-              </div>
+                  <span className="text-[9.5px] text-[var(--text-muted)]">
+                    {formatDistanceDisplay(haversineMetres(region.latitude, region.longitude, activePlace.latitude, activePlace.longitude))}
+                  </span>
+                </div>
+              )}
 
               {walkingTime && (
                 <>
@@ -638,10 +571,29 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               <MapRoute
                 key={activePlace.id}
                 getMap={getMap}
-                destination={{ lat: activePlace.lat, lng: activePlace.lng }}
+                origin={region ? { lat: region.latitude, lng: region.longitude } : undefined}
+                destination={{ lat: activePlace.latitude, lng: activePlace.longitude }}
                 onRouteLoad={setWalkingTime}
               />
             </div>
+
+            {activePlace.booking_url && (
+              <div className="mt-2">
+                <a
+                  href={activePlace.booking_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
+                  style={{
+                    color: MARKER_COLOR_GOLD,
+                    background: `${MARKER_COLOR_GOLD}14`,
+                    border: `1px solid ${MARKER_COLOR_GOLD}30`,
+                  }}
+                >
+                  Book now ↗
+                </a>
+              </div>
+            )}
           </div>
           {/* Arrow pointer */}
           <div
@@ -687,7 +639,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                 className="text-[9.5px] font-medium"
                 style={{ color: MARKER_COLOR_GOLD }}
               >
-                {searchedPlace.distanceDisplay} from hotel
+                {searchedPlace.distanceDisplay} from here
               </span>
             </div>
             {/* Route toggle for searched place */}
@@ -695,6 +647,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               <MapRoute
                 key={searchedPlace.id}
                 getMap={getMap}
+                origin={region ? { lat: region.latitude, lng: region.longitude } : undefined}
                 destination={{ lat: searchedPlace.lat, lng: searchedPlace.lng }}
               />
             </div>
@@ -830,7 +783,7 @@ function MapFallback({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
         <rect x="610" y="160" width="80" height="55" rx="4" fill="#0C1217" />
         <rect x="710" y="160" width="80" height="55" rx="4" fill="#0D1318" />
         <rect x="410" y="155" width="85" height="65" rx="6" fill="#0C1610" stroke="#13241A" strokeWidth="0.5" />
-        <text x="452" y="192" textAnchor="middle" fill="#172E1F" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">CENTRAL PARK</text>
+        <text x="452" y="192" textAnchor="middle" fill="#172E1F" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">CITY PARK</text>
         <rect x="105" y="235" width="90" height="55" rx="4" fill="#0D1318" />
         <rect x="210" y="235" width="80" height="55" rx="4" fill="#0C1217" />
         <rect x="310" y="235" width="80" height="55" rx="4" fill="#0D1318" />
@@ -873,76 +826,19 @@ function MapFallback({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
         <line x1="0" y1="225" x2="800" y2="225" stroke="#101822" strokeWidth="2.5" />
         <line x1="0" y1="375" x2="800" y2="375" stroke="#101822" strokeWidth="2.5" />
         <line x1="0" y1="525" x2="800" y2="525" stroke="#101822" strokeWidth="2.5" />
-        <text x="400" y="296" textAnchor="middle" fill="#182535" fontSize="8" fontFamily="system-ui, sans-serif" letterSpacing="0.18em">5TH AVENUE</text>
-        <text x="197" y="260" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em" transform="rotate(-90, 197, 260)">MADISON AVE</text>
+        <text x="400" y="296" textAnchor="middle" fill="#182535" fontSize="8" fontFamily="system-ui, sans-serif" letterSpacing="0.18em">MAIN AVENUE</text>
+        <text x="197" y="260" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em" transform="rotate(-90, 197, 260)">PARK BLVD</text>
         <text x="597" y="260" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em" transform="rotate(-90, 597, 260)">PARK AVE</text>
         <text x="750" y="296" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">E 57TH ST</text>
         <text x="50" y="148" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">W 59TH ST</text>
         <text x="750" y="448" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">E 55TH ST</text>
 
-        {mapPlaces.map((place) => {
-          const isSelected = selectedPlaceId === place.id;
-          const color = getCategoryColor(place.category);
-          return (
-            <g
-              key={place.id}
-              onClick={() => onSelectPlace?.(place)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelectPlace?.(place);
-                }
-              }}
-              className="cursor-pointer"
-              role="button"
-              tabIndex={0}
-              aria-label={`Select ${place.name}`}
-            >
-              <circle cx={place.cx} cy={place.cy} r="14" fill="transparent" />
-              {isSelected && (
-                <>
-                  <circle cx={place.cx} cy={place.cy} r="12" fill={color} opacity="0.08" className="animate-gentle-pulse" />
-                  <circle cx={place.cx} cy={place.cy} r="7" fill="none" stroke={color} strokeWidth="0.75" opacity="0.4" />
-                </>
-              )}
-              <circle
-                cx={place.cx}
-                cy={place.cy}
-                r={isSelected ? '4' : '3'}
-                fill={isSelected ? MARKER_COLOR_GOLD : color}
-                stroke={isSelected ? MARKER_COLOR_GOLD : 'none'}
-                strokeWidth="1"
-                style={isSelected ? { filter: `drop-shadow(0 0 6px ${MARKER_COLOR_GOLD}99)` } : undefined}
-              />
-            </g>
-          );
-        })}
       </svg>
 
       <div className="absolute inset-0 bg-gradient-to-r from-[var(--map-bg)] via-transparent to-[var(--map-bg)] opacity-40 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-b from-[var(--map-bg)] via-transparent to-[var(--map-bg)] opacity-30 pointer-events-none" />
 
-      {selectedPlaceId && (() => {
-        const place = mapPlaces.find((p) => p.id === selectedPlaceId);
-        if (!place) return null;
-        return (
-          <div
-            className="absolute whitespace-nowrap pointer-events-none animate-card-entrance"
-            style={{
-              left: `${(place.cx / 800) * 100}%`,
-              top: `${(place.cy / 600) * 100}%`,
-              transform: 'translate(-50%, 16px)',
-            }}
-          >
-            <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
-              <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">{place.name}</span>
-              <span className="text-[9px] text-[var(--text-faint)]">·</span>
-              <span className="text-[9px] text-[var(--text-muted)]">{place.distance}</span>
-            </div>
-          </div>
-        );
-      })()}
+
 
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <div className="relative flex items-center justify-center">
@@ -955,7 +851,7 @@ function MapFallback({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-9 whitespace-nowrap">
         <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
-          <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">The Grand Palace Hotel</span>
+          <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">Your Location</span>
         </div>
       </div>
 
