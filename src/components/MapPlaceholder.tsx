@@ -91,6 +91,17 @@ function filterPlaces(places: MapPlace[], category: string): MapPlace[] {
   return category === 'all' ? places : places.filter((p) => p.category === category);
 }
 
+function getMapBounds(map: mapboxgl.Map): { north: number; south: number; east: number; west: number } | null {
+  const bounds = map.getBounds();
+  if (!bounds) return null;
+  return {
+    north: bounds.getNorth(),
+    south: bounds.getSouth(),
+    east: bounds.getEast(),
+    west: bounds.getWest(),
+  };
+}
+
 interface MapPlaceholderProps {
   onSelectPlace?: (place: MapPlace) => void;
   selectedPlaceId?: string | null;
@@ -128,6 +139,9 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   const userMapMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const requestGeolocationRef = useRef<() => void>(() => {});
+
+  /* ─── Viewport fetch debounce ─── */
+  const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ─── Search refs & state ─── */
   const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -403,6 +417,224 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           }
         });
 
+        /* ── Add GeoJSON source + all layers + one-time event listeners ── */
+        const addSourceAndLayers = (m: mapboxgl.Map, geojson: GeoJSON.FeatureCollection) => {
+          m.addSource(SOURCE_ID, {
+            type: 'geojson',
+            data: geojson,
+            cluster: true,
+            clusterMaxZoom: 13,
+            clusterRadius: 50,
+          });
+
+          /* ── Cluster circles ── */
+          m.addLayer({
+            id: CLUSTER_LAYER,
+            type: 'circle',
+            source: SOURCE_ID,
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': 'rgba(10,14,19,0.75)',
+              'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 26],
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': 'rgba(255,255,255,0.2)',
+              'circle-blur': 0,
+            },
+          });
+
+          /* ── Cluster count labels ── */
+          m.addLayer({
+            id: CLUSTER_COUNT_LAYER,
+            type: 'symbol',
+            source: SOURCE_ID,
+            filter: ['has', 'point_count'],
+            layout: {
+              'text-field': '{point_count_abbreviated}',
+              'text-size': 12,
+              'text-allow-overlap': true,
+            },
+            paint: {
+              'text-color': '#FFFFFF',
+              'text-opacity': 1,
+            },
+          });
+
+          /* ── Individual place dots — bright green, bold, visible ── */
+          m.addLayer({
+            id: UNCLUSTERED_LAYER,
+            type: 'circle',
+            source: SOURCE_ID,
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+              'circle-color': [
+                'case',
+                ['boolean', ['feature-state', 'selected'], false], SELECTED_DOT_COLOR,
+                MARKER_COLOR_GREEN,
+              ],
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                10, 6, 13, 8, 16, 10,
+              ],
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': [
+                'case',
+                ['boolean', ['feature-state', 'selected'], false], 'rgba(255,255,255,0.9)',
+                'rgba(255,255,255,0.5)',
+              ],
+              'circle-blur': [
+                'case',
+                ['boolean', ['feature-state', 'selected'], false], 0.15,
+                0,
+              ],
+              'circle-opacity': 1.0,
+            },
+          });
+
+          /* ── Place name labels at high zoom ── */
+          m.addLayer({
+            id: LABEL_LAYER,
+            type: 'symbol',
+            source: SOURCE_ID,
+            filter: ['!', ['has', 'point_count']],
+            minzoom: 16,
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-size': 9,
+              'text-offset': [0, 1.2],
+              'text-anchor': 'top',
+              'text-max-width': 8,
+              'text-allow-overlap': false,
+              'text-optional': true,
+            },
+            paint: {
+              'text-color': 'rgba(232,230,225,0.65)',
+              'text-halo-color': 'rgba(10,14,19,0.9)',
+              'text-halo-width': 0.8,
+            },
+          });
+
+          sourceAddedRef.current = true;
+
+          /* ── Cluster click: zoom in ── */
+          m.on('click', CLUSTER_LAYER, (e) => {
+            const feature = e.features?.[0];
+            if (!feature) return;
+            const clusterId = feature.properties?.cluster_id as number;
+            const geometry = feature.geometry as GeoJSON.Point;
+            const src = m.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+            src.getClusterExpansionZoom(clusterId, (err: Error | null | undefined, zoom: number | null | undefined) => {
+              if (err || zoom == null) return;
+              m.easeTo({ center: [geometry.coordinates[0], geometry.coordinates[1]], zoom });
+            });
+          });
+
+          /* ── Individual place click: show info card ── */
+          m.on('click', UNCLUSTERED_LAYER, (e) => {
+            const feature = e.features?.[0];
+            if (!feature) return;
+            e.originalEvent.stopPropagation();
+            const placeId = feature.properties?.id as string;
+            const place = placesRef.current.find((p) => p.id === placeId);
+            if (place) onSelectPlaceRef.current?.(place);
+          });
+
+          /* ── Hover: pointer cursor + glow ── */
+          m.on('mousemove', UNCLUSTERED_LAYER, (e) => {
+            const feature = e.features?.[0];
+            const fid = feature?.id as number | undefined;
+            if (hoveredIdRef.current !== null && hoveredIdRef.current !== fid) {
+              try { m.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
+            }
+            if (fid !== undefined && fid !== hoveredIdRef.current) {
+              try { m.setFeatureState({ source: SOURCE_ID, id: fid }, { hovered: true }); } catch { /* ignore */ }
+              hoveredIdRef.current = fid;
+            }
+            m.getCanvas().style.cursor = 'pointer';
+          });
+          m.on('mouseleave', UNCLUSTERED_LAYER, () => {
+            if (hoveredIdRef.current !== null) {
+              try { m.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
+              hoveredIdRef.current = null;
+            }
+            m.getCanvas().style.cursor = '';
+          });
+
+          /* ── Cluster hover: pointer cursor ── */
+          m.on('mouseenter', CLUSTER_LAYER, () => { m.getCanvas().style.cursor = 'pointer'; });
+          m.on('mouseleave', CLUSTER_LAYER, () => { m.getCanvas().style.cursor = ''; });
+        };
+
+        /* ── Update map source data; add layers on first call ── */
+        const updateMapSource = (m: mapboxgl.Map, places: MapPlace[]) => {
+          const filtered = filterPlaces(places, activeCategoryRef.current);
+          const { geojson, idMap } = buildGeoJSONData(filtered);
+          uuidToFeatureIdRef.current = idMap;
+
+          const source = m.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+          if (source) {
+            source.setData(geojson);
+            /* Feature states reset on setData — clear tracking refs */
+            prevSelectedIdRef.current = null;
+            hoveredIdRef.current = null;
+          } else {
+            /* First time — add source and all layers with event listeners */
+            addSourceAndLayers(m, geojson);
+
+            /* Restore selected state after initial load */
+            if (selectedPlaceIdRef.current) {
+              const numericId = uuidToFeatureIdRef.current.get(selectedPlaceIdRef.current);
+              if (numericId !== undefined) {
+                try {
+                  m.setFeatureState({ source: SOURCE_ID, id: numericId }, { selected: true });
+                  prevSelectedIdRef.current = numericId;
+                } catch { /* ignore */ }
+              }
+            }
+          }
+        };
+
+        /* ── Viewport-based fetch: debounced, merges into cache ── */
+        const fetchPlacesForViewport = (m: mapboxgl.Map) => {
+          if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+
+          fetchDebounceRef.current = setTimeout(() => {
+            fetchDebounceRef.current = null;
+            const activeRegionId = regionRef.current?.id;
+            if (!activeRegionId) return;
+
+            const bounds = getMapBounds(m);
+            if (!bounds) return;
+            const params = new URLSearchParams({
+              region_id: activeRegionId,
+              north: String(bounds.north),
+              south: String(bounds.south),
+              east: String(bounds.east),
+              west: String(bounds.west),
+              limit: '500',
+            });
+
+            fetch(`/api/places?${params}`)
+              .then((res) => res.json())
+              .then((body: { data?: MapPlace[]; error?: string }) => {
+                if (body.error) {
+                  console.warn('[Stayscape Map] Places API error:', body.error);
+                  return;
+                }
+                const incoming: MapPlace[] = body.data ?? [];
+
+                /* Merge with existing cached places (accumulate, don't replace) */
+                const existingMap = new Map(placesRef.current.map((p) => [p.id, p]));
+                incoming.forEach((p) => existingMap.set(p.id, p));
+                placesRef.current = Array.from(existingMap.values());
+
+                updateMapSource(m, placesRef.current);
+              })
+              .catch((err) => {
+                console.warn('[Stayscape Map] Failed to fetch places:', err);
+              });
+          }, 300);
+        };
+
         map.on('style.load', () => {
           styleLoaded = true;
           clearTimeout(styleFallbackTimeout);
@@ -440,187 +672,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             .setLngLat([center.lng, center.lat])
             .addTo(map);
 
-          /* ── Fetch places from Supabase and render via GeoJSON layers ── */
-          const activeRegionId = regionRef.current?.id;
-          if (activeRegionId) {
-            fetch(`/api/places?region_id=${encodeURIComponent(activeRegionId)}&limit=300`)
-              .then((res) => res.json())
-              .then((body: { data?: MapPlace[]; error?: string }) => {
-                if (body.error) {
-                  console.warn('[Stayscape Map] Places API error:', body.error);
-                  return;
-                }
-                const places: MapPlace[] = body.data ?? [];
-                placesRef.current = places;
+          /* ── Initial viewport fetch ── */
+          fetchPlacesForViewport(map);
 
-                /* Apply active category filter */
-                const filtered = filterPlaces(places, activeCategoryRef.current);
-
-                /* ── GeoJSON source with built-in clustering ── */
-                const { geojson: placesGeojson, idMap } = buildGeoJSONData(filtered);
-                uuidToFeatureIdRef.current = idMap;
-                map.addSource(SOURCE_ID, {
-                  type: 'geojson',
-                  data: placesGeojson,
-                  cluster: true,
-                  clusterMaxZoom: 13,
-                  clusterRadius: 50,
-                });
-
-                /* ── Cluster circles ── */
-                map.addLayer({
-                  id: CLUSTER_LAYER,
-                  type: 'circle',
-                  source: SOURCE_ID,
-                  filter: ['has', 'point_count'],
-                  paint: {
-                    'circle-color': 'rgba(10,14,19,0.75)',
-                    'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 26],
-                    'circle-stroke-width': 1.5,
-                    'circle-stroke-color': 'rgba(255,255,255,0.2)',
-                    'circle-blur': 0,
-                  },
-                });
-
-                /* ── Cluster count labels ── */
-                map.addLayer({
-                  id: CLUSTER_COUNT_LAYER,
-                  type: 'symbol',
-                  source: SOURCE_ID,
-                  filter: ['has', 'point_count'],
-                  layout: {
-                    'text-field': '{point_count_abbreviated}',
-                    'text-size': 12,
-                    'text-allow-overlap': true,
-                  },
-                  paint: {
-                    'text-color': '#FFFFFF',
-                    'text-opacity': 1,
-                  },
-                });
-
-                /* ── Individual place dots — bright green, bold, visible ── */
-                map.addLayer({
-                  id: UNCLUSTERED_LAYER,
-                  type: 'circle',
-                  source: SOURCE_ID,
-                  filter: ['!', ['has', 'point_count']],
-                  paint: {
-                    'circle-color': [
-                      'case',
-                      ['boolean', ['feature-state', 'selected'], false], SELECTED_DOT_COLOR,
-                      MARKER_COLOR_GREEN,
-                    ],
-                    'circle-radius': [
-                      'interpolate', ['linear'], ['zoom'],
-                      10, 6, 13, 8, 16, 10,
-                    ],
-                    'circle-stroke-width': 1.5,
-                    'circle-stroke-color': [
-                      'case',
-                      ['boolean', ['feature-state', 'selected'], false], 'rgba(255,255,255,0.9)',
-                      'rgba(255,255,255,0.5)',
-                    ],
-                    'circle-blur': [
-                      'case',
-                      ['boolean', ['feature-state', 'selected'], false], 0.15,
-                      0,
-                    ],
-                    'circle-opacity': 1.0,
-                  },
-                });
-
-                /* ── Place name labels at high zoom ── */
-                map.addLayer({
-                  id: LABEL_LAYER,
-                  type: 'symbol',
-                  source: SOURCE_ID,
-                  filter: ['!', ['has', 'point_count']],
-                  minzoom: 16,
-                  layout: {
-                    'text-field': ['get', 'name'],
-                    'text-size': 9,
-                    'text-offset': [0, 1.2],
-                    'text-anchor': 'top',
-                    'text-max-width': 8,
-                    'text-allow-overlap': false,
-                    'text-optional': true,
-                  },
-                  paint: {
-                    'text-color': 'rgba(232,230,225,0.65)',
-                    'text-halo-color': 'rgba(10,14,19,0.9)',
-                    'text-halo-width': 0.8,
-                  },
-                });
-
-                sourceAddedRef.current = true;
-
-                /* Restore selected state if needed */
-                if (selectedPlaceIdRef.current) {
-                  const numericId = uuidToFeatureIdRef.current.get(selectedPlaceIdRef.current);
-                  if (numericId !== undefined) {
-                    try {
-                      map.setFeatureState({ source: SOURCE_ID, id: numericId }, { selected: true });
-                      prevSelectedIdRef.current = numericId;
-                    } catch { /* ignore */ }
-                  }
-                }
-
-                /* ── Cluster click: zoom in ── */
-                map.on('click', CLUSTER_LAYER, (e) => {
-                  const feature = e.features?.[0];
-                  if (!feature) return;
-                  const clusterId = feature.properties?.cluster_id as number;
-                  const geometry = feature.geometry as GeoJSON.Point;
-                  const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
-                  src.getClusterExpansionZoom(clusterId, (err: Error | null | undefined, zoom: number | null | undefined) => {
-                    if (err || zoom == null) return;
-                    map.easeTo({ center: [geometry.coordinates[0], geometry.coordinates[1]], zoom });
-                  });
-                });
-
-                /* ── Individual place click: show info card ── */
-                map.on('click', UNCLUSTERED_LAYER, (e) => {
-                  const feature = e.features?.[0];
-                  if (!feature) return;
-                  e.originalEvent.stopPropagation();
-                  const placeId = feature.properties?.id as string;
-                  const place = placesRef.current.find((p) => p.id === placeId);
-                  if (place) onSelectPlaceRef.current?.(place);
-                });
-
-                /* ── Hover: pointer cursor + glow ── */
-                map.on('mousemove', UNCLUSTERED_LAYER, (e) => {
-                  const feature = e.features?.[0];
-                  const fid = feature?.id as number | undefined;
-                  if (hoveredIdRef.current !== null && hoveredIdRef.current !== fid) {
-                    try { map.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
-                  }
-                  if (fid !== undefined && fid !== hoveredIdRef.current) {
-                    try { map.setFeatureState({ source: SOURCE_ID, id: fid }, { hovered: true }); } catch { /* ignore */ }
-                    hoveredIdRef.current = fid;
-                  }
-                  map.getCanvas().style.cursor = 'pointer';
-                });
-                map.on('mouseleave', UNCLUSTERED_LAYER, () => {
-                  if (hoveredIdRef.current !== null) {
-                    try { map.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
-                    hoveredIdRef.current = null;
-                  }
-                  map.getCanvas().style.cursor = '';
-                });
-
-                /* ── Cluster hover: pointer cursor ── */
-                map.on('mouseenter', CLUSTER_LAYER, () => { map.getCanvas().style.cursor = 'pointer'; });
-                map.on('mouseleave', CLUSTER_LAYER, () => { map.getCanvas().style.cursor = ''; });
-              })
-              .catch((err) => {
-                console.warn('[Stayscape Map] Failed to fetch places:', err);
-              });
-          }
+          /* ── Re-fetch on pan / zoom ── */
+          map.on('moveend', () => {
+            fetchPlacesForViewport(map);
+          });
         });
 
-        /* Keep canvas sized correctly on window resize */
         /* Keep canvas sized correctly on window resize */
         const handleWindowResize = () => map.resize();
         windowResizeHandlerRef.current = handleWindowResize;
@@ -652,6 +712,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const userMarker = userMapMarkerRef;
     const searchMarker = searchMarkerRef;
     const itinAddedTimer = itinAddedTimerRef;
+    const fetchDebounce = fetchDebounceRef;
     return () => {
       hotelMarker.current?.remove();
       hotelMarker.current = null;
@@ -666,6 +727,10 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       if (fallbackTimeout.current) {
         clearTimeout(fallbackTimeout.current);
         fallbackTimeout.current = null;
+      }
+      if (fetchDebounce.current) {
+        clearTimeout(fetchDebounce.current);
+        fetchDebounce.current = null;
       }
       if (windowResizeHandler.current) {
         window.removeEventListener('resize', windowResizeHandler.current);
