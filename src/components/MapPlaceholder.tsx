@@ -18,6 +18,7 @@ import { getDistanceFromHotel } from '@/lib/mapbox/directions';
 import MapSearch from '@/components/MapSearch';
 import MapRoute from '@/components/MapRoute';
 import type { SearchResult } from '@/types/mapbox';
+import { useRegion } from '@/lib/context/region-context';
 
 /* ─── Sample places with real lat/lng coordinates ─── */
 
@@ -120,8 +121,8 @@ const mapPlaces: (Place & { lat: number; lng: number; cx: number; cy: number })[
   },
 ];
 
-/* ─── Hotel center coordinates ─── */
-const HOTEL_CENTER = { lat: 40.7649, lng: -73.9733 };
+/* ─── Default center coordinates (Singapore Central) ─── */
+const DEFAULT_CENTER = { lat: 1.2897, lng: 103.8501 };
 
 const CATEGORY_ICONS: Record<string, string> = {
   Restaurants: '🍽️',
@@ -168,6 +169,11 @@ interface MapPlaceholderProps {
 }
 
 export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
+  const { region } = useRegion();
+  /* Keep region in a ref so initMap (stable callback) can read the latest value */
+  const regionRef = useRef(region);
+  useEffect(() => { regionRef.current = region; }, [region]);
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -223,11 +229,14 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       let styleLoaded = false;
 
       const createMap = (styleUrl: string) => {
+        const center = regionRef.current
+          ? { lat: regionRef.current.latitude, lng: regionRef.current.longitude }
+          : DEFAULT_CENTER;
         const map = new mapboxgl.default.Map({
           container: mapContainerRef.current!,
           style: styleUrl,
-          center: [HOTEL_CENTER.lng, HOTEL_CENTER.lat],
-          zoom: 14,
+          center: [center.lng, center.lat],
+          zoom: 13,
           attributionControl: false,
         });
 
@@ -284,7 +293,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             '</div>',
           ].join('');
           new mapboxgl.default.Marker({ element: hotelEl, anchor: 'center' })
-            .setLngLat([HOTEL_CENTER.lng, HOTEL_CENTER.lat])
+            .setLngLat([center.lng, center.lat])
             .addTo(map);
 
           /* ── Place markers — premium category-colored design ── */
