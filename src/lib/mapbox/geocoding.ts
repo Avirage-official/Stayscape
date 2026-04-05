@@ -15,10 +15,6 @@ import {
 } from '@/lib/mapbox/config';
 import type { GeocodingFeature, GeocodingResponse, SearchResult } from '@/types/mapbox';
 
-/* ── Hotel coordinates used as proximity bias ─────────────── */
-const HOTEL_LAT = 40.7649;
-const HOTEL_LNG = -73.9733;
-
 /* ── Helpers ──────────────────────────────────────────────── */
 
 /**
@@ -43,20 +39,24 @@ export function haversineMetres(
 
 /**
  * Format a distance in metres to a concise display string.
- * Uses miles (imperial) to match the Stayscape sample data style.
+ * Uses metric units: metres below 1 km, kilometres above.
  */
 export function formatDistanceDisplay(metres: number): string {
-  const miles = metres / 1609.344;
-  if (miles < 0.1) return `${Math.round(metres)} m`;
-  return `${miles.toFixed(1)} mi`;
+  if (metres < 1000) return `${Math.round(metres)} m`;
+  return `${(metres / 1000).toFixed(1)} km`;
 }
 
 /**
  * Normalize a raw GeocodingFeature into the UI-friendly SearchResult shape.
+ * Requires the region center coordinates for distance calculation.
  */
-export function normalizeFeature(feature: GeocodingFeature): SearchResult {
+export function normalizeFeature(
+  feature: GeocodingFeature,
+  regionLat: number,
+  regionLng: number,
+): SearchResult {
   const [lng, lat] = feature.center;
-  const distanceMetres = haversineMetres(HOTEL_LAT, HOTEL_LNG, lat, lng);
+  const distanceMetres = haversineMetres(regionLat, regionLng, lat, lng);
 
   // Build a short subtitle: prefer properties.category, then first context text, then place_type
   const subtitle =
@@ -82,20 +82,28 @@ export function normalizeFeature(feature: GeocodingFeature): SearchResult {
 export interface SearchPlacesOptions {
   /** Maximum results to return (default: DEFAULT_SEARCH_LIMIT) */
   limit?: number;
-  /** Proximity bias — defaults to hotel center */
+  /** Proximity bias coordinates */
   proximityLng?: number;
   proximityLat?: number;
+  /**
+   * Bounding box to restrict results: [west, south, east, north].
+   * When provided, only results within this area are returned.
+   */
+  bbox?: [number, number, number, number];
   /** Comma-separated Mapbox feature types */
   types?: string;
   /** BCP-47 language tag for results */
   language?: string;
+  /** Region center — used for distance computation (falls back to proximity if omitted) */
+  regionLat?: number;
+  regionLng?: number;
 }
 
 /**
  * Forward geocoding: text query → list of place candidates.
  *
- * Biases results toward the hotel location so that nearby places
- * rank higher in the autocomplete dropdown.
+ * Biases results toward the region center and restricts results to
+ * the supplied bounding box so only locally-relevant places appear.
  */
 export async function searchPlaces(
   query: string,
@@ -112,22 +120,39 @@ export async function searchPlaces(
 
   const {
     limit = DEFAULT_SEARCH_LIMIT,
-    proximityLng = HOTEL_LNG,
-    proximityLat = HOTEL_LAT,
+    proximityLng,
+    proximityLat,
+    bbox,
     types = 'poi,address,neighborhood',
     language = 'en',
+    regionLat,
+    regionLng,
   } = options;
 
   const encoded = encodeURIComponent(trimmed);
   const params = new URLSearchParams({
     access_token: token,
-    proximity: `${proximityLng},${proximityLat}`,
     limit: String(limit),
     types,
     language,
   });
 
+  if (proximityLng !== undefined && proximityLat !== undefined) {
+    params.set('proximity', `${proximityLng},${proximityLat}`);
+  }
+
+  if (bbox) {
+    params.set('bbox', bbox.join(','));
+  }
+
   const url = `${MAPBOX_GEOCODING_URL}/${encoded}.json?${params}`;
+
+  /* Use supplied region center for distances, falling back to proximity coords.
+     When no coords are available, skip distance computation (return 0). */
+  const hasDistCoords =
+    (regionLat != null && regionLng != null) || (proximityLat != null && proximityLng != null);
+  const distLat = regionLat ?? proximityLat ?? 0;
+  const distLng = regionLng ?? proximityLng ?? 0;
 
   try {
     const res = await fetch(url);
@@ -136,11 +161,35 @@ export async function searchPlaces(
       return [];
     }
     const data: GeocodingResponse = await res.json();
-    return data.features.map(normalizeFeature);
+    return data.features.map((f) =>
+      hasDistCoords
+        ? normalizeFeature(f, distLat, distLng)
+        : normalizeFeatureNoDistance(f),
+    );
   } catch (err) {
     console.warn('[Stayscape Map] Geocoding request failed:', err);
     return [];
   }
+}
+
+/** Normalize without distance computation (no region center available). */
+function normalizeFeatureNoDistance(feature: GeocodingFeature): SearchResult {
+  const [lng, lat] = feature.center;
+  const subtitle =
+    feature.properties?.category ||
+    feature.context?.[0]?.text ||
+    feature.place_type[0] ||
+    '';
+  return {
+    id: feature.id,
+    name: feature.text,
+    fullAddress: feature.place_name,
+    subtitle,
+    lat,
+    lng,
+    distanceMetres: 0,
+    distanceDisplay: '',
+  };
 }
 
 /* ── Reverse Geocoding ────────────────────────────────────── */

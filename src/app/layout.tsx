@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import ThemeProvider from "@/components/ThemeProvider";
+import { RegionProvider } from "@/lib/context/region-context";
 
 export const metadata: Metadata = {
   title: "Stayscape",
@@ -25,7 +26,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-[var(--background)] text-[var(--foreground)]">
         <ThemeProvider>
-          {children}
+          <RegionProvider>
+            {children}
+          </RegionProvider>
         </ThemeProvider>
       </body>
     </html>

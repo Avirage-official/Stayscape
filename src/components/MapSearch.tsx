@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { createDebouncedSearch } from '@/lib/mapbox/geocoding';
-import { MARKER_COLOR_GOLD } from '@/lib/mapbox/config';
+import { searchPlaces, haversineMetres, formatDistanceDisplay } from '@/lib/mapbox/geocoding';
+import { MARKER_COLOR_GOLD, SEARCH_DEBOUNCE_MS, DEFAULT_SEARCH_LIMIT } from '@/lib/mapbox/config';
 import type { SearchResult } from '@/types/mapbox';
+import { useRegion } from '@/lib/context/region-context';
 
 interface MapSearchProps {
   /** Called when the user selects a result */
@@ -12,7 +13,23 @@ interface MapSearchProps {
   onClear?: () => void;
 }
 
+/**
+ * Compute a bounding box from a center lat/lng and a radius in km.
+ * Returns [west, south, east, north].
+ */
+function computeBbox(lat: number, lng: number, radiusKm: number): [number, number, number, number] {
+  const deltaLat = radiusKm / 111.32;
+  const deltaLng = radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180));
+  return [
+    parseFloat((lng - deltaLng).toFixed(6)),
+    parseFloat((lat - deltaLat).toFixed(6)),
+    parseFloat((lng + deltaLng).toFixed(6)),
+    parseFloat((lat + deltaLat).toFixed(6)),
+  ];
+}
+
 export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
+  const { region } = useRegion();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -21,16 +38,86 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* ── Debounced search ──────────────────────────────────── */
-  const debouncedSearch = useRef(
-    createDebouncedSearch((r) => {
-      setResults(r);
+  /* -- Combined search: Supabase places + Mapbox geocoding--- */
+  const runSearch = useCallback(
+    async (value: string) => {
+      if (value.trim().length < 2) {
+        setResults([]);
+        setIsOpen(false);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      const regionLat = region?.latitude ?? 0;
+      const regionLng = region?.longitude ?? 0;
+      const radiusKm = region?.radius_km ?? 30;
+      const bbox = region
+        ? computeBbox(regionLat, regionLng, radiusKm)
+        : undefined;
+
+      /* Run both fetches in parallel */
+      const [supabaseResults, mapboxResults] = await Promise.all([
+        /* 1 — Supabase local places */
+        region
+          ? fetch(
+              `/api/places/search?q=${encodeURIComponent(value)}&region_id=${region.id}&limit=${DEFAULT_SEARCH_LIMIT}`,
+            )
+              .then((r) => (r.ok ? r.json() : { data: [] }))
+              .then((j: { data?: SearchResult[] }) => (j.data ?? []) as SearchResult[])
+              .catch(() => [] as SearchResult[])
+          : Promise.resolve([] as SearchResult[]),
+
+        /* 2 — Mapbox geocoding with bbox restriction */
+        searchPlaces(value, {
+          proximityLat: region != null ? regionLat : undefined,
+          proximityLng: region != null ? regionLng : undefined,
+          regionLat: region != null ? regionLat : undefined,
+          regionLng: region != null ? regionLng : undefined,
+          bbox,
+          limit: DEFAULT_SEARCH_LIMIT,
+        }),
+      ]);
+
+      /* Tag sources */
+      const supabaseTagged: SearchResult[] = supabaseResults.map((r) => ({
+        ...r,
+        source: 'supabase' as const,
+      }));
+      const mapboxTagged: SearchResult[] = mapboxResults.map((r) => ({
+        ...r,
+        source: 'mapbox' as const,
+      }));
+
+      /* Deduplicate by name (case-insensitive) — Supabase results take priority */
+      const seen = new Set<string>();
+      const merged: SearchResult[] = [];
+      for (const r of [...supabaseTagged, ...mapboxTagged]) {
+        const key = r.name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(r);
+        }
+      }
+
+      /* Recompute distances if we have a region center */
+      const final = merged.map((r) => {
+        if (!region) return r;
+        const distanceMetres = haversineMetres(regionLat, regionLng, r.lat, r.lng);
+        return { ...r, distanceMetres, distanceDisplay: formatDistanceDisplay(distanceMetres) };
+      });
+
+      setResults(final);
       setIsLoading(false);
-      setIsOpen(r.length > 0);
-    }),
-  ).current;
+      setIsOpen(final.length > 0);
+    },
+    [region],
+  );
 
+  /* -- Debounced query change--- */
   const handleQueryChange = useCallback(
     (value: string) => {
       setQuery(value);
@@ -39,15 +126,19 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
         setResults([]);
         setIsOpen(false);
         setIsLoading(false);
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
         return;
       }
       setIsLoading(true);
-      debouncedSearch(value);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      debounceTimer.current = setTimeout(() => {
+        runSearch(value);
+      }, SEARCH_DEBOUNCE_MS);
     },
-    [debouncedSearch],
+    [runSearch],
   );
 
-  /* ── Keyboard navigation ───────────────────────────────── */
+  /* -- Keyboard navigation--- */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (!isOpen) return;
@@ -73,7 +164,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
     [isOpen, results, activeIndex],
   );
 
-  /* ── Scroll active item into view ──────────────────────── */
+  /* -- Scroll active item into view--- */
   useEffect(() => {
     if (activeIndex >= 0 && listRef.current) {
       const item = listRef.current.children[activeIndex] as HTMLElement | undefined;
@@ -81,7 +172,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
     }
   }, [activeIndex]);
 
-  /* ── Select a result ───────────────────────────────────── */
+  /* -- Select a result--- */
   const handleSelect = useCallback(
     (result: SearchResult) => {
       setQuery(result.name);
@@ -93,7 +184,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
     [onSelect],
   );
 
-  /* ── Clear ─────────────────────────────────────────────── */
+  /* -- Clear--- */
   const handleClear = useCallback(() => {
     setQuery('');
     setResults([]);
@@ -104,7 +195,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
     inputRef.current?.focus();
   }, [onClear]);
 
-  /* ── Dismiss dropdown on outside click ─────────────────── */
+  /* -- Dismiss dropdown on outside click--- */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -118,9 +209,6 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  /* ── Pre-warm first result on mount ────────────────────── */
-  // (no-op; search only fires on user input)
 
   return (
     <div
@@ -145,6 +233,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
         >
           {results.map((result, i) => {
             const isActive = i === activeIndex;
+            const isSupabase = result.source === 'supabase';
             return (
               <li
                 key={result.id}
@@ -210,16 +299,33 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
                     )}
                   </span>
 
-                  {/* Distance badge */}
-                  <span
-                    className="text-[9px] font-medium flex-shrink-0 rounded-full px-1.5 py-0.5"
-                    style={{
-                      color: MARKER_COLOR_GOLD,
-                      background: `${MARKER_COLOR_GOLD}14`,
-                      border: `1px solid ${MARKER_COLOR_GOLD}25`,
-                    }}
-                  >
-                    {result.distanceDisplay}
+                  <span className="flex items-center gap-1 flex-shrink-0">
+                    {/* Stayscape badge for local DB results */}
+                    {isSupabase && (
+                      <span
+                        className="text-[8px] font-semibold rounded-full px-1 py-0.5 hidden sm:inline-block"
+                        style={{
+                          color: MARKER_COLOR_GOLD,
+                          background: `${MARKER_COLOR_GOLD}18`,
+                          border: `1px solid ${MARKER_COLOR_GOLD}30`,
+                          letterSpacing: '0.03em',
+                        }}
+                      >
+                        Stayscape
+                      </span>
+                    )}
+
+                    {/* Distance badge */}
+                    <span
+                      className="text-[9px] font-medium rounded-full px-1.5 py-0.5"
+                      style={{
+                        color: MARKER_COLOR_GOLD,
+                        background: `${MARKER_COLOR_GOLD}14`,
+                        border: `1px solid ${MARKER_COLOR_GOLD}25`,
+                      }}
+                    >
+                      {result.distanceDisplay}
+                    </span>
                   </span>
                 </button>
               </li>
@@ -261,7 +367,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
           onChange={(e) => handleQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => { if (results.length > 0) setIsOpen(true); }}
-          placeholder="Search places nearby…"
+          placeholder={region ? `Search in ${region.name}…` : 'Search places nearby…'}
           aria-label="Search places on map"
           aria-autocomplete="list"
           aria-expanded={isOpen}

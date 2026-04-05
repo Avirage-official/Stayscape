@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import CustomerPanel from '@/components/CustomerPanel';
@@ -11,15 +12,25 @@ import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import Footer from '@/components/Footer';
 import { Place } from '@/types';
+import { useRegion } from '@/lib/context/region-context';
 
 type ActiveTab = 'concierge' | 'discover' | 'itinerary';
 type MobileView = 'map' | 'guest' | 'assistant';
 
 export default function Home() {
+  const router = useRouter();
+  const { region } = useRegion();
   const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('map');
   const panelRef = useRef<TravelAssistantPanelHandle>(null);
+
+  /* Redirect to region selection if no region chosen */
+  useEffect(() => {
+    if (region === null) {
+      router.replace('/select-region');
+    }
+  }, [region, router]);
 
   const handleSelectPlace = useCallback((place: Place) => {
     setSelectedPlace(place);

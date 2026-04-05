@@ -100,7 +100,7 @@ export interface DirectionsResponse {
    ════════════════════════════════════════════════════════════ */
 
 export interface SearchResult {
-  /** Mapbox feature id */
+  /** Mapbox feature id or supabase-{uuid} */
   id: string;
   /** Short display name (e.g. "Nobu Restaurant") */
   name: string;
@@ -111,10 +111,12 @@ export interface SearchResult {
   /** Coordinates */
   lat: number;
   lng: number;
-  /** Straight-line distance from hotel in metres (computed client-side) */
+  /** Straight-line distance from region center in metres (computed client-side) */
   distanceMetres: number;
-  /** Pre-formatted display string, e.g. "0.3 mi" */
+  /** Pre-formatted display string, e.g. "2.3 km" */
   distanceDisplay: string;
+  /** Origin of this result — 'supabase' for local places, 'mapbox' for geocoding */
+  source?: 'supabase' | 'mapbox';
 }
 
 export type DirectionsProfile = 'walking' | 'driving' | 'cycling';
