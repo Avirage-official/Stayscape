@@ -27,6 +27,8 @@ import {
 import { searchPlaces, type GeoapifySearchParams } from '@/lib/services/geoapify';
 import { enrichNewPlaces } from '@/lib/services/ai/enrichment';
 
+const DEFAULT_SYNC_RADIUS_METERS = 5000;
+
 export interface PlaceSyncOptions {
   region_id: string;
   latitude: number;
@@ -64,7 +66,7 @@ export async function syncPlaces(
     const searchParams: GeoapifySearchParams = {
       latitude: options.latitude,
       longitude: options.longitude,
-      radius_meters: options.radius_meters ?? 5000,
+      radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
       categories: options.categories,
       limit: options.limit ?? 50,
     };
@@ -89,12 +91,17 @@ export async function syncPlaces(
       }
     }
 
-    // 4. Deactivate stale records
+    // 4. Deactivate stale records — scoped to the synced bounding box
     const deactivated = await deactivateStalePlaces(
       supabase,
       'geoapify',
       options.region_id,
       syncStartedAt,
+      {
+        latitude: options.latitude,
+        longitude: options.longitude,
+        radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
+      },
     );
 
     // 5. AI enrichment for new records

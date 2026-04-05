@@ -18,6 +18,8 @@ import type {
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
+const METERS_PER_DEGREE_LATITUDE = 111000;
+
 const CATEGORY_GRADIENTS: Record<string, string> = {
   dining: 'from-amber-900/80 via-amber-950/60 to-black/80',
   nightlife: 'from-purple-900/80 via-purple-950/60 to-black/80',
@@ -167,24 +169,55 @@ export async function upsertPlace(
   return { place: data as InternalPlace, created: true };
 }
 
+export interface GeoBounds {
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+}
+
 /**
  * Deactivate places from a given source that weren't seen in the
  * latest sync (i.e., their `last_synced_at` is older than `since`).
+ *
+ * When `bounds` is provided the deactivation is scoped to the bounding box
+ * of the synced area so that places in other geographic areas are not
+ * incorrectly deactivated.
  */
 export async function deactivateStalePlaces(
   supabase: SupabaseClient,
   source: string,
   regionId: string,
   since: string,
+  bounds?: GeoBounds,
 ): Promise<number> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('places')
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq('external_source', source)
     .eq('region_id', regionId)
     .eq('is_active', true)
-    .lt('last_synced_at', since)
-    .select('id');
+    .lt('last_synced_at', since);
+
+  if (bounds) {
+    const { latitude, longitude, radius_meters } = bounds;
+    const latDelta = radius_meters / METERS_PER_DEGREE_LATITUDE;
+    const lngDelta =
+      radius_meters /
+      (METERS_PER_DEGREE_LATITUDE * Math.cos((latitude * Math.PI) / 180));
+
+    const south = latitude - latDelta;
+    const north = latitude + latDelta;
+    const west = longitude - lngDelta;
+    const east = longitude + lngDelta;
+
+    query = query
+      .gte('latitude', south)
+      .lte('latitude', north)
+      .gte('longitude', west)
+      .lte('longitude', east);
+  }
+
+  const { data, error } = await query.select('id');
   if (error) throw new Error(`deactivateStalePlaces failed: ${error.message}`);
   return data?.length ?? 0;
 }
