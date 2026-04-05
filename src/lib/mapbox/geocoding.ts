@@ -147,7 +147,10 @@ export async function searchPlaces(
 
   const url = `${MAPBOX_GEOCODING_URL}/${encoded}.json?${params}`;
 
-  /* Use supplied region center for distances, falling back to proximity coords */
+  /* Use supplied region center for distances, falling back to proximity coords.
+     When no coords are available, skip distance computation (return 0). */
+  const hasDistCoords =
+    (regionLat != null && regionLng != null) || (proximityLat != null && proximityLng != null);
   const distLat = regionLat ?? proximityLat ?? 0;
   const distLng = regionLng ?? proximityLng ?? 0;
 
@@ -158,11 +161,35 @@ export async function searchPlaces(
       return [];
     }
     const data: GeocodingResponse = await res.json();
-    return data.features.map((f) => normalizeFeature(f, distLat, distLng));
+    return data.features.map((f) =>
+      hasDistCoords
+        ? normalizeFeature(f, distLat, distLng)
+        : normalizeFeatureNoDistance(f),
+    );
   } catch (err) {
     console.warn('[Stayscape Map] Geocoding request failed:', err);
     return [];
   }
+}
+
+/** Normalize without distance computation (no region center available). */
+function normalizeFeatureNoDistance(feature: GeocodingFeature): SearchResult {
+  const [lng, lat] = feature.center;
+  const subtitle =
+    feature.properties?.category ||
+    feature.context?.[0]?.text ||
+    feature.place_type[0] ||
+    '';
+  return {
+    id: feature.id,
+    name: feature.text,
+    fullAddress: feature.place_name,
+    subtitle,
+    lat,
+    lng,
+    distanceMetres: 0,
+    distanceDisplay: '',
+  };
 }
 
 /* ── Reverse Geocoding ────────────────────────────────────── */

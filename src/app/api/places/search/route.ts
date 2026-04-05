@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     /* Fetch region center for distance calculation */
-    let regionLat = 0;
-    let regionLng = 0;
+    let regionCenter: { latitude: number; longitude: number } | null = null;
     if (regionId) {
       const { data: region } = await supabase
         .from('regions')
@@ -57,13 +56,14 @@ export async function GET(request: NextRequest) {
         .eq('id', regionId)
         .single();
       if (region) {
-        regionLat = region.latitude;
-        regionLng = region.longitude;
+        regionCenter = region;
       }
     }
 
     const results: (SearchResult & { source: 'supabase' })[] = (data ?? []).map((place) => {
-      const distanceMetres = haversineMetres(regionLat, regionLng, place.latitude, place.longitude);
+      const distanceMetres = regionCenter
+        ? haversineMetres(regionCenter.latitude, regionCenter.longitude, place.latitude, place.longitude)
+        : 0;
       return {
         id: `supabase-${place.id}`,
         name: place.name,
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         lat: place.latitude,
         lng: place.longitude,
         distanceMetres,
-        distanceDisplay: formatDistanceDisplay(distanceMetres),
+        distanceDisplay: regionCenter ? formatDistanceDisplay(distanceMetres) : '',
         source: 'supabase' as const,
       };
     });

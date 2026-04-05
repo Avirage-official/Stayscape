@@ -73,10 +73,10 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
 
         /* 2 — Mapbox geocoding with bbox restriction */
         searchPlaces(value, {
-          proximityLat: regionLat || undefined,
-          proximityLng: regionLng || undefined,
-          regionLat: regionLat || undefined,
-          regionLng: regionLng || undefined,
+          proximityLat: region != null ? regionLat : undefined,
+          proximityLng: region != null ? regionLng : undefined,
+          regionLat: region != null ? regionLat : undefined,
+          regionLng: region != null ? regionLng : undefined,
           bbox,
           limit: DEFAULT_SEARCH_LIMIT,
         }),
