@@ -19,7 +19,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const regionId = searchParams.get('region_id') ?? '';
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '300', 10), 500);
+  const parsedLimit = parseInt(searchParams.get('limit') ?? '300', 10);
+  const limit = Math.min(Number.isNaN(parsedLimit) ? 300 : parsedLimit, 500);
 
   if (!regionId) {
     return NextResponse.json({ error: 'region_id is required' }, { status: 400 });

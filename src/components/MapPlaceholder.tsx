@@ -18,22 +18,7 @@ import MapSearch from '@/components/MapSearch';
 import MapRoute from '@/components/MapRoute';
 import type { SearchResult } from '@/types/mapbox';
 import { useRegion } from '@/lib/context/region-context';
-
-/* ─── Place shape returned by /api/places ─── */
-interface MapPlace {
-  id: string;
-  name: string;
-  category: string;
-  description: string | null;
-  editorial_summary: string | null;
-  latitude: number;
-  longitude: number;
-  address: string | null;
-  rating: number | null;
-  booking_url: string | null;
-  website: string | null;
-  image_url: string | null;
-}
+import type { MapPlace } from '@/types';
 
 /* ─── Default center coordinates (Singapore Central) ─── */
 const DEFAULT_CENTER = { lat: 1.2897, lng: 103.8501 };
@@ -216,7 +201,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           markerDataRef.current.clear();
 
           /* ── Hotel “You Are Here” marker with permanent label ── */
-                    const regionLabel = regionRef.current?.name ?? 'Your Location';
+          const regionLabel = regionRef.current?.name ?? 'Your Location';
           const hotelEl = document.createElement('div');
           hotelEl.className = 'stayscape-hotel-marker';
           hotelEl.style.cssText = 'cursor:default;';
