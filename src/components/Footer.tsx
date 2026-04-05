@@ -10,7 +10,7 @@ const quickActions = [
 
 export default function Footer() {
   return (
-    <footer className="flex items-center justify-between px-4 sm:px-6 h-[38px] bg-[var(--header-bg)] border-t border-[var(--header-border)] flex-shrink-0">
+    <footer className="hidden lg:flex items-center justify-between px-4 sm:px-6 h-[38px] bg-[var(--header-bg)] border-t border-[var(--header-border)] flex-shrink-0">
       {/* Quick actions */}
       <div className="flex items-center space-x-1">
         {quickActions.map((action) => (
