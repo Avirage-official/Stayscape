@@ -44,3 +44,8 @@ export function getTicketmasterApiKey(): string {
 export function getOpenAIApiKey(): string {
   return getServerEnv('OPENAI_API_KEY');
 }
+
+/** Anthropic API key for Claude AI enrichment (backend only). */
+export function getAnthropicApiKey(): string {
+  return getServerEnv('ANTHROPIC_API_KEY');
+}

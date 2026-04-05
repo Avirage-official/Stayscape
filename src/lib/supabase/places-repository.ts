@@ -235,3 +235,26 @@ export function toDiscoveryDetail(
     best_time_to_go: null,
   };
 }
+
+/**
+ * Query places that have not yet been AI-enriched (no editorial_summary).
+ * Used by the enrichment API endpoint to find candidates for processing.
+ */
+export async function getUnenrichedPlaces(
+  supabase: SupabaseClient,
+  options: { region_id?: string; limit?: number } = {},
+): Promise<InternalPlace[]> {
+  let query = supabase
+    .from('places')
+    .select('*')
+    .eq('is_active', true)
+    .is('editorial_summary', null)
+    .order('created_at', { ascending: true });
+
+  if (options.region_id) query = query.eq('region_id', options.region_id);
+  query = query.limit(options.limit ?? 50);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`getUnenrichedPlaces failed: ${error.message}`);
+  return (data ?? []) as InternalPlace[];
+}

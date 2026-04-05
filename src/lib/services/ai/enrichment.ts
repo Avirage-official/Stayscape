@@ -24,11 +24,18 @@ import type {
   PlaceTag,
   EventTag,
 } from '@/types/database';
+import { getPlaceDetails } from '@/lib/services/geoapify';
+import { ClaudeProvider } from './claude-provider';
 
-/* ── Types ───────────────────────────────────────────────── */
+/* ── Types ───────────────────────────────────────────────────── */
 
 export interface EnrichmentResult {
   editorial_summary: string;
+  booking_url?: string | null;
+  website?: string | null;
+  recommended_duration?: string | null;
+  best_time_to_go?: string | null;
+  indoor_outdoor?: string | null;
   tags: Array<{
     tag: string;
     tag_type: TagType;
@@ -41,7 +48,7 @@ export interface AIEnrichmentProvider {
   enrichEvent(event: InternalEvent): Promise<EnrichmentResult>;
 }
 
-/* ── Default / placeholder provider ──────────────────────── */
+/* ── Default / placeholder provider ──────────────────────────── */
 
 /**
  * Placeholder AI provider that returns empty enrichments.
@@ -59,38 +66,105 @@ class PlaceholderAIProvider implements AIEnrichmentProvider {
   }
 }
 
-/* ── Enrichment orchestrator ─────────────────────────────── */
+/* ── Provider resolution ─────────────────────────────────────── */
 
-let _provider: AIEnrichmentProvider = new PlaceholderAIProvider();
+let _provider: AIEnrichmentProvider | null = null;
+
+/**
+ * Returns the active AI provider.
+ * Auto-detects Claude if ANTHROPIC_API_KEY is set; otherwise falls
+ * back to the placeholder. Call setAIProvider() to override.
+ */
+function getActiveProvider(): AIEnrichmentProvider {
+  if (_provider) return _provider;
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (anthropicKey) {
+    _provider = new ClaudeProvider(anthropicKey);
+  } else {
+    _provider = new PlaceholderAIProvider();
+  }
+
+  return _provider;
+}
 
 export function setAIProvider(provider: AIEnrichmentProvider): void {
   _provider = provider;
 }
 
+/* ── Enrichment orchestrator ─────────────────────────────────── */
+
 /**
  * Enrich a place with AI-generated metadata.
- * Writes editorial_summary back to the place record and inserts
- * tags into the place_tags table.
+ *
+ * Pipeline:
+ * 1. Fetch fresh structured data from Geoapify Place Details (website, phone)
+ * 2. Update the place record with Geoapify data
+ * 3. Call the AI provider with the enriched place context
+ * 4. Write editorial_summary, booking_url, website back to the place record
+ * 5. Upsert vibe/best_for tags into place_tags
  */
 export async function enrichPlace(
   supabase: SupabaseClient,
   place: InternalPlace,
 ): Promise<void> {
-  const result = await _provider.enrichPlace(place);
-  if (!result.editorial_summary && result.tags.length === 0) return;
+  // Step 1 – Fetch Geoapify Place Details for structured data
+  let enrichedPlace = place;
+  if (place.external_source === 'geoapify' && place.external_id) {
+    try {
+      const details = await getPlaceDetails(place.external_id);
+      if (details) {
+        const geoapifyUpdates: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (details.website && !place.website) {
+          geoapifyUpdates.website = details.website;
+        }
+        if (details.phone && !place.phone) {
+          geoapifyUpdates.phone = details.phone;
+        }
 
-  // Update editorial summary if generated
-  if (result.editorial_summary) {
-    await supabase
-      .from('places')
-      .update({
-        editorial_summary: result.editorial_summary,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', place.id);
+        if (Object.keys(geoapifyUpdates).length > 1) {
+          await supabase
+            .from('places')
+            .update(geoapifyUpdates)
+            .eq('id', place.id);
+
+          enrichedPlace = {
+            ...place,
+            website: (geoapifyUpdates.website as string | null) ?? place.website,
+            phone: (geoapifyUpdates.phone as string | null) ?? place.phone,
+          };
+        }
+      }
+    } catch {
+      // Non-fatal — continue with existing place data
+    }
   }
 
-  // Upsert AI-generated tags
+  // Step 2 – Call AI provider
+  const result = await getActiveProvider().enrichPlace(enrichedPlace);
+  if (!result.editorial_summary && result.tags.length === 0) return;
+
+  // Step 3 – Write AI results back to the place record
+  const placeUpdates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (result.editorial_summary) {
+    placeUpdates.editorial_summary = result.editorial_summary;
+  }
+  if (result.booking_url) {
+    placeUpdates.booking_url = result.booking_url;
+  }
+  if (result.website && !enrichedPlace.website) {
+    placeUpdates.website = result.website;
+  }
+
+  if (Object.keys(placeUpdates).length > 1) {
+    await supabase.from('places').update(placeUpdates).eq('id', place.id);
+  }
+
+  // Step 4 – Upsert AI-generated tags
   if (result.tags.length > 0) {
     const tagRows: Omit<PlaceTag, 'id' | 'created_at'>[] = result.tags.map(
       (t) => ({
@@ -120,7 +194,7 @@ export async function enrichEvent(
   supabase: SupabaseClient,
   event: InternalEvent,
 ): Promise<void> {
-  const result = await _provider.enrichEvent(event);
+  const result = await getActiveProvider().enrichEvent(event);
   if (!result.editorial_summary && result.tags.length === 0) return;
 
   if (result.editorial_summary) {
@@ -179,6 +253,9 @@ export async function enrichNewPlaces(
     } catch {
       failed++;
     }
+
+    // Small delay to avoid hitting API rate limits
+    await delay(500);
   }
 
   return { enriched, failed };
@@ -208,7 +285,15 @@ export async function enrichNewEvents(
     } catch {
       failed++;
     }
+
+    await delay(500);
   }
 
   return { enriched, failed };
+}
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
