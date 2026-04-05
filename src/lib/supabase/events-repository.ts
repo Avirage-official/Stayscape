@@ -190,6 +190,8 @@ export function toDiscoveryEventCard(
     description: event.description,
     editorial_summary: event.editorial_summary,
     venue_name: event.venue_name,
+    latitude: event.latitude,
+    longitude: event.longitude,
     image_url: event.image_url,
     start_date: event.start_date,
     end_date: event.end_date,
@@ -210,8 +212,6 @@ export function toDiscoveryEventDetail(
 ): DiscoveryEventDetail {
   return {
     ...toDiscoveryEventCard(event, tags),
-    latitude: event.latitude,
-    longitude: event.longitude,
     address: event.address,
     end_time: event.end_time,
     image_urls: event.image_urls,

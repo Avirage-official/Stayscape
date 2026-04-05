@@ -123,3 +123,58 @@ export function useLocalInsights(): UseLocalInsightsResult {
 
   return { insights, loading, error, refetch };
 }
+
+/* ── Upcoming Events ─────────────────────────────────────── */
+
+export interface EventCard {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  editorial_summary: string | null;
+  venue_name: string | null;
+  image_url: string | null;
+  start_date: string;
+  end_date: string | null;
+  start_time: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  currency: string | null;
+  ticket_url: string | null;
+  is_featured: boolean;
+}
+
+interface UseDiscoverEventsResult {
+  events: EventCard[];
+  loading: boolean;
+  error: string | null;
+  refetch: (regionId: string) => void;
+}
+
+export function useDiscoverEvents(): UseDiscoverEventsResult {
+  const [events, setEvents] = useState<EventCard[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback((regionId: string) => {
+    if (!regionId) return;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/discovery/events?region_id=${encodeURIComponent(regionId)}&limit=10`)
+      .then((res) => res.json())
+      .then((body: { data?: EventCard[]; error?: string }) => {
+        if (body.error) {
+          setEvents([]);
+        } else {
+          setEvents(body.data ?? []);
+        }
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load events');
+        setEvents([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { events, loading, error, refetch };
+}
