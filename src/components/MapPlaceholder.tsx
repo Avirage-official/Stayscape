@@ -25,50 +25,47 @@ const DEFAULT_CENTER = { lat: 1.2897, lng: 103.8501 };
 const DEFAULT_ITINERARY_TIME = '10:00';
 const DEFAULT_ITINERARY_DURATION_HOURS = 2;
 
-const CATEGORY_ICONS: Record<string, string> = {
-  dining: '🍽️',
-  nightlife: '🍸',
-  shopping: '🛍️',
-  nature: '🌿',
-  historical: '🏛️',
-  wellness: '💆',
-  family: '👨‍👩‍👧',
-  events: '🎉',
-  local_spots: '📍',
-  fun_places: '📍',
-  top_places: '📍',
-  /* Legacy display-name keys */
-  Restaurants: '🍽️',
-  'Bars & Drinks': '🍸',
-  Activities: '🏃',
-  Shopping: '🛍️',
-};
+/* ─── Map source / layer identifiers ─── */
+const SOURCE_ID = 'stayscape-places';
+const CLUSTER_LAYER = 'stayscape-clusters';
+const CLUSTER_COUNT_LAYER = 'stayscape-cluster-count';
+const UNCLUSTERED_LAYER = 'stayscape-unclustered';
+const LABEL_LAYER = 'stayscape-labels';
+
+/* ─── Category filter options ─── */
+const CATEGORY_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'dining', label: 'Dining' },
+  { key: 'nightlife', label: 'Nightlife' },
+  { key: 'shopping', label: 'Shopping' },
+  { key: 'nature', label: 'Nature' },
+  { key: 'historical', label: 'Historical' },
+  { key: 'wellness', label: 'Wellness' },
+  { key: 'events', label: 'Events' },
+];
 
 function getCategoryColor(category: string): string {
   return CATEGORY_COLORS[category] ?? '#6B7280';
 }
 
-interface MarkerData {
-  container: HTMLDivElement;
-  badge: HTMLDivElement;
-  category: string;
-  color: string;
-}
-
-/** Apply selected/unselected styles to a marker */
-function applyMarkerStyle(data: MarkerData, isSelected: boolean) {
-  const { badge, color } = data;
-  if (isSelected) {
-    badge.style.transform = 'scale(1.25)';
-    badge.style.borderColor = MARKER_COLOR_GOLD;
-    badge.style.boxShadow = `0 0 14px ${MARKER_COLOR_GOLD}90, 0 0 5px ${MARKER_COLOR_GOLD}, 0 2px 8px rgba(0,0,0,0.5)`;
-    badge.style.background = 'rgba(10,14,19,0.96)';
-  } else {
-    badge.style.transform = 'scale(1)';
-    badge.style.borderColor = `${color}90`;
-    badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.45)';
-    badge.style.background = 'rgba(10,14,19,0.88)';
-  }
+function placesToGeoJSON(places: MapPlace[]): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: places.map((p) => ({
+      type: 'Feature' as const,
+      id: p.id,
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [p.longitude, p.latitude],
+      },
+      properties: {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        color: getCategoryColor(p.category),
+      },
+    })),
+  };
 }
 
 interface MapPlaceholderProps {
@@ -85,8 +82,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const markerDataRef = useRef<Map<string, MarkerData>>(new Map());
+  const hotelMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const placesRef = useRef<MapPlace[]>([]); /* cached Supabase places */
   const initializedRef = useRef(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -98,6 +94,11 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   /* Keep a ref in sync with selectedPlaceId for use inside DOM event handlers */
   const selectedPlaceIdRef = useRef(selectedPlaceId);
   useEffect(() => { selectedPlaceIdRef.current = selectedPlaceId; }, [selectedPlaceId]);
+
+  /* Track GeoJSON source state and hover/selected feature IDs */
+  const sourceAddedRef = useRef(false);
+  const hoveredIdRef = useRef<string | null>(null);
+  const prevSelectedIdRef = useRef<string | null>(null);
 
   /* ─── Geolocation refs & state ─── */
   const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -111,6 +112,11 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   /* ─── Itinerary add confirmation state ─── */
   const [itinAdded, setItinAdded] = useState<string | null>(null);
   const itinAddedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ─── Category filter state ─── */
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const activeCategoryRef = useRef('all');
+  useEffect(() => { activeCategoryRef.current = activeCategory; }, [activeCategory]);
 
   /* ─── Stable getter for map instance — avoids ref access during render ─── */
   const getMap = useCallback(() => mapInstanceRef.current, []);
@@ -130,6 +136,34 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       setActivePlace(null);
     }
   }, [selectedPlaceId]);
+
+  /* ─── Update selected marker via Mapbox feature state ─── */
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !sourceAddedRef.current) return;
+    if (prevSelectedIdRef.current) {
+      try { map.setFeatureState({ source: SOURCE_ID, id: prevSelectedIdRef.current }, { selected: false }); } catch { /* source may have reset */ }
+    }
+    if (selectedPlaceId) {
+      try { map.setFeatureState({ source: SOURCE_ID, id: selectedPlaceId }, { selected: true }); } catch { /* source may have reset */ }
+    }
+    prevSelectedIdRef.current = selectedPlaceId ?? null;
+  }, [selectedPlaceId]);
+
+  /* ─── Update source data when category filter changes ─── */
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !sourceAddedRef.current) return;
+    const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    if (!source) return;
+    const filtered = activeCategory === 'all'
+      ? placesRef.current
+      : placesRef.current.filter((p) => p.category === activeCategory);
+    source.setData(placesToGeoJSON(filtered));
+    /* Feature states reset on setData — clear tracking refs */
+    prevSelectedIdRef.current = null;
+    hoveredIdRef.current = null;
+  }, [activeCategory]);
 
   /* ─── initMap ─── */
   const initMap = useCallback((): boolean => {
@@ -194,14 +228,18 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           styleLoaded = true;
           clearTimeout(styleFallbackTimeout);
 
+          /* Reset source tracking on style reload */
+          sourceAddedRef.current = false;
+          hoveredIdRef.current = null;
+          prevSelectedIdRef.current = null;
+
           requestAnimationFrame(() => { map.resize(); });
 
-          /* Clear previous markers (e.g. after style fallback reload) */
-          markersRef.current.forEach((m) => m.remove());
-          markersRef.current = [];
-          markerDataRef.current.clear();
+          /* Remove previous hotel marker before adding a new one */
+          hotelMarkerRef.current?.remove();
+          hotelMarkerRef.current = null;
 
-          /* ── Hotel “You Are Here” marker with permanent label ── */
+          /* ── Hotel "You Are Here" marker with permanent label ── */
           const regionLabel = regionRef.current?.name ?? 'Your Location';
           const hotelEl = document.createElement('div');
           hotelEl.className = 'stayscape-hotel-marker';
@@ -219,11 +257,11 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             '  </div>',
             '</div>',
           ].join('');
-          new mapboxgl.default.Marker({ element: hotelEl, anchor: 'center' })
+          hotelMarkerRef.current = new mapboxgl.default.Marker({ element: hotelEl, anchor: 'center' })
             .setLngLat([center.lng, center.lat])
             .addTo(map);
 
-          /* ── Fetch places from Supabase and render markers ── */
+          /* ── Fetch places from Supabase and render via GeoJSON layers ── */
           const activeRegionId = regionRef.current?.id;
           if (activeRegionId) {
             fetch(`/api/places?region_id=${encodeURIComponent(activeRegionId)}&limit=300`)
@@ -236,58 +274,166 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
                 const places: MapPlace[] = body.data ?? [];
                 placesRef.current = places;
 
-                places.forEach((place) => {
-                  const color = getCategoryColor(place.category);
-                  const icon = CATEGORY_ICONS[place.category] ?? '📍';
+                /* Apply active category filter */
+                const filtered = activeCategoryRef.current === 'all'
+                  ? places
+                  : places.filter((p) => p.category === activeCategoryRef.current);
 
-                  const container = document.createElement('div');
-                  container.className = 'stayscape-place-marker';
-                  container.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;';
-
-                  const badge = document.createElement('div');
-                  badge.style.cssText = [
-                    'background:rgba(10,14,19,0.88)',
-                    `border:1.5px solid ${color}90`,
-                    'border-radius:8px',
-                    'padding:5px 6px',
-                    'font-size:16px',
-                    'line-height:1',
-                    'transition:transform 0.15s ease,box-shadow 0.15s ease,border-color 0.15s ease,background 0.15s ease',
-                    'box-shadow:0 2px 8px rgba(0,0,0,0.45)',
-                    'user-select:none',
-                  ].join(';');
-                  badge.textContent = icon;
-
-                  container.appendChild(badge);
-
-                  const data: MarkerData = { container, badge, category: place.category, color };
-                  markerDataRef.current.set(place.id, data);
-
-                  /* Hover effects */
-                  container.addEventListener('mouseenter', () => {
-                    if (selectedPlaceIdRef.current !== place.id) {
-                      badge.style.transform = 'scale(1.12)';
-                      badge.style.boxShadow = `0 0 10px ${color}60,0 4px 12px rgba(0,0,0,0.5)`;
-                    }
-                  });
-                  container.addEventListener('mouseleave', () => {
-                    if (selectedPlaceIdRef.current !== place.id) {
-                      badge.style.transform = 'scale(1)';
-                      badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.45)';
-                    }
-                  });
-
-                  container.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    onSelectPlaceRef.current?.(place);
-                  });
-
-                  const marker = new mapboxgl.default.Marker({ element: container, anchor: 'center' })
-                    .setLngLat([place.longitude, place.latitude])
-                    .addTo(map);
-
-                  markersRef.current.push(marker);
+                /* ── GeoJSON source with built-in clustering ── */
+                map.addSource(SOURCE_ID, {
+                  type: 'geojson',
+                  data: placesToGeoJSON(filtered),
+                  cluster: true,
+                  clusterMaxZoom: 13,
+                  clusterRadius: 50,
+                  promoteId: 'id',
                 });
+
+                /* ── Cluster circles ── */
+                map.addLayer({
+                  id: CLUSTER_LAYER,
+                  type: 'circle',
+                  source: SOURCE_ID,
+                  filter: ['has', 'point_count'],
+                  paint: {
+                    'circle-color': 'rgba(201,168,76,0.10)',
+                    'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 24],
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': 'rgba(201,168,76,0.32)',
+                    'circle-blur': 0.15,
+                  },
+                });
+
+                /* ── Cluster count labels ── */
+                map.addLayer({
+                  id: CLUSTER_COUNT_LAYER,
+                  type: 'symbol',
+                  source: SOURCE_ID,
+                  filter: ['has', 'point_count'],
+                  layout: {
+                    'text-field': '{point_count_abbreviated}',
+                    'text-size': 11,
+                    'text-allow-overlap': true,
+                  },
+                  paint: {
+                    'text-color': '#C9A84C',
+                    'text-opacity': 0.88,
+                  },
+                });
+
+                /* ── Individual place dots ── */
+                map.addLayer({
+                  id: UNCLUSTERED_LAYER,
+                  type: 'circle',
+                  source: SOURCE_ID,
+                  filter: ['!', ['has', 'point_count']],
+                  paint: {
+                    'circle-color': [
+                      'case',
+                      ['boolean', ['feature-state', 'selected'], false], MARKER_COLOR_GOLD,
+                      ['get', 'color'],
+                    ],
+                    'circle-radius': [
+                      'interpolate', ['linear'], ['zoom'],
+                      10, ['case', ['boolean', ['feature-state', 'selected'], false], 6, ['boolean', ['feature-state', 'hovered'], false], 6, 4],
+                      15, ['case', ['boolean', ['feature-state', 'selected'], false], 9, ['boolean', ['feature-state', 'hovered'], false], 9, 7],
+                    ],
+                    'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 2, 0.8],
+                    'circle-stroke-color': [
+                      'case',
+                      ['boolean', ['feature-state', 'selected'], false], `${MARKER_COLOR_GOLD}80`,
+                      'rgba(255,255,255,0.18)',
+                    ],
+                    'circle-blur': [
+                      'case',
+                      ['boolean', ['feature-state', 'selected'], false], 0.2,
+                      ['boolean', ['feature-state', 'hovered'], false], 0.15,
+                      0.05,
+                    ],
+                    'circle-opacity': 0.92,
+                  },
+                });
+
+                /* ── Place name labels at high zoom ── */
+                map.addLayer({
+                  id: LABEL_LAYER,
+                  type: 'symbol',
+                  source: SOURCE_ID,
+                  filter: ['!', ['has', 'point_count']],
+                  minzoom: 15,
+                  layout: {
+                    'text-field': ['get', 'name'],
+                    'text-size': 10,
+                    'text-offset': [0, 1.2],
+                    'text-anchor': 'top',
+                    'text-max-width': 8,
+                    'text-allow-overlap': false,
+                    'text-optional': true,
+                  },
+                  paint: {
+                    'text-color': 'rgba(232,230,225,0.62)',
+                    'text-halo-color': 'rgba(10,14,19,0.9)',
+                    'text-halo-width': 1,
+                  },
+                });
+
+                sourceAddedRef.current = true;
+
+                /* Restore selected state if needed */
+                if (selectedPlaceIdRef.current) {
+                  try {
+                    map.setFeatureState({ source: SOURCE_ID, id: selectedPlaceIdRef.current }, { selected: true });
+                    prevSelectedIdRef.current = selectedPlaceIdRef.current;
+                  } catch { /* ignore */ }
+                }
+
+                /* ── Cluster click: zoom in ── */
+                map.on('click', CLUSTER_LAYER, (e) => {
+                  const feature = e.features?.[0];
+                  if (!feature) return;
+                  const clusterId = feature.properties?.cluster_id as number;
+                  const geometry = feature.geometry as GeoJSON.Point;
+                  const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+                  src.getClusterExpansionZoom(clusterId, (err: Error | null | undefined, zoom: number | null | undefined) => {
+                    if (err || zoom == null) return;
+                    map.easeTo({ center: [geometry.coordinates[0], geometry.coordinates[1]], zoom });
+                  });
+                });
+
+                /* ── Individual place click: show info card ── */
+                map.on('click', UNCLUSTERED_LAYER, (e) => {
+                  const feature = e.features?.[0];
+                  if (!feature) return;
+                  e.originalEvent.stopPropagation();
+                  const placeId = feature.properties?.id as string;
+                  const place = placesRef.current.find((p) => p.id === placeId);
+                  if (place) onSelectPlaceRef.current?.(place);
+                });
+
+                /* ── Hover: pointer cursor + glow ── */
+                map.on('mousemove', UNCLUSTERED_LAYER, (e) => {
+                  const feature = e.features?.[0];
+                  const fid = feature?.id as string | undefined;
+                  if (hoveredIdRef.current && hoveredIdRef.current !== fid) {
+                    try { map.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
+                  }
+                  if (fid && fid !== hoveredIdRef.current) {
+                    try { map.setFeatureState({ source: SOURCE_ID, id: fid }, { hovered: true }); } catch { /* ignore */ }
+                    hoveredIdRef.current = fid;
+                  }
+                  map.getCanvas().style.cursor = 'pointer';
+                });
+                map.on('mouseleave', UNCLUSTERED_LAYER, () => {
+                  if (hoveredIdRef.current) {
+                    try { map.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
+                    hoveredIdRef.current = null;
+                  }
+                  map.getCanvas().style.cursor = '';
+                });
+
+                /* ── Cluster hover: pointer cursor ── */
+                map.on('mouseenter', CLUSTER_LAYER, () => { map.getCanvas().style.cursor = 'pointer'; });
+                map.on('mouseleave', CLUSTER_LAYER, () => { map.getCanvas().style.cursor = ''; });
               })
               .catch((err) => {
                 console.warn('[Stayscape Map] Failed to fetch places:', err);
@@ -295,6 +441,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
           }
         });
 
+        /* Keep canvas sized correctly on window resize */
         /* Keep canvas sized correctly on window resize */
         const handleWindowResize = () => map.resize();
         windowResizeHandlerRef.current = handleWindowResize;
@@ -316,28 +463,19 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     return true;
   }, []);
 
-  /* ─── Update marker styles when selectedPlaceId changes ─── */
-  useEffect(() => {
-    markerDataRef.current.forEach((data, placeId) => {
-      applyMarkerStyle(data, selectedPlaceId === placeId);
-    });
-  }, [selectedPlaceId]);
-
   /* ─── Cleanup on unmount ─── */
   useEffect(() => {
-    const markers = markersRef;
-    const markerData = markerDataRef;
     const mapInstance = mapInstanceRef;
     const resizeObs = resizeObserverRef;
     const fallbackTimeout = styleFallbackTimeoutRef;
     const windowResizeHandler = windowResizeHandlerRef;
+    const hotelMarker = hotelMarkerRef;
     const userMarker = userMapMarkerRef;
     const searchMarker = searchMarkerRef;
     const itinAddedTimer = itinAddedTimerRef;
     return () => {
-      markers.current.forEach((m) => m.remove());
-      markers.current = [];
-      markerData.current.clear();
+      hotelMarker.current?.remove();
+      hotelMarker.current = null;
       userMarker.current?.remove();
       userMarker.current = null;
       searchMarker.current?.remove();
@@ -363,6 +501,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
         resizeObs.current = null;
       }
       initializedRef.current = false;
+      sourceAddedRef.current = false;
     };
   }, []);
 
@@ -499,6 +638,60 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       />
       <div className="absolute inset-0 pointer-events-none z-[1] bg-gradient-to-b from-[var(--map-bg)]/30 via-transparent to-[var(--map-bg)]/20" />
 
+      {/* ── Category filter pill bar ── */}
+      <div
+        className="absolute top-3 left-3 right-3 z-10"
+        style={{ maxWidth: 'calc(100% - 24px)' }}
+      >
+        <div
+          className="flex gap-1.5 overflow-x-auto pb-0.5"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {CATEGORY_FILTERS.map(({ key, label }) => {
+            const isActive = activeCategory === key;
+            const dotColor = key === 'all' ? MARKER_COLOR_GOLD : getCategoryColor(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveCategory(key)}
+                style={{
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '5px 10px',
+                  borderRadius: 20,
+                  fontSize: 10,
+                  letterSpacing: '0.04em',
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease',
+                  background: isActive ? 'rgba(201,168,76,0.13)' : 'rgba(10,14,19,0.68)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: isActive ? '1px solid rgba(201,168,76,0.38)' : '1px solid rgba(255,255,255,0.07)',
+                  color: isActive ? '#C9A84C' : 'rgba(232,230,225,0.6)',
+                  boxShadow: isActive ? '0 0 8px rgba(201,168,76,0.12)' : '0 1px 4px rgba(0,0,0,0.35)',
+                }}
+              >
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: isActive ? dotColor : `${dotColor}80`,
+                  flexShrink: 0,
+                  display: 'inline-block',
+                  boxShadow: isActive ? `0 0 5px ${dotColor}70` : 'none',
+                  transition: 'all 0.18s ease',
+                }} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Map search overlay (floating, centered) ── */}
       <MapSearch onSelect={handleSearchSelect} onClear={handleSearchClear} />
 
@@ -517,7 +710,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             }}
           >
             <div className="flex items-start gap-2 mb-2">
-              <span className="text-base leading-none mt-0.5">{CATEGORY_ICONS[activePlace.category] ?? '📍'}</span>
+              <div style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: getCategoryColor(activePlace.category),
+                flexShrink: 0,
+                marginTop: 3,
+                boxShadow: `0 0 6px ${getCategoryColor(activePlace.category)}70`,
+              }} />
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
                   {activePlace.name}
@@ -675,7 +876,15 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             }}
           >
             <div className="flex items-start gap-2 mb-2">
-              <span className="text-base leading-none mt-0.5">📍</span>
+              <div style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: MARKER_COLOR_GOLD,
+                flexShrink: 0,
+                marginTop: 3,
+                boxShadow: `0 0 5px ${MARKER_COLOR_GOLD}60`,
+              }} />
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
                   {searchedPlace.name}
