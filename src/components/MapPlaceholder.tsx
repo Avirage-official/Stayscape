@@ -551,15 +551,12 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
             const isEventDot = feature.properties?.isEvent as boolean;
             if (isEventDot) {
               const event = eventsRef.current.find((ev) => ev.id === itemId);
-              if (event) {
-                setActiveEventRef.current(event);
-                onSelectPlaceRef.current?.(null as unknown as MapPlace); /* clear place selection */
-              }
+              if (event) setActiveEventRef.current(event);
             } else {
               const place = placesRef.current.find((p) => p.id === itemId);
               if (place) {
                 onSelectPlaceRef.current?.(place);
-                setActiveEventRef.current(null); /* clear event selection */
+                setActiveEventRef.current(null); /* clear event card when place is clicked */
               }
             }
           });
@@ -1072,8 +1069,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       {/* ── Map search overlay (floating, centered) ── */}
       <MapSearch onSelect={handleSearchSelect} onClear={handleSearchClear} />
 
-      {/* ── Selected place info card ── */}
-      {activePlace && (
+      {/* ── Selected place info card (hidden when event card is active) ── */}
+      {activePlace && !activeEvent && (
         <div
           key={activePlace.id}
           className="absolute bottom-20 left-4 z-10 animate-card-entrance"
