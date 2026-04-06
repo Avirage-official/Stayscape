@@ -60,6 +60,15 @@ export default function LandingNav() {
             For Hotels
           </a>
           <a
+            href="/why-it-works"
+            className="hidden text-sm transition-colors duration-200 sm:inline"
+            style={{ color: '#8a8580' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#e8e4dc')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#8a8580')}
+          >
+            Why It Works
+          </a>
+          <a
             href="/app"
             className="text-sm font-medium"
             style={{
