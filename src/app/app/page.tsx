@@ -84,23 +84,24 @@ export default function Home() {
       <div className="relative flex-1 flex flex-col overflow-hidden">
         {/* Floating concierge search — only on concierge tab */}
         {activeTab === 'concierge' && <ConciergeSearch />}
-        <main className="flex flex-1 overflow-hidden">
-          {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
-          <div className={`${mobileView === 'guest' ? 'flex' : 'hidden'} lg:flex w-full lg:w-[320px] flex-shrink-0 flex-col overflow-hidden lg:border-r border-[var(--charcoal-light)]/80`}>
-            <CustomerPanel />
-          </div>
-
+        <main className="flex flex-col lg:flex-row flex-1 overflow-hidden">
           {activeTab === 'concierge' ? (
             <>
+              {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
+              <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--charcoal-light)]/80`}>
+                <CustomerPanel />
+              </div>
+
               {/* Center — Map workspace */}
-              <div className={`flex-1 relative min-h-0 ${mobileView === 'map' ? 'flex' : 'hidden'} lg:flex flex-col`}>
+              <div className={`${mobileView === 'map' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 relative min-h-0 flex-col`}>
                 <MapPlaceholder
                   onSelectPlace={handleSelectPlace}
                   selectedPlaceId={selectedPlace?.id ?? null}
                 />
               </div>
+
               {/* Right panel — AI Travel Assistant */}
-              <div className={`${mobileView === 'assistant' ? 'flex' : 'hidden'} lg:flex w-full lg:w-[360px] flex-shrink-0 flex-col overflow-hidden lg:border-l border-[var(--charcoal-light)]/80`}>
+              <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[360px] w-full flex-col overflow-hidden lg:border-l border-[var(--charcoal-light)]/80`}>
                 <TravelAssistantPanel
                   ref={panelRef}
                   selectedPlace={selectedPlace}
