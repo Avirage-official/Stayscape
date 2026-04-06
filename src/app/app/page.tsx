@@ -81,6 +81,51 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Mobile sub-nav — Map / Guest / Assistant (only on Concierge tab, only mobile) */}
+      {activeTab === 'concierge' && (
+        <div className="lg:hidden flex items-center justify-around h-[40px] bg-[var(--header-bg)] border-b border-[var(--header-border)] flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileView('map')}
+            className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 ${
+              mobileView === 'map' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+              <line x1="8" y1="2" x2="8" y2="18" />
+              <line x1="16" y1="6" x2="16" y2="22" />
+            </svg>
+            Map
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView('guest')}
+            className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 ${
+              mobileView === 'guest' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Guest
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView('assistant')}
+            className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 ${
+              mobileView === 'assistant' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Assistant
+          </button>
+        </div>
+      )}
+
       <div className="relative flex-1 flex flex-col overflow-hidden">
         {/* Floating concierge search — only on concierge tab */}
         {activeTab === 'concierge' && <ConciergeSearch />}
@@ -120,50 +165,6 @@ export default function Home() {
         <Footer />
       </div>
 
-      {/* ── Mobile bottom navigation ── (only on concierge tab) */}
-      {activeTab === 'concierge' && (
-        <div className="lg:hidden flex items-center justify-around h-[52px] bg-[var(--header-bg)] border-t border-[var(--header-border)] flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => setMobileView('map')}
-            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors duration-200 ${
-              mobileView === 'map' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-              <line x1="8" y1="2" x2="8" y2="18" />
-              <line x1="16" y1="6" x2="16" y2="22" />
-            </svg>
-            <span className="text-[9px] mt-0.5 tracking-wide">Map</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView('guest')}
-            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors duration-200 ${
-              mobileView === 'guest' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span className="text-[9px] mt-0.5 tracking-wide">Guest</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView('assistant')}
-            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors duration-200 ${
-              mobileView === 'assistant' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <span className="text-[9px] mt-0.5 tracking-wide">Assistant</span>
-          </button>
-        </div>
-      )}
     </div>
     </ItineraryProvider>
   );
