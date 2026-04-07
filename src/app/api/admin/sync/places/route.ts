@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { syncPlaces, type PlaceSyncOptions } from '@/lib/services/sync/places-sync';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 interface SyncPlacesBody {
   region_id: string;
@@ -19,6 +20,14 @@ interface SyncPlacesBody {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request, 'admin');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
   try {
     const body = (await request.json()) as SyncPlacesBody;
 
@@ -40,7 +49,7 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await syncPlaces(options);
-    return NextResponse.json({ data: result });
+    return NextResponse.json({ data: result }, { headers: rateLimit.headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

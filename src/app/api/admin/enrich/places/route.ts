@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { getUnenrichedPlaces } from '@/lib/supabase/places-repository';
 import { enrichPlace } from '@/lib/services/ai/enrichment';
 import type { InternalPlace } from '@/types/database';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 1000;
@@ -25,6 +26,14 @@ interface EnrichPlacesBody {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request, 'admin');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
   try {
     const body = (await request.json().catch(() => ({}))) as EnrichPlacesBody;
 
@@ -70,7 +79,7 @@ export async function POST(request: NextRequest) {
         failed,
         total: places.length,
       },
-    });
+    }, { headers: rateLimit.headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

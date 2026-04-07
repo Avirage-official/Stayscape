@@ -16,8 +16,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { haversineMetres, formatDistanceDisplay } from '@/lib/mapbox/geocoding';
 import type { SearchResult } from '@/types/mapbox';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
   const { searchParams } = request.nextUrl;
   const q = searchParams.get('q')?.trim() ?? '';
   const regionId = searchParams.get('region_id') ?? '';
@@ -74,7 +82,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ data: results });
+    return NextResponse.json({ data: results }, { headers: rateLimit.headers });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

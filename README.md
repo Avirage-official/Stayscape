@@ -2,7 +2,13 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, copy the example environment file and fill in your values:
+
+```bash
+cp .env.example .env.local
+```
+
+Then run the development server:
 
 ```bash
 npm run dev
@@ -19,6 +25,38 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses system fonts (`system-ui` for sans-serif and `Georgia` for serif) defined in `tailwind.config.ts`.
+
+## Environment Variables
+
+See `.env.example` for all required and optional environment variables. Copy it to `.env.local` and fill in your values — `.env.local` is gitignored and must **never** be committed.
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Supabase service role key (backend only) |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | ✅ | Mapbox public token |
+| `GEOAPIFY_API_KEY` | ✅ | Geoapify key (backend only) |
+| `TICKETMASTER_API_KEY` | ⬜ | Ticketmaster key (backend only) |
+| `OPENAI_API_KEY` | ⬜ | OpenAI key for AI enrichment (backend only) |
+| `UPSTASH_REDIS_REST_URL` | ⬜ | Upstash Redis URL for rate limiting |
+| `UPSTASH_REDIS_REST_TOKEN` | ⬜ | Upstash Redis token for rate limiting |
+
+## Rate Limiting (Optional)
+
+API routes are protected by rate limiting via [@upstash/ratelimit](https://github.com/upstash/ratelimit-js). To enable it:
+
+1. Create a free Redis database at [upstash.com](https://upstash.com)
+2. Copy the REST URL and token into your `.env.local`:
+   ```
+   UPSTASH_REDIS_REST_URL=your-upstash-redis-rest-url
+   UPSTASH_REDIS_REST_TOKEN=your-upstash-redis-rest-token
+   ```
+
+If these variables are not set, rate limiting is silently skipped and all requests are allowed through — so the app works in development without Redis.
+
+- **Public routes** (`/api/places`, `/api/discovery/*`): 30 requests per 10 seconds per IP
+- **Admin routes** (`/api/admin/*`): 5 requests per 60 seconds per IP
 
 ## Learn More
 
