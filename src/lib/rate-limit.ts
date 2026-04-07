@@ -14,17 +14,16 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import type { NextRequest } from 'next/server';
+import { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } from '@/lib/env';
 
-/* ── Lazily initialised limiters ── */
+/* ── Lazily initialized limiters ── */
 
 let _defaultLimiter: Ratelimit | null | undefined = undefined; // undefined = not yet init
 let _adminLimiter: Ratelimit | null | undefined = undefined;
 
 function getRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return new Redis({ url, token });
+  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return null;
+  return new Redis({ url: UPSTASH_REDIS_REST_URL, token: UPSTASH_REDIS_REST_TOKEN });
 }
 
 /** 30 requests per 10 seconds per IP — for public API routes. */
