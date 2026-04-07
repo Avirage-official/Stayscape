@@ -173,11 +173,12 @@ function SectionWrap({
 /*  Section 1 — Headline Frame                                         */
 /* ------------------------------------------------------------------ */
 
+const HEADLINE_LINE1 = ['Travel', 'is', 'growing', '—', 'but', 'the', 'system', 'is']
+const HEADLINE_BROKEN = 'broken.'
+const HEADLINE_LINE2 = ['Startups', 'fixing', 'discovery', '+', 'experience', 'win.']
+
 function HeadlineFrame() {
   const prefersReducedMotion = useReducedMotion()
-  const line1Words = ['Travel', 'is', 'growing', '—', 'but', 'the', 'system', 'is']
-  const brokenWord = 'broken.'
-  const line2Words = ['Startups', 'fixing', 'discovery', '+', 'experience', 'win.']
 
   return (
     <section
@@ -220,7 +221,7 @@ function HeadlineFrame() {
             color: '#e8e4dc',
           }}
         >
-          {line1Words.map((word, i) => (
+          {HEADLINE_LINE1.map((word, i) => (
             <motion.span
               key={`l1-${i}`}
               initial={prefersReducedMotion ? false : { clipPath: 'inset(100% 0 0 0)' }}
@@ -243,7 +244,7 @@ function HeadlineFrame() {
             transition={
               prefersReducedMotion
                 ? undefined
-                : { duration: 0.9, ease: REVEAL_EASE, delay: line1Words.length * 0.06 }
+                : { duration: 0.9, ease: REVEAL_EASE, delay: HEADLINE_LINE1.length * 0.06 }
             }
             style={{
               display: 'inline-block',
@@ -252,7 +253,7 @@ function HeadlineFrame() {
               position: 'relative',
             }}
           >
-            {brokenWord}
+            {HEADLINE_BROKEN}
             <motion.span
               aria-hidden="true"
               style={{
@@ -286,7 +287,7 @@ function HeadlineFrame() {
             color: '#e8e4dc',
           }}
         >
-          {line2Words.map((word, i) => {
+          {HEADLINE_LINE2.map((word, i) => {
             const isHighlight = word === 'discovery' || word === 'experience' || word === 'win.'
             return (
               <motion.span
@@ -299,7 +300,7 @@ function HeadlineFrame() {
                     : {
                         duration: 0.8,
                         ease: REVEAL_EASE,
-                        delay: (line1Words.length + 1) * 0.06 + i * 0.06,
+                        delay: (HEADLINE_LINE1.length + 1) * 0.06 + i * 0.06,
                       }
                 }
                 style={{
@@ -343,18 +344,18 @@ function HeadlineFrame() {
 /* ------------------------------------------------------------------ */
 
 const DISCOVERY_CHANNELS = [
-  { label: 'TikTok', x: 5, y: 10 },
-  { label: 'AI Search', x: 28, y: 5 },
-  { label: 'Social', x: 52, y: 12 },
-  { label: 'OTA', x: 75, y: 8 },
-  { label: 'Maps', x: 90, y: 18 },
-  { label: 'Hotel Site', x: 15, y: 25 },
+  { label: 'TikTok' },
+  { label: 'AI Search' },
+  { label: 'Social' },
+  { label: 'OTA' },
+  { label: 'Maps' },
+  { label: 'Hotel Site' },
 ]
 
 const OUTCOMES = [
-  { label: 'Invisible hotels', x: 10, y: 75 },
-  { label: 'Overwhelmed users', x: 42, y: 78 },
-  { label: 'Low conversion', x: 78, y: 72 },
+  { label: 'Invisible hotels' },
+  { label: 'Overwhelmed users' },
+  { label: 'Low conversion' },
 ]
 
 const JOURNEY_STEPS = [
@@ -1453,19 +1454,19 @@ function MacroSection() {
 /*  Section 7 — Hidden Insight                                         */
 /* ------------------------------------------------------------------ */
 
+const INSIGHT_HIGHLIGHTS = [
+  { text: 'fragmented travel data', highlighted: true },
+  { text: ', ', highlighted: false },
+  { text: 'user itineraries', highlighted: true },
+  { text: ' and ', highlighted: false },
+  { text: 'AI booking', highlighted: true },
+  { text: ' to ', highlighted: false },
+  { text: 'reduce friction', highlighted: true },
+]
+
 function InsightSection() {
   const prefersReducedMotion = useReducedMotion()
   const { ref, visible } = useInView(0.2)
-
-  const highlights = [
-    { text: 'fragmented travel data', highlighted: true },
-    { text: ', ', highlighted: false },
-    { text: 'user itineraries', highlighted: true },
-    { text: ' and ', highlighted: false },
-    { text: 'AI booking', highlighted: true },
-    { text: ' to ', highlighted: false },
-    { text: 'reduce friction', highlighted: true },
-  ]
 
   return (
     <SectionWrap>
@@ -1508,7 +1509,7 @@ function InsightSection() {
           }}
         >
           &ldquo;A platform that combines{' '}
-          {highlights.map((seg, i) =>
+          {INSIGHT_HIGHLIGHTS.map((seg, i) =>
             seg.highlighted ? (
               <motion.span
                 key={i}
