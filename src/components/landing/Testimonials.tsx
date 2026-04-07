@@ -42,13 +42,30 @@ export default function Testimonials() {
 
   return (
     <section
-      className="w-full py-24 md:py-32"
+      className="relative w-full overflow-hidden py-24 md:py-32"
       style={{
         backgroundColor: '#0f0e0d',
         borderTop: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="mx-auto max-w-6xl px-6 md:px-8">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage:
+            'url(https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=1920&q=80)',
+        }}
+      />
+      {/* Dark overlay */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(15,14,13,0.91), rgba(15,14,13,0.88))',
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-6xl px-6 md:px-8">
         {/* Section label */}
         <p
           className="mb-16 text-xs uppercase"

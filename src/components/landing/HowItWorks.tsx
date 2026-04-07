@@ -36,13 +36,30 @@ export default function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="w-full"
+      className="relative w-full overflow-hidden"
       style={{
         backgroundColor: '#0f0e0d',
         borderTop: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="mx-auto max-w-6xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage:
+            'url(https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&q=80)',
+        }}
+      />
+      {/* Dark overlay */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(15,14,13,0.93), rgba(15,14,13,0.88))',
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
         {/* Section label + title */}
         <motion.div
           className="mb-16"
