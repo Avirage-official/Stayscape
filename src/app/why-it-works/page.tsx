@@ -10,110 +10,21 @@ import { motion, useReducedMotion } from 'framer-motion'
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const
 
-const HERO_WORDS = [
-  'Guests',
-  'have',
-  'already',
-  'changed.',
-  'Most',
-  'hotels',
-  "haven\u2019t.",
-]
-
-const GAP_STATS: {
-  end: number
-  decimals: number
-  suffix: string
-  prefix: string
-  label: string
-}[] = [
-  {
-    end: 57,
-    decimals: 0,
-    suffix: '%',
-    prefix: '',
-    label:
-      'of hotel guests say local recommendations from the hotel feel generic or unhelpful',
-  },
-  {
-    end: 3.2,
-    decimals: 1,
-    suffix: '×',
-    prefix: '',
-    label:
-      'more likely to rate their stay excellent if they discovered something local during the visit',
-  },
-  {
-    end: 38,
-    decimals: 0,
-    suffix: '',
-    prefix: '€',
-    label:
-      'average additional spend per guest when an activity or experience is recommended during the stay',
-  },
-]
-
-const EDITORIAL_ROWS = [
-  {
-    tag: 'Discovery',
-    heading: 'Guests discover your city, through your brand',
-    body: 'Stayscape replaces generic Google searches and static PDFs with a curated, hotel-branded local discovery feed. Every recommendation reflects the character of your property — not a travel aggregator.',
-    visual: 'discover',
-  },
-  {
-    tag: 'Itinerary',
-    heading: 'Their day, planned inside your experience',
-    body: 'Guests build a personal itinerary from your curated content. They feel guided, not overwhelmed. They spend less time on TripAdvisor and more time engaged with what your hotel recommends.',
-    visual: 'itinerary',
-  },
-  {
-    tag: 'Data & Insight',
-    heading: 'You learn what your guests actually want',
-    body: 'Every interaction — what guests browse, save, add, and act on — becomes insight your team can use. Better curation, better recommendations, stronger repeat experience.',
-    visual: 'data',
-  },
-]
-
-const BENEFIT_CARDS = [
-  {
-    heading: 'A branded local experience',
-    body: "Your guests discover the city through your hotel\u2019s voice, not through Google.",
-  },
-  {
-    heading: 'Higher in-stay engagement',
-    body: 'Guests who plan activities are more present, more satisfied, and more likely to return.',
-  },
-  {
-    heading: 'Additional revenue per stay',
-    body: 'Guided guests spend more — on local partners, activities, and curated experiences you recommend.',
-  },
-  {
-    heading: 'Reduced front-desk load',
-    body: 'Common guest questions about local activities and transport are answered before they are asked.',
-  },
-  {
-    heading: 'Real behavioural data',
-    body: 'You see what guests are interested in, not just what they complained about after checkout.',
-  },
-  {
-    heading: 'A pilot with no heavy lifting',
-    body: 'We handle setup, content, and curation. Your team does not need to manage anything new.',
-  },
-]
-
 /* ------------------------------------------------------------------ */
 /*  Hooks                                                              */
 /* ------------------------------------------------------------------ */
 
-function useCountUpSimple({
+function useCountUp({
   end,
   decimals = 0,
   suffix = '',
+  prefix = '',
   duration = 1.8,
 }: {
   end: number
   decimals?: number
   suffix?: string
+  prefix?: string
   duration?: number
 }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -156,12 +67,12 @@ function useCountUpSimple({
     return () => cancelAnimationFrame(frameId)
   }, [started, end, duration, prefersReducedMotion])
 
-  const formatted = (prefersReducedMotion && started ? end : value).toFixed(decimals) + suffix
+  const formatted = prefix + (prefersReducedMotion && started ? end : value).toFixed(decimals) + suffix
 
   return { ref, formatted }
 }
 
-function useIntersectionReveal(threshold = 0.15) {
+function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
 
@@ -183,451 +94,1183 @@ function useIntersectionReveal(threshold = 0.15) {
   return { ref, visible }
 }
 
+function useSequentialReveal(count: number, interval = 200) {
+  const { ref, visible } = useInView(0.1)
+  const [revealed, setRevealed] = useState<boolean[]>(new Array(count).fill(false))
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!visible) return
+    let idx = 0
+    const tick = () => {
+      setRevealed((prev) => {
+        const next = [...prev]
+        next[idx] = true
+        return next
+      })
+      idx++
+      if (idx < count) {
+        timerRef.current = setTimeout(tick, interval)
+      }
+    }
+    tick()
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [visible, count, interval])
+
+  return { ref, revealed }
+}
+
 /* ------------------------------------------------------------------ */
-/*  Visual Components (device mockups, data art)                       */
+/*  Shared UI                                                          */
 /* ------------------------------------------------------------------ */
 
-function PhoneMockup({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: string }) {
   return (
-    <div className="relative mx-auto" style={{ maxWidth: 280 }}>
-      {/* Warm glow */}
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(201,169,110,0.08) 0%, transparent 70%)',
-          transform: 'scale(1.5)',
-        }}
-      />
-      {/* Device frame */}
-      <div
-        style={{
-          background: '#1a1917',
-          borderRadius: 32,
-          padding: '12px',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
-      >
-        <div
-          style={{
-            background: '#0f0e0d',
-            borderRadius: 22,
-            overflow: 'hidden',
-            aspectRatio: '9/16',
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    </div>
+    <p
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: 12,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em',
+        color: '#c9a96e',
+        marginBottom: 48,
+      }}
+    >
+      {children}
+    </p>
   )
 }
 
-function DiscoverVisual() {
+function SectionWrap({
+  children,
+  id,
+  className = '',
+}: {
+  children: React.ReactNode
+  id?: string
+  className?: string
+}) {
   return (
-    <PhoneMockup>
-      <div className="flex h-full flex-col" style={{ padding: 16, gap: 12 }}>
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <span style={{ color: '#e8e4dc', fontSize: 14, fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 600 }}>Discover</span>
-          <div style={{ width: 24, height: 24, borderRadius: 12, background: 'rgba(201,169,110,0.15)' }} />
-        </div>
-        {/* Search */}
-        <div style={{ background: '#1a1917', borderRadius: 8, padding: '8px 12px' }}>
-          <span style={{ color: '#8a8580', fontSize: 11 }}>Search local experiences…</span>
-        </div>
-        {/* Cards */}
-        {['Rooftop Dining', 'Wine Tasting', 'Old Town Walk'].map((label, i) => (
-          <div key={label} style={{
-            background: '#171613',
-            borderRadius: 10,
-            padding: 12,
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}>
-            <div style={{ background: `rgba(201,169,110,${0.06 + i * 0.03})`, borderRadius: 6, height: 60, marginBottom: 8 }} />
-            <span style={{ color: '#e8e4dc', fontSize: 12, fontWeight: 500 }}>{label}</span>
-            <p style={{ color: '#8a8580', fontSize: 10, marginTop: 2 }}>Curated by your hotel</p>
-          </div>
-        ))}
+    <section
+      id={id}
+      className={`w-full ${className}`}
+      style={{
+        background: '#0f0e0d',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
+        {children}
       </div>
-    </PhoneMockup>
-  )
-}
-
-function ItineraryVisual() {
-  return (
-    <PhoneMockup>
-      <div className="flex h-full flex-col" style={{ padding: 16, gap: 8 }}>
-        <span style={{ color: '#e8e4dc', fontSize: 14, fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 600 }}>Today&apos;s Plan</span>
-        {/* Timeline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 8 }}>
-          {[
-            { time: '09:00', label: 'Breakfast at Terrazza', active: true },
-            { time: '11:00', label: 'Walking Tour — Old Quarter', active: true },
-            { time: '13:30', label: 'Lunch — Chef\'s Choice', active: false },
-            { time: '15:00', label: 'Wine Cellar Visit', active: false },
-            { time: '19:00', label: 'Sunset Dinner Cruise', active: false },
-          ].map((item, i) => (
-            <div key={i} className="flex" style={{ gap: 12, minHeight: 44 }}>
-              {/* Timeline line */}
-              <div className="flex flex-col items-center" style={{ width: 20 }}>
-                <div style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  background: item.active ? '#c9a96e' : '#3a3835',
-                  marginTop: 4,
-                  flexShrink: 0,
-                }} />
-                {i < 4 && <div style={{ width: 1, flexGrow: 1, background: '#2a2825' }} />}
-              </div>
-              <div style={{ paddingBottom: 12 }}>
-                <span style={{ color: '#8a8580', fontSize: 10 }}>{item.time}</span>
-                <p style={{ color: '#e8e4dc', fontSize: 12, marginTop: 1 }}>{item.label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </PhoneMockup>
-  )
-}
-
-function DataVisual() {
-  return (
-    <div className="relative mx-auto" style={{ maxWidth: 360 }}>
-      {/* Warm glow */}
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(201,169,110,0.06) 0%, transparent 70%)',
-          transform: 'scale(1.3)',
-        }}
-      />
-      <div style={{
-        background: '#1a1917',
-        borderRadius: 16,
-        padding: 24,
-        border: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <span style={{ color: '#8a8580', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Guest Interest Map</span>
-        {/* Abstract data visualization */}
-        <div style={{ marginTop: 16, display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
-          {[65, 40, 80, 55, 90, 35, 72, 48, 85, 60, 45, 75].map((h, i) => (
-            <div
-              key={i}
-              style={{
-                flex: 1,
-                height: `${h}%`,
-                background: `linear-gradient(to top, rgba(201,169,110,${0.15 + (h / 100) * 0.4}), rgba(201,169,110,0.05))`,
-                borderRadius: '3px 3px 0 0',
-              }}
-            />
-          ))}
-        </div>
-        {/* Labels */}
-        <div className="flex justify-between" style={{ marginTop: 12 }}>
-          <span style={{ color: '#8a8580', fontSize: 10 }}>Dining</span>
-          <span style={{ color: '#8a8580', fontSize: 10 }}>Culture</span>
-          <span style={{ color: '#8a8580', fontSize: 10 }}>Nature</span>
-        </div>
-        {/* Stat row */}
-        <div className="flex justify-between" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          {[
-            { label: 'Interests tracked', value: '1,247' },
-            { label: 'Top category', value: 'Dining' },
-            { label: 'Save rate', value: '34%' },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <span style={{ color: '#c9a96e', fontSize: 16, fontWeight: 600, fontFamily: "'Playfair Display', Georgia, serif" }}>{stat.value}</span>
-              <p style={{ color: '#8a8580', fontSize: 9, marginTop: 2 }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </section>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section Components                                                 */
+/*  Section 1 — Headline Frame                                         */
 /* ------------------------------------------------------------------ */
 
-/** Section 1 — Hero */
-function HeroSection() {
+function HeadlineFrame() {
   const prefersReducedMotion = useReducedMotion()
+  const line1Words = ['Travel', 'is', 'growing', '—', 'but', 'the', 'system', 'is']
+  const brokenWord = 'broken.'
+  const line2Words = ['Startups', 'fixing', 'discovery', '+', 'experience', 'win.']
 
   return (
-    <section className="relative flex min-h-screen w-full flex-col justify-center" style={{ background: '#0f0e0d' }}>
-      <div className="mx-auto w-full max-w-7xl px-6 sm:px-12 md:px-20 lg:px-28">
-        {/* Headline — word-by-word staggered clip-path reveal */}
+    <section
+      className="relative flex min-h-screen w-full flex-col justify-center"
+      style={{ background: '#0f0e0d' }}
+    >
+      {/* Subtle broken-path line graphic */}
+      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+        <svg
+          viewBox="0 0 1200 600"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          style={{ width: '100%', maxWidth: 1200, opacity: 0.04 }}
+          fill="none"
+        >
+          <motion.path
+            d="M0 300 Q200 300 350 250 L400 250 M450 350 Q600 350 700 300 Q900 200 1200 300"
+            stroke="#c9a96e"
+            strokeWidth="1.5"
+            initial={prefersReducedMotion ? {} : { pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : { duration: 2.5, ease: 'easeInOut', delay: 1.2 }
+            }
+          />
+        </svg>
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-6 sm:px-12 md:px-20 lg:px-28">
+        {/* Line 1 */}
         <h1
           className="flex flex-wrap gap-x-[0.35em]"
           style={{
             fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+            fontSize: 'clamp(2.2rem, 4.5vw, 4rem)',
             fontWeight: 700,
             lineHeight: 1.15,
             letterSpacing: '-0.02em',
             color: '#e8e4dc',
           }}
         >
-          {HERO_WORDS.map((word, i) => (
+          {line1Words.map((word, i) => (
             <motion.span
-              key={i}
+              key={`l1-${i}`}
               initial={prefersReducedMotion ? false : { clipPath: 'inset(100% 0 0 0)' }}
               animate={{ clipPath: 'inset(0 0 0 0)' }}
               transition={
                 prefersReducedMotion
                   ? undefined
-                  : { duration: 0.8, ease: REVEAL_EASE, delay: i * 0.08 }
+                  : { duration: 0.8, ease: REVEAL_EASE, delay: i * 0.06 }
               }
               style={{ display: 'inline-block' }}
             >
               {word}
             </motion.span>
           ))}
+
+          {/* "broken." — visual contrast treatment */}
+          <motion.span
+            initial={prefersReducedMotion ? false : { clipPath: 'inset(100% 0 0 0)' }}
+            animate={{ clipPath: 'inset(0 0 0 0)' }}
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : { duration: 0.9, ease: REVEAL_EASE, delay: line1Words.length * 0.06 }
+            }
+            style={{
+              display: 'inline-block',
+              color: '#c9a96e',
+              fontStyle: 'italic',
+              position: 'relative',
+            }}
+          >
+            {brokenWord}
+            <motion.span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: '55%',
+                height: 2,
+                background: 'rgba(201,169,110,0.35)',
+              }}
+              initial={prefersReducedMotion ? false : { scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={
+                prefersReducedMotion
+                  ? undefined
+                  : { duration: 0.6, ease: REVEAL_EASE, delay: 1.0 }
+              }
+            />
+          </motion.span>
         </h1>
 
-        {/* Supporting line */}
+        {/* Line 2 — resolution */}
+        <h2
+          className="mt-2 flex flex-wrap gap-x-[0.35em]"
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 'clamp(2.2rem, 4.5vw, 4rem)',
+            fontWeight: 700,
+            lineHeight: 1.15,
+            letterSpacing: '-0.02em',
+            color: '#e8e4dc',
+          }}
+        >
+          {line2Words.map((word, i) => {
+            const isHighlight = word === 'discovery' || word === 'experience' || word === 'win.'
+            return (
+              <motion.span
+                key={`l2-${i}`}
+                initial={prefersReducedMotion ? false : { clipPath: 'inset(100% 0 0 0)' }}
+                animate={{ clipPath: 'inset(0 0 0 0)' }}
+                transition={
+                  prefersReducedMotion
+                    ? undefined
+                    : {
+                        duration: 0.8,
+                        ease: REVEAL_EASE,
+                        delay: (line1Words.length + 1) * 0.06 + i * 0.06,
+                      }
+                }
+                style={{
+                  display: 'inline-block',
+                  color: isHighlight ? '#c9a96e' : undefined,
+                }}
+              >
+                {word}
+              </motion.span>
+            )
+          })}
+        </h2>
+
+        {/* Support line */}
         <motion.p
-          className="mt-6"
+          className="mt-8"
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: 18,
             color: '#8a8580',
             lineHeight: 1.6,
-            maxWidth: '72ch',
+            maxWidth: '64ch',
           }}
-          initial={prefersReducedMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={
             prefersReducedMotion
               ? undefined
-              : { duration: 0.7, ease: REVEAL_EASE, delay: 0.8 }
+              : { duration: 0.7, ease: REVEAL_EASE, delay: 1.3 }
           }
         >
-          The gap between what guests expect and what hotels deliver is a
-          measurable problem — and a solvable one.
+          Demand is rising, but the hotel journey is fragmented, invisible, and leaking revenue.
         </motion.p>
       </div>
     </section>
   )
 }
 
-/** Section 2 — The Problem (oversized stat row) */
+/* ------------------------------------------------------------------ */
+/*  Section 2 — The Problem Stayscape Solves                           */
+/* ------------------------------------------------------------------ */
+
+const DISCOVERY_CHANNELS = [
+  { label: 'TikTok', x: 5, y: 10 },
+  { label: 'AI Search', x: 28, y: 5 },
+  { label: 'Social', x: 52, y: 12 },
+  { label: 'OTA', x: 75, y: 8 },
+  { label: 'Maps', x: 90, y: 18 },
+  { label: 'Hotel Site', x: 15, y: 25 },
+]
+
+const OUTCOMES = [
+  { label: 'Invisible hotels', x: 10, y: 75 },
+  { label: 'Overwhelmed users', x: 42, y: 78 },
+  { label: 'Low conversion', x: 78, y: 72 },
+]
+
+const JOURNEY_STEPS = [
+  { label: 'Social', dropoff: null },
+  { label: 'OTA', dropoff: '34% drop-off' },
+  { label: 'Website', dropoff: 'Bad UX' },
+  { label: 'Maps', dropoff: 'Lost revenue' },
+]
+
 function ProblemSection() {
   const prefersReducedMotion = useReducedMotion()
+  const { ref: channelRef, revealed: channelRevealed } = useSequentialReveal(
+    DISCOVERY_CHANNELS.length,
+    250,
+  )
+  const { ref: outcomeRef, revealed: outcomeRevealed } = useSequentialReveal(
+    OUTCOMES.length,
+    300,
+  )
+  const { ref: journeyRef, revealed: journeyRevealed } = useSequentialReveal(
+    JOURNEY_STEPS.length,
+    350,
+  )
 
   return (
-    <section
-      className="w-full"
-      style={{
-        background: '#0f0e0d',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
-        {/* Section label */}
+    <SectionWrap>
+      <SectionLabel>THE PROBLEM</SectionLabel>
+
+      {/* --- Fragmented Discovery Map --- */}
+      <div className="mb-20">
+        <h3
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 'clamp(1.5rem, 2.5vw, 2rem)',
+            fontWeight: 700,
+            color: '#e8e4dc',
+            lineHeight: 1.2,
+            letterSpacing: '-0.01em',
+            marginBottom: 12,
+          }}
+        >
+          Discovery is no longer one channel.
+        </h3>
+        <p
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 16,
+            color: '#8a8580',
+            lineHeight: 1.6,
+            maxWidth: '52ch',
+            marginBottom: 40,
+          }}
+        >
+          Guests find hotels across six or more fragmented surfaces. None of
+          them talk to each other. Small hotels become invisible.
+        </p>
+
+        {/* Discovery channel pills */}
+        <div ref={channelRef} className="relative" style={{ minHeight: 200 }}>
+          {/* Source channels — top row with scattered positioning */}
+          <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+            {DISCOVERY_CHANNELS.map((ch, i) => (
+              <div
+                key={ch.label}
+                style={{
+                  background: '#1a1917',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 6,
+                  padding: '10px 18px',
+                  opacity: channelRevealed[i] ? 1 : 0,
+                  transform: channelRevealed[i]
+                    ? 'translateY(0) rotate(0deg)'
+                    : `translateY(-20px) rotate(${(i % 2 === 0 ? -1 : 1) * 4}deg)`,
+                  transition: prefersReducedMotion
+                    ? 'none'
+                    : `opacity 0.5s ease-out, transform 0.5s ease-out`,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#e8e4dc',
+                  }}
+                >
+                  {ch.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Scattered connection lines — SVG */}
+          <div className="my-6 flex justify-center" aria-hidden="true">
+            <svg width="100%" height="60" viewBox="0 0 600 60" style={{ maxWidth: 600 }}>
+              {[0, 100, 200, 300, 400, 500].map((x, i) => (
+                <motion.line
+                  key={i}
+                  x1={x + 30}
+                  y1={0}
+                  x2={x + 50 + (i % 2 === 0 ? 40 : -30)}
+                  y2={60}
+                  stroke="rgba(201,169,110,0.12)"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
+                  initial={prefersReducedMotion ? {} : { pathLength: 0 }}
+                  whileInView={{ pathLength: 1 }}
+                  viewport={{ once: true }}
+                  transition={
+                    prefersReducedMotion
+                      ? undefined
+                      : { duration: 0.8, delay: 0.5 + i * 0.1, ease: 'easeOut' }
+                  }
+                />
+              ))}
+            </svg>
+          </div>
+
+          {/* Outcome pills — bottom */}
+          <div ref={outcomeRef} className="flex flex-wrap gap-3 justify-center md:justify-end">
+            {OUTCOMES.map((o, i) => (
+              <div
+                key={o.label}
+                style={{
+                  background: 'rgba(180,80,60,0.08)',
+                  border: '1px solid rgba(180,80,60,0.15)',
+                  borderRadius: 6,
+                  padding: '10px 18px',
+                  opacity: outcomeRevealed[i] ? 1 : 0,
+                  transform: outcomeRevealed[i] ? 'translateY(0)' : 'translateY(16px)',
+                  transition: prefersReducedMotion
+                    ? 'none'
+                    : 'opacity 0.5s ease-out, transform 0.5s ease-out',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#c47a6a',
+                  }}
+                >
+                  {o.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* --- Broken Booking Journey --- */}
+      <div>
+        <h3
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 'clamp(1.25rem, 2vw, 1.75rem)',
+            fontWeight: 700,
+            color: '#e8e4dc',
+            lineHeight: 1.2,
+            letterSpacing: '-0.01em',
+            marginBottom: 32,
+          }}
+        >
+          The booking journey leaks at every step.
+        </h3>
+
+        <div ref={journeyRef} className="flex flex-col gap-0 sm:flex-row sm:items-start sm:gap-0">
+          {JOURNEY_STEPS.map((step, i) => (
+            <div key={step.label} className="flex items-start sm:flex-1">
+              {/* Step node */}
+              <div
+                className="flex flex-col items-center"
+                style={{
+                  opacity: journeyRevealed[i] ? 1 : 0,
+                  transform: journeyRevealed[i] ? 'scale(1)' : 'scale(0.8)',
+                  transition: prefersReducedMotion
+                    ? 'none'
+                    : 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                  flex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 8,
+                    background: journeyRevealed[i]
+                      ? i === 0
+                        ? 'rgba(201,169,110,0.12)'
+                        : 'rgba(255,255,255,0.04)'
+                      : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${i === 0 ? 'rgba(201,169,110,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.4s ease-out',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: i === 0 ? '#c9a96e' : '#6b6560',
+                    }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#e8e4dc',
+                    marginTop: 8,
+                  }}
+                >
+                  {step.label}
+                </span>
+                {step.dropoff && (
+                  <span
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 11,
+                      color: '#c47a6a',
+                      marginTop: 4,
+                      opacity: journeyRevealed[i] ? 1 : 0,
+                      transition: prefersReducedMotion ? 'none' : 'opacity 0.6s ease-out 0.3s',
+                    }}
+                  >
+                    {step.dropoff}
+                  </span>
+                )}
+              </div>
+
+              {/* Arrow connector */}
+              {i < JOURNEY_STEPS.length - 1 && (
+                <div
+                  className="hidden sm:flex items-center justify-center"
+                  style={{
+                    width: 40,
+                    marginTop: 22,
+                    opacity: journeyRevealed[i + 1] ? 1 : 0,
+                    transition: prefersReducedMotion ? 'none' : 'opacity 0.4s ease-out',
+                  }}
+                  aria-hidden="true"
+                >
+                  <svg width="24" height="8" viewBox="0 0 24 8" fill="none">
+                    <path
+                      d="M0 4H20M20 4L16 1M20 4L16 7"
+                      stroke="rgba(255,255,255,0.15)"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <p
+          className="mt-12"
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 16,
+            color: '#8a8580',
+            lineHeight: 1.6,
+            maxWidth: '54ch',
+          }}
+        >
+          This fragmented path is exactly the problem Stayscape is built to
+          remove.
+        </p>
+      </div>
+    </SectionWrap>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Section 3 — Where Investment Is Going in 2026                      */
+/* ------------------------------------------------------------------ */
+
+const INVESTMENT_LANES = [
+  {
+    title: 'AI travel + itinerary engines',
+    description:
+      'Automated planning, real-time recommendations, disruption handling.',
+    fit: 'Adjacent',
+    emphasized: false,
+  },
+  {
+    title: 'Experience discovery platforms',
+    description:
+      'Real-time activities, personalised search, experience packaging.',
+    fit: 'Core fit',
+    emphasized: true,
+  },
+  {
+    title: 'Travel super-layer platforms',
+    description:
+      'Planning, discovery, booking, reduced friction end-to-end.',
+    fit: 'Core fit',
+    emphasized: true,
+  },
+  {
+    title: 'Guest personalisation systems',
+    description:
+      'Targeting, upselling, data-driven guest experiences.',
+    fit: 'Adjacent',
+    emphasized: false,
+  },
+]
+
+function InvestmentSection() {
+  const prefersReducedMotion = useReducedMotion()
+  const { ref, revealed } = useSequentialReveal(INVESTMENT_LANES.length, 300)
+
+  return (
+    <SectionWrap>
+      <SectionLabel>WHERE INVESTMENT IS GOING — 2026</SectionLabel>
+
+      <h3
+        style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: 'clamp(1.5rem, 2.5vw, 2rem)',
+          fontWeight: 700,
+          color: '#e8e4dc',
+          lineHeight: 1.2,
+          letterSpacing: '-0.01em',
+          marginBottom: 40,
+          maxWidth: '40ch',
+        }}
+      >
+        Four lanes are attracting capital. Stayscape sits at the
+        intersection of two.
+      </h3>
+
+      <div ref={ref} className="flex flex-col" style={{ gap: 0 }}>
+        {INVESTMENT_LANES.map((lane, i) => (
+          <div
+            key={lane.title}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              alignItems: 'center',
+              gap: 24,
+              padding: '24px 0',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              opacity: revealed[i] ? 1 : 0,
+              transform: revealed[i] ? 'translateX(0)' : 'translateX(-24px)',
+              transition: prefersReducedMotion
+                ? 'none'
+                : 'opacity 0.5s ease-out, transform 0.5s ease-out',
+            }}
+          >
+            <div>
+              <h4
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: lane.emphasized ? 18 : 16,
+                  fontWeight: 700,
+                  color: lane.emphasized ? '#e8e4dc' : '#8a8580',
+                  marginBottom: 4,
+                }}
+              >
+                {lane.title}
+              </h4>
+              <p
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 14,
+                  color: '#6b6560',
+                  lineHeight: 1.5,
+                }}
+              >
+                {lane.description}
+              </p>
+            </div>
+
+            <span
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: lane.emphasized ? '#c9a96e' : '#6b6560',
+                background: lane.emphasized
+                  ? 'rgba(201,169,110,0.1)'
+                  : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${lane.emphasized ? 'rgba(201,169,110,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                borderRadius: 4,
+                padding: '6px 14px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {lane.fit}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          paddingTop: 24,
+          marginTop: 8,
+        }}
+      >
         <p
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: 12,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-            color: '#c9a96e',
-            marginBottom: 48,
-          }}
-        >
-          THE GAP
-        </p>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-1 gap-16 md:grid-cols-3 md:gap-12">
-          {GAP_STATS.map((stat, i) => (
-            <StatBlock key={i} {...stat} index={i} reducedMotion={!!prefersReducedMotion} />
-          ))}
-        </div>
-
-        {/* Sources */}
-        <p
-          className="mt-20"
-          style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 11,
             color: '#6b6560',
-            lineHeight: 1.5,
           }}
         >
-          Sources: Oracle Hospitality Report 2024, EHL Hospitality Insights, Skift Research
+          Framework based on publicly reported travel-tech funding trends,
+          2024–2026.
         </p>
       </div>
-    </section>
+    </SectionWrap>
   )
 }
 
-function StatBlock({
-  end,
-  decimals,
-  suffix,
-  prefix,
-  label,
-  index,
-  reducedMotion,
-}: {
-  end: number
-  decimals: number
-  suffix: string
-  prefix: string
-  label: string
-  index: number
-  reducedMotion: boolean
-}) {
-  const { ref, formatted } = useCountUpSimple({ end, decimals, suffix, duration: 1.8 })
-  const { ref: wrapRef, visible } = useIntersectionReveal()
+/* ------------------------------------------------------------------ */
+/*  Section 4 — Massive Opportunity                                    */
+/* ------------------------------------------------------------------ */
+
+function OpportunitySection() {
+  const prefersReducedMotion = useReducedMotion()
+  const { ref: statRef, formatted: expectFormatted } = useCountUp({
+    end: 91,
+    suffix: '%',
+    duration: 2,
+  })
+  const { ref: statRef2, formatted: deliverFormatted } = useCountUp({
+    end: 23,
+    suffix: '%',
+    duration: 2,
+  })
+  const { ref: wrapRef, visible } = useInView(0.1)
 
   return (
-    <div
-      ref={wrapRef}
-      style={{
-        clipPath: reducedMotion || visible ? 'inset(0 0 0 0)' : 'inset(100% 0 0 0)',
-        transition: reducedMotion
-          ? 'none'
-          : `clip-path 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.1}s`,
-      }}
-    >
-      <span
-        ref={ref}
-        className="block"
-        style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
-          fontWeight: 700,
-          fontSize: 'clamp(3.5rem, 6vw, 5.5rem)',
-          color: '#c9a96e',
-          lineHeight: 1.1,
-        }}
+    <SectionWrap>
+      <SectionLabel>THE OPPORTUNITY GAP</SectionLabel>
+
+      {/* 91% vs 23% — split stat comparison */}
+      <div
+        ref={wrapRef}
+        className="grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-8"
+        style={{ marginBottom: 48 }}
       >
-        {prefix}
-        {formatted}
-      </span>
+        {/* Expectation */}
+        <div
+          style={{
+            opacity: visible || prefersReducedMotion ? 1 : 0,
+            transform: visible || prefersReducedMotion ? 'translateY(0)' : 'translateY(20px)',
+            transition: prefersReducedMotion ? 'none' : 'all 0.6s ease-out',
+          }}
+        >
+          <span
+            ref={statRef}
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: 'clamp(4rem, 8vw, 7rem)',
+              fontWeight: 700,
+              color: '#c9a96e',
+              lineHeight: 1,
+              display: 'block',
+            }}
+          >
+            {expectFormatted}
+          </span>
+          <p
+            className="mt-3"
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 16,
+              color: '#e8e4dc',
+              fontWeight: 600,
+            }}
+          >
+            expect personalisation
+          </p>
+          {/* Bar visual */}
+          <div
+            style={{
+              marginTop: 16,
+              height: 6,
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: 3,
+              overflow: 'hidden',
+            }}
+          >
+            <motion.div
+              style={{
+                height: '100%',
+                background: '#c9a96e',
+                borderRadius: 3,
+              }}
+              initial={prefersReducedMotion ? { width: '91%' } : { width: '0%' }}
+              whileInView={{ width: '91%' }}
+              viewport={{ once: true }}
+              transition={
+                prefersReducedMotion
+                  ? undefined
+                  : { duration: 1.6, ease: REVEAL_EASE, delay: 0.3 }
+              }
+            />
+          </div>
+        </div>
+
+        {/* Delivery */}
+        <div
+          style={{
+            opacity: visible || prefersReducedMotion ? 1 : 0,
+            transform: visible || prefersReducedMotion ? 'translateY(0)' : 'translateY(20px)',
+            transition: prefersReducedMotion ? 'none' : 'all 0.6s ease-out 0.2s',
+          }}
+        >
+          <span
+            ref={statRef2}
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: 'clamp(4rem, 8vw, 7rem)',
+              fontWeight: 700,
+              color: '#4a4540',
+              lineHeight: 1,
+              display: 'block',
+            }}
+          >
+            {deliverFormatted}
+          </span>
+          <p
+            className="mt-3"
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 16,
+              color: '#8a8580',
+              fontWeight: 600,
+            }}
+          >
+            feel they get it
+          </p>
+          {/* Bar visual */}
+          <div
+            style={{
+              marginTop: 16,
+              height: 6,
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: 3,
+              overflow: 'hidden',
+            }}
+          >
+            <motion.div
+              style={{
+                height: '100%',
+                background: '#4a4540',
+                borderRadius: 3,
+              }}
+              initial={prefersReducedMotion ? { width: '23%' } : { width: '0%' }}
+              whileInView={{ width: '23%' }}
+              viewport={{ once: true }}
+              transition={
+                prefersReducedMotion
+                  ? undefined
+                  : { duration: 1.6, ease: REVEAL_EASE, delay: 0.5 }
+              }
+            />
+          </div>
+        </div>
+      </div>
+
       <p
-        className="mt-4"
         style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: 16,
           color: '#8a8580',
           lineHeight: 1.6,
-          maxWidth: 400,
+          maxWidth: '56ch',
+          marginBottom: 56,
         }}
       >
-        {label}
+        Hotels know guests expect relevance, but most still operate with
+        siloed, unusable data.
+      </p>
+
+      {/* OTA Dependence — ledger comparison */}
+      <div>
+        <h3
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 'clamp(1.25rem, 2vw, 1.5rem)',
+            fontWeight: 700,
+            color: '#e8e4dc',
+            lineHeight: 1.2,
+            letterSpacing: '-0.01em',
+            marginBottom: 24,
+          }}
+        >
+          OTA dependence is unsustainable.
+        </h3>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            {
+              metric: 'Commission',
+              problem: '15–25% per booking',
+              icon: '↗',
+            },
+            {
+              metric: 'Guest data',
+              problem: 'Owned by the OTA',
+              icon: '✕',
+            },
+            {
+              metric: 'Demand control',
+              problem: 'Algorithmically gated',
+              icon: '⊘',
+            },
+          ].map((item) => (
+            <OTACard key={item.metric} {...item} />
+          ))}
+        </div>
+      </div>
+    </SectionWrap>
+  )
+}
+
+function OTACard({
+  metric,
+  problem,
+  icon,
+}: {
+  metric: string
+  problem: string
+  icon: string
+}) {
+  const { ref, visible } = useInView(0.1)
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        background: '#171613',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 8,
+        padding: '24px 20px',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(12px)',
+        transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 20,
+          display: 'block',
+          marginBottom: 12,
+          opacity: 0.5,
+        }}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+      <h4
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 15,
+          fontWeight: 700,
+          color: '#e8e4dc',
+          marginBottom: 4,
+        }}
+      >
+        {metric}
+      </h4>
+      <p
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 14,
+          color: '#c47a6a',
+          lineHeight: 1.4,
+        }}
+      >
+        {problem}
       </p>
     </div>
   )
 }
 
-/** Section 3 — How It Works (alternating editorial rows) */
-function HowItWorksSection() {
+/* ------------------------------------------------------------------ */
+/*  Section 5 — Why Corporates Will Fund This                          */
+/* ------------------------------------------------------------------ */
+
+const PRESSURES = [
+  'Rising costs & labour shortages',
+  'Airbnb competition',
+  'Flat revenue per guest',
+]
+
+const UNLOCKS = [
+  'Upselling & experiences',
+  'Guest personalisation',
+  'New monetisation per stay',
+]
+
+function CorporateSection() {
   const prefersReducedMotion = useReducedMotion()
-
-  const visuals: Record<string, React.ReactNode> = {
-    discover: <DiscoverVisual />,
-    itinerary: <ItineraryVisual />,
-    data: <DataVisual />,
-  }
-
-  return (
-    <section
-      className="w-full"
-      style={{
-        background: '#0f0e0d',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
-        {/* Section label */}
-        <p
-          style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-            color: '#c9a96e',
-            marginBottom: 64,
-          }}
-        >
-          HOW IT WORKS FOR YOUR PROPERTY
-        </p>
-
-        <div className="flex flex-col" style={{ gap: 80 }}>
-          {EDITORIAL_ROWS.map((row, i) => (
-            <EditorialRow
-              key={row.tag}
-              {...row}
-              index={i}
-              visual={visuals[row.visual]}
-              reducedMotion={!!prefersReducedMotion}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
+  const { ref: pressRef, revealed: pressRevealed } = useSequentialReveal(
+    PRESSURES.length,
+    300,
   )
-}
+  const { ref: unlockRef, revealed: unlockRevealed } = useSequentialReveal(
+    UNLOCKS.length,
+    300,
+  )
 
-function EditorialRow({
-  tag,
-  heading,
-  body,
-  visual,
-  index,
-  reducedMotion,
-}: {
-  tag: string
-  heading: string
-  body: string
-  visual: React.ReactNode
-  index: number
-  reducedMotion: boolean
-}) {
-  const { ref, visible } = useIntersectionReveal(0.1)
-  const isEven = index % 2 === 0
-
-  // On desktop: alternate image left/right. On mobile: text first, visual second.
   return (
-    <div
-      ref={ref}
-      className={`grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-16`}
-    >
-      {/* Text — always first on mobile; on desktop, order alternates */}
-      <div className={isEven ? 'md:order-1' : 'md:order-2'}>
-        <div
-          style={{
-            clipPath: reducedMotion || visible
-              ? 'inset(0 0 0 0)'
-              : isEven
-                ? 'inset(0 100% 0 0)'
-                : 'inset(0 0 0 100%)',
-            opacity: reducedMotion || visible ? 1 : 0,
-            transition: reducedMotion
-              ? 'none'
-              : 'clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        >
+    <SectionWrap>
+      <SectionLabel>WHY CORPORATES FUND THIS</SectionLabel>
+
+      <h3
+        style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: 'clamp(1.5rem, 2.5vw, 2rem)',
+          fontWeight: 700,
+          color: '#e8e4dc',
+          lineHeight: 1.2,
+          letterSpacing: '-0.01em',
+          marginBottom: 40,
+          maxWidth: '42ch',
+        }}
+      >
+        Hotel groups do not fund this because it is interesting. They fund
+        it because they need new profit and control levers.
+      </h3>
+
+      {/* Pressure → Value transformation diagram */}
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-[1fr_auto_1fr]">
+        {/* Left — pressures */}
+        <div ref={pressRef}>
           <p
             style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: 11,
-              fontWeight: 600,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              color: '#c47a6a',
+              marginBottom: 20,
+            }}
+          >
+            Market pressure
+          </p>
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            {PRESSURES.map((p, i) => (
+              <div
+                key={p}
+                style={{
+                  background: 'rgba(180,80,60,0.06)',
+                  border: '1px solid rgba(180,80,60,0.12)',
+                  borderRadius: 6,
+                  padding: '14px 18px',
+                  opacity: pressRevealed[i] ? 1 : 0,
+                  transform: pressRevealed[i]
+                    ? 'translateX(0)'
+                    : 'translateX(-16px)',
+                  transition: prefersReducedMotion
+                    ? 'none'
+                    : 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 14,
+                    color: '#c47a6a',
+                    fontWeight: 600,
+                  }}
+                >
+                  {p}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Center — directional arrows */}
+        <div
+          className="hidden md:flex flex-col items-center justify-center"
+          aria-hidden="true"
+          style={{ minWidth: 60 }}
+        >
+          <motion.svg
+            width="48"
+            height="120"
+            viewBox="0 0 48 120"
+            fill="none"
+            initial={prefersReducedMotion ? {} : { opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : { duration: 0.6, delay: 0.8 }
+            }
+          >
+            <path
+              d="M24 0 V100 M24 100 L16 88 M24 100 L32 88"
+              stroke="rgba(201,169,110,0.3)"
+              strokeWidth="1.5"
+              transform="rotate(90 24 60) translate(-36, 0)"
+            />
+            <text
+              x="24"
+              y="65"
+              textAnchor="middle"
+              fill="#6b6560"
+              fontSize="9"
+              fontFamily="'DM Sans', sans-serif"
+              fontWeight="600"
+            >
+              →
+            </text>
+          </motion.svg>
+        </div>
+
+        {/* Mobile arrow */}
+        <div
+          className="flex md:hidden items-center justify-center"
+          aria-hidden="true"
+          style={{ padding: '8px 0' }}
+        >
+          <svg width="24" height="32" viewBox="0 0 24 32" fill="none">
+            <path
+              d="M12 0 V24 M12 24 L6 18 M12 24 L18 18"
+              stroke="rgba(201,169,110,0.3)"
+              strokeWidth="1.5"
+            />
+          </svg>
+        </div>
+
+        {/* Right — what Stayscape unlocks */}
+        <div ref={unlockRef}>
+          <p
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
               color: '#c9a96e',
-              marginBottom: 16,
+              marginBottom: 20,
             }}
           >
-            {tag}
+            What Stayscape unlocks
           </p>
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            {UNLOCKS.map((u, i) => (
+              <div
+                key={u}
+                style={{
+                  background: 'rgba(201,169,110,0.06)',
+                  border: '1px solid rgba(201,169,110,0.15)',
+                  borderRadius: 6,
+                  padding: '14px 18px',
+                  opacity: unlockRevealed[i] ? 1 : 0,
+                  transform: unlockRevealed[i]
+                    ? 'translateX(0)'
+                    : 'translateX(16px)',
+                  transition: prefersReducedMotion
+                    ? 'none'
+                    : 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 14,
+                    color: '#c9a96e',
+                    fontWeight: 600,
+                  }}
+                >
+                  {u}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SectionWrap>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Section 6 — Macro Tailwind                                         */
+/* ------------------------------------------------------------------ */
+
+function MacroSection() {
+  const prefersReducedMotion = useReducedMotion()
+  const { ref, visible } = useInView(0.1)
+
+  return (
+    <SectionWrap>
+      <SectionLabel>MACRO TAILWIND</SectionLabel>
+
+      <div className="grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-12">
+        {/* Left — demand signal */}
+        <div
+          ref={ref}
+          style={{
+            opacity: visible || prefersReducedMotion ? 1 : 0,
+            transition: prefersReducedMotion ? 'none' : 'opacity 0.6s ease-out',
+          }}
+        >
           <h3
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
@@ -636,363 +1279,563 @@ function EditorialRow({
               color: '#e8e4dc',
               lineHeight: 1.2,
               letterSpacing: '-0.01em',
-              marginBottom: 16,
+              marginBottom: 20,
             }}
           >
-            {heading}
+            Asia&apos;s middle class is the next wave.
           </h3>
           <p
             style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: 16,
               color: '#8a8580',
-              lineHeight: 1.7,
-              maxWidth: 480,
+              lineHeight: 1.6,
+              marginBottom: 32,
             }}
           >
-            {body}
+            More travellers are entering the market every year. The demand
+            is structural, not cyclical.
           </p>
-        </div>
-      </div>
 
-      {/* Visual — second on mobile; on desktop, order alternates */}
-      <div className={isEven ? 'md:order-2' : 'md:order-1'}>
-        <div
-          style={{
-            clipPath: reducedMotion || visible
-              ? 'inset(0 0 0 0)'
-              : isEven
-                ? 'inset(0 0 0 100%)'
-                : 'inset(0 100% 0 0)',
-            opacity: reducedMotion || visible ? 1 : 0,
-            transition: reducedMotion
-              ? 'none'
-              : 'clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s, opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s',
-          }}
-        >
-          {visual}
+          {/* Abstract demand growth lines */}
+          <div
+            style={{
+              background: '#171613',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.06)',
+              padding: 24,
+            }}
+          >
+            <svg
+              viewBox="0 0 300 120"
+              fill="none"
+              style={{ width: '100%' }}
+              aria-label="Demand growth trend"
+            >
+              {/* Growth lines */}
+              <motion.path
+                d="M0 100 C50 95 100 80 150 60 C200 40 250 25 300 10"
+                stroke="#c9a96e"
+                strokeWidth="2"
+                initial={prefersReducedMotion ? {} : { pathLength: 0 }}
+                whileInView={{ pathLength: 1 }}
+                viewport={{ once: true }}
+                transition={
+                  prefersReducedMotion
+                    ? undefined
+                    : { duration: 1.5, ease: 'easeOut', delay: 0.3 }
+                }
+              />
+              <motion.path
+                d="M0 110 C50 105 100 95 150 85 C200 75 250 65 300 55"
+                stroke="rgba(201,169,110,0.3)"
+                strokeWidth="1.5"
+                strokeDasharray="4 3"
+                initial={prefersReducedMotion ? {} : { pathLength: 0 }}
+                whileInView={{ pathLength: 1 }}
+                viewport={{ once: true }}
+                transition={
+                  prefersReducedMotion
+                    ? undefined
+                    : { duration: 1.5, ease: 'easeOut', delay: 0.6 }
+                }
+              />
+              {/* Labels */}
+              <text
+                x="290"
+                y="8"
+                textAnchor="end"
+                fill="#c9a96e"
+                fontSize="9"
+                fontFamily="'DM Sans', sans-serif"
+                fontWeight="600"
+              >
+                Outbound travel
+              </text>
+              <text
+                x="290"
+                y="53"
+                textAnchor="end"
+                fill="rgba(201,169,110,0.5)"
+                fontSize="9"
+                fontFamily="'DM Sans', sans-serif"
+              >
+                Hospitality demand
+              </text>
+            </svg>
+          </div>
+        </div>
+
+        {/* Right — traveller expectation card */}
+        <div className="flex flex-col justify-center">
+          <div
+            style={{
+              background: '#171613',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.06)',
+              padding: '32px 28px',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: '#c9a96e',
+                marginBottom: 20,
+              }}
+            >
+              Modern traveller
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 'clamp(1.75rem, 3vw, 2.5rem)',
+                  fontWeight: 700,
+                  color: '#c9a96e',
+                }}
+              >
+                Experiences
+              </span>
+              <span
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 16,
+                  color: '#6b6560',
+                }}
+              >
+                &gt;
+              </span>
+              <span
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 'clamp(1.25rem, 2vw, 1.5rem)',
+                  fontWeight: 400,
+                  color: '#4a4540',
+                  textDecoration: 'line-through',
+                  textDecorationColor: 'rgba(255,255,255,0.1)',
+                }}
+              >
+                rooms only
+              </span>
+            </div>
+
+            <p
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 14,
+                color: '#8a8580',
+                lineHeight: 1.6,
+              }}
+            >
+              Gen Z and millennials do not compare rooms. They compare what
+              they can do, see, and feel during their stay.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </SectionWrap>
   )
 }
 
-/** Section 4 — Proof / Social evidence */
-function ProofSection() {
+/* ------------------------------------------------------------------ */
+/*  Section 7 — Hidden Insight                                         */
+/* ------------------------------------------------------------------ */
+
+function InsightSection() {
   const prefersReducedMotion = useReducedMotion()
+  const { ref, visible } = useInView(0.2)
+
+  const highlights = [
+    { text: 'fragmented travel data', highlighted: true },
+    { text: ', ', highlighted: false },
+    { text: 'user itineraries', highlighted: true },
+    { text: ' and ', highlighted: false },
+    { text: 'AI booking', highlighted: true },
+    { text: ' to ', highlighted: false },
+    { text: 'reduce friction', highlighted: true },
+  ]
 
   return (
-    <section
-      className="w-full"
-      style={{
-        background: '#0f0e0d',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
-        {/* Section label */}
+    <SectionWrap>
+      <SectionLabel>THE HIDDEN INSIGHT</SectionLabel>
+
+      <div
+        ref={ref}
+        style={{
+          background: '#171613',
+          border: '1px solid rgba(201,169,110,0.12)',
+          borderRadius: 8,
+          padding: 'clamp(32px, 5vw, 56px)',
+          maxWidth: 800,
+          opacity: visible || prefersReducedMotion ? 1 : 0,
+          transform: visible || prefersReducedMotion ? 'scale(1)' : 'scale(0.97)',
+          transition: prefersReducedMotion
+            ? 'none'
+            : 'opacity 0.6s ease-out, transform 0.6s ease-out',
+        }}
+      >
         <p
           style={{
             fontFamily: "'DM Sans', sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-            color: '#c9a96e',
-            marginBottom: 48,
+            fontSize: 14,
+            color: '#8a8580',
+            marginBottom: 20,
           }}
         >
-          WHAT THE INDUSTRY IS SAYING
+          The market is effectively describing a startup like Stayscape:
         </p>
 
-        {/* Large quote */}
-        <QuoteCard
-          quote={`\u201cGuests do not need more options. They need better guidance \u2014 and they expect that guidance to come from the hotel, not from an algorithm.\u201d`}
-          attribution="EHL Hospitality Insights, 2024"
-          large
-          delay={0}
-          reducedMotion={!!prefersReducedMotion}
-        />
-
-        {/* Two smaller quotes */}
-        <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
-          <QuoteCard
-            quote={`\u201cProperties that actively guide the in-destination experience see up to 18% higher guest satisfaction scores and meaningfully stronger repeat intent.\u201d`}
-            attribution="Skift Research, Guest Experience Report"
-            delay={0.1}
-            reducedMotion={!!prefersReducedMotion}
-          />
-          <QuoteCard
-            quote={`\u201cThe hotels winning on experience today are not spending more \u2014 they are removing friction between the guest and what they want to do next.\u201d`}
-            attribution="Oracle Hospitality, The Connected Traveller"
-            delay={0.2}
-            reducedMotion={!!prefersReducedMotion}
-          />
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function QuoteCard({
-  quote,
-  attribution,
-  large,
-  delay,
-  reducedMotion,
-}: {
-  quote: string
-  attribution: string
-  large?: boolean
-  delay: number
-  reducedMotion: boolean
-}) {
-  const { ref, visible } = useIntersectionReveal(0.15)
-
-  return (
-    <div
-      ref={ref}
-      style={{
-        background: '#171613',
-        borderRadius: 8,
-        border: '1px solid rgba(255,255,255,0.06)',
-        padding: large ? '40px 32px' : '32px 24px',
-        opacity: reducedMotion || visible ? 1 : 0,
-        transform: reducedMotion || visible ? 'scale(1)' : 'scale(0.97)',
-        transition: reducedMotion
-          ? 'none'
-          : `opacity 0.3s ease-out ${delay}s, transform 0.3s ease-out ${delay}s`,
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
-          fontStyle: 'italic',
-          fontSize: large ? 'clamp(1.25rem, 2vw, 1.5rem)' : 'clamp(1rem, 1.5vw, 1.125rem)',
-          color: '#e8e4dc',
-          lineHeight: 1.5,
-        }}
-      >
-        {quote}
-      </p>
-      <p
-        className="mt-4"
-        style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 13,
-          color: '#8a8580',
-        }}
-      >
-        — {attribution}
-      </p>
-    </div>
-  )
-}
-
-/** Section 5 — What you get as a hotel */
-function BenefitsSection() {
-  const prefersReducedMotion = useReducedMotion()
-
-  return (
-    <section
-      className="w-full"
-      style={{
-        background: '#0f0e0d',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
-        {/* Section label */}
         <p
-          style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-            color: '#c9a96e',
-            marginBottom: 48,
-          }}
-        >
-          WHAT THIS MEANS FOR YOUR PROPERTY
-        </p>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {BENEFIT_CARDS.map((card, i) => (
-            <BenefitCard key={i} {...card} index={i} reducedMotion={!!prefersReducedMotion} />
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function BenefitCard({
-  heading,
-  body,
-  index,
-  reducedMotion,
-}: {
-  heading: string
-  body: string
-  index: number
-  reducedMotion: boolean
-}) {
-  const { ref, visible } = useIntersectionReveal(0.1)
-
-  return (
-    <div
-      ref={ref}
-      style={{
-        background: '#171613',
-        borderRadius: 8,
-        border: '1px solid rgba(255,255,255,0.06)',
-        padding: '28px 24px',
-        clipPath: reducedMotion || visible ? 'inset(0 0 0 0)' : 'inset(100% 0 0 0)',
-        transition: reducedMotion
-          ? 'none'
-          : `clip-path 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.06}s`,
-      }}
-    >
-      <h4
-        style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 17,
-          fontWeight: 700,
-          color: '#e8e4dc',
-          marginBottom: 8,
-        }}
-      >
-        {heading}
-      </h4>
-      <p
-        style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 15,
-          color: '#8a8580',
-          lineHeight: 1.6,
-        }}
-      >
-        {body}
-      </p>
-    </div>
-  )
-}
-
-/** Section 6 — Final CTA */
-function FinalCTASection() {
-  const prefersReducedMotion = useReducedMotion()
-
-  return (
-    <section
-      className="relative flex min-h-[70vh] items-center justify-center"
-      style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80)',
-        }}
-      />
-      {/* Dark overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(to top, rgba(15,14,13,0.95), rgba(15,14,13,0.7))',
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 px-6 text-center">
-        <motion.h2
           style={{
             fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: 'clamp(1.75rem, 3.5vw, 3rem)',
-            fontWeight: 700,
+            fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)',
+            fontWeight: 600,
             color: '#e8e4dc',
-            letterSpacing: '-0.02em',
-            lineHeight: 1.2,
+            lineHeight: 1.5,
+            fontStyle: 'italic',
           }}
-          initial={prefersReducedMotion ? false : { clipPath: 'inset(100% 0 0 0)' }}
-          whileInView={{ clipPath: 'inset(0 0 0 0)' }}
-          viewport={{ once: true }}
-          transition={
-            prefersReducedMotion
-              ? undefined
-              : { duration: 0.8, ease: REVEAL_EASE }
-          }
         >
-          Ready to see if Stayscape fits your property?
-        </motion.h2>
+          &ldquo;A platform that combines{' '}
+          {highlights.map((seg, i) =>
+            seg.highlighted ? (
+              <motion.span
+                key={i}
+                style={{
+                  color: '#c9a96e',
+                  fontStyle: 'normal',
+                  fontWeight: 700,
+                  background: 'rgba(201,169,110,0.08)',
+                  padding: '2px 4px',
+                  borderRadius: 3,
+                }}
+                initial={prefersReducedMotion ? {} : { opacity: 0.3 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={
+                  prefersReducedMotion
+                    ? undefined
+                    : { duration: 0.5, delay: 0.6 + i * 0.15 }
+                }
+              >
+                {seg.text}
+              </motion.span>
+            ) : (
+              <span key={i}>{seg.text}</span>
+            ),
+          )}
+          .&rdquo;
+        </p>
 
         <motion.p
-          className="mx-auto mt-6"
+          className="mt-8"
           style={{
             fontFamily: "'DM Sans', sans-serif",
-            fontSize: 17,
-            color: '#8a8580',
-            lineHeight: 1.6,
-            maxWidth: 520,
+            fontSize: 18,
+            fontWeight: 700,
+            color: '#c9a96e',
           }}
-          initial={prefersReducedMotion ? false : { opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+          initial={prefersReducedMotion ? {} : { opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={
             prefersReducedMotion
               ? undefined
-              : { duration: 0.6, ease: REVEAL_EASE, delay: 0.3 }
+              : { duration: 0.5, delay: 1.4, ease: REVEAL_EASE }
           }
         >
-          We&apos;re currently selecting a small number of European hotel partners for an early pilot. No integration required. We handle the setup.
+          That is Stayscape — almost word for word.
         </motion.p>
-
-        <motion.div
-          className="mt-8 flex flex-wrap items-center justify-center gap-4"
-          initial={prefersReducedMotion ? false : { clipPath: 'inset(100% 0 0 0)' }}
-          whileInView={{ clipPath: 'inset(0 0 0 0)' }}
-          viewport={{ once: true }}
-          transition={
-            prefersReducedMotion
-              ? undefined
-              : { duration: 0.8, ease: REVEAL_EASE, delay: 0.15 }
-          }
-        >
-          <a
-            href="mailto:hello@stayscape.app"
-            className="inline-block text-sm font-semibold"
-            style={{
-              background: '#c9a96e',
-              color: '#0f0e0d',
-              borderRadius: 4,
-              padding: '14px 32px',
-              minWidth: 44,
-              minHeight: 44,
-            }}
-          >
-            Get in touch
-          </a>
-          <a
-            href="https://stayscape-kohl.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block text-sm"
-            style={{
-              border: '1px solid rgba(255,255,255,0.3)',
-              background: 'transparent',
-              color: '#e8e4dc',
-              borderRadius: 4,
-              padding: '14px 32px',
-              minWidth: 44,
-              minHeight: 44,
-            }}
-          >
-            See the live app
-          </a>
-        </motion.div>
       </div>
-    </section>
+    </SectionWrap>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Section 8 — Positioning Correction                                 */
+/* ------------------------------------------------------------------ */
+
+function PositioningSection() {
+  const prefersReducedMotion = useReducedMotion()
+  const { ref, visible } = useInView(0.15)
+
+  return (
+    <SectionWrap>
+      <SectionLabel>POSITIONING CORRECTION</SectionLabel>
+
+      <h3
+        style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: 'clamp(1.5rem, 2.5vw, 2rem)',
+          fontWeight: 700,
+          color: '#e8e4dc',
+          lineHeight: 1.2,
+          letterSpacing: '-0.01em',
+          marginBottom: 40,
+          maxWidth: '36ch',
+        }}
+      >
+        This is not a travel app. It is an infrastructure layer.
+      </h3>
+
+      <div ref={ref} className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Weak framing — muted */}
+        <div
+          style={{
+            background: '#131210',
+            border: '1px solid rgba(255,255,255,0.04)',
+            borderRadius: 8,
+            padding: '32px 24px',
+            opacity: visible || prefersReducedMotion ? 1 : 0,
+            transform: visible || prefersReducedMotion ? 'translateX(0)' : 'translateX(-16px)',
+            transition: prefersReducedMotion
+              ? 'none'
+              : 'opacity 0.5s ease-out, transform 0.5s ease-out',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              color: '#4a4540',
+              marginBottom: 20,
+            }}
+          >
+            Weak framing
+          </p>
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            {['A travel app', 'Discovery only', 'Another booking platform'].map(
+              (item) => (
+                <div
+                  key={item}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <span
+                    style={{ color: '#4a4540', fontSize: 14 }}
+                    aria-hidden="true"
+                  >
+                    ✕
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 15,
+                      color: '#4a4540',
+                      textDecoration: 'line-through',
+                      textDecorationColor: 'rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    {item}
+                  </span>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+
+        {/* Strong framing — dominant */}
+        <div
+          style={{
+            background: 'rgba(201,169,110,0.04)',
+            border: '1px solid rgba(201,169,110,0.15)',
+            borderRadius: 8,
+            padding: '32px 24px',
+            opacity: visible || prefersReducedMotion ? 1 : 0,
+            transform: visible || prefersReducedMotion ? 'translateX(0)' : 'translateX(16px)',
+            transition: prefersReducedMotion
+              ? 'none'
+              : 'opacity 0.5s ease-out 0.15s, transform 0.5s ease-out 0.15s',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              color: '#c9a96e',
+              marginBottom: 20,
+            }}
+          >
+            Strong framing
+          </p>
+
+          <p
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: 'clamp(1.25rem, 2vw, 1.5rem)',
+              fontWeight: 700,
+              color: '#e8e4dc',
+              lineHeight: 1.3,
+            }}
+          >
+            Infrastructure layer for hotel guest experience, discovery, and
+            monetisation.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {['Guest experience', 'Discovery', 'Monetisation'].map((tag) => (
+              <span
+                key={tag}
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#c9a96e',
+                  background: 'rgba(201,169,110,0.1)',
+                  border: '1px solid rgba(201,169,110,0.18)',
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SectionWrap>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Section 9 — Final Takeaway                                         */
+/* ------------------------------------------------------------------ */
+
+const FINAL_ITEMS: {
+  label: string
+  positive: boolean
+}[] = [
+  { label: 'More booking platforms', positive: false },
+  { label: 'Generic travel apps', positive: false },
+  { label: 'Discovery + experience layer', positive: true },
+  { label: 'AI + personalisation', positive: true },
+  { label: 'Helping hotels own the guest journey', positive: true },
+]
+
+function FinalSection() {
+  const prefersReducedMotion = useReducedMotion()
+  const { ref, revealed } = useSequentialReveal(FINAL_ITEMS.length, 250)
+
+  return (
+    <SectionWrap>
+      <SectionLabel>2026 IS ABOUT</SectionLabel>
+
+      <div ref={ref} className="flex flex-col" style={{ gap: 0, maxWidth: 640 }}>
+        {FINAL_ITEMS.map((item, i) => (
+          <div
+            key={item.label}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              padding: '18px 0',
+              borderTop: '1px solid rgba(255,255,255,0.04)',
+              opacity: revealed[i] ? 1 : 0,
+              transform: revealed[i] ? 'translateX(0)' : 'translateX(-12px)',
+              transition: prefersReducedMotion
+                ? 'none'
+                : 'opacity 0.4s ease-out, transform 0.4s ease-out',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 14,
+                fontWeight: 700,
+                color: item.positive ? '#c9a96e' : '#c47a6a',
+                width: 32,
+                textAlign: 'center',
+                flexShrink: 0,
+              }}
+              aria-hidden="true"
+            >
+              {item.positive ? '✓' : '✕'}
+            </span>
+            <span
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 16,
+                fontWeight: 600,
+                color: item.positive ? '#e8e4dc' : '#4a4540',
+                textDecoration: item.positive ? 'none' : 'line-through',
+                textDecorationColor: 'rgba(255,255,255,0.06)',
+              }}
+            >
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Closing statement */}
+      <motion.div
+        className="mt-16"
+        style={{
+          maxWidth: 640,
+          borderTop: '1px solid rgba(201,169,110,0.15)',
+          paddingTop: 32,
+        }}
+        initial={prefersReducedMotion ? {} : { opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={
+          prefersReducedMotion
+            ? undefined
+            : { duration: 0.6, ease: REVEAL_EASE, delay: 0.3 }
+        }
+      >
+        <p
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 'clamp(1.25rem, 2vw, 1.5rem)',
+            fontWeight: 700,
+            color: '#e8e4dc',
+            lineHeight: 1.4,
+          }}
+        >
+          Stayscape is aligned with where travel demand, hotel pressure,
+          and venture attention are already moving.
+        </p>
+      </motion.div>
+
+      {/* Back link */}
+      <div className="mt-16">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm transition-colors duration-200"
+          style={{
+            color: '#8a8580',
+            fontFamily: "'DM Sans', sans-serif",
+            minWidth: 44,
+            minHeight: 44,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#e8e4dc')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#8a8580')}
+        >
+          ← Back to home
+        </Link>
+      </div>
+    </SectionWrap>
   )
 }
 
@@ -1025,12 +1868,15 @@ export default function WhyItWorksPage() {
       </div>
 
       <main>
-        <HeroSection />
+        <HeadlineFrame />
         <ProblemSection />
-        <HowItWorksSection />
-        <ProofSection />
-        <BenefitsSection />
-        <FinalCTASection />
+        <InvestmentSection />
+        <OpportunitySection />
+        <CorporateSection />
+        <MacroSection />
+        <InsightSection />
+        <PositioningSection />
+        <FinalSection />
       </main>
     </div>
   )
