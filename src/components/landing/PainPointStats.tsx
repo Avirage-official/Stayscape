@@ -94,30 +94,13 @@ export default function PainPointStats() {
 
   return (
     <section
-      className="relative w-full overflow-hidden"
+      className="w-full"
       style={{
         background: '#0f0e0d',
         borderTop: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920&q=80)',
-        }}
-      />
-      {/* Dark overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(to bottom, rgba(15,14,13,0.92), rgba(15,14,13,0.88))',
-        }}
-      />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
+      <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
         {/* Staggered stat layout — NOT a symmetrical 3-col grid */}
         <div className="grid grid-cols-1 gap-20 md:grid-cols-12 md:gap-y-28">
           {/* Stat 1 — full-width on mobile, left on desktop */}
