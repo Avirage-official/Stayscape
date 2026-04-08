@@ -49,3 +49,11 @@ export function getOpenAIApiKey(): string {
 export function getAnthropicApiKey(): string {
   return getServerEnv('ANTHROPIC_API_KEY');
 }
+
+/** Upstash Redis REST URL for rate limiting (optional — returns '' if not set). */
+export const UPSTASH_REDIS_REST_URL =
+  process.env.UPSTASH_REDIS_REST_URL ?? '';
+
+/** Upstash Redis REST token for rate limiting (optional — returns '' if not set). */
+export const UPSTASH_REDIS_REST_TOKEN =
+  process.env.UPSTASH_REDIS_REST_TOKEN ?? '';

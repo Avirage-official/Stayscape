@@ -16,6 +16,7 @@ import {
   toDiscoveryEventCard,
 } from '@/lib/supabase';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 interface SearchResults {
   places: DiscoveryPlaceCard[];
@@ -24,6 +25,14 @@ interface SearchResults {
 }
 
 export async function GET(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
   const supabase = getSupabaseBrowser();
   if (!supabase) {
     return NextResponse.json(
@@ -79,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     results.total = results.places.length + results.events.length;
-    return NextResponse.json({ data: results });
+    return NextResponse.json({ data: results }, { headers: rateLimit.headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

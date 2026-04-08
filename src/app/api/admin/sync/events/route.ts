@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncEvents, type EventSyncOptions } from '@/lib/services/sync/events-sync';
 import type { ExternalSource } from '@/types/database';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 interface SyncEventsBody {
   region_id: string;
@@ -23,6 +24,14 @@ interface SyncEventsBody {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request, 'admin');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
   try {
     const body = (await request.json()) as SyncEventsBody;
 
@@ -47,7 +56,7 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await syncEvents(options);
-    return NextResponse.json({ data: result });
+    return NextResponse.json({ data: result }, { headers: rateLimit.headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
