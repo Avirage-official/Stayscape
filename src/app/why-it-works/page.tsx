@@ -343,6 +343,12 @@ function HeadlineFrame() {
 /*  Section 2 — The Problem Stayscape Solves                           */
 /* ------------------------------------------------------------------ */
 
+/* SVG layout constants for scattered discovery lines */
+const LINE_CHANNEL_SPACING = 120
+const LINE_CHANNEL_OFFSET = 60
+const LINE_OUTCOME_START_X = 480
+const LINE_OUTCOME_SPACING = 120
+
 const DISCOVERY_CHANNELS = [
   { label: 'TikTok' },
   { label: 'AI Search' },
@@ -454,12 +460,12 @@ function ProblemSection() {
               width="100%"
               height="80"
               viewBox="0 0 720 80"
-              preserveAspectRatio="none"
+              preserveAspectRatio="xMidYMid meet"
               style={{ display: 'block' }}
             >
               {DISCOVERY_CHANNELS.map((_, i) => {
-                const startX = i * 120 + 60
-                const endX = 480 + (i % 3) * 120
+                const startX = i * LINE_CHANNEL_SPACING + LINE_CHANNEL_OFFSET
+                const endX = LINE_OUTCOME_START_X + (i % 3) * LINE_OUTCOME_SPACING
                 const midY = 30 + (i % 2 === 0 ? 10 : -5)
                 return (
                   <motion.path
@@ -537,11 +543,14 @@ function ProblemSection() {
           className="flex items-start"
           style={{ maxWidth: 640 }}
         >
-          {JOURNEY_STEPS.map((step, i) => (
-            <div key={step.label} className="contents">
-              {/* Arrow connector between steps */}
-              {i > 0 && (
+          {JOURNEY_STEPS.flatMap((step, i) => {
+            const nodes: React.ReactNode[] = []
+
+            {/* Arrow connector between steps */}
+            if (i > 0) {
+              nodes.push(
                 <div
+                  key={`arrow-${i}`}
                   className="flex items-center justify-center"
                   style={{
                     width: 40,
@@ -559,11 +568,14 @@ function ProblemSection() {
                       strokeWidth="1.5"
                     />
                   </svg>
-                </div>
-              )}
+                </div>,
+              )
+            }
 
-              {/* Step node */}
+            {/* Step node */}
+            nodes.push(
               <div
+                key={step.label}
                 className="flex flex-col items-center"
                 style={{
                   opacity: journeyRevealed[i] ? 1 : 0,
@@ -628,9 +640,11 @@ function ProblemSection() {
                     {step.dropoff}
                   </span>
                 )}
-              </div>
-            </div>
-          ))}
+              </div>,
+            )
+
+            return nodes
+          })}
         </div>
 
         <p
