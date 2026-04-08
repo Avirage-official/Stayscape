@@ -343,6 +343,12 @@ function HeadlineFrame() {
 /*  Section 2 — The Problem Stayscape Solves                           */
 /* ------------------------------------------------------------------ */
 
+/* SVG layout constants for scattered discovery lines */
+const LINE_CHANNEL_SPACING = 120
+const LINE_CHANNEL_OFFSET = 60
+const LINE_OUTCOME_START_X = 480
+const LINE_OUTCOME_SPACING = 120
+
 const DISCOVERY_CHANNELS = [
   { label: 'TikTok' },
   { label: 'AI Search' },
@@ -414,9 +420,9 @@ function ProblemSection() {
         </p>
 
         {/* Discovery channel pills */}
-        <div ref={channelRef} className="relative" style={{ minHeight: 200 }}>
-          {/* Source channels — top row with scattered positioning */}
-          <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+        <div ref={channelRef} className="relative">
+          {/* Source channels — top row */}
+          <div className="flex flex-wrap gap-3">
             {DISCOVERY_CHANNELS.map((ch, i) => (
               <div
                 key={ch.label}
@@ -449,33 +455,42 @@ function ProblemSection() {
           </div>
 
           {/* Scattered connection lines — SVG */}
-          <div className="my-6 flex justify-center" aria-hidden="true">
-            <svg width="100%" height="60" viewBox="0 0 600 60" style={{ maxWidth: 600 }}>
-              {[0, 100, 200, 300, 400, 500].map((x, i) => (
-                <motion.line
-                  key={i}
-                  x1={x + 30}
-                  y1={0}
-                  x2={x + 50 + (i % 2 === 0 ? 40 : -30)}
-                  y2={60}
-                  stroke="rgba(201,169,110,0.12)"
-                  strokeWidth="1"
-                  strokeDasharray="4 4"
-                  initial={prefersReducedMotion ? {} : { pathLength: 0 }}
-                  whileInView={{ pathLength: 1 }}
-                  viewport={{ once: true }}
-                  transition={
-                    prefersReducedMotion
-                      ? undefined
-                      : { duration: 0.8, delay: 0.5 + i * 0.1, ease: 'easeOut' }
-                  }
-                />
-              ))}
+          <div className="my-8 overflow-hidden" aria-hidden="true">
+            <svg
+              width="100%"
+              height="80"
+              viewBox="0 0 720 80"
+              preserveAspectRatio="xMidYMid meet"
+              style={{ display: 'block' }}
+            >
+              {DISCOVERY_CHANNELS.map((_, i) => {
+                const startX = i * LINE_CHANNEL_SPACING + LINE_CHANNEL_OFFSET
+                const endX = LINE_OUTCOME_START_X + (i % 3) * LINE_OUTCOME_SPACING
+                const midY = 30 + (i % 2 === 0 ? 10 : -5)
+                return (
+                  <motion.path
+                    key={i}
+                    d={`M${startX} 0 Q${(startX + endX) / 2} ${midY} ${endX} 80`}
+                    stroke="rgba(201,169,110,0.18)"
+                    strokeWidth="1"
+                    strokeDasharray="6 4"
+                    fill="none"
+                    initial={prefersReducedMotion ? {} : { pathLength: 0 }}
+                    whileInView={{ pathLength: 1 }}
+                    viewport={{ once: true }}
+                    transition={
+                      prefersReducedMotion
+                        ? undefined
+                        : { duration: 1, delay: 0.4 + i * 0.12, ease: 'easeOut' }
+                    }
+                  />
+                )
+              })}
             </svg>
           </div>
 
           {/* Outcome pills — bottom */}
-          <div ref={outcomeRef} className="flex flex-wrap gap-3 justify-center md:justify-end">
+          <div ref={outcomeRef} className="flex flex-wrap gap-3">
             {OUTCOMES.map((o, i) => (
               <div
                 key={o.label}
@@ -523,11 +538,44 @@ function ProblemSection() {
           The booking journey leaks at every step.
         </h3>
 
-        <div ref={journeyRef} className="flex flex-col gap-0 sm:flex-row sm:items-start sm:gap-0">
-          {JOURNEY_STEPS.map((step, i) => (
-            <div key={step.label} className="flex items-start sm:flex-1">
-              {/* Step node */}
+        <div
+          ref={journeyRef}
+          className="flex items-start"
+          style={{ maxWidth: 640 }}
+        >
+          {JOURNEY_STEPS.flatMap((step, i) => {
+            const nodes: React.ReactNode[] = []
+
+            {/* Arrow connector between steps */}
+            if (i > 0) {
+              nodes.push(
+                <div
+                  key={`arrow-${i}`}
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 40,
+                    flexShrink: 0,
+                    paddingTop: 20,
+                    opacity: journeyRevealed[i] ? 1 : 0,
+                    transition: prefersReducedMotion ? 'none' : 'opacity 0.4s ease-out',
+                  }}
+                  aria-hidden="true"
+                >
+                  <svg width="24" height="8" viewBox="0 0 24 8" fill="none">
+                    <path
+                      d="M0 4H20M20 4L16 1M20 4L16 7"
+                      stroke="rgba(255,255,255,0.15)"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                </div>,
+              )
+            }
+
+            {/* Step node */}
+            nodes.push(
               <div
+                key={step.label}
                 className="flex flex-col items-center"
                 style={{
                   opacity: journeyRevealed[i] ? 1 : 0,
@@ -536,6 +584,7 @@ function ProblemSection() {
                     ? 'none'
                     : 'opacity 0.4s ease-out, transform 0.4s ease-out',
                   flex: 1,
+                  minWidth: 0,
                 }}
               >
                 <div
@@ -591,31 +640,11 @@ function ProblemSection() {
                     {step.dropoff}
                   </span>
                 )}
-              </div>
+              </div>,
+            )
 
-              {/* Arrow connector */}
-              {i < JOURNEY_STEPS.length - 1 && (
-                <div
-                  className="hidden sm:flex items-center justify-center"
-                  style={{
-                    width: 40,
-                    marginTop: 22,
-                    opacity: journeyRevealed[i + 1] ? 1 : 0,
-                    transition: prefersReducedMotion ? 'none' : 'opacity 0.4s ease-out',
-                  }}
-                  aria-hidden="true"
-                >
-                  <svg width="24" height="8" viewBox="0 0 24 8" fill="none">
-                    <path
-                      d="M0 4H20M20 4L16 1M20 4L16 7"
-                      stroke="rgba(255,255,255,0.15)"
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
-          ))}
+            return nodes
+          })}
         </div>
 
         <p
