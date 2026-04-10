@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -15,6 +14,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useItinerary, type ItineraryItem } from '@/components/ItineraryContext';
 import { format, isSameDay, addDays } from 'date-fns';
+import ItineraryEmptyState from '@/components/itinerary/ItineraryEmptyState';
+import ItineraryDayGroup from '@/components/itinerary/ItineraryDayGroup';
 
 /* ─── Stay date range ─── */
 const STAY_CHECK_IN = new Date(2025, 11, 14); // Dec 14
@@ -41,33 +42,6 @@ const TIME_OPTIONS = [
   '19:00', '19:30', '20:00', '20:30', '21:00',
 ];
 const DURATION_OPTIONS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
-
-/* ─── Empty state ─── */
-function EmptyState() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center px-8 text-center animate-fade-in">
-      {/* Subtle icon */}
-      <div className="w-16 h-16 rounded-2xl bg-[var(--discover-gold-5)] border border-[var(--discover-gold-15)] flex items-center justify-center mb-5">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect x="4" y="6" width="20" height="18" rx="2.5" stroke="var(--discover-gold)" strokeWidth="1.2" opacity="0.5" />
-          <line x1="4" y1="11" x2="24" y2="11" stroke="var(--discover-gold)" strokeWidth="1.2" opacity="0.35" />
-          <line x1="10" y1="6" x2="10" y2="3" stroke="var(--discover-gold)" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-          <line x1="18" y1="6" x2="18" y2="3" stroke="var(--discover-gold)" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-          <circle cx="14" cy="18" r="2" stroke="var(--discover-gold)" strokeWidth="1.2" opacity="0.4" />
-        </svg>
-      </div>
-      <h3 className="text-[16px] font-semibold text-[var(--discover-title)] mb-2 tracking-tight">
-        Your itinerary is empty
-      </h3>
-      <p className="text-[13px] text-[var(--discover-body)] leading-relaxed max-w-[280px] mb-6">
-        Discover places and activities, then add them here to craft your perfect New York stay.
-      </p>
-      <p className="text-[11px] text-[var(--discover-body)]/70">
-        Switch to the <span className="text-[var(--discover-gold)] font-medium">Discover</span> tab to explore
-      </p>
-    </div>
-  );
-}
 
 /* ─── Edit dialog ─── */
 function EditDialog({
@@ -267,127 +241,6 @@ function RemoveDialog({
   );
 }
 
-/* ─── Individual itinerary card ─── */
-function ItineraryCard({
-  item,
-  onEdit,
-  onRemove,
-}: {
-  item: ItineraryItem;
-  onEdit: (item: ItineraryItem) => void;
-  onRemove: (item: ItineraryItem) => void;
-}) {
-  const durationLabel = item.durationHours === 0.5 ? '30m' : `${item.durationHours}h`;
-
-  return (
-    <div className="flex items-start gap-3.5 py-3.5 discover-card-fade-in group">
-      {/* Time column */}
-      <div className="flex-shrink-0 w-[52px] text-right pt-0.5">
-        <p className="text-[13px] font-semibold text-[var(--discover-title)] tabular-nums">{item.time}</p>
-        <p className="text-[10px] text-[var(--discover-body)]">{durationLabel}</p>
-      </div>
-
-      {/* Timeline dot + line */}
-      <div className="flex flex-col items-center flex-shrink-0 pt-1.5">
-        <div className="w-2 h-2 rounded-full bg-[var(--discover-gold)] shadow-[0_0_6px_rgba(200,168,90,0.3)]" />
-        <div className="w-px flex-1 bg-[var(--discover-border)] mt-1.5" />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 pb-1">
-        <div className="flex items-start gap-3">
-          <div
-            className="w-10 h-10 rounded-lg bg-cover bg-center flex-shrink-0 border border-[var(--discover-border)]"
-            style={{ backgroundImage: `url(${item.image})` }}
-          />
-          <div className="min-w-0 flex-1">
-            <h4 className="text-[13px] font-semibold text-[var(--discover-title)] truncate leading-tight">{item.name}</h4>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-[18px] rounded-md font-medium">
-                {item.category}
-              </Badge>
-            </div>
-            {/* Quick actions — visible on hover */}
-            <div className="flex items-center gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button
-                type="button"
-                onClick={() => onEdit(item)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-[var(--discover-body)] hover:text-[var(--discover-gold)] hover:bg-[var(--discover-gold-8)] border border-transparent hover:border-[var(--discover-gold-15)] transition-all duration-200 cursor-pointer"
-              >
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => onRemove(item)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-[var(--discover-body)] hover:text-red-400 hover:bg-red-500/8 border border-transparent hover:border-red-500/15 transition-all duration-200 cursor-pointer"
-              >
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 3H10M4.5 3V2H7.5V3M5 5.5V8.5M7 5.5V8.5M3 3V10H9V3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Remove
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Day group ─── */
-function DayGroup({
-  date,
-  items,
-  totalHours,
-  onEdit,
-  onRemove,
-}: {
-  date: Date;
-  items: ItineraryItem[];
-  totalHours: number;
-  onEdit: (item: ItineraryItem) => void;
-  onRemove: (item: ItineraryItem) => void;
-}) {
-  const sorted = useMemo(
-    () => [...items].sort((a, b) => a.time.localeCompare(b.time)),
-    [items],
-  );
-
-  return (
-    <div className="discover-card-fade-in">
-      {/* Day header */}
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-8 h-8 rounded-lg bg-[var(--discover-gold-8)] border border-[var(--discover-gold-15)] flex items-center justify-center">
-          <span className="text-[12px] font-bold text-[var(--discover-gold)]">{format(date, 'd')}</span>
-        </div>
-        <div>
-          <p className="text-[13px] font-semibold text-[var(--discover-title)]">{format(date, 'EEEE')}</p>
-          <p className="text-[10px] text-[var(--discover-body)]">{format(date, 'MMMM d, yyyy')}</p>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-[10px] text-[var(--discover-body)]">
-            {items.length} {items.length === 1 ? 'activity' : 'activities'}
-          </span>
-          <span className="text-[10px] text-[var(--discover-body)]/50">·</span>
-          <span className="text-[10px] text-[var(--discover-gold)]/70 font-medium">
-            {totalHours === 0.5 ? '30m' : `${totalHours}h`} planned
-          </span>
-        </div>
-      </div>
-
-      {/* Items */}
-      <div className="ml-1">
-        {sorted.map((item) => (
-          <ItineraryCard key={item.id} item={item} onEdit={onEdit} onRemove={onRemove} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Day chip selector ─── */
 function DayChip({
   date,
@@ -519,7 +372,7 @@ export default function ItineraryPanel() {
 
       {/* Content */}
       {items.length === 0 ? (
-        <EmptyState />
+        <ItineraryEmptyState />
       ) : (
         <>
           {/* Day chips */}
@@ -565,7 +418,7 @@ export default function ItineraryPanel() {
                   const groupTotal = group.items.reduce((s, i) => s + i.durationHours, 0);
                   return (
                     <div key={format(group.date, 'yyyy-MM-dd')}>
-                      <DayGroup
+                      <ItineraryDayGroup
                         date={group.date}
                         items={group.items}
                         totalHours={groupTotal}
