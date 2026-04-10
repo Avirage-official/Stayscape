@@ -11,6 +11,7 @@ import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import Footer from '@/components/Footer';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { MapPlace } from '@/types';
 import { useRegion } from '@/lib/context/region-context';
 
@@ -131,35 +132,41 @@ export default function Home() {
         {activeTab === 'concierge' && <ConciergeSearch />}
         <main className="flex flex-col lg:flex-row flex-1 overflow-hidden">
           {activeTab === 'concierge' ? (
-            <>
-              {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
-              <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--charcoal-light)]/80`}>
-                <CustomerPanel />
-              </div>
+            <ErrorBoundary fallbackTitle="Map & Concierge">
+              <>
+                {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
+                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--charcoal-light)]/80`}>
+                  <CustomerPanel />
+                </div>
 
-              {/* Center — Map workspace */}
-              <div className={`${mobileView === 'map' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 relative min-h-0 flex-col`}>
-                <MapPlaceholder
-                  onSelectPlace={handleSelectPlace}
-                  selectedPlaceId={selectedPlace?.id ?? null}
-                />
-              </div>
+                {/* Center — Map workspace */}
+                <div className={`${mobileView === 'map' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 relative min-h-0 flex-col`}>
+                  <MapPlaceholder
+                    onSelectPlace={handleSelectPlace}
+                    selectedPlaceId={selectedPlace?.id ?? null}
+                  />
+                </div>
 
-              {/* Right panel — AI Travel Assistant */}
-              <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[360px] w-full flex-col overflow-hidden lg:border-l border-[var(--charcoal-light)]/80`}>
-                <TravelAssistantPanel
-                  ref={panelRef}
-                  selectedPlace={selectedPlace}
-                  onClearSelection={() => setSelectedPlace(null)}
-                />
-              </div>
-            </>
+                {/* Right panel — AI Travel Assistant */}
+                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[360px] w-full flex-col overflow-hidden lg:border-l border-[var(--charcoal-light)]/80`}>
+                  <TravelAssistantPanel
+                    ref={panelRef}
+                    selectedPlace={selectedPlace}
+                    onClearSelection={() => setSelectedPlace(null)}
+                  />
+                </div>
+              </>
+            </ErrorBoundary>
           ) : activeTab === 'discover' ? (
             /* Discover tab — full remaining width */
-            <DiscoverPanel />
+            <ErrorBoundary fallbackTitle="Discover">
+              <DiscoverPanel />
+            </ErrorBoundary>
           ) : (
             /* Itinerary tab — full remaining width */
-            <ItineraryPanel />
+            <ErrorBoundary fallbackTitle="Itinerary">
+              <ItineraryPanel />
+            </ErrorBoundary>
           )}
         </main>
         <Footer />
