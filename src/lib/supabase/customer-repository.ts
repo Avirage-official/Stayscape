@@ -29,7 +29,7 @@ export async function getCustomerProfile(
   return {
     id: row.id as string,
     email: row.email as string,
-    full_name: [row.firstname, row.lastname].filter(Boolean).join(' ') || null,
+    full_name: [row.firstname, row.lastname].filter(v => v != null).join(' ').trim() || null,
     avatar_url: null,
     phone: (row.phone as string) ?? null,
     created_at: row.createdat as string,
