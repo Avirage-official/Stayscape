@@ -43,7 +43,7 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
   'service.beauty': 'wellness',
 };
 
-function mapGeoapifyCategory(categories: string[]): string {
+export function mapGeoapifyCategory(categories: string[]): string {
   for (const cat of categories) {
     // Try exact match first, then prefix match
     if (GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat]) {
@@ -87,7 +87,7 @@ interface GeoapifyResponse {
 
 /* ── Public API ──────────────────────────────────────────── */
 
-function slugify(text: string): string {
+export function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
