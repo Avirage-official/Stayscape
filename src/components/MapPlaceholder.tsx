@@ -8,104 +8,42 @@ import {
   MAPBOX_DARK_STYLE,
   MAPBOX_DARK_STYLE_FALLBACK,
   MARKER_COLOR_GOLD,
-  CATEGORY_COLORS,
   GEOLOCATION_ZOOM,
   GEOLOCATION_FLY_DURATION,
   GEOLOCATION_RECENTER_DURATION,
 } from '@/lib/mapbox/config';
-import { haversineMetres, formatDistanceDisplay } from '@/lib/mapbox/geocoding';
 import MapSearch from '@/components/MapSearch';
 import { useItinerary } from '@/components/ItineraryContext';
 import type { SearchResult } from '@/types/mapbox';
 import { useRegion } from '@/lib/context/region-context';
 import type { MapPlace } from '@/types';
+import {
+  DEFAULT_CENTER,
+  DEFAULT_ITINERARY_TIME,
+  DEFAULT_ITINERARY_DURATION_HOURS,
+  SOURCE_ID,
+  CLUSTER_LAYER,
+  CLUSTER_COUNT_LAYER,
+  UNCLUSTERED_LAYER,
+  LABEL_LAYER,
+  MARKER_COLOR_GREEN,
+  MARKER_COLOR_PINK,
+  SELECTED_DOT_COLOR,
+  ANIMATION_GREEN,
+  VIEWPORT_FETCH_LIMIT,
+  BUILDINGS_3D_COLOR,
+  BUILDINGS_3D_OPACITY,
+  BUILDINGS_3D_MINZOOM,
+  ITINERARY_CORNER_OFFSET,
+} from './map/map-constants';
+import { buildGeoJSONData, filterPlaces, getMapBounds } from './map/map-utils';
+import MapCategoryFilter from './map/MapCategoryFilter';
+import MapLocationButton from './map/MapLocationButton';
+import MapPlaceCard from './map/MapPlaceCard';
+import MapEventCard from './map/MapEventCard';
+import MapSearchCard from './map/MapSearchCard';
+import MapFallback from './map/MapFallback';
 
-/* ─── Default center coordinates (Singapore Central) ─── */
-const DEFAULT_CENTER = { lat: 1.2897, lng: 103.8501 };
-const DEFAULT_ITINERARY_TIME = '10:00';
-const DEFAULT_ITINERARY_DURATION_HOURS = 2;
-
-/* ─── Map source / layer identifiers ─── */
-const SOURCE_ID = 'stayscape-places';
-const CLUSTER_LAYER = 'stayscape-clusters';
-const CLUSTER_COUNT_LAYER = 'stayscape-cluster-count';
-const UNCLUSTERED_LAYER = 'stayscape-unclustered';
-const LABEL_LAYER = 'stayscape-labels';
-
-/* ─── Dot / marker colors ─── */
-const MARKER_COLOR_GREEN = '#22C55E'; /* bright green — individual place dots */
-const MARKER_COLOR_PINK = CATEGORY_COLORS['events']; /* #EC4899 — event dots */
-const SELECTED_DOT_COLOR = '#FFFFFF'; /* selected dot — white with glow */
-const ANIMATION_GREEN = '#4ADE80'; /* bright green used in sonar ping and itinerary fly animation */
-
-/* ─── Viewport fetch settings ─── */
-const VIEWPORT_FETCH_LIMIT = 500; /* max places fetched per viewport query */
-
-/* ─── 3D buildings layer styling ─── */
-const BUILDINGS_3D_COLOR = '#1a1a2e'; /* dark blue-black to match Stayscape aesthetic */
-const BUILDINGS_3D_OPACITY = 0.7;
-const BUILDINGS_3D_MINZOOM = 13;
-
-/* ─── Itinerary fly animation ─── */
-const ITINERARY_CORNER_OFFSET = 28; /* px from bottom-right edge of container */
-
-/* ─── Filter panel positioning ─── */
-const FILTER_PANEL_TOP = '33%'; /* left-side toggle button vertical position */
-
-/* ─── Category filter options ─── */
-const CATEGORY_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'dining', label: 'Dining' },
-  { key: 'top_places', label: 'Top Places' },
-  { key: 'nightlife', label: 'Nightlife' },
-  { key: 'shopping', label: 'Shopping' },
-  { key: 'fun_places', label: 'Fun Places' },
-  { key: 'nature', label: 'Nature' },
-  { key: 'historical', label: 'Historical' },
-  { key: 'wellness', label: 'Wellness' },
-  { key: 'events', label: 'Events' },
-];
-
-function getCategoryColor(category: string): string {
-  return CATEGORY_COLORS[category] ?? '#6B7280';
-}
-
-function buildGeoJSONData(places: MapPlace[]): { geojson: GeoJSON.FeatureCollection; idMap: Map<string, number> } {
-  const idMap = new Map<string, number>();
-  const features = places.map((p, index) => {
-    idMap.set(p.id, index);
-    return {
-      type: 'Feature' as const,
-      id: index,
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [p.longitude, p.latitude],
-      },
-      properties: {
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        isEvent: p.isEvent ?? false,
-      },
-    };
-  });
-  return { geojson: { type: 'FeatureCollection', features }, idMap };
-}
-
-function filterPlaces(places: MapPlace[], category: string): MapPlace[] {
-  return category === 'all' ? places : places.filter((p) => p.category === category);
-}
-
-function getMapBounds(map: mapboxgl.Map): { north: number; south: number; east: number; west: number } | null {
-  const bounds = map.getBounds();
-  if (!bounds) return null;
-  return {
-    north: bounds.getNorth(),
-    south: bounds.getSouth(),
-    east: bounds.getEast(),
-    west: bounds.getWest(),
-  };
-}
 
 interface MapPlaceholderProps {
   onSelectPlace?: (place: MapPlace) => void;
@@ -166,17 +104,6 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const [filterOpen, setFilterOpen] = useState(false);
   const filterOpenRef = useRef(false);
   useEffect(() => { filterOpenRef.current = filterOpen; }, [filterOpen]);
-  const filterPanelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!filterOpen) return;
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(e.target as Node)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [filterOpen]);
 
   /* ─── 3D filter toggle animation ─── */
   useEffect(() => {
@@ -967,763 +894,77 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       <div className="absolute inset-0 pointer-events-none z-[1] bg-gradient-to-b from-[var(--map-bg)]/30 via-transparent to-[var(--map-bg)]/20" />
 
       {/* ── Category filter — left-side collapsible toggle ── */}
-      <div ref={filterPanelRef} className="absolute left-3 z-20" style={{ top: FILTER_PANEL_TOP }}>
-        {/* Toggle button */}
-        <button
-          type="button"
-          aria-label="Toggle category filter"
-          onClick={() => setFilterOpen((v) => !v)}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 9,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            background: filterOpen ? 'rgba(34,197,94,0.15)' : 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: filterOpen ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
-            color: filterOpen ? MARKER_COLOR_GREEN : 'rgba(232,230,225,0.6)',
-            transition: 'all 0.18s ease',
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="8" y1="12" x2="20" y2="12" />
-            <line x1="12" y1="18" x2="20" y2="18" />
-            <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" />
-            <circle cx="8" cy="12" r="1.5" fill="currentColor" stroke="none" />
-            <circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none" />
-          </svg>
-        </button>
-
-        {/* Dropdown panel — slides in from left */}
-        {filterOpen && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 'calc(100% + 6px)',
-              minWidth: 148,
-              background: 'rgba(10,14,19,0.88)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 9,
-              boxShadow: '0 6px 24px rgba(0,0,0,0.55)',
-              overflow: 'hidden',
-              animation: 'filterSlideIn 0.22s ease forwards',
-            }}
-          >
-            {CATEGORY_FILTERS.map(({ key, label }) => {
-              const isActive = activeCategory === key;
-              const dotColor = key === 'all' ? MARKER_COLOR_GREEN : getCategoryColor(key);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => { setActiveCategory(key); setFilterOpen(false); }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    width: '100%',
-                    padding: '7px 12px',
-                    fontSize: 11,
-                    letterSpacing: '0.03em',
-                    fontFamily: 'system-ui, sans-serif',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    background: isActive ? 'rgba(34,197,94,0.10)' : 'transparent',
-                    color: isActive ? MARKER_COLOR_GREEN : 'rgba(232,230,225,0.72)',
-                    border: 'none',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: isActive ? dotColor : `${dotColor}70`,
-                    flexShrink: 0,
-                    display: 'inline-block',
-                    boxShadow: isActive ? `0 0 5px ${dotColor}80` : 'none',
-                  }} />
-                  {label}
-                  {isActive && (
-                    <svg style={{ marginLeft: 'auto' }} width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="2 8 6 12 14 4" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <MapCategoryFilter
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+      />
 
       {/* ── Map search overlay (floating, centered) ── */}
       <MapSearch onSelect={handleSearchSelect} onClear={handleSearchClear} />
 
       {/* ── Selected place info card (hidden when event card is active) ── */}
       {activePlace && !activeEvent && (
-        <div
-          key={activePlace.id}
-          className="absolute bottom-20 left-4 z-10 animate-card-entrance"
-          style={{ maxWidth: 'min(280px, calc(100% - 80px))' }}
-        >
-          <div
-            className="rounded-[9px] p-3.5 glass-dark"
-            style={{
-              border: `1px solid ${getCategoryColor(activePlace.category)}35`,
-              boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${getCategoryColor(activePlace.category)}15`,
-            }}
-          >
-            <div className="flex items-start gap-2 mb-2">
-              <div style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: getCategoryColor(activePlace.category),
-                flexShrink: 0,
-                marginTop: 3,
-                boxShadow: `0 0 6px ${getCategoryColor(activePlace.category)}70`,
-              }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
-                  {activePlace.name}
-                </p>
-                <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
-                  {activePlace.editorial_summary ?? activePlace.description ?? activePlace.address ?? ''}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              {activePlace.rating != null && (
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <svg
-                      key={i}
-                      width="9"
-                      height="9"
-                      viewBox="0 0 24 24"
-                      fill={i < Math.round(activePlace.rating ?? 0) ? MARKER_COLOR_GOLD : 'none'}
-                      stroke={MARKER_COLOR_GOLD}
-                      strokeWidth="2"
-                    >
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                    </svg>
-                  ))}
-                  <span className="text-[9.5px] font-medium ml-0.5" style={{ color: MARKER_COLOR_GOLD }}>
-                    {activePlace.rating.toFixed(1)}
-                  </span>
-                </div>
-              )}
-
-              {region && activePlace.rating != null && (
-                <span className="text-[var(--text-dim)] text-[9px]">·</span>
-              )}
-
-              {region && (
-                <div className="flex items-center gap-1">
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                  <span className="text-[9.5px] text-[var(--text-muted)]">
-                    {formatDistanceDisplay(haversineMetres(region.latitude, region.longitude, activePlace.latitude, activePlace.longitude))}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="mt-2.5 pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Book button */}
-              {(activePlace.booking_url || activePlace.website) ? (
-                <a
-                  href={(activePlace.booking_url || activePlace.website) as string}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
-                  style={{
-                    color: MARKER_COLOR_GOLD,
-                    background: `${MARKER_COLOR_GOLD}18`,
-                    border: `1px solid ${MARKER_COLOR_GOLD}40`,
-                  }}
-                >
-                  <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                    <path d="M5 3V2M11 3V2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    <path d="M2 7h12" stroke="currentColor" strokeWidth="1.4" />
-                  </svg>
-                  Book
-                </a>
-              ) : null}
-
-              {/* Add to Itinerary button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (itinAdded === activePlace.id) return;
-                  addItem({
-                    placeId: activePlace.id,
-                    name: activePlace.name,
-                    category: activePlace.category,
-                    image: activePlace.image_url ?? '',
-                    date: new Date(),
-                    time: DEFAULT_ITINERARY_TIME,
-                    durationHours: DEFAULT_ITINERARY_DURATION_HOURS,
-                  });
-                  setItinAdded(activePlace.id);
-                  if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
-                  itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
-                  /* Sonar ping on the map dot + fly animation to itinerary corner */
-                  showSonarPing(activePlace.longitude, activePlace.latitude);
-                  showItineraryFlyAnimation(activePlace.longitude, activePlace.latitude);
-                }}
-                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
-                style={{
-                  color: itinAdded === activePlace.id ? '#4ADE80' : 'var(--text-muted)',
-                  background: itinAdded === activePlace.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${itinAdded === activePlace.id ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
-                }}
-              >
-                {itinAdded === activePlace.id ? (
-                  <>✓ Added</>
-                ) : (
-                  <>
-                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                    Itinerary
-                  </>
-                )}
-              </button>
-
-              {/* Get Directions button */}
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${activePlace.latitude},${activePlace.longitude}&travelmode=walking`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
-                style={{
-                  color: 'var(--text-muted)',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                }}
-              >
-                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 1L15 8L8 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-                Directions
-              </a>
-            </div>
-          </div>
-          {/* Arrow pointer */}
-          <div
-            className="absolute bottom-[-5px] left-5 w-2.5 h-2.5 rotate-45"
-            style={{
-              background: 'rgba(10,14,19,0.78)',
-              border: `1px solid ${getCategoryColor(activePlace.category)}35`,
-              borderTop: 'none',
-              borderLeft: 'none',
-            }}
-          />
-        </div>
+        <MapPlaceCard
+          place={activePlace}
+          region={region}
+          itinAdded={itinAdded}
+          onAddToItinerary={() => {
+            addItem({
+              placeId: activePlace.id,
+              name: activePlace.name,
+              category: activePlace.category,
+              image: activePlace.image_url ?? '',
+              date: new Date(),
+              time: DEFAULT_ITINERARY_TIME,
+              durationHours: DEFAULT_ITINERARY_DURATION_HOURS,
+            });
+            setItinAdded(activePlace.id);
+            if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
+            itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
+            showSonarPing(activePlace.longitude, activePlace.latitude);
+            showItineraryFlyAnimation(activePlace.longitude, activePlace.latitude);
+          }}
+        />
       )}
 
       {/* ── Selected event info card ── */}
       {activeEvent && (
-        <div
-          key={activeEvent.id}
-          className="absolute bottom-20 left-4 z-10 animate-card-entrance"
-          style={{ maxWidth: 'min(300px, calc(100% - 80px))' }}
-        >
-          <div
-            className="rounded-[9px] p-3.5 glass-dark"
-            style={{
-              border: `1px solid ${MARKER_COLOR_PINK}35`,
-              boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_PINK}15`,
-            }}
-          >
-            {/* Header row */}
-            <div className="flex items-start gap-2 mb-2">
-              <div style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: MARKER_COLOR_PINK,
-                flexShrink: 0,
-                marginTop: 3,
-                boxShadow: `0 0 6px ${MARKER_COLOR_PINK}70`,
-              }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
-                  {activeEvent.name}
-                </p>
-                {activeEvent.venue_name && (
-                  <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
-                    {activeEvent.venue_name}
-                  </p>
-                )}
-              </div>
-              {/* Close button */}
-              <button
-                type="button"
-                onClick={() => setActiveEvent(null)}
-                aria-label="Close event card"
-                style={{
-                  flexShrink: 0,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: 'rgba(232,230,225,0.5)',
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
-                  <path d="M7.5 2.5L2.5 7.5M2.5 2.5L7.5 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Date + price row */}
-            <div className="flex items-center gap-2.5 mb-2">
-              {activeEvent.start_date && (
-                <span className="text-[9.5px] font-medium" style={{ color: MARKER_COLOR_PINK }}>
-                  {(() => {
-                    try {
-                      const d = new Date(activeEvent.start_date + 'T00:00:00');
-                      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                    } catch {
-                      return activeEvent.start_date;
-                    }
-                  })()}
-                  {activeEvent.start_time && ` · ${activeEvent.start_time.slice(0, 5)}`}
-                </span>
-              )}
-              {activeEvent.price_min != null && (
-                <>
-                  <span className="text-[var(--text-dim)] text-[9px]">·</span>
-                  <span className="text-[9.5px] text-[var(--text-muted)]">
-                    {activeEvent.price_min === 0
-                      ? 'Free'
-                      : activeEvent.price_max != null && activeEvent.price_max !== activeEvent.price_min
-                      ? `${activeEvent.currency ?? '$'}${activeEvent.price_min} – ${activeEvent.currency ?? '$'}${activeEvent.price_max}`
-                      : `${activeEvent.currency ?? '$'}${activeEvent.price_min}`}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Get Tickets button */}
-              {activeEvent.ticket_url && (
-                <a
-                  href={activeEvent.ticket_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
-                  style={{
-                    color: MARKER_COLOR_PINK,
-                    background: `${MARKER_COLOR_PINK}18`,
-                    border: `1px solid ${MARKER_COLOR_PINK}40`,
-                  }}
-                >
-                  <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M2 10l1.5-1.5a2 2 0 0 1 2.83 0L8 10.17l1.67-1.67a2 2 0 0 1 2.83 0L14 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    <rect x="1" y="4" width="14" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                  </svg>
-                  Get Tickets
-                </a>
-              )}
-
-              {/* Add to Itinerary */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (itinAdded === activeEvent.id) return;
-                  addItem({
-                    placeId: activeEvent.id,
-                    name: activeEvent.name,
-                    category: activeEvent.category,
-                    image: activeEvent.image_url ?? '',
-                    date: new Date(),
-                    time: DEFAULT_ITINERARY_TIME,
-                    durationHours: DEFAULT_ITINERARY_DURATION_HOURS,
-                  });
-                  setItinAdded(activeEvent.id);
-                  if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
-                  itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
-                  showSonarPing(activeEvent.longitude, activeEvent.latitude, MARKER_COLOR_PINK);
-                  showItineraryFlyAnimation(activeEvent.longitude, activeEvent.latitude);
-                }}
-                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
-                style={{
-                  color: itinAdded === activeEvent.id ? '#4ADE80' : 'var(--text-muted)',
-                  background: itinAdded === activeEvent.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${itinAdded === activeEvent.id ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
-                }}
-              >
-                {itinAdded === activeEvent.id ? <>✓ Added</> : (
-                  <>
-                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                    Itinerary
-                  </>
-                )}
-              </button>
-
-              {/* Directions */}
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${activeEvent.latitude},${activeEvent.longitude}&travelmode=walking`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
-                style={{
-                  color: 'var(--text-muted)',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                }}
-              >
-                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 1L15 8L8 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-                Directions
-              </a>
-            </div>
-          </div>
-          {/* Arrow pointer */}
-          <div
-            className="absolute bottom-[-5px] left-5 w-2.5 h-2.5 rotate-45"
-            style={{
-              background: 'rgba(10,14,19,0.78)',
-              border: `1px solid ${MARKER_COLOR_PINK}35`,
-              borderTop: 'none',
-              borderLeft: 'none',
-            }}
-          />
-        </div>
+        <MapEventCard
+          event={activeEvent}
+          itinAdded={itinAdded}
+          onAddToItinerary={() => {
+            addItem({
+              placeId: activeEvent.id,
+              name: activeEvent.name,
+              category: activeEvent.category,
+              image: activeEvent.image_url ?? '',
+              date: new Date(),
+              time: DEFAULT_ITINERARY_TIME,
+              durationHours: DEFAULT_ITINERARY_DURATION_HOURS,
+            });
+            setItinAdded(activeEvent.id);
+            if (itinAddedTimerRef.current) clearTimeout(itinAddedTimerRef.current);
+            itinAddedTimerRef.current = setTimeout(() => setItinAdded(null), 2500);
+            showSonarPing(activeEvent.longitude, activeEvent.latitude, MARKER_COLOR_PINK);
+            showItineraryFlyAnimation(activeEvent.longitude, activeEvent.latitude);
+          }}
+          onClose={() => setActiveEvent(null)}
+        />
       )}
 
       {/* ── Searched place info card (geocoding result) ── */}
       {searchedPlace && !activePlace && !activeEvent && (
-        <div
-          className="absolute bottom-20 left-4 z-10 animate-card-entrance"
-          style={{ maxWidth: 'min(280px, calc(100% - 80px))' }}
-        >
-          <div
-            className="rounded-[9px] p-3.5 glass-dark"
-            style={{
-              border: `1px solid ${MARKER_COLOR_GOLD}30`,
-              boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_GOLD}10`,
-            }}
-          >
-            <div className="flex items-start gap-2 mb-2">
-              <div style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: MARKER_COLOR_GOLD,
-                flexShrink: 0,
-                marginTop: 3,
-                boxShadow: `0 0 5px ${MARKER_COLOR_GOLD}60`,
-              }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
-                  {searchedPlace.name}
-                </p>
-                {searchedPlace.subtitle && (
-                  <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
-                    {searchedPlace.subtitle}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[9.5px] font-medium"
-                style={{ color: MARKER_COLOR_GOLD }}
-              >
-                {searchedPlace.distanceDisplay} from here
-              </span>
-            </div>
-            {/* Get Directions for searched place */}
-            <div className="mt-2 pt-2 flex items-center gap-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${searchedPlace.lat},${searchedPlace.lng}&travelmode=walking`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
-                style={{
-                  color: 'var(--text-muted)',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                }}
-              >
-                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 1L15 8L8 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-                Directions
-              </a>
-            </div>
-          </div>
-        </div>
+        <MapSearchCard searchedPlace={searchedPlace} />
       )}
 
       {/* ── My Location button (Google Maps style, bottom-right) ── */}
-      <div className="absolute bottom-4 right-4 z-10">
-        <button
-          type="button"
-          onClick={requestGeolocation}
-          disabled={locationState === 'requesting' || locationState === 'denied'}
-          aria-label={
-            locationState === 'granted'
-              ? 'Re-center on my location'
-              : locationState === 'requesting'
-              ? 'Getting your location…'
-              : locationState === 'denied'
-              ? 'Location access denied'
-              : 'Show my location'
-          }
-          title={
-            locationState === 'denied'
-              ? 'Location access was denied. Please enable it in browser settings.'
-              : undefined
-          }
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 9,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: locationState === 'denied' ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            background:
-              locationState === 'granted'
-                ? 'rgba(59,130,246,0.15)'
-                : 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border:
-              locationState === 'granted'
-                ? '1px solid rgba(59,130,246,0.4)'
-                : locationState === 'denied'
-                ? '1px solid rgba(255,255,255,0.05)'
-                : '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
-            color:
-              locationState === 'granted'
-                ? '#3B82F6'
-                : locationState === 'denied'
-                ? 'rgba(255,255,255,0.2)'
-                : 'rgba(232,230,225,0.6)',
-            opacity: locationState === 'requesting' ? 0.65 : 1,
-          }}
-        >
-          {locationState === 'requesting' ? (
-            /* Loading spinner */
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              style={{ animation: 'locSpin 0.9s linear infinite' }}
-            >
-              <circle cx="12" cy="12" r="10" stroke="rgba(232,230,225,0.2)" strokeWidth="2" fill="none" />
-              <path
-                d="M12 2a10 10 0 0 1 10 10"
-                stroke="#3B82F6"
-                strokeWidth="2"
-                strokeLinecap="round"
-                fill="none"
-              />
-            </svg>
-          ) : locationState === 'denied' ? (
-            /* Denied — crossed-out location icon */
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-              <circle cx="12" cy="9" r="2.5" />
-              <line x1="3" y1="3" x2="21" y2="21" />
-            </svg>
-          ) : (
-            /* Crosshair / target icon */
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="2" x2="12" y2="7" />
-              <line x1="12" y1="17" x2="12" y2="22" />
-              <line x1="2" y1="12" x2="7" y2="12" />
-              <line x1="17" y1="12" x2="22" y2="12" />
-            </svg>
-          )}
-        </button>
-        <style>{`
-          @keyframes locSpin { to { transform: rotate(360deg); } }
-          @keyframes sonarPing {
-            0%   { width: 0;    height: 0;    opacity: 1; }
-            100% { width: 40px; height: 40px; opacity: 0; }
-          }
-          @keyframes filterSlideIn {
-            from { opacity: 0; transform: translateX(-8px); }
-            to   { opacity: 1; transform: translateX(0); }
-          }
-        `}</style>
-      </div>
+      <MapLocationButton locationState={locationState} onRequestLocation={requestGeolocation} />
 
       {/* ── Map attribution ── */}
       <div className="absolute bottom-2 left-3 text-[8px] tracking-wide z-10" style={{ color: 'rgba(107,114,128,0.5)' }}>
         © Stayscape · Mapbox
-      </div>
-    </div>
-  );
-}
-
-/* ─── SVG fallback when Mapbox token is not configured ─── */
-function MapFallback({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
-  return (
-    <div className="relative w-full h-full bg-[var(--map-bg)] overflow-hidden animate-fade-in rounded-[10px] ring-1 ring-[var(--gold)]/10">
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: [
-            'linear-gradient(rgba(25, 35, 50, 0.15) 1px, transparent 1px)',
-            'linear-gradient(90deg, rgba(25, 35, 50, 0.15) 1px, transparent 1px)',
-          ].join(','),
-          backgroundSize: '52px 52px',
-        }}
-      />
-
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
-        <rect x="105" y="80" width="90" height="65" rx="4" fill="#0D1318" />
-        <rect x="210" y="80" width="80" height="65" rx="4" fill="#0C1217" />
-        <rect x="310" y="80" width="80" height="65" rx="4" fill="#0D1318" />
-        <rect x="410" y="80" width="80" height="65" rx="4" fill="#0C1217" />
-        <rect x="510" y="80" width="80" height="65" rx="4" fill="#0D1318" />
-        <rect x="610" y="80" width="80" height="65" rx="4" fill="#0C1217" />
-        <rect x="710" y="80" width="80" height="65" rx="4" fill="#0D1318" />
-        <rect x="105" y="160" width="90" height="55" rx="4" fill="#0C1217" />
-        <rect x="210" y="160" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="310" y="160" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="510" y="160" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="610" y="160" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="710" y="160" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="410" y="155" width="85" height="65" rx="6" fill="#0C1610" stroke="#13241A" strokeWidth="0.5" />
-        <text x="452" y="192" textAnchor="middle" fill="#172E1F" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">CITY PARK</text>
-        <rect x="105" y="235" width="90" height="55" rx="4" fill="#0D1318" />
-        <rect x="210" y="235" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="310" y="235" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="410" y="235" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="510" y="235" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="610" y="235" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="710" y="235" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="105" y="310" width="90" height="55" rx="4" fill="#0C1217" />
-        <rect x="210" y="310" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="310" y="310" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="410" y="310" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="510" y="310" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="610" y="310" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="710" y="310" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="105" y="385" width="90" height="55" rx="4" fill="#0D1318" />
-        <rect x="210" y="385" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="310" y="385" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="410" y="385" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="510" y="385" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="610" y="385" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="710" y="385" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="105" y="460" width="90" height="55" rx="4" fill="#0C1217" />
-        <rect x="210" y="460" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="310" y="460" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="410" y="460" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="510" y="460" width="80" height="55" rx="4" fill="#0C1217" />
-        <rect x="610" y="460" width="80" height="55" rx="4" fill="#0D1318" />
-        <rect x="710" y="460" width="80" height="55" rx="4" fill="#0C1217" />
-        <line x1="200" y1="0" x2="200" y2="600" stroke="#121A25" strokeWidth="5" />
-        <line x1="400" y1="0" x2="400" y2="600" stroke="#141E2C" strokeWidth="8" />
-        <line x1="600" y1="0" x2="600" y2="600" stroke="#121A25" strokeWidth="5" />
-        <line x1="100" y1="0" x2="100" y2="600" stroke="#101822" strokeWidth="2.5" />
-        <line x1="300" y1="0" x2="300" y2="600" stroke="#101822" strokeWidth="2.5" />
-        <line x1="500" y1="0" x2="500" y2="600" stroke="#101822" strokeWidth="2.5" />
-        <line x1="700" y1="0" x2="700" y2="600" stroke="#101822" strokeWidth="2.5" />
-        <line x1="0" y1="150" x2="800" y2="150" stroke="#121A25" strokeWidth="5" />
-        <line x1="0" y1="300" x2="800" y2="300" stroke="#141E2C" strokeWidth="8" />
-        <line x1="0" y1="450" x2="800" y2="450" stroke="#121A25" strokeWidth="5" />
-        <line x1="0" y1="75" x2="800" y2="75" stroke="#101822" strokeWidth="2.5" />
-        <line x1="0" y1="225" x2="800" y2="225" stroke="#101822" strokeWidth="2.5" />
-        <line x1="0" y1="375" x2="800" y2="375" stroke="#101822" strokeWidth="2.5" />
-        <line x1="0" y1="525" x2="800" y2="525" stroke="#101822" strokeWidth="2.5" />
-        <text x="400" y="296" textAnchor="middle" fill="#182535" fontSize="8" fontFamily="system-ui, sans-serif" letterSpacing="0.18em">MAIN AVENUE</text>
-        <text x="197" y="260" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em" transform="rotate(-90, 197, 260)">PARK BLVD</text>
-        <text x="597" y="260" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em" transform="rotate(-90, 597, 260)">PARK AVE</text>
-        <text x="750" y="296" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">E 57TH ST</text>
-        <text x="50" y="148" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">W 59TH ST</text>
-        <text x="750" y="448" textAnchor="middle" fill="#182535" fontSize="7" fontFamily="system-ui, sans-serif" letterSpacing="0.12em">E 55TH ST</text>
-
-      </svg>
-
-      <div className="absolute inset-0 bg-gradient-to-r from-[var(--map-bg)] via-transparent to-[var(--map-bg)] opacity-40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[var(--map-bg)] via-transparent to-[var(--map-bg)] opacity-30 pointer-events-none" />
-
-
-
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative flex items-center justify-center">
-          <span className="absolute inline-flex h-12 w-12 rounded-full bg-[var(--gold)]/6 animate-gentle-pulse" />
-          <span className="absolute inline-flex h-7 w-7 rounded-full border border-[var(--gold)]/15" />
-          <span className="absolute inline-flex h-5 w-5 rounded-full border border-[var(--gold)]/25" />
-          <div className="relative w-3 h-3 rounded-full bg-[var(--gold)] shadow-[0_0_12px_rgba(201,168,76,0.5),0_0_4px_rgba(201,168,76,0.8)]" />
-        </div>
-      </div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-9 whitespace-nowrap">
-        <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
-          <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">Your Location</span>
-        </div>
-      </div>
-
-      <div className="absolute bottom-6 right-4 flex flex-col gap-1.5">
-        <button
-          type="button"
-          className="w-9 h-9 rounded-[7px] flex items-center justify-center text-base transition-all duration-200 cursor-pointer select-none"
-          style={{
-            background: 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,168,76,0.12)',
-            color: 'var(--text-secondary)',
-          }}
-        >+</button>
-        <button
-          type="button"
-          className="w-9 h-9 rounded-[7px] flex items-center justify-center text-base transition-all duration-200 cursor-pointer select-none"
-          style={{
-            background: 'rgba(10,14,19,0.82)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,168,76,0.12)',
-            color: 'var(--text-secondary)',
-          }}
-        >−</button>
-      </div>
-
-      <div className="absolute bottom-2 left-3 text-[8px] tracking-wide" style={{ color: 'rgba(107,114,128,0.5)' }}>
-        © Stayscape Maps · <span style={{ opacity: 0.5 }}>preview</span>
       </div>
     </div>
   );
