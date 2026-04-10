@@ -75,7 +75,7 @@ function EmptyStayState() {
       </h3>
       <p className="text-[13px] text-[var(--text-muted)] max-w-xs mx-auto mb-6 leading-relaxed">
         Your next getaway is waiting to be planned. Add a stay to unlock your
-        personalised concierge experience.
+        personalized concierge experience.
       </p>
 
       <button

@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   });
+  // isLoading is always false because sessionStorage.getItem is synchronous —
+  // by the time the component renders, user is already resolved.
   const isLoading = false;
 
   const login = useCallback(
