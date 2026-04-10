@@ -34,7 +34,7 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   top_places: 'from-yellow-900/80 via-yellow-950/60 to-black/80',
 };
 
-function gradientForCategory(category: string): string {
+export function gradientForCategory(category: string): string {
   return (
     CATEGORY_GRADIENTS[category] ??
     'from-gray-900/80 via-gray-950/60 to-black/80'
