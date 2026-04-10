@@ -102,7 +102,7 @@ export default function MapFallback(_props: MapFallbackProps) {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-9 whitespace-nowrap">
         <div className="flex items-center space-x-2 bg-[var(--map-label-bg)] border border-[var(--gold)]/15 rounded-[6px] px-3.5 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]" />
-          <span className="text-[11px] font-medium text-[var(--text-primary)] tracking-[0.03em]">Your Location</span>
+          <span className="text-[11px] font-medium tracking-[0.03em]" style={{ color: 'rgba(232,230,225,0.9)' }}>Your Location</span>
         </div>
       </div>
 
@@ -111,22 +111,22 @@ export default function MapFallback(_props: MapFallbackProps) {
           type="button"
           className="w-9 h-9 rounded-[7px] flex items-center justify-center text-base transition-all duration-200 cursor-pointer select-none"
           style={{
-            background: 'rgba(10,14,19,0.82)',
+            background: 'var(--map-zoom-bg)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,168,76,0.12)',
-            color: 'var(--text-secondary)',
+            border: '1px solid var(--map-zoom-border)',
+            color: 'rgba(232,230,225,0.7)',
           }}
         >+</button>
         <button
           type="button"
           className="w-9 h-9 rounded-[7px] flex items-center justify-center text-base transition-all duration-200 cursor-pointer select-none"
           style={{
-            background: 'rgba(10,14,19,0.82)',
+            background: 'var(--map-zoom-bg)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,168,76,0.12)',
-            color: 'var(--text-secondary)',
+            border: '1px solid var(--map-zoom-border)',
+            color: 'rgba(232,230,225,0.7)',
           }}
         >−</button>
       </div>

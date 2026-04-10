@@ -224,11 +224,11 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
           aria-label="Search results"
           className="mb-1.5 rounded-[9px] overflow-hidden overflow-y-auto max-h-[220px]"
           style={{
-            background: 'rgba(10,14,19,0.9)',
+            background: 'var(--card-bg)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.7)',
+            border: '1px solid var(--card-border)',
+            boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
           }}
         >
           {results.map((result, i) => {
@@ -256,7 +256,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
                       : 'transparent',
                     borderBottom:
                       i < results.length - 1
-                        ? '1px solid rgba(255,255,255,0.04)'
+                        ? '1px solid var(--border-subtle)'
                         : 'none',
                   }}
                 >
@@ -268,7 +268,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
                       width: 22,
                       height: 22,
                       borderRadius: '50%',
-                      background: isActive ? `${MARKER_COLOR_GOLD}20` : 'rgba(255,255,255,0.05)',
+                      background: isActive ? `${MARKER_COLOR_GOLD}20` : 'var(--surface-raised)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -338,11 +338,11 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
       <div
         className="flex items-center gap-2 rounded-[9px] px-3 py-2"
         style={{
-          background: 'rgba(10,14,19,0.82)',
+          background: 'var(--card-bg)',
           backdropFilter: 'blur(14px)',
           WebkitBackdropFilter: 'blur(14px)',
-          border: `1px solid ${isOpen || query ? `${MARKER_COLOR_GOLD}40` : 'rgba(255,255,255,0.09)'}`,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.55)',
+          border: `1px solid ${isOpen || query ? `${MARKER_COLOR_GOLD}40` : 'var(--card-border)'}`,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
           transition: 'border-color 0.2s',
         }}
       >
@@ -353,10 +353,10 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
           viewBox="0 0 16 16"
           fill="none"
           aria-hidden="true"
-          style={{ flexShrink: 0, opacity: 0.5 }}
+          style={{ flexShrink: 0, opacity: 0.5, color: 'var(--text-primary)' }}
         >
-          <circle cx="6.5" cy="6.5" r="5" stroke="#E8E6E1" strokeWidth="1.5" />
-          <path d="M10.5 10.5L14 14" stroke="#E8E6E1" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
 
         <input
@@ -374,7 +374,7 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
           aria-activedescendant={activeIndex >= 0 ? `mapsearch-item-${activeIndex}` : undefined}
           aria-controls="mapsearch-listbox"
           autoComplete="off"
-          className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-[rgba(232,230,225,0.3)] text-[var(--text-primary)] min-w-0"
+          className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-[var(--text-faint)] text-[var(--text-primary)] min-w-0"
         />
 
         {/* Loading spinner */}

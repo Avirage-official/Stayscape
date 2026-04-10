@@ -18,10 +18,13 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
       style={{ maxWidth: 'min(300px, calc(100% - 80px))' }}
     >
       <div
-        className="rounded-[9px] p-3.5 glass-dark"
+        className="rounded-[9px] p-3.5"
         style={{
+          background: 'var(--card-bg)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           border: `1px solid ${MARKER_COLOR_PINK}35`,
-          boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_PINK}15`,
+          boxShadow: `0 6px 24px rgba(0,0,0,0.35), 0 0 0 1px ${MARKER_COLOR_PINK}10`,
         }}
       >
         {/* Header row */}
@@ -58,9 +61,9 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: 'rgba(232,230,225,0.5)',
+              background: 'var(--surface-raised)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
             }}
           >
@@ -100,7 +103,7 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
         </div>
 
         {/* Action buttons */}
-        <div className="pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {/* Get Tickets button */}
           {event.ticket_url && (
             <a
@@ -132,8 +135,8 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
             className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
             style={{
               color: itinAdded === event.id ? '#4ADE80' : 'var(--text-muted)',
-              background: itinAdded === event.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${itinAdded === event.id ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
+              background: itinAdded === event.id ? 'rgba(74,222,128,0.1)' : 'var(--surface-raised)',
+              border: `1px solid ${itinAdded === event.id ? 'rgba(74,222,128,0.35)' : 'var(--border)'}`,
             }}
           >
             {itinAdded === event.id ? <>✓ Added</> : (
@@ -154,8 +157,8 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
             className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
             style={{
               color: 'var(--text-muted)',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--surface-raised)',
+              border: '1px solid var(--border)',
             }}
           >
             <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -170,7 +173,7 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
       <div
         className="absolute bottom-[-5px] left-5 w-2.5 h-2.5 rotate-45"
         style={{
-          background: 'rgba(10,14,19,0.78)',
+          background: 'var(--card-bg)',
           border: `1px solid ${MARKER_COLOR_PINK}35`,
           borderTop: 'none',
           borderLeft: 'none',

@@ -21,8 +21,44 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Stayscape",
-  description: "Your premium hospitality companion",
+  metadataBase: new URL('https://stayscape.vercel.app'),
+  title: {
+    default: 'Stayscape — Your AI-Powered Travel Concierge',
+    template: '%s | Stayscape',
+  },
+  description: 'Discover local gems, plan your perfect stay, and explore curated experiences with Stayscape — the AI concierge for modern travelers.',
+  keywords: ['travel', 'concierge', 'AI', 'itinerary', 'hotel', 'local experiences', 'travel planner', 'Stayscape'],
+  authors: [{ name: 'Stayscape' }],
+  creator: 'Stayscape',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'Stayscape',
+    title: 'Stayscape — Your AI-Powered Travel Concierge',
+    description: 'Discover local gems, plan your perfect stay, and explore curated experiences.',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Stayscape — AI Travel Concierge',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Stayscape — Your AI-Powered Travel Concierge',
+    description: 'Discover local gems, plan your perfect stay, and explore curated experiences.',
+    images: ['/opengraph-image'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({

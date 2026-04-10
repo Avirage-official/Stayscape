@@ -38,22 +38,22 @@ export default function MapLocationButton({ locationState, onRequestLocation }: 
           background:
             locationState === 'granted'
               ? 'rgba(59,130,246,0.15)'
-              : 'rgba(10,14,19,0.82)',
+              : 'var(--card-bg)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
           border:
             locationState === 'granted'
               ? '1px solid rgba(59,130,246,0.4)'
               : locationState === 'denied'
-              ? '1px solid rgba(255,255,255,0.05)'
-              : '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+              ? '1px solid var(--border-subtle)'
+              : '1px solid var(--card-border)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
           color:
             locationState === 'granted'
               ? '#3B82F6'
               : locationState === 'denied'
-              ? 'rgba(255,255,255,0.2)'
-              : 'rgba(232,230,225,0.6)',
+              ? 'var(--text-faint)'
+              : 'var(--text-muted)',
           opacity: locationState === 'requesting' ? 0.65 : 1,
         }}
       >
