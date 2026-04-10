@@ -97,6 +97,15 @@ function EmptyStayState() {
         </svg>
         Add a Stay
       </button>
+
+      <div className="mt-4">
+        <a
+          href="/app"
+          className="inline-block text-[12px] text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors tracking-wide border border-[var(--card-border)] rounded-lg px-5 py-2.5"
+        >
+          Explore the App →
+        </a>
+      </div>
     </div>
   );
 }

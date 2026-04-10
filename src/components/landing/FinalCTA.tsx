@@ -86,7 +86,7 @@ export default function FinalCTA() {
           </button>
 
           <a
-            href="/app"
+            href="/login"
             style={{
               border: '1px solid rgba(255,255,255,0.3)',
               background: 'transparent',
@@ -105,8 +105,7 @@ export default function FinalCTA() {
           className="text-sm italic text-center"
           style={{ color: '#8a8580', marginTop: 16 }}
         >
-          No login required — explore a live demo of Stayscape loaded with
-          sample content.
+          Use the demo credentials on the login page to explore Stayscape.
         </motion.p>
       </div>
     </section>
