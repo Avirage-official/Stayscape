@@ -95,7 +95,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-dm-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 /* Hide scrollbar but allow scrolling */
