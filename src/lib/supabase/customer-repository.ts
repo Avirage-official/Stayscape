@@ -19,12 +19,21 @@ export async function getCustomerProfile(
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, full_name, avatar_url, phone, created_at')
+    .select('id, email, firstname, lastname, phone, createdat')
     .eq('id', userId)
     .single();
 
   if (error || !data) return null;
-  return data as CustomerProfile;
+
+  const row = data as Record<string, unknown>;
+  return {
+    id: row.id as string,
+    email: row.email as string,
+    full_name: [row.firstname, row.lastname].filter(Boolean).join(' ') || null,
+    avatar_url: null,
+    phone: (row.phone as string) ?? null,
+    created_at: row.createdat as string,
+  };
 }
 
 /**
