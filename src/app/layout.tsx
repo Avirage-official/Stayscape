@@ -4,6 +4,7 @@ import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { RegionProvider } from "@/lib/context/region-context";
+import { AuthProvider } from "@/lib/context/auth-context";
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -70,9 +71,11 @@ export default function RootLayout({
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body className={`${dmSans.variable} ${playfair.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         <ThemeProvider>
-          <RegionProvider>
-            {children}
-          </RegionProvider>
+          <AuthProvider>
+            <RegionProvider>
+              {children}
+            </RegionProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
