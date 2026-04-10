@@ -21,10 +21,13 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
       style={{ maxWidth: 'min(280px, calc(100% - 80px))' }}
     >
       <div
-        className="rounded-[9px] p-3.5 glass-dark"
+        className="rounded-[9px] p-3.5"
         style={{
+          background: 'var(--card-bg)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           border: `1px solid ${getCategoryColor(place.category)}35`,
-          boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px ${getCategoryColor(place.category)}15`,
+          boxShadow: `0 6px 24px rgba(0,0,0,0.35), 0 0 0 1px ${getCategoryColor(place.category)}10`,
         }}
       >
         <div className="flex items-start gap-2 mb-2">
@@ -87,7 +90,7 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
         </div>
 
         {/* Action buttons */}
-        <div className="mt-2.5 pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="mt-2.5 pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {/* Book button */}
           {(place.booking_url || place.website) ? (
             <a
@@ -120,8 +123,8 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
             className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all cursor-pointer"
             style={{
               color: itinAdded === place.id ? '#4ADE80' : 'var(--text-muted)',
-              background: itinAdded === place.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${itinAdded === place.id ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
+              background: itinAdded === place.id ? 'rgba(74,222,128,0.1)' : 'var(--surface-raised)',
+              border: `1px solid ${itinAdded === place.id ? 'rgba(74,222,128,0.35)' : 'var(--border)'}`,
             }}
           >
             {itinAdded === place.id ? (
@@ -144,8 +147,8 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
             className="text-[10px] font-medium rounded-full px-2.5 py-1 inline-flex items-center gap-1 transition-all"
             style={{
               color: 'var(--text-muted)',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--surface-raised)',
+              border: '1px solid var(--border)',
             }}
           >
             <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -160,7 +163,7 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
       <div
         className="absolute bottom-[-5px] left-5 w-2.5 h-2.5 rotate-45"
         style={{
-          background: 'rgba(10,14,19,0.78)',
+          background: 'var(--card-bg)',
           border: `1px solid ${getCategoryColor(place.category)}35`,
           borderTop: 'none',
           borderLeft: 'none',
