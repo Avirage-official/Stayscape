@@ -142,8 +142,63 @@ export default function LoginPage() {
           </form>
         </div>
 
+        {/* Demo credentials notice */}
+        <div className="mt-6 rounded-xl border border-[var(--gold)]/20 bg-[var(--gold)]/5 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="mt-0.5 flex-shrink-0 text-[var(--gold)]"
+              aria-label="Demo mode information"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div className="space-y-1">
+              <p className="text-[11px] font-medium text-[var(--gold)] uppercase tracking-wider">
+                Demo Mode
+              </p>
+              <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
+                Email:{' '}
+                <code
+                  aria-label="Demo email address"
+                  className="text-[var(--text-secondary)] not-italic"
+                >
+                  ben.test@stayscape-demo.com
+                </code>
+              </p>
+              <p className="text-[12px] text-[var(--text-muted)]">
+                Password:{' '}
+                <code
+                  aria-label="Demo password"
+                  className="text-[var(--text-secondary)] not-italic"
+                >
+                  Demo1234!
+                </code>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Skip to App */}
+        <div className="mt-4 text-center">
+          <a
+            href="/app"
+            className="inline-block text-[12px] text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors tracking-wide"
+          >
+            Explore without signing in →
+          </a>
+        </div>
+
         {/* Footer hint */}
-        <p className="text-center mt-6 text-[11px] text-[var(--text-faint)]">
+        <p className="text-center mt-5 text-[11px] text-[var(--text-faint)]">
           Premium guest experience by Stayscape
         </p>
       </div>

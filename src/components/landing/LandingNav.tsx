@@ -69,7 +69,7 @@ export default function LandingNav() {
             Why It Works
           </a>
           <a
-            href="/app"
+            href="/login"
             className="text-sm font-medium"
             style={{
               backgroundColor: '#c9a96e',
