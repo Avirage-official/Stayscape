@@ -110,7 +110,7 @@ export default function AddStayDialog({
     setStep(1);
   }, []);
 
-  const canProceed = form.country && form.city && form.hotelName && form.checkIn && form.checkOut;
+  const canProceed = form.country && form.city && form.hotelName && form.checkIn && form.checkOut && form.checkOut > form.checkIn;
 
   const overlayMotion = prefersReducedMotion
     ? {}

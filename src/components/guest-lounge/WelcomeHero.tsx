@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
@@ -18,6 +19,8 @@ export default function WelcomeHero({
   city,
 }: WelcomeHeroProps) {
   const prefersReducedMotion = useReducedMotion();
+  // Compute greeting once on mount so it stays stable across re-renders
+  const [greeting] = useState(() => getTimeOfDay());
 
   const contextLine = hasStay
     ? `Your stay at ${hotelName ?? 'your hotel'}${city ? `, ${city}` : ''} awaits.`
@@ -74,7 +77,7 @@ export default function WelcomeHero({
         >
           Good{' '}
           <span className="text-[var(--gold)]">
-            {getTimeOfDay()}
+            {greeting}
           </span>
           , {firstName}.
         </motion.h1>

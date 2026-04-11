@@ -43,9 +43,11 @@ function getStatusConfig(status: string) {
 
 function getDaysUntilCheckIn(checkIn: string): number {
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
   const target = new Date(checkIn);
+  target.setHours(0, 0, 0, 0);
   const diff = target.getTime() - now.getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
 export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
@@ -91,12 +93,14 @@ export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
             />
 
             {/* Days until chip */}
-            {daysUntil > 0 && (
+            {daysUntil >= 0 && (
               <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10">
                 <span className="text-[11px] font-medium text-white/80">
-                  {daysUntil === 1
-                    ? 'Tomorrow'
-                    : `In ${daysUntil} days`}
+                  {daysUntil === 0
+                    ? 'Today'
+                    : daysUntil === 1
+                      ? 'Tomorrow'
+                      : `In ${daysUntil} days`}
                 </span>
               </div>
             )}

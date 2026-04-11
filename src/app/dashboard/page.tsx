@@ -42,7 +42,7 @@ function ErrorState({
 }) {
   return (
     <div className="bg-[var(--card-bg)] border border-red-500/20 rounded-xl p-8 text-center">
-      <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-red-500/[0.08] flex items-center justify-center">
+      <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-red-500/8 flex items-center justify-center">
         <svg
           width="24"
           height="24"
