@@ -160,10 +160,10 @@ export default function QuickAccessActions({
     <motion.section {...containerMotion}>
       {/* Section label */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-[10px] font-medium text-[var(--text-faint)] uppercase tracking-[0.18em]">
+        <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
           Quick Access
         </span>
-        <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+        <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
       </div>
 
       <div
@@ -175,7 +175,7 @@ export default function QuickAccessActions({
           <motion.a
             key={action.label}
             href={action.href}
-            className="group relative flex items-start gap-4 p-4 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] transition-all duration-300 hover:border-[var(--gold)]/20 hover:bg-[var(--surface-raised)]"
+            className="group relative flex items-start gap-4 p-5 rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] transition-all duration-300 hover:border-[var(--gold)]/20 hover:bg-[var(--dashboard-surface-raised)]"
             custom={i}
             variants={itemVariants}
             initial={prefersReducedMotion ? 'visible' : 'hidden'}
@@ -184,17 +184,17 @@ export default function QuickAccessActions({
           >
             {/* Icon */}
             <div
-              className={`flex-shrink-0 w-10 h-10 rounded-lg bg-[var(--surface-raised)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] transition-colors duration-300 ${action.accentClass ?? ''}`}
+              className={`flex-shrink-0 w-10 h-10 rounded-lg bg-[var(--dashboard-surface-raised)] border border-[var(--dashboard-border-subtle)] flex items-center justify-center text-[var(--dashboard-text-muted)] transition-colors duration-300 ${action.accentClass ?? ''}`}
             >
               {action.icon}
             </div>
 
             {/* Text */}
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[var(--text-primary)] group-hover:text-[var(--text-primary)] transition-colors">
+              <p className="text-[14px] font-medium text-[var(--dashboard-text-primary)] group-hover:text-[var(--dashboard-text-primary)] transition-colors">
                 {action.label}
               </p>
-              <p className="text-[11px] text-[var(--text-faint)] leading-relaxed mt-0.5">
+              <p className="text-[12px] text-[var(--dashboard-text-faint)] leading-relaxed mt-0.5">
                 {action.description}
               </p>
             </div>
@@ -210,7 +210,7 @@ export default function QuickAccessActions({
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-[var(--text-faint)]"
+                className="text-[var(--dashboard-text-faint)]"
               >
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />

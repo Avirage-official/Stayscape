@@ -61,7 +61,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-[0.14em] mb-1.5">
+      <label className="block text-[11px] font-medium text-[var(--dashboard-text-muted)] uppercase tracking-[0.14em] mb-2">
         {label}
         {required && <span className="text-[var(--gold)] ml-0.5">*</span>}
       </label>
@@ -71,10 +71,10 @@ function FormField({
 }
 
 const inputClassName =
-  'w-full h-10 px-3.5 rounded-lg bg-[var(--input-bg)] border border-[var(--border)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors';
+  'w-full h-11 px-4 rounded-lg bg-[var(--dashboard-input-bg)] border border-[var(--dashboard-card-border)] text-[14px] text-[var(--dashboard-text-primary)] placeholder:text-[var(--dashboard-text-faint)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors';
 
 const selectClassName =
-  'w-full h-10 px-3.5 rounded-lg bg-[var(--input-bg)] border border-[var(--border)] text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors appearance-none cursor-pointer';
+  'w-full h-11 px-4 rounded-lg bg-[var(--dashboard-input-bg)] border border-[var(--dashboard-card-border)] text-[14px] text-[var(--dashboard-text-primary)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors appearance-none cursor-pointer';
 
 export default function AddStayDialog({
   open,
@@ -147,14 +147,14 @@ export default function AddStayDialog({
                 className="fixed inset-0 z-50 flex items-center justify-center p-4"
                 {...contentMotion}
               >
-                <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] shadow-medium">
+                <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] shadow-medium">
                   {/* Header */}
-                  <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between">
+                  <div className="sticky top-0 z-10 bg-[var(--dashboard-card-bg)] border-b border-[var(--dashboard-border-subtle)] px-8 py-5 flex items-center justify-between">
                     <div>
-                      <Dialog.Title className="font-serif text-lg text-[var(--text-primary)]">
+                      <Dialog.Title className="font-serif text-xl text-[var(--dashboard-text-primary)]">
                         Add Your Stay
                       </Dialog.Title>
-                      <Dialog.Description className="text-[11px] text-[var(--text-faint)] mt-0.5">
+                      <Dialog.Description className="text-[12px] text-[var(--dashboard-text-faint)] mt-1">
                         {step === 1
                           ? 'Tell us about your destination'
                           : 'Additional details & preferences'}
@@ -164,7 +164,7 @@ export default function AddStayDialog({
                     <Dialog.Close asChild>
                       <button
                         type="button"
-                        className="w-8 h-8 rounded-lg bg-[var(--surface-raised)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors cursor-pointer"
+                        className="w-8 h-8 rounded-lg bg-[var(--dashboard-surface-raised)] border border-[var(--dashboard-border-subtle)] flex items-center justify-center text-[var(--dashboard-text-faint)] hover:text-[var(--dashboard-text-muted)] transition-colors cursor-pointer"
                         aria-label="Close"
                       >
                         <svg
@@ -185,25 +185,25 @@ export default function AddStayDialog({
                   </div>
 
                   {/* Step indicators */}
-                  <div className="px-6 pt-4 flex items-center gap-2">
+                  <div className="px-8 pt-5 flex items-center gap-2">
                     <div
                       className={`h-1 flex-1 rounded-full transition-colors ${
                         step >= 1
                           ? 'bg-[var(--gold)]'
-                          : 'bg-[var(--border-subtle)]'
+                          : 'bg-[var(--dashboard-border-subtle)]'
                       }`}
                     />
                     <div
                       className={`h-1 flex-1 rounded-full transition-colors ${
                         step >= 2
                           ? 'bg-[var(--gold)]'
-                          : 'bg-[var(--border-subtle)]'
+                          : 'bg-[var(--dashboard-border-subtle)]'
                       }`}
                     />
                   </div>
 
                   {/* Form */}
-                  <form onSubmit={handleSubmit} className="px-6 py-5">
+                  <form onSubmit={handleSubmit} className="px-8 py-6">
                     {step === 1 ? (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
@@ -298,12 +298,12 @@ export default function AddStayDialog({
                         </div>
 
                         {/* Step 1 actions */}
-                        <div className="pt-3 flex justify-end">
+                        <div className="pt-4 flex justify-end">
                           <button
                             type="button"
                             onClick={handleNext}
                             disabled={!canProceed}
-                            className="h-10 px-6 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[12px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            className="h-11 px-8 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                           >
                             Continue
                           </button>
@@ -366,24 +366,24 @@ export default function AddStayDialog({
                             onChange={(e) =>
                               updateField('notes', e.target.value)
                             }
-                            rows={3}
-                            className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--border)] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors resize-none"
+                            rows={4}
+                            className="w-full px-4 py-3 rounded-lg bg-[var(--dashboard-input-bg)] border border-[var(--dashboard-card-border)] text-[14px] text-[var(--dashboard-text-primary)] placeholder:text-[var(--dashboard-text-faint)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors resize-none"
                             placeholder="Any special requests, dietary needs, accessibility requirements…"
                           />
                         </FormField>
 
                         {/* Step 2 actions */}
-                        <div className="pt-3 flex items-center justify-between">
+                        <div className="pt-4 flex items-center justify-between">
                           <button
                             type="button"
                             onClick={handleBack}
-                            className="text-[12px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                            className="text-[13px] text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] transition-colors cursor-pointer"
                           >
                             ← Back
                           </button>
                           <button
                             type="submit"
-                            className="h-10 px-6 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[12px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-colors cursor-pointer"
+                            className="h-11 px-8 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-colors cursor-pointer"
                           >
                             Add Stay
                           </button>
