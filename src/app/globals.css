@@ -26,6 +26,21 @@
   --text-muted: #6B7280;
   --text-faint: #4B5563;
   --text-dim: #374151;
+
+  /* Dashboard / post-login brighter variants */
+  --dashboard-bg: #111114;
+  --dashboard-card-bg: #1A1A1E;
+  --dashboard-card-border: #27272C;
+  --dashboard-surface-raised: #222226;
+  --dashboard-header-bg: #131316;
+  --dashboard-header-border: #1E1E22;
+  --dashboard-text-primary: #F0EEE9;
+  --dashboard-text-secondary: #B0B5BF;
+  --dashboard-text-muted: #8890A0;
+  --dashboard-text-faint: #626A7A;
+  --dashboard-text-dim: #4A5060;
+  --dashboard-border-subtle: #232328;
+  --dashboard-input-bg: #1A1A1E;
   --map-bg: #0A0E13;
   --map-label-bg: #111519;
   --map-zoom-bg: #111519;
@@ -70,6 +85,21 @@
   --text-muted: #777777;
   --text-faint: #999999;
   --text-dim: #BBBBBB;
+
+  /* Dashboard / post-login brighter variants — light theme */
+  --dashboard-bg: #FDFCFA;
+  --dashboard-card-bg: #FFFFFF;
+  --dashboard-card-border: #E0DCD3;
+  --dashboard-surface-raised: #F5F3EE;
+  --dashboard-header-bg: #FAFAF8;
+  --dashboard-header-border: #E8E5DC;
+  --dashboard-text-primary: #111111;
+  --dashboard-text-secondary: #444444;
+  --dashboard-text-muted: #666666;
+  --dashboard-text-faint: #888888;
+  --dashboard-text-dim: #AAAAAA;
+  --dashboard-border-subtle: #E4E0D8;
+  --dashboard-input-bg: #FFFFFF;
   --map-bg: #0A0E13;
   --map-label-bg: #111519;
   --map-zoom-bg: #111519;
@@ -284,4 +314,24 @@ body {
 }
 .animate-card-entrance {
   animation: cardEntrance 0.22s ease-out both;
+}
+
+/* ── Dashboard — layered background & soft motion ────────── */
+@keyframes dashboardDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-12px, 8px) scale(1.02); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.dashboard-bg-drift {
+  animation: dashboardDrift 30s ease-in-out infinite;
+}
+
+@keyframes dashboardGlow {
+  0%, 100% { opacity: 0.035; }
+  50%      { opacity: 0.065; }
+}
+
+.dashboard-bg-glow {
+  animation: dashboardGlow 8s ease-in-out infinite;
 }

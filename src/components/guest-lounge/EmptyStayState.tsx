@@ -30,25 +30,26 @@ export default function EmptyStayState({ onAddStay }: EmptyStayStateProps) {
 
   return (
     <motion.section {...containerMotion}>
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--card-bg)] via-[var(--surface)] to-[var(--card-bg)] border border-[var(--card-border)]">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--dashboard-card-bg)] via-[var(--dashboard-bg)] to-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)]">
         {/* Decorative gold accent */}
         <div
-          className="absolute top-0 right-0 w-72 h-72 opacity-[0.03]"
+          className="absolute top-0 right-0 w-72 h-72 opacity-[0.04]"
           style={{
             background:
               'radial-gradient(circle at top right, var(--gold) 0%, transparent 60%)',
           }}
         />
 
-        <div className="relative z-10 px-6 sm:px-10 py-10 sm:py-14 text-center">
+        <div className="relative z-10 px-8 sm:px-12 py-12 sm:py-16 text-center">
           {/* Icon */}
           <motion.div
-            className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-[var(--gold)]/[0.06] border border-[var(--gold)]/[0.12] flex items-center justify-center"
+            className="w-22 h-22 mx-auto mb-7 rounded-2xl bg-[var(--gold)]/[0.06] border border-[var(--gold)]/[0.12] flex items-center justify-center"
+            style={{ width: '5.5rem', height: '5.5rem' }}
             {...fadeIn(0.3)}
           >
             <svg
-              width="36"
-              height="36"
+              width="40"
+              height="40"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -64,7 +65,7 @@ export default function EmptyStayState({ onAddStay }: EmptyStayStateProps) {
 
           {/* Title */}
           <motion.h3
-            className="font-serif text-2xl text-[var(--text-primary)] mb-3"
+            className="font-serif text-3xl text-[var(--dashboard-text-primary)] mb-4"
             {...fadeIn(0.35)}
           >
             Your journey begins here
@@ -72,7 +73,7 @@ export default function EmptyStayState({ onAddStay }: EmptyStayStateProps) {
 
           {/* Description */}
           <motion.p
-            className="text-[14px] text-[var(--text-muted)] max-w-sm mx-auto mb-8 leading-relaxed"
+            className="text-[15px] text-[var(--dashboard-text-muted)] max-w-md mx-auto mb-8 leading-relaxed"
             {...fadeIn(0.4)}
           >
             Add your upcoming stay to unlock your personal concierge,
@@ -85,11 +86,12 @@ export default function EmptyStayState({ onAddStay }: EmptyStayStateProps) {
             <button
               type="button"
               onClick={onAddStay}
-              className="inline-flex items-center gap-2.5 h-12 px-8 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-all duration-300 cursor-pointer shadow-gold-glow"
+              className="inline-flex items-center gap-2.5 h-13 px-10 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[14px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-all duration-300 cursor-pointer shadow-gold-glow"
+              style={{ height: '3.25rem' }}
             >
               <svg
-                width="16"
-                height="16"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -105,10 +107,10 @@ export default function EmptyStayState({ onAddStay }: EmptyStayStateProps) {
           </motion.div>
 
           {/* Secondary link */}
-          <motion.div className="mt-5" {...fadeIn(0.55)}>
+          <motion.div className="mt-6" {...fadeIn(0.55)}>
             <a
               href="/app"
-              className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors tracking-wide"
+              className="inline-flex items-center gap-1.5 text-[13px] text-[var(--dashboard-text-faint)] hover:text-[var(--dashboard-text-muted)] transition-colors tracking-wide"
             >
               Or explore Stayscape first
               <svg

@@ -41,7 +41,7 @@ function ErrorState({
   onRetry: () => void;
 }) {
   return (
-    <div className="bg-[var(--card-bg)] border border-red-500/20 rounded-xl p-8 text-center">
+    <div className="bg-[var(--dashboard-card-bg)] border border-red-500/20 rounded-xl p-8 text-center">
       <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-red-500/8 flex items-center justify-center">
         <svg
           width="24"
@@ -59,11 +59,11 @@ function ErrorState({
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <p className="text-[13px] text-[var(--text-muted)] mb-4">{message}</p>
+      <p className="text-[14px] text-[var(--dashboard-text-muted)] mb-4">{message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="text-[12px] text-[var(--gold)] hover:text-[var(--gold-soft)] transition-colors cursor-pointer"
+        className="text-[13px] text-[var(--gold)] hover:text-[var(--gold-soft)] transition-colors cursor-pointer"
       >
         Try again
       </button>
@@ -124,14 +124,40 @@ function GuestLoungeContent({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen bg-[var(--dashboard-bg)] relative overflow-hidden">
+      {/* Layered background: subtle gradient overlay + soft animated glow */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(201,168,76,0.04) 0%, transparent 40%, rgba(201,168,76,0.02) 70%, transparent 100%)',
+          }}
+        />
+        <div
+          className="absolute top-[-20%] right-[-10%] w-[70vw] h-[70vw] rounded-full dashboard-bg-glow"
+          style={{
+            background:
+              'radial-gradient(circle, var(--gold) 0%, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute bottom-[-15%] left-[-5%] w-[50vw] h-[50vw] rounded-full dashboard-bg-glow"
+          style={{
+            background:
+              'radial-gradient(circle, var(--gold) 0%, transparent 65%)',
+            animationDelay: '4s',
+          }}
+        />
+      </div>
+
       <GuestLoungeHeader
         name={data?.profile.full_name ?? 'Guest'}
         avatarUrl={data?.profile.avatar_url ?? null}
         onLogout={onLogout}
       />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="relative z-10 max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-10 space-y-10">
         {loadState === 'error' && (
           <ErrorState message={errorMsg} onRetry={refetch} />
         )}
@@ -164,8 +190,8 @@ function GuestLoungeContent({
             />
 
             {/* Footer */}
-            <footer className="pt-4 pb-8 text-center">
-              <p className="text-[10px] text-[var(--text-dim)] tracking-wide">
+            <footer className="pt-6 pb-10 text-center">
+              <p className="text-[11px] text-[var(--dashboard-text-dim)] tracking-wide">
                 Your private guest experience by Stayscape
               </p>
             </footer>

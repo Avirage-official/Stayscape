@@ -67,35 +67,35 @@ export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
     <motion.section {...containerMotion}>
       {/* Section label */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-[10px] font-medium text-[var(--text-faint)] uppercase tracking-[0.18em]">
+        <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
           Current Stay
         </span>
-        <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+        <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
       </div>
 
-      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden hover-lift">
+      <div className="bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-xl overflow-hidden hover-lift">
         {/* Hotel image if available */}
         {stay.property?.image_url && (
-          <div className="relative h-40 sm:h-48 w-full overflow-hidden">
+          <div className="relative h-48 sm:h-56 w-full overflow-hidden">
             <Image
               src={stay.property.image_url}
               alt={stay.property.name ?? 'Hotel'}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 100vw, 640px"
+              sizes="(max-width: 768px) 100vw, 960px"
             />
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(to top, var(--card-bg) 0%, transparent 60%)',
+                  'linear-gradient(to top, var(--dashboard-card-bg) 0%, transparent 60%)',
               }}
             />
 
             {/* Days until chip */}
             {daysUntil >= 0 && (
               <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10">
-                <span className="text-[11px] font-medium text-white/80">
+                <span className="text-[12px] font-medium text-white/90">
                   {daysUntil === 0
                     ? 'Today'
                     : daysUntil === 1
@@ -107,27 +107,27 @@ export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
           </div>
         )}
 
-        <div className="p-5 sm:p-6">
+        <div className="p-6 sm:p-8">
           {/* Hotel name & status */}
-          <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-start justify-between gap-4 mb-5">
             <div>
-              <h3 className="font-serif text-xl text-[var(--text-primary)] leading-tight">
+              <h3 className="font-serif text-2xl text-[var(--dashboard-text-primary)] leading-tight">
                 {stay.property?.name ?? 'Your Stay'}
               </h3>
               {stay.property?.address && (
-                <p className="text-[12px] text-[var(--text-muted)] mt-1">
+                <p className="text-[13px] text-[var(--dashboard-text-muted)] mt-1.5">
                   {stay.property.address}
                 </p>
               )}
             </div>
 
             {/* Status badge */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--surface-raised)] border border-[var(--border-subtle)] flex-shrink-0">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--dashboard-surface-raised)] border border-[var(--dashboard-border-subtle)] flex-shrink-0">
               <div
                 className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}
               />
               <span
-                className={`text-[10px] font-medium uppercase tracking-wider ${statusConfig.color}`}
+                className={`text-[11px] font-medium uppercase tracking-wider ${statusConfig.color}`}
               >
                 {statusConfig.label}
               </span>
@@ -135,29 +135,29 @@ export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
           </div>
 
           {/* Date & guest details */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 mb-5">
             <div>
-              <p className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider mb-1">
+              <p className="text-[11px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-1">
                 Check-in
               </p>
-              <p className="text-[13px] text-[var(--text-secondary)] font-medium">
+              <p className="text-[14px] text-[var(--dashboard-text-secondary)] font-medium">
                 {formatDate(stay.check_in)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider mb-1">
+              <p className="text-[11px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-1">
                 Check-out
               </p>
-              <p className="text-[13px] text-[var(--text-secondary)] font-medium">
+              <p className="text-[14px] text-[var(--dashboard-text-secondary)] font-medium">
                 {formatDate(stay.check_out)}
               </p>
             </div>
             {stay.guests && (
               <div>
-                <p className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider mb-1">
+                <p className="text-[11px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-1">
                   Guests
                 </p>
-                <p className="text-[13px] text-[var(--text-secondary)] font-medium">
+                <p className="text-[14px] text-[var(--dashboard-text-secondary)] font-medium">
                   {stay.guests} {stay.guests === 1 ? 'Guest' : 'Guests'}
                 </p>
               </div>
@@ -166,7 +166,7 @@ export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
 
           {/* Room type */}
           {stay.room_type && (
-            <div className="flex items-center gap-2 pt-3 border-t border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 pt-4 border-t border-[var(--dashboard-border-subtle)]">
               <svg
                 width="14"
                 height="14"
@@ -176,12 +176,12 @@ export default function CurrentStayCard({ stay }: CurrentStayCardProps) {
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-[var(--text-faint)]"
+                className="text-[var(--dashboard-text-faint)]"
               >
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
-              <span className="text-[12px] text-[var(--text-muted)]">
+              <span className="text-[13px] text-[var(--dashboard-text-muted)]">
                 {stay.room_type}
               </span>
             </div>
