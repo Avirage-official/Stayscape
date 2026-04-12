@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import type { CustomerStay } from '@/types/customer';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
@@ -385,9 +386,9 @@ function ConciergeAction({
   }
 
   return (
-    <a href={href} className={className} style={{ textDecoration: 'none' }}>
+    <Link href={href!} className={className} style={{ textDecoration: 'none' }}>
       {inner}
-    </a>
+    </Link>
   );
 }
 
