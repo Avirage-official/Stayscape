@@ -12,9 +12,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 export interface DbItinerary {
   id: string;
-  /** FK → stays.id */
   stayid?: string;
-  /** FK → users.id */
   userid?: string;
   createdat: string;
   updatedat?: string;
@@ -22,7 +20,6 @@ export interface DbItinerary {
 
 export interface DbItineraryItem {
   id: string;
-  /** FK → itineraries.id */
   itineraryid: string;
   discoveritemid: string;
   name: string;
@@ -54,11 +51,7 @@ export async function getOrCreateItinerary(
   let findQuery = sb
     .from('itineraries')
     .select('id')
-    .eq('userid', userId);
-
-  if (stayId) findQuery = findQuery.eq('stayid', stayId);
-
-  const { data: existing, error: findErr } = await findQuery
+    .eq('stayid', PLACEHOLDER_STAY_ID)
     .limit(1)
     .maybeSingle();
 
@@ -71,7 +64,10 @@ export async function getOrCreateItinerary(
 
   const { data: created, error: createErr } = await sb
     .from('itineraries')
-    .insert(insertPayload)
+    .insert({
+      stayid: PLACEHOLDER_STAY_ID,
+      userid: PLACEHOLDER_USER_ID,
+    })
     .select('id')
     .single();
 
@@ -171,11 +167,7 @@ export async function fetchItineraryItems(
   let itinQuery = sb
     .from('itineraries')
     .select('id')
-    .eq('userid', userId);
-
-  if (stayId) itinQuery = itinQuery.eq('stayid', stayId);
-
-  const { data: itin, error: itinErr } = await itinQuery
+    .eq('stayid', PLACEHOLDER_STAY_ID)
     .limit(1)
     .maybeSingle();
 

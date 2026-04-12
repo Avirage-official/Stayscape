@@ -22,17 +22,17 @@ import type {
 
 interface DbDiscoverCategory {
   id: string;
-  label: string;
-  icon: string;
-  image: string;
+  name: string;
+  iconname: string;
+  imageurl: string;
   subtitle: string;
-  sort_order?: number;
-  is_active?: boolean;
+  sortorder?: number;
+  isactive?: boolean;
 }
 
 interface DbDiscoverItem {
   id: string;
-  category_id: string;
+  categoryid: string;
   title: string;
   shortdescription: string;
   fulldescription?: string;
@@ -46,15 +46,15 @@ interface DbDiscoverItem {
   gradient?: string;
   latitude?: number;
   longitude?: number;
-  is_active?: boolean;
+  status?: string;
 }
 
 interface DbDiscoverItemTip {
   id: string;
   discoveritemid: string;
-  tip: string;
-  tip_type: string;
-  sort_order?: number;
+  content: string;
+  tiptype: string;
+  sortorder?: number;
 }
 
 interface DbDiscoverItemLink {
@@ -62,17 +62,17 @@ interface DbDiscoverItemLink {
   discoveritemid: string;
   label: string;
   url: string;
-  sort_order?: number;
+  sortorder?: number;
 }
 
 interface DbLocalInsight {
   id: string;
   title: string;
-  subtitle: string;
-  icon: string;
-  content: string;
-  sort_order?: number;
-  is_active?: boolean;
+  summary: string;
+  iconname: string;
+  body: string;
+  sortorder?: number;
+  status?: string;
 }
 
 /* ── Shape transformers ─────────────────────────────────── */
@@ -80,9 +80,9 @@ interface DbLocalInsight {
 function toCategory(row: DbDiscoverCategory): CategoryItem {
   return {
     id: row.id,
-    label: row.label,
-    icon: row.icon,
-    image: row.image,
+    label: row.name,
+    icon: row.iconname,
+    image: row.imageurl,
     subtitle: row.subtitle,
   };
 }
@@ -105,9 +105,9 @@ function toInsight(row: DbLocalInsight): InsightCard {
   return {
     id: row.id,
     title: row.title,
-    subtitle: row.subtitle,
-    icon: row.icon,
-    content: row.content,
+    subtitle: row.summary,
+    icon: row.iconname,
+    content: row.body,
   };
 }
 
@@ -119,18 +119,18 @@ function groupTips(
   const whatToBring: string[] = [];
 
   for (const t of tips) {
-    switch (t.tip_type) {
+    switch (t.tiptype) {
       case 'things_to_do':
-        thingsToDo.push(t.tip);
+        thingsToDo.push(t.content);
         break;
       case 'what_to_look_out_for':
-        whatToLookOutFor.push(t.tip);
+        whatToLookOutFor.push(t.content);
         break;
       case 'what_to_bring':
-        whatToBring.push(t.tip);
+        whatToBring.push(t.content);
         break;
       default:
-        thingsToDo.push(t.tip);
+        thingsToDo.push(t.content);
     }
   }
 
@@ -150,12 +150,12 @@ export async function fetchCategories(): Promise<CategoryItem[] | null> {
   const { data, error } = await sb
     .from('discovercategories')
     .select('*')
-    .order('sort_order', { ascending: true });
+    .order('sortorder', { ascending: true });
 
   if (error || !data || data.length === 0) return null;
 
   return (data as DbDiscoverCategory[])
-    .filter((r) => r.is_active !== false)
+    .filter((r) => r.isactive !== false)
     .map(toCategory);
 }
 
@@ -173,8 +173,8 @@ export async function fetchItemsByCategory(
   const { data, error } = await sb
     .from('discoveritems')
     .select('*')
-    .eq('category_id', categoryId)
-    .eq('is_active', true)
+    .eq('categoryid', categoryId)
+    .eq('status', 'published')
     .order('ratingvalue', { ascending: false });
 
   if (error || !data || data.length === 0) return null;
@@ -195,7 +195,7 @@ export async function fetchAllItems(): Promise<PlaceCard[] | null> {
   const { data, error } = await sb
     .from('discoveritems')
     .select('*')
-    .eq('is_active', true)
+    .eq('status', 'published')
     .order('ratingvalue', { ascending: false });
 
   if (error || !data || data.length === 0) return null;
@@ -216,13 +216,12 @@ export async function fetchLocalInsights(): Promise<InsightCard[] | null> {
   const { data, error } = await sb
     .from('localinsights')
     .select('*')
-    .order('sort_order', { ascending: true });
+    .eq('status', 'published')
+    .order('sortorder', { ascending: true });
 
   if (error || !data || data.length === 0) return null;
 
-  return (data as DbLocalInsight[])
-    .filter((r) => r.is_active !== false)
-    .map(toInsight);
+  return (data as DbLocalInsight[]).map(toInsight);
 }
 
 /**
@@ -251,7 +250,7 @@ export async function fetchItemDetail(
     .from('discoveritemtips')
     .select('*')
     .eq('discoveritemid', itemId)
-    .order('sort_order', { ascending: true });
+    .order('sortorder', { ascending: true });
 
   const tips = (tipsData ?? []) as DbDiscoverItemTip[];
   const grouped = groupTips(tips);
@@ -261,7 +260,7 @@ export async function fetchItemDetail(
     .from('discoveritemlinks')
     .select('*')
     .eq('discoveritemid', itemId)
-    .order('sort_order', { ascending: true });
+    .order('sortorder', { ascending: true });
 
   const links = (linksData ?? []) as DbDiscoverItemLink[];
 
