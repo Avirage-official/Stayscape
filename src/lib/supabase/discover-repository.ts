@@ -215,13 +215,12 @@ export async function fetchLocalInsights(): Promise<InsightCard[] | null> {
   const { data, error } = await sb
     .from('localinsights')
     .select('*')
+    .eq('status', 'published')
     .order('sortorder', { ascending: true });
 
   if (error || !data || data.length === 0) return null;
 
-  return (data as DbLocalInsight[])
-    .filter((r) => r.status !== 'archived')
-    .map(toInsight);
+  return (data as DbLocalInsight[]).map(toInsight);
 }
 
 /**
