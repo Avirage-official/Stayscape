@@ -12,15 +12,15 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 export interface DbItinerary {
   id: string;
-  stay_id?: string;
-  user_id?: string;
-  created_at: string;
-  updated_at?: string;
+  stayid?: string;
+  userid?: string;
+  createdat: string;
+  updatedat?: string;
 }
 
 export interface DbItineraryItem {
   id: string;
-  itinerary_id: string;
+  itineraryid: string;
   discoveritemid: string;
   name: string;
   category: string;
@@ -28,8 +28,8 @@ export interface DbItineraryItem {
   scheduleddate: string;
   starttime: string;
   durationhours: number;
-  created_at?: string;
-  updated_at?: string;
+  createdat?: string;
+  updatedat?: string;
 }
 
 /* ── Placeholder stay / user IDs (no auth yet) ──────────── */
@@ -51,7 +51,7 @@ export async function getOrCreateItinerary(): Promise<string | null> {
   const { data: existing, error: findErr } = await sb
     .from('itineraries')
     .select('id')
-    .eq('stay_id', PLACEHOLDER_STAY_ID)
+    .eq('stayid', PLACEHOLDER_STAY_ID)
     .limit(1)
     .maybeSingle();
 
@@ -62,8 +62,8 @@ export async function getOrCreateItinerary(): Promise<string | null> {
   const { data: created, error: createErr } = await sb
     .from('itineraries')
     .insert({
-      stay_id: PLACEHOLDER_STAY_ID,
-      user_id: PLACEHOLDER_USER_ID,
+      stayid: PLACEHOLDER_STAY_ID,
+      userid: PLACEHOLDER_USER_ID,
     })
     .select('id')
     .single();
@@ -94,7 +94,7 @@ export async function insertItineraryItem(
   const { data, error } = await sb
     .from('itineraryitems')
     .insert({
-      itinerary_id: itineraryId,
+      itineraryid: itineraryId,
       discoveritemid: item.discoveritemid,
       name: item.name,
       category: item.category,
@@ -161,7 +161,7 @@ export async function fetchItineraryItems(): Promise<DbItineraryItem[] | null> {
   const { data: itin, error: itinErr } = await sb
     .from('itineraries')
     .select('id')
-    .eq('stay_id', PLACEHOLDER_STAY_ID)
+    .eq('stayid', PLACEHOLDER_STAY_ID)
     .limit(1)
     .maybeSingle();
 
@@ -170,7 +170,7 @@ export async function fetchItineraryItems(): Promise<DbItineraryItem[] | null> {
   const { data, error } = await sb
     .from('itineraryitems')
     .select('*')
-    .eq('itinerary_id', itin.id)
+    .eq('itineraryid', itin.id)
     .order('scheduleddate', { ascending: true })
     .order('starttime', { ascending: true });
 

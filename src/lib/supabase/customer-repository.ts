@@ -50,12 +50,12 @@ export async function getUpcomingStay(
   const { data, error } = await supabase
     .from('stays')
     .select(
-      `id, user_id, property_id, check_in, check_out, status, room_type, guests,
-       properties:property_id ( id, name, image_url, address )`,
+      `id, userid, propertyid, checkindate, checkoutdate, status, roomlabel, guestcount,
+       properties:propertyid ( id, name, image_url, address )`,
     )
-    .eq('user_id', userId)
-    .gte('check_out', now)
-    .order('check_in', { ascending: true })
+    .eq('userid', userId)
+    .gte('checkoutdate', now)
+    .order('checkindate', { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -67,13 +67,13 @@ export async function getUpcomingStay(
 
   return {
     id: row.id as string,
-    user_id: row.user_id as string,
-    property_id: row.property_id as string,
-    check_in: row.check_in as string,
-    check_out: row.check_out as string,
+    user_id: row.userid as string,
+    property_id: row.propertyid as string,
+    check_in: row.checkindate as string,
+    check_out: row.checkoutdate as string,
     status: row.status as string,
-    room_type: (row.room_type as string) ?? null,
-    guests: (row.guests as number) ?? null,
+    room_type: (row.roomlabel as string) ?? null,
+    guests: (row.guestcount as number) ?? null,
     property,
   };
 }
