@@ -32,12 +32,15 @@ function nightsBetween(checkIn: string, checkOut: string): number {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-function getStatusLabel(status: string): string {
+function getStatusConfig(status: string): { label: string; dotColor: string } {
   const s = status.toLowerCase();
-  if (s === 'confirmed' || s === 'paid') return status;
-  if (s === 'booked') return 'Booked';
-  if (s === 'checked_in' || s === 'active') return 'Checked In';
-  return status;
+  if (s === 'confirmed' || s === 'paid')
+    return { label: status, dotColor: 'bg-emerald-400/80' };
+  if (s === 'booked')
+    return { label: 'Booked', dotColor: 'bg-[var(--gold)]/80' };
+  if (s === 'checked_in' || s === 'active')
+    return { label: 'Checked In', dotColor: 'bg-emerald-400/80' };
+  return { label: status, dotColor: 'bg-white/40' };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -55,7 +58,7 @@ function BookedState({
 }) {
   const prefersReducedMotion = useReducedMotion();
   const nights = nightsBetween(stay.check_in, stay.check_out);
-  const statusLabel = getStatusLabel(stay.status);
+  const { label: statusLabel, dotColor: statusDotColor } = getStatusConfig(stay.status);
 
   const fadeIn = (delay: number) =>
     prefersReducedMotion
@@ -104,7 +107,7 @@ function BookedState({
           className="flex items-center gap-2 mb-6 sm:mb-8"
           {...fadeIn(0.5)}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
+          <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor}`} />
           <span className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-medium">
             {statusLabel}
           </span>

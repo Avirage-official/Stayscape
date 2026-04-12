@@ -76,7 +76,7 @@ function CurrentBookingContent({ userId }: { userId: string }) {
           <button
             type="button"
             onClick={handleBack}
-            className="flex items-center gap-2.5 text-white/60 hover:text-white transition-colors cursor-pointer"
+            className="flex items-center gap-2.5 text-white/70 hover:text-white transition-colors cursor-pointer"
           >
             <svg
               width="16"
