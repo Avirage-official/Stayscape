@@ -9,6 +9,7 @@ import {
   removeItineraryItem as dbRemoveItem,
   fetchItineraryItems,
 } from '@/lib/supabase/itinerary-repository';
+import { useAuth } from '@/lib/context/auth-context';
 
 export interface ItineraryItem {
   id: string;
@@ -38,12 +39,14 @@ export function useItinerary() {
 }
 
 export function ItineraryProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const counterRef = useRef(0);
   const dbLoadedRef = useRef<boolean | null>(null);
   const [items, setItems] = useState<ItineraryItem[]>([]);
 
   const loadFromDb = useCallback(() => {
-    fetchItineraryItems()
+    if (!user) return;
+    fetchItineraryItems(user.id)
       .then((dbItems) => {
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
@@ -62,7 +65,7 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         // Supabase unavailable — keep local state
       });
-  }, []);
+  }, [user]);
 
   // Load from DB on first render (using null-check pattern for eslint refs rule)
   if (dbLoadedRef.current == null) {
@@ -78,8 +81,10 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
     // Optimistically add to local state
     setItems((prev) => [...prev, newItem]);
 
+    if (!user) return;
+
     // Persist to Supabase in the background
-    getOrCreateItinerary()
+    getOrCreateItinerary(user.id)
       .then((itineraryId) => {
         if (!itineraryId) return;
         return insertItineraryItem(itineraryId, {
@@ -103,7 +108,7 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         // Write failed — local state still has the item
       });
-  }, []);
+  }, [user]);
 
   const updateItem = useCallback((id: string, updates: Partial<Omit<ItineraryItem, 'id'>>) => {
     // Optimistically update local state

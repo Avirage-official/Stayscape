@@ -32,6 +32,7 @@ export {
   fetchAllItems,
   fetchLocalInsights,
   fetchItemDetail,
+  fetchPlacesAsDiscoverItems,
 } from './discover-repository';
 export {
   getOrCreateItinerary,
