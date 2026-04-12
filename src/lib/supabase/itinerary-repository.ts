@@ -48,12 +48,16 @@ export async function getOrCreateItinerary(
   if (!sb) return null;
 
   // Try to find existing itinerary for this user (+ stay if provided)
-  let findQuery = sb
+  const findQuery = sb
     .from('itineraries')
     .select('id')
-    .eq('stayid', PLACEHOLDER_STAY_ID)
-    .limit(1)
-    .maybeSingle();
+    .eq('userid', userId);
+
+  if (stayId) {
+    findQuery.eq('stayid', stayId);
+  }
+
+  const { data: existing, error: findErr } = await findQuery.limit(1).maybeSingle();
 
   if (findErr) return null;
   if (existing) return existing.id as string;
@@ -65,8 +69,8 @@ export async function getOrCreateItinerary(
   const { data: created, error: createErr } = await sb
     .from('itineraries')
     .insert({
-      stayid: PLACEHOLDER_STAY_ID,
-      userid: PLACEHOLDER_USER_ID,
+      stayid: stayId ?? null,
+      userid: userId,
     })
     .select('id')
     .single();
@@ -164,12 +168,16 @@ export async function fetchItineraryItems(
   if (!sb) return null;
 
   // First get the itinerary id
-  let itinQuery = sb
+  const itinQuery = sb
     .from('itineraries')
     .select('id')
-    .eq('stayid', PLACEHOLDER_STAY_ID)
-    .limit(1)
-    .maybeSingle();
+    .eq('userid', userId);
+
+  if (stayId) {
+    itinQuery.eq('stayid', stayId);
+  }
+
+  const { data: itin, error: itinErr } = await itinQuery.limit(1).maybeSingle();
 
   if (itinErr || !itin) return null;
 
