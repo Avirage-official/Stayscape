@@ -10,6 +10,7 @@
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { gradientForCategory } from '@/lib/supabase/places-repository';
 import type {
   CategoryItem,
   PlaceCard,
@@ -275,4 +276,62 @@ export async function fetchItemDetail(
   };
 
   return { item, detail, links };
+}
+
+/**
+ * Fetch places from the `places` table and transform them into the
+ * same `PlaceCard` shape used by the Discover panel.
+ *
+ * This allows the Discover panel to show both curated editorial items
+ * (from `discoveritems`) AND synced geo-data places side-by-side.
+ *
+ * NOTE: In the future, the `discoveritems` table could be deprecated in
+ * favour of using `places` + `curated_collections` / `curated_collection_items`
+ * (already defined in the schema) as the single source of truth for all
+ * discoverable content.
+ *
+ * @param regionId  Optional region filter — pass to scope results to a
+ *                  specific region; omit for all active places.
+ * @param limit     Maximum number of items to return (default 50).
+ */
+export async function fetchPlacesAsDiscoverItems(
+  regionId?: string,
+  limit = 50,
+): Promise<PlaceCard[] | null> {
+  const sb = getSupabaseBrowser();
+  if (!sb) return null;
+
+  let query = sb
+    .from('places')
+    .select('id, name, category, description, rating, image_url, booking_url')
+    .eq('is_active', true)
+    .order('is_featured', { ascending: false })
+    .order('rating', { ascending: false })
+    .limit(limit);
+
+  if (regionId) query = query.eq('region_id', regionId);
+
+  const { data, error } = await query;
+
+  if (error || !data || data.length === 0) return null;
+
+  return (data as Array<{
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    rating: number | null;
+    image_url: string | null;
+    booking_url: string | null;
+  }>).map((row) => ({
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    description: row.description,
+    rating: row.rating ?? 0,
+    distance: '',
+    gradient: gradientForCategory(row.category),
+    image: row.image_url ?? '',
+    bookingUrl: row.booking_url ?? '#',
+  }));
 }

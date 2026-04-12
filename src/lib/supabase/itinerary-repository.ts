@@ -12,15 +12,18 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 export interface DbItinerary {
   id: string;
-  stay_id?: string;
-  user_id?: string;
-  created_at: string;
-  updated_at?: string;
+  /** FK → stays.id */
+  stayid?: string;
+  /** FK → users.id */
+  userid?: string;
+  createdat: string;
+  updatedat?: string;
 }
 
 export interface DbItineraryItem {
   id: string;
-  itinerary_id: string;
+  /** FK → itineraries.id */
+  itineraryid: string;
   discoveritemid: string;
   name: string;
   category: string;
@@ -28,30 +31,34 @@ export interface DbItineraryItem {
   scheduleddate: string;
   starttime: string;
   durationhours: number;
-  created_at?: string;
-  updated_at?: string;
+  createdat?: string;
+  updatedat?: string;
 }
-
-/* ── Placeholder stay / user IDs (no auth yet) ──────────── */
-
-const PLACEHOLDER_STAY_ID = 'default-stay';
-const PLACEHOLDER_USER_ID = 'default-user';
 
 /* ── Itinerary helpers ──────────────────────────────────── */
 
 /**
- * Get or create the itinerary for the current stay.
+ * Get or create the itinerary for the authenticated user's stay.
+ * When `stayId` is omitted the lookup falls back to `userid` only,
+ * so the itinerary still works without an active stay record.
  * Returns the itinerary id, or null if Supabase is unavailable.
  */
-export async function getOrCreateItinerary(): Promise<string | null> {
+export async function getOrCreateItinerary(
+  userId: string,
+  stayId?: string,
+): Promise<string | null> {
   const sb = getSupabaseBrowser();
   if (!sb) return null;
 
-  // Try to find existing itinerary for the current stay
-  const { data: existing, error: findErr } = await sb
+  // Try to find existing itinerary for this user (+ stay if provided)
+  let findQuery = sb
     .from('itineraries')
     .select('id')
-    .eq('stay_id', PLACEHOLDER_STAY_ID)
+    .eq('userid', userId);
+
+  if (stayId) findQuery = findQuery.eq('stayid', stayId);
+
+  const { data: existing, error: findErr } = await findQuery
     .limit(1)
     .maybeSingle();
 
@@ -59,12 +66,12 @@ export async function getOrCreateItinerary(): Promise<string | null> {
   if (existing) return existing.id as string;
 
   // Create a new itinerary
+  const insertPayload: Record<string, string> = { userid: userId };
+  if (stayId) insertPayload.stayid = stayId;
+
   const { data: created, error: createErr } = await sb
     .from('itineraries')
-    .insert({
-      stay_id: PLACEHOLDER_STAY_ID,
-      user_id: PLACEHOLDER_USER_ID,
-    })
+    .insert(insertPayload)
     .select('id')
     .single();
 
@@ -94,7 +101,7 @@ export async function insertItineraryItem(
   const { data, error } = await sb
     .from('itineraryitems')
     .insert({
-      itinerary_id: itineraryId,
+      itineraryid: itineraryId,
       discoveritemid: item.discoveritemid,
       name: item.name,
       category: item.category,
@@ -150,18 +157,25 @@ export async function removeItineraryItem(itemId: string): Promise<boolean> {
 }
 
 /**
- * Fetch all itinerary items for the current stay.
+ * Fetch all itinerary items for the authenticated user's (optional) stay.
  * Returns null if Supabase is unavailable or the table is missing.
  */
-export async function fetchItineraryItems(): Promise<DbItineraryItem[] | null> {
+export async function fetchItineraryItems(
+  userId: string,
+  stayId?: string,
+): Promise<DbItineraryItem[] | null> {
   const sb = getSupabaseBrowser();
   if (!sb) return null;
 
   // First get the itinerary id
-  const { data: itin, error: itinErr } = await sb
+  let itinQuery = sb
     .from('itineraries')
     .select('id')
-    .eq('stay_id', PLACEHOLDER_STAY_ID)
+    .eq('userid', userId);
+
+  if (stayId) itinQuery = itinQuery.eq('stayid', stayId);
+
+  const { data: itin, error: itinErr } = await itinQuery
     .limit(1)
     .maybeSingle();
 
@@ -170,7 +184,7 @@ export async function fetchItineraryItems(): Promise<DbItineraryItem[] | null> {
   const { data, error } = await sb
     .from('itineraryitems')
     .select('*')
-    .eq('itinerary_id', itin.id)
+    .eq('itineraryid', itin.id)
     .order('scheduleddate', { ascending: true })
     .order('starttime', { ascending: true });
 
