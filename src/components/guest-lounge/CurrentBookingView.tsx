@@ -32,18 +32,22 @@ function nightsBetween(checkIn: string, checkOut: string): number {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-function getStatusConfig(status: string) {
+function getStatusConfig(status: string): { label: string; dotColor: string } {
   const s = status.toLowerCase();
   if (s === 'confirmed' || s === 'paid')
-    return { label: status, color: 'text-emerald-400', dot: 'bg-emerald-400' };
+    return { label: status, dotColor: 'bg-emerald-400/80' };
   if (s === 'booked')
-    return { label: 'Booked', color: 'text-[var(--gold)]', dot: 'bg-[var(--gold)]' };
+    return { label: 'Booked', dotColor: 'bg-[var(--gold)]/80' };
   if (s === 'checked_in' || s === 'active')
-    return { label: 'Checked In', color: 'text-emerald-400', dot: 'bg-emerald-400' };
-  return { label: status, color: 'text-[var(--dashboard-text-muted)]', dot: 'bg-[var(--dashboard-text-muted)]' };
+    return { label: 'Checked In', dotColor: 'bg-emerald-400/80' };
+  return { label: status, dotColor: 'bg-white/40' };
 }
 
-/* ─── Booked State ─── */
+/* ═══════════════════════════════════════════════════════════════════
+   BOOKED STATE — immersive cinematic arrival into your stay.
+   Booking details are woven into the hero composition as overlays,
+   not stacked in dashboard cards.
+   ═══════════════════════════════════════════════════════════════════ */
 
 function BookedState({
   stay,
@@ -53,145 +57,144 @@ function BookedState({
   onAddStay: () => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
-  const statusConfig = getStatusConfig(stay.status);
   const nights = nightsBetween(stay.check_in, stay.check_out);
+  const { label: statusLabel, dotColor: statusDotColor } = getStatusConfig(stay.status);
 
   const fadeIn = (delay: number) =>
     prefersReducedMotion
       ? {}
       : {
-          initial: { opacity: 0, y: 10 } as const,
+          initial: { opacity: 0, y: 14 } as const,
           animate: { opacity: 1, y: 0 } as const,
-          transition: { duration: 0.7, ease: REVEAL_EASE, delay },
+          transition: { duration: 0.9, ease: REVEAL_EASE, delay },
         };
 
   return (
-    <div className="space-y-10 sm:space-y-14">
-      {/* ── Stay Hero ── */}
-      <motion.section {...fadeIn(0.1)}>
-        <div className="relative overflow-hidden rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)]">
-          {/* Hotel image */}
-          {stay.property?.image_url && (
-            <div className="relative h-56 sm:h-72 w-full overflow-hidden">
-              <Image
-                src={stay.property.image_url}
-                alt={stay.property.name ?? 'Hotel'}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 960px"
-                priority
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    'linear-gradient(to top, var(--dashboard-card-bg) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
-                }}
-              />
-            </div>
-          )}
+    <div className="h-full flex flex-col">
+      {/* ── Hotel hero image overlay (if image exists) ── */}
+      {stay.property?.image_url && (
+        <div className="absolute inset-0 z-0">
+          <Image
+            src={stay.property.image_url}
+            alt={stay.property.name ?? 'Hotel'}
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+          />
+          {/* Deep overlay for readability — cinematic gradient */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.50) 40%, rgba(0,0,0,0.72) 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.35) 100%)',
+            }}
+          />
+        </div>
+      )}
 
-          <div className="relative z-10 px-7 sm:px-10 pb-8 sm:pb-10 -mt-6">
-            {/* Property name */}
-            <h2 className="font-serif text-3xl sm:text-4xl text-[var(--dashboard-text-primary)] leading-tight mb-2">
-              {stay.property?.name ?? 'Your Stay'}
-            </h2>
+      {/* ── Centered editorial booking content ── */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 sm:px-10 pb-28 sm:pb-32">
+        {/* Status whisper */}
+        <motion.div
+          className="flex items-center gap-2 mb-6 sm:mb-8"
+          {...fadeIn(0.5)}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor}`} />
+          <span className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-medium">
+            {statusLabel}
+          </span>
+        </motion.div>
 
-            {/* Location */}
-            {stay.property?.address && (
-              <p className="text-[14px] text-[var(--dashboard-text-muted)] mb-5">
-                {stay.property.address}
-              </p>
-            )}
+        {/* Hotel name — serif hero */}
+        <motion.h1
+          className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white text-center leading-[1.1] mb-3"
+          style={{ letterSpacing: '-0.01em' }}
+          {...fadeIn(0.6)}
+        >
+          {stay.property?.name ?? 'Your Stay'}
+        </motion.h1>
 
-            {/* Date strip */}
-            <div className="flex flex-wrap items-center gap-3 text-[13px] text-[var(--dashboard-text-secondary)]">
-              <span>{formatShortDate(stay.check_in)}</span>
-              <span className="text-[var(--dashboard-text-faint)]">→</span>
-              <span>{formatShortDate(stay.check_out)}</span>
-              {nights > 0 && (
-                <>
-                  <span className="w-px h-3.5 bg-[var(--dashboard-border-subtle)]" aria-hidden="true" />
-                  <span className="text-[var(--dashboard-text-faint)]">
-                    {nights} {nights === 1 ? 'night' : 'nights'}
-                  </span>
-                </>
-              )}
-              <span className="w-px h-3.5 bg-[var(--dashboard-border-subtle)]" aria-hidden="true" />
-              <span className="flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
-                <span className={`${statusConfig.color} font-medium uppercase tracking-wider text-[11px]`}>
-                  {statusConfig.label}
-                </span>
+        {/* Destination */}
+        {stay.property?.address && (
+          <motion.p
+            className="text-[15px] sm:text-[16px] text-white/45 text-center mb-8 sm:mb-10"
+            {...fadeIn(0.75)}
+          >
+            {stay.property.address}
+          </motion.p>
+        )}
+
+        {/* Stay dates — elegant metadata row */}
+        <motion.div
+          className="flex items-center gap-3 sm:gap-5 text-white/40 text-[12px] sm:text-[13px] tracking-[0.06em] mb-10 sm:mb-14"
+          {...fadeIn(0.9)}
+        >
+          <span className="text-white/60">{formatShortDate(stay.check_in)}</span>
+          <span className="text-white/20">—</span>
+          <span className="text-white/60">{formatShortDate(stay.check_out)}</span>
+          {nights > 0 && (
+            <>
+              <span className="w-px h-3.5 bg-white/15" aria-hidden="true" />
+              <span>
+                {nights} {nights === 1 ? 'night' : 'nights'}
               </span>
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* ── Booking Details ── */}
-      <motion.section {...fadeIn(0.25)}>
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
-            Booking Details
-          </span>
-          <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-6">
-          <DetailItem label="Check-in" value={formatDate(stay.check_in)} />
-          <DetailItem label="Check-out" value={formatDate(stay.check_out)} />
+            </>
+          )}
+          {stay.room_type && (
+            <>
+              <span className="w-px h-3.5 bg-white/15" aria-hidden="true" />
+              <span>{stay.room_type}</span>
+            </>
+          )}
           {stay.guests != null && (
-            <DetailItem
-              label="Guests"
-              value={`${stay.guests} ${stay.guests === 1 ? 'guest' : 'guests'}`}
-            />
+            <>
+              <span className="w-px h-3.5 bg-white/15" aria-hidden="true" />
+              <span>
+                {stay.guests} {stay.guests === 1 ? 'guest' : 'guests'}
+              </span>
+            </>
           )}
-          {stay.room_type && <DetailItem label="Room" value={stay.room_type} />}
-          <DetailItem label="Status" value={statusConfig.label} />
-          {stay.property?.address && (
-            <DetailItem label="Location" value={stay.property.address} />
-          )}
-        </div>
-      </motion.section>
+        </motion.div>
 
-      {/* ── Next Actions ── */}
-      <motion.section {...fadeIn(0.4)}>
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
-            Continue your journey
-          </span>
-          <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
-        </div>
+        {/* Concierge actions — refined, minimal, not card-like */}
+        <motion.div
+          className="flex flex-wrap justify-center gap-3 sm:gap-4"
+          {...fadeIn(1.05)}
+        >
+          <ConciergeActionPill label="Open Map" href="/app" icon={<MapIcon />} />
+          <ConciergeActionPill label="Explore Nearby" href="/app" icon={<CompassIcon />} />
+          <ConciergeActionPill label="Itinerary" href="/app" icon={<CalendarIcon />} />
+          <ConciergeActionPill label="Add Stay" onClick={onAddStay} icon={<PlusIcon />} />
+        </motion.div>
+      </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <ConciergeAction
-            label="Add Stay"
-            icon={<PlusIcon />}
-            onClick={onAddStay}
-          />
-          <ConciergeAction
-            label="Open Map"
-            icon={<MapIcon />}
-            href="/app"
-          />
-          <ConciergeAction
-            label="Explore Nearby"
-            icon={<CompassIcon />}
-            href="/app"
-          />
-          <ConciergeAction
-            label="Itinerary"
-            icon={<CalendarIcon />}
-            href="/app"
-          />
+      {/* ── Bottom stay details — ultra-subtle, editorial strip ── */}
+      <motion.div
+        className="absolute bottom-6 sm:bottom-8 left-0 right-0 flex justify-center px-6 z-10"
+        {...fadeIn(1.3)}
+      >
+        <div className="flex items-center gap-3 sm:gap-5 text-white/25 text-[11px] sm:text-[12px] tracking-[0.14em] uppercase">
+          <span>{formatDate(stay.check_in)}</span>
+          <span className="w-px h-3 bg-white/10" aria-hidden="true" />
+          <span>{formatDate(stay.check_out)}</span>
         </div>
-      </motion.section>
+      </motion.div>
     </div>
   );
 }
 
-/* ─── No-Booking State ─── */
+/* ═══════════════════════════════════════════════════════════════════
+   NO-BOOKING STATE — pre-stay concierge scene.
+   Cinematic background, editorial content zones, not card grids.
+   ═══════════════════════════════════════════════════════════════════ */
 
 function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
   const prefersReducedMotion = useReducedMotion();
@@ -200,159 +203,122 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
     prefersReducedMotion
       ? {}
       : {
-          initial: { opacity: 0, y: 10 } as const,
+          initial: { opacity: 0, y: 14 } as const,
           animate: { opacity: 1, y: 0 } as const,
-          transition: { duration: 0.7, ease: REVEAL_EASE, delay },
+          transition: { duration: 0.9, ease: REVEAL_EASE, delay },
         };
 
   return (
-    <div className="space-y-12 sm:space-y-16">
-      {/* ── 1. Start Your Stay ── */}
-      <motion.section {...fadeIn(0.1)}>
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--dashboard-card-bg)] via-[var(--dashboard-bg)] to-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)]">
-          {/* Decorative gold glow */}
-          <div
-            className="absolute top-0 right-0 w-80 h-80 opacity-[0.04]"
-            style={{
-              background: 'radial-gradient(circle at top right, var(--gold) 0%, transparent 60%)',
-            }}
-          />
+    <div className="h-full flex flex-col items-center overflow-y-auto scrollbar-hide">
+      {/* ── Hero section — centered concierge invitation ── */}
+      <div className="flex-shrink-0 flex flex-col items-center justify-center text-center px-6 sm:px-10 pt-28 sm:pt-32 pb-14 sm:pb-20 min-h-[60vh]">
+        <motion.p
+          className="text-[11px] text-[var(--gold)]/70 uppercase tracking-[0.25em] font-medium mb-6"
+          {...fadeIn(0.5)}
+        >
+          Your next journey
+        </motion.p>
 
-          <div className="relative z-10 px-8 sm:px-12 py-14 sm:py-18">
-            <div className="max-w-lg">
-              <p className="text-[11px] font-medium text-[var(--gold)] uppercase tracking-[0.22em] mb-4">
-                Start your stay
-              </p>
-              <h2 className="font-serif text-3xl sm:text-4xl text-[var(--dashboard-text-primary)] leading-tight mb-4">
-                Your next journey awaits
-              </h2>
-              <p className="text-[15px] text-[var(--dashboard-text-muted)] leading-relaxed mb-8 max-w-md">
-                Add your upcoming hotel stay to unlock your personal concierge,
-                local recommendations, and a tailored guest experience.
-              </p>
+        <motion.h1
+          className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white text-center leading-[1.1] mb-4"
+          style={{ letterSpacing: '-0.01em' }}
+          {...fadeIn(0.65)}
+        >
+          Begin your stay
+        </motion.h1>
 
-              <button
-                type="button"
-                onClick={onAddStay}
-                className="inline-flex items-center gap-2.5 h-[3.25rem] px-10 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[14px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-all duration-300 cursor-pointer shadow-gold-glow"
-              >
-                <PlusIcon />
-                Add Your Stay
-              </button>
-            </div>
-          </div>
-        </div>
-      </motion.section>
+        <motion.p
+          className="text-[15px] sm:text-[16px] text-white/40 text-center max-w-md mb-10 sm:mb-14 leading-relaxed"
+          {...fadeIn(0.8)}
+        >
+          Add your upcoming hotel stay to unlock your personal concierge
+          and a tailored guest experience.
+        </motion.p>
 
-      {/* ── 2. Book a Hotel ── */}
-      <motion.section {...fadeIn(0.25)}>
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
+        <motion.button
+          type="button"
+          onClick={onAddStay}
+          className="inline-flex items-center gap-2.5 h-[3.25rem] px-10 rounded-2xl bg-white/[0.10] border border-white/[0.12] text-white text-[14px] font-medium tracking-wide backdrop-blur-sm hover:bg-white/[0.16] hover:border-white/20 transition-all duration-400 cursor-pointer"
+          {...fadeIn(0.95)}
+        >
+          <PlusIcon />
+          Add Your Stay
+        </motion.button>
+      </div>
+
+      {/* ── Pathway zones — editorial, not card-grid ── */}
+      <div className="w-full max-w-3xl px-6 sm:px-10 pb-16 sm:pb-24 space-y-0">
+        {/* Subtle divider */}
+        <motion.div
+          className="flex justify-center mb-14 sm:mb-20"
+          {...fadeIn(1.1)}
+        >
+          <div className="h-px w-16 bg-white/10" />
+        </motion.div>
+
+        {/* ── Book a Hotel ── */}
+        <motion.section className="mb-14 sm:mb-18" {...fadeIn(1.2)}>
+          <p className="text-[11px] text-white/25 uppercase tracking-[0.22em] font-medium mb-3">
             Book a hotel
-          </span>
-          <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
-        </div>
-        <p className="text-[14px] text-[var(--dashboard-text-muted)] mb-5 max-w-lg">
-          Browse trusted platforms to find and reserve your perfect stay.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ExternalLink
-            label="Booking.com"
-            description="Wide selection worldwide"
-            href="https://www.booking.com"
-          />
-          <ExternalLink
-            label="Hotels.com"
-            description="Earn rewards on every stay"
-            href="https://www.hotels.com"
-          />
-          <ExternalLink
-            label="Agoda"
-            description="Great rates across Asia & beyond"
-            href="https://www.agoda.com"
-          />
-        </div>
-      </motion.section>
+          </p>
+          <p className="text-[14px] sm:text-[15px] text-white/35 mb-6 max-w-md leading-relaxed">
+            Browse trusted platforms to find and reserve your perfect stay.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <EditorialLink label="Booking.com" href="https://www.booking.com" />
+            <EditorialLink label="Hotels.com" href="https://www.hotels.com" />
+            <EditorialLink label="Agoda" href="https://www.agoda.com" />
+          </div>
+        </motion.section>
 
-      {/* ── 3. Check Flights ── */}
-      <motion.section {...fadeIn(0.4)}>
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
+        {/* ── Check Flights ── */}
+        <motion.section className="mb-14 sm:mb-18" {...fadeIn(1.35)}>
+          <p className="text-[11px] text-white/25 uppercase tracking-[0.22em] font-medium mb-3">
             Check flights
-          </span>
-          <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
-        </div>
-        <p className="text-[14px] text-[var(--dashboard-text-muted)] mb-5 max-w-lg">
-          Compare fares and plan your route with leading flight search tools.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ExternalLink
-            label="Google Flights"
-            description="Compare routes & prices"
-            href="https://www.google.com/travel/flights"
-          />
-          <ExternalLink
-            label="Skyscanner"
-            description="Flexible date search"
-            href="https://www.skyscanner.com"
-          />
-          <ExternalLink
-            label="Kayak"
-            description="Aggregated airline fares"
-            href="https://www.kayak.com/flights"
-          />
-        </div>
-      </motion.section>
+          </p>
+          <p className="text-[14px] sm:text-[15px] text-white/35 mb-6 max-w-md leading-relaxed">
+            Compare fares and plan your route with leading flight search tools.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <EditorialLink label="Google Flights" href="https://www.google.com/travel/flights" />
+            <EditorialLink label="Skyscanner" href="https://www.skyscanner.com" />
+            <EditorialLink label="Kayak" href="https://www.kayak.com/flights" />
+          </div>
+        </motion.section>
 
-      {/* ── 4. Prepare Your Trip ── */}
-      <motion.section {...fadeIn(0.55)}>
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-[11px] font-medium text-[var(--dashboard-text-faint)] uppercase tracking-[0.18em]">
+        {/* ── Prepare Your Trip ── */}
+        <motion.section className="mb-10 sm:mb-14" {...fadeIn(1.5)}>
+          <p className="text-[11px] text-white/25 uppercase tracking-[0.22em] font-medium mb-3">
             Prepare your trip
-          </span>
-          <div className="flex-1 h-px bg-[var(--dashboard-border-subtle)]" />
-        </div>
-        <p className="text-[14px] text-[var(--dashboard-text-muted)] mb-5 max-w-lg">
-          Organise your itinerary, stay informed, and get ready to travel.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ExternalLink
-            label="TripIt"
-            description="Itinerary & travel management"
-            href="https://www.tripit.com"
-          />
-          <ExternalLink
-            label="Rome2Rio"
-            description="Multi-modal route planning"
-            href="https://www.rome2rio.com"
-          />
-          <ExternalLink
-            label="Travel Off Path"
-            description="Destination news & updates"
-            href="https://www.traveloffpath.com"
-          />
-        </div>
-      </motion.section>
+          </p>
+          <p className="text-[14px] sm:text-[15px] text-white/35 mb-6 max-w-md leading-relaxed">
+            Organise your itinerary, stay informed, and get ready to travel.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <EditorialLink label="TripIt" href="https://www.tripit.com" />
+            <EditorialLink label="Rome2Rio" href="https://www.rome2rio.com" />
+            <EditorialLink label="Travel Off Path" href="https://www.traveloffpath.com" />
+          </div>
+        </motion.section>
+
+        {/* Bottom whisper */}
+        <motion.div
+          className="flex justify-center pt-6 pb-4"
+          {...fadeIn(1.65)}
+        >
+          <p className="text-[11px] text-white/15 tracking-[0.14em]">
+            Your private guest experience
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }
 
 /* ─── Shared Sub-components ─── */
 
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[11px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-1">
-        {label}
-      </p>
-      <p className="text-[14px] text-[var(--dashboard-text-secondary)] font-medium">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function ConciergeAction({
+/** Concierge action pill — glass/translucent, not a card. */
+function ConciergeActionPill({
   label,
   icon,
   href,
@@ -365,17 +331,17 @@ function ConciergeAction({
 }) {
   const inner = (
     <>
-      <div className="w-10 h-10 rounded-lg bg-[var(--dashboard-surface-raised)] border border-[var(--dashboard-border-subtle)] flex items-center justify-center text-[var(--dashboard-text-muted)] group-hover:text-[var(--gold)] transition-colors duration-300">
+      <span className="text-white/40 group-hover:text-white/70 transition-colors duration-300">
         {icon}
-      </div>
-      <span className="text-[13px] text-[var(--dashboard-text-secondary)] group-hover:text-[var(--dashboard-text-primary)] transition-colors duration-300">
+      </span>
+      <span className="text-[13px] text-white/50 group-hover:text-white/80 transition-colors duration-300">
         {label}
       </span>
     </>
   );
 
   const className =
-    'group flex flex-col items-center gap-3 py-5 rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] hover:border-[var(--gold)]/20 hover:bg-[var(--dashboard-surface-raised)] transition-all duration-300 cursor-pointer';
+    'group inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/[0.06] border border-white/[0.08] backdrop-blur-sm hover:bg-white/[0.12] hover:border-white/15 transition-all duration-300 cursor-pointer';
 
   if (onClick) {
     return (
@@ -392,13 +358,12 @@ function ConciergeAction({
   );
 }
 
-function ExternalLink({
+/** Editorial external link — minimal pill, not a card. */
+function EditorialLink({
   label,
-  description,
   href,
 }: {
   label: string;
-  description: string;
   href: string;
 }) {
   return (
@@ -406,27 +371,20 @@ function ExternalLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-4 p-5 rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] hover:border-[var(--gold)]/20 hover:bg-[var(--dashboard-surface-raised)] transition-all duration-300"
+      className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/35 hover:bg-white/[0.08] hover:text-white/55 hover:border-white/10 transition-all duration-300"
       style={{ textDecoration: 'none' }}
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-medium text-[var(--dashboard-text-primary)] group-hover:text-[var(--gold)] transition-colors duration-300">
-          {label}
-        </p>
-        <p className="text-[12px] text-[var(--dashboard-text-faint)] mt-0.5 leading-relaxed">
-          {description}
-        </p>
-      </div>
+      {label}
       <svg
-        width="14"
-        height="14"
+        width="11"
+        height="11"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="flex-shrink-0 mt-1 text-[var(--dashboard-text-dim)] group-hover:text-[var(--dashboard-text-faint)] transition-colors duration-300"
+        className="opacity-40 group-hover:opacity-70 transition-opacity duration-300"
       >
         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
         <polyline points="15 3 21 3 21 9" />
@@ -440,7 +398,7 @@ function ExternalLink({
 
 function PlusIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
@@ -449,7 +407,7 @@ function PlusIcon() {
 
 function MapIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
       <line x1="8" y1="2" x2="8" y2="18" />
       <line x1="16" y1="6" x2="16" y2="22" />
@@ -459,7 +417,7 @@ function MapIcon() {
 
 function CompassIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
     </svg>
@@ -468,7 +426,7 @@ function CompassIcon() {
 
 function CalendarIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />

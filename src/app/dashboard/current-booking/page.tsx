@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
 
+import PostLoginHero from '@/components/guest-lounge/PostLoginHero';
 import CurrentBookingView from '@/components/guest-lounge/CurrentBookingView';
 import AddStayDialog from '@/components/guest-lounge/AddStayDialog';
+import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -62,18 +64,19 @@ function CurrentBookingContent({ userId }: { userId: string }) {
     router.push('/dashboard');
   }, [router]);
 
+  if (loadState === 'loading') {
+    return <GuestArrivalSkeleton />;
+  }
+
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: 'var(--dashboard-bg)' }}
-    >
-      {/* ── Top bar ── */}
-      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-[var(--dashboard-border-subtle)]" style={{ background: 'var(--dashboard-header-bg)' }}>
-        <div className="max-w-4xl mx-auto flex items-center justify-between px-6 sm:px-10 h-[56px]">
+    <>
+      <PostLoginHero>
+        {/* ── Minimal top bar — matches post-login nav style ── */}
+        <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 sm:px-10 lg:px-14 h-[64px]">
           <button
             type="button"
             onClick={handleBack}
-            className="flex items-center gap-2 text-[13px] text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-primary)] transition-colors cursor-pointer"
+            className="flex items-center gap-2.5 text-white/70 hover:text-white transition-colors cursor-pointer"
           >
             <svg
               width="16"
@@ -87,81 +90,50 @@ function CurrentBookingContent({ userId }: { userId: string }) {
             >
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            Back
+            <span className="text-[12px] font-medium tracking-[0.18em] uppercase hidden sm:inline">
+              Back
+            </span>
           </button>
 
-          <span className="font-serif text-[16px] text-[var(--dashboard-text-primary)] tracking-[0.04em]">
-            Current Booking
-          </span>
+          <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+            <span className="font-serif text-[18px] sm:text-[20px] text-white/90 tracking-[0.06em]">
+              Stayscape
+            </span>
+            <span className="text-[10px] text-white/40 tracking-[0.2em] uppercase mt-0.5 hidden sm:block">
+              Your Booking
+            </span>
+          </div>
 
           <div className="w-[52px]" />
-        </div>
-      </header>
+        </header>
 
-      {/* ── Main content ── */}
-      <main className="max-w-4xl mx-auto px-6 sm:px-10 py-10 sm:py-14">
-        {/* Loading state */}
-        {loadState === 'loading' && <BookingSkeleton />}
-
-        {/* Error state */}
+        {/* ── Error state ── */}
         {loadState === 'error' && (
-          <div className="text-center py-20">
-            <p className="text-[14px] text-[var(--dashboard-text-muted)] mb-4">
-              {errorMsg}
-            </p>
-            <button
-              type="button"
-              onClick={refetch}
-              className="text-[13px] text-[var(--dashboard-text-secondary)] hover:text-[var(--dashboard-text-primary)] border border-[var(--dashboard-card-border)] px-5 py-2 rounded-lg transition-colors cursor-pointer"
-            >
-              Try again
-            </button>
+          <div className="h-full flex items-center justify-center px-6">
+            <div className="text-center">
+              <p className="text-[14px] text-white/50 mb-4">{errorMsg}</p>
+              <button
+                type="button"
+                onClick={refetch}
+                className="text-[13px] text-white/70 hover:text-white border border-white/20 px-5 py-2 rounded-lg transition-colors cursor-pointer"
+              >
+                Try again
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Ready state */}
+        {/* ── Ready state ── */}
         {loadState === 'ready' && data && (
           <CurrentBookingView
             stay={data.upcomingStay}
             onAddStay={() => setAddStayOpen(true)}
           />
         )}
-      </main>
+      </PostLoginHero>
 
-      {/* Add stay dialog */}
       <AddStayDialog open={addStayOpen} onOpenChange={setAddStayOpen} />
-    </div>
-  );
-}
-
-/* ─── Skeleton loader ─── */
-
-function BookingSkeleton() {
-  return (
-    <div className="space-y-8 animate-pulse">
-      {/* Hero skeleton */}
-      <div className="rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] overflow-hidden">
-        <div className="h-56 bg-[var(--dashboard-surface-raised)]" />
-        <div className="px-8 pb-8 -mt-6 relative z-10 space-y-3">
-          <div className="h-8 w-64 rounded bg-[var(--dashboard-surface-raised)]" />
-          <div className="h-4 w-40 rounded bg-[var(--dashboard-surface-raised)]" />
-          <div className="h-4 w-56 rounded bg-[var(--dashboard-surface-raised)]" />
-        </div>
-      </div>
-
-      {/* Details skeleton */}
-      <div className="space-y-3">
-        <div className="h-3 w-32 rounded bg-[var(--dashboard-surface-raised)]" />
-        <div className="grid grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-3 w-16 rounded bg-[var(--dashboard-surface-raised)]" />
-              <div className="h-5 w-28 rounded bg-[var(--dashboard-surface-raised)]" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -172,13 +144,7 @@ export default function CurrentBookingPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--dashboard-bg)' }}>
-        <div className="animate-pulse text-[var(--dashboard-text-faint)] text-sm">
-          Loading…
-        </div>
-      </div>
-    );
+    return <GuestArrivalSkeleton />;
   }
 
   if (!user) {
