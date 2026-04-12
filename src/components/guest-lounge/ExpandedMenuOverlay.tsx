@@ -146,11 +146,14 @@ export default function ExpandedMenuOverlay({
           animate="visible"
           exit="exit"
         >
-          {/* Backdrop */}
+          {/* Backdrop — keyboard-accessible close via Escape is handled by the close button */}
           <div
             className="absolute inset-0 bg-black/85 backdrop-blur-md"
             onClick={onClose}
-            role="presentation"
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+            role="button"
+            tabIndex={-1}
+            aria-label="Close menu"
           />
 
           {/* Close button */}

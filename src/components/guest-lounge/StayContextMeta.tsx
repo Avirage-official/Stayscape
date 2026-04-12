@@ -11,7 +11,9 @@ interface StayContextMetaProps {
 }
 
 function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
   });
