@@ -58,7 +58,7 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
   const { places: dbPlaces, refetch: refetchPlaces } = useDiscoverPlaces();
   const { insights, refetch: refetchInsights } = useLocalInsights();
   const { events, refetch: refetchEvents } = useDiscoverEvents();
-  const { curations, refetch: refetchCurations } = useCurations(stayId);
+  const { curations } = useCurations(stayId);
 
   // Trigger initial data load once (using null-check pattern for eslint refs rule)
   if (dataLoadedRef.current == null) {
@@ -67,7 +67,6 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
     refetchInsights();
     refetchPlaces('top-places', 'Top Places');
     if (region?.id) refetchEvents(region.id);
-    if (stayId) refetchCurations();
   }
 
   // Use DB places if available, otherwise fall back to hardcoded

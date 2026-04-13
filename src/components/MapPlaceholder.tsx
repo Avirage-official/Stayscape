@@ -17,6 +17,7 @@ import { useItinerary } from '@/components/ItineraryContext';
 import type { SearchResult } from '@/types/mapbox';
 import { useRegion } from '@/lib/context/region-context';
 import type { MapPlace } from '@/types';
+import type { StayCuration } from '@/types/pms';
 import {
   DEFAULT_CENTER,
   DEFAULT_ITINERARY_TIME,
@@ -121,7 +122,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId 
     }
     fetch(`/api/curations?stay_id=${encodeURIComponent(stayId)}&type=recommended_places`)
       .then((res) => res.json())
-      .then((body: { data?: Array<{ curation_type: string; content: { items: Array<{ name: string; description: string; reason?: string; place_id?: string | null }> } }>; error?: string }) => {
+      .then((body: { data?: StayCuration[]; error?: string }) => {
         if (body.error || !body.data?.length) return;
         const curation = body.data[0];
         if (!curation) return;

@@ -206,6 +206,10 @@ export function useCurations(stayId: string | null | undefined): UseCurationsRes
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /* Track the stayId for which a fetch has been triggered (derived-state pattern).
+   * When stayId changes, React will re-render and this update fires the fetch. */
+  const [fetchedForStayId, setFetchedForStayId] = useState<string | null>(null);
+
   const refetch = useCallback(() => {
     if (!stayId) {
       setCurations(EMPTY_CURATIONS);
@@ -218,6 +222,7 @@ export function useCurations(stayId: string | null | undefined): UseCurationsRes
       .then((body: { data?: StayCuration[]; error?: string }) => {
         if (body.error) {
           setCurations(EMPTY_CURATIONS);
+          setLoading(false);
           return;
         }
         const data = body.data ?? [];
@@ -225,13 +230,21 @@ export function useCurations(stayId: string | null | undefined): UseCurationsRes
           recommended_places: data.find((c) => c.curation_type === 'recommended_places') ?? null,
           regional_activities: data.find((c) => c.curation_type === 'regional_activities') ?? null,
         });
+        setLoading(false);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load curations');
         setCurations(EMPTY_CURATIONS);
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   }, [stayId]);
+
+  /* Auto-fetch when stayId first becomes available (arrives async after dashboard load).
+   * Uses React's derived-state-during-render pattern to detect the stayId change. */
+  if (stayId != null && stayId !== fetchedForStayId) {
+    setFetchedForStayId(stayId);
+    refetch();
+  }
 
   return { curations, loading, error, refetch };
 }
