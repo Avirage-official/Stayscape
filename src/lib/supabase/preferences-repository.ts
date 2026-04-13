@@ -1,0 +1,173 @@
+/**
+ * Guest Preferences Repository
+ *
+ * Supabase data-access layer for guest preferences captured from
+ * the concierge/map interface. These preferences are synced back
+ * to the hotel PMS via the callback URL stored on the stay.
+ */
+
+import { getSupabaseAdmin } from '@/lib/supabase/client';
+import type {
+  GuestPreference,
+  PreferenceType,
+  PmsPreferencesPushPayload,
+} from '@/types/pms';
+
+/**
+ * Save a guest preference from the concierge/map.
+ */
+export async function savePreference(
+  stayId: string,
+  preferenceType: PreferenceType,
+  preferenceData: Record<string, unknown>,
+): Promise<string> {
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('guest_preferences')
+    .insert({
+      stay_id: stayId,
+      preference_type: preferenceType,
+      preference_data: preferenceData,
+      synced_to_pms: false,
+      synced_at: null,
+      created_at: now,
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    throw new Error(`Failed to save preference: ${error?.message ?? 'Unknown error'}`);
+  }
+
+  return data.id as string;
+}
+
+/**
+ * Get all preferences for a stay.
+ */
+export async function getPreferencesForStay(
+  stayId: string,
+): Promise<GuestPreference[]> {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from('guest_preferences')
+    .select('*')
+    .eq('stay_id', stayId)
+    .order('created_at', { ascending: true });
+
+  if (error || !data) return [];
+
+  return data as GuestPreference[];
+}
+
+/**
+ * Get unsynced preferences for a stay (not yet pushed to PMS).
+ */
+export async function getUnsyncedPreferences(
+  stayId: string,
+): Promise<GuestPreference[]> {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from('guest_preferences')
+    .select('*')
+    .eq('stay_id', stayId)
+    .eq('synced_to_pms', false)
+    .order('created_at', { ascending: true });
+
+  if (error || !data) return [];
+
+  return data as GuestPreference[];
+}
+
+/**
+ * Mark preferences as synced to PMS.
+ */
+export async function markPreferencesSynced(
+  preferenceIds: string[],
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  await supabase
+    .from('guest_preferences')
+    .update({ synced_to_pms: true, synced_at: now })
+    .in('id', preferenceIds);
+}
+
+/**
+ * Get the stay details needed for PMS push-back,
+ * including the callback URL and booking reference.
+ */
+export async function getStayForPmsPush(
+  stayId: string,
+): Promise<{
+  booking_reference: string;
+  pms_callback_url: string | null;
+  guest_email: string;
+} | null> {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from('stays')
+    .select(
+      `booking_reference, pms_callback_url,
+       users:userid ( email )`,
+    )
+    .eq('id', stayId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const row = data as Record<string, unknown>;
+  const user = row.users as Record<string, unknown> | null;
+
+  return {
+    booking_reference: row.booking_reference as string,
+    pms_callback_url: (row.pms_callback_url as string) ?? null,
+    guest_email: (user?.email as string) ?? '',
+  };
+}
+
+/**
+ * Push unsynced preferences back to the PMS via the callback URL.
+ * Returns the number of preferences synced, or null if no callback URL.
+ */
+export async function pushPreferencesToPms(
+  stayId: string,
+): Promise<{ synced: number; callback_url: string } | null> {
+  const stayInfo = await getStayForPmsPush(stayId);
+  if (!stayInfo || !stayInfo.pms_callback_url) return null;
+
+  const unsyncedPrefs = await getUnsyncedPreferences(stayId);
+  if (unsyncedPrefs.length === 0) return { synced: 0, callback_url: stayInfo.pms_callback_url };
+
+  const pushPayload: PmsPreferencesPushPayload = {
+    booking_reference: stayInfo.booking_reference,
+    guest_email: stayInfo.guest_email,
+    preferences: unsyncedPrefs.map((p) => ({
+      type: p.preference_type,
+      data: p.preference_data,
+      created_at: p.created_at,
+    })),
+  };
+
+  // Push to PMS callback URL
+  const response = await fetch(stayInfo.pms_callback_url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pushPayload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`PMS push-back failed: ${response.status} ${response.statusText}`);
+  }
+
+  // Mark as synced
+  await markPreferencesSynced(unsyncedPrefs.map((p) => p.id));
+
+  return { synced: unsyncedPrefs.length, callback_url: stayInfo.pms_callback_url };
+}
