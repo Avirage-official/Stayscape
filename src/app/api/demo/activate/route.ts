@@ -49,8 +49,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Split full_name into first and last
-    const nameParts = (profile.full_name ?? '').trim().split(/\s+/);
-    const firstName = nameParts[0] ?? 'Guest';
+    const trimmedName = (profile.full_name ?? '').trim();
+    const nameParts = trimmedName ? trimmedName.split(/\s+/) : [];
+    const firstName = nameParts[0] || 'Guest';
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
     // Resolve demo payload
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Fire curation asynchronously (same pattern as /api/pms/webhook)
     if (result.region_id) {
-      curateStay(result.stay_id).then(
+      void curateStay(result.stay_id).then(
         (curation) => {
           console.log(
             '[demo/activate] Curation completed for stay:',

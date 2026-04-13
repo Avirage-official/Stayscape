@@ -241,7 +241,7 @@ export default function DemoBookingActivation({
             type="text"
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
-            placeholder="Or enter a booking ID manually…"
+            placeholder="Or enter a booking ID manually..."
             className="
               w-full bg-white/[0.05] border border-white/[0.10] rounded-xl
               px-5 py-3.5 text-[14px] text-white/80 placeholder:text-white/25
