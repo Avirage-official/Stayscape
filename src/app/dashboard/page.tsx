@@ -12,6 +12,7 @@ import StayContextMeta from '@/components/guest-lounge/StayContextMeta';
 import ExpandedMenuOverlay from '@/components/guest-lounge/ExpandedMenuOverlay';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import AddStayDialog from '@/components/guest-lounge/AddStayDialog';
+import DemoBookingActivation from '@/components/guest-lounge/DemoBookingActivation';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -111,21 +112,33 @@ function GuestArrivalContent({
           </div>
         )}
 
-        {/* Main content — centered concierge prompt */}
+        {/* Main content */}
         {loadState === 'ready' && data && (
           <>
-            <div className="h-full flex flex-col items-center justify-center pb-16">
-              <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
-            </div>
-
-            {/* Stay awareness strip at bottom */}
-            <StayContextMeta
-              hotelName={stay?.property?.name}
-              city={stay?.property?.address}
-              checkIn={stay?.check_in}
-              checkOut={stay?.check_out}
-              status={stay?.status}
-            />
+            {stay ? (
+              /* ── Has a stay: show the concierge prompt ── */
+              <>
+                <div className="h-full flex flex-col items-center justify-center pb-16">
+                  <ConciergePrompt firstName={firstName} hotelName={stay.property?.name} />
+                </div>
+                <StayContextMeta
+                  hotelName={stay.property?.name}
+                  city={stay.property?.address}
+                  checkIn={stay.check_in}
+                  checkOut={stay.check_out}
+                  status={stay.status}
+                />
+              </>
+            ) : (
+              /* ── No stay yet: show the demo PMS activation flow ── */
+              <div className="h-full overflow-y-auto flex flex-col items-center justify-center">
+                <DemoBookingActivation
+                  userId={userId}
+                  firstName={firstName}
+                  onActivated={refetch}
+                />
+              </div>
+            )}
           </>
         )}
       </PostLoginHero>
