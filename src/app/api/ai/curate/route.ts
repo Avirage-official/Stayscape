@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await curateStay(body.stay_id, body.force);
+    const result = await curateStay(body.stay_id);
 
     return NextResponse.json(
       { data: result },

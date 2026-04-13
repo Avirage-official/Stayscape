@@ -50,7 +50,6 @@ interface CurationContent {
  */
 export async function curateStay(
   stayId: string,
-  force = false,
 ): Promise<CurationResult> {
   const context = await getStayContext(stayId);
   if (!context) {
@@ -74,12 +73,9 @@ export async function curateStay(
       }
     } catch (err) {
       // Log but continue with other curation types
-      console.error(`Failed to generate ${type} curation for stay ${stayId}:`, err);
+      console.error('Failed to generate curation:', type, err);
     }
   }
-
-  // Void usage of force to indicate it's reserved for future skip-if-exists logic
-  void force;
 
   return {
     stay_id: stayId,

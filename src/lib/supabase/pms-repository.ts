@@ -111,6 +111,10 @@ export async function findRegionForProperty(
 
   if (!regions || regions.length === 0) return null;
 
+  // Find the closest region that contains this point within its radius
+  let closestRegionId: string | null = null;
+  let closestDistance = Infinity;
+
   for (const region of regions) {
     const distKm = haversineDistance(
       latitude,
@@ -118,12 +122,13 @@ export async function findRegionForProperty(
       region.latitude as number,
       region.longitude as number,
     );
-    if (distKm <= (region.radius_km as number)) {
-      return region.id as string;
+    if (distKm <= (region.radius_km as number) && distKm < closestDistance) {
+      closestDistance = distKm;
+      closestRegionId = region.id as string;
     }
   }
 
-  return null;
+  return closestRegionId;
 }
 
 /**

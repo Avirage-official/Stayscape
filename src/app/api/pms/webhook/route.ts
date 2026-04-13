@@ -65,19 +65,18 @@ export async function POST(request: NextRequest) {
     const result = await processWebhookBooking(body);
 
     // Trigger AI curation asynchronously (fire-and-forget)
-    // The curation runs in the background after the webhook responds
     if (result.region_id) {
       curateStay(result.stay_id).then(
         (curation) => {
-          result.curation_triggered = true;
           console.log(
-            `Curation completed for stay ${result.stay_id}:`,
+            'Curation completed for stay:',
+            result.stay_id,
             curation.curations_created,
             'curations created',
           );
         },
         (err) => {
-          console.error(`Curation failed for stay ${result.stay_id}:`, err);
+          console.error('Curation failed for stay:', result.stay_id, err);
         },
       );
     }

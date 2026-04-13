@@ -103,16 +103,22 @@ export async function POST(request: NextRequest) {
       pushResult = await pushPreferencesToPms(body.stay_id);
     }
 
+    // Build response message
+    let message = 'No action taken';
+    if (savedId && pushResult) {
+      message = 'Preference saved and pushed to PMS';
+    } else if (savedId) {
+      message = 'Preference saved';
+    } else if (pushResult) {
+      message = 'Pushed ' + String(pushResult.synced) + ' preferences to PMS';
+    }
+
     return NextResponse.json(
       {
         data: {
           preference_id: savedId,
           push_result: pushResult,
-          message: savedId
-            ? 'Preference saved' + (pushResult ? ' and pushed to PMS' : '')
-            : pushResult
-              ? `Pushed ${pushResult.synced} preferences to PMS`
-              : 'No action taken',
+          message,
         },
       },
       { status: savedId ? 201 : 200, headers: rateLimit.headers },

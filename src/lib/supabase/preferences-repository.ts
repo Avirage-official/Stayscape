@@ -155,15 +155,23 @@ export async function pushPreferencesToPms(
     })),
   };
 
-  // Push to PMS callback URL
-  const response = await fetch(stayInfo.pms_callback_url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(pushPayload),
-  });
+  // Push to PMS callback URL with a timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-  if (!response.ok) {
-    throw new Error(`PMS push-back failed: ${response.status} ${response.statusText}`);
+  try {
+    const response = await fetch(stayInfo.pms_callback_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pushPayload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`PMS push-back failed: ${response.status} ${response.statusText}`);
+    }
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   // Mark as synced
