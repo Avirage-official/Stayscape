@@ -77,3 +77,42 @@ export async function getUpcomingStay(
     property,
   };
 }
+
+/**
+ * Fetch ALL upcoming stays for a customer, ordered by check-in date ascending.
+ * Returns an empty array if there are no upcoming stays.
+ */
+export async function getUpcomingStays(
+  userId: string,
+): Promise<CustomerStay[]> {
+  const supabase = getSupabaseAdmin();
+
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('stays')
+    .select(
+      `id, userid, propertyid, checkindate, checkoutdate, status, roomlabel, guestcount,
+       properties:propertyid ( id, name, image_url, address )`,
+    )
+    .eq('userid', userId)
+    .gte('checkoutdate', now)
+    .order('checkindate', { ascending: true });
+
+  if (error || !data) return [];
+
+  return (data as Record<string, unknown>[]).map((row) => {
+    const property = row.properties as CustomerStay['property'] ?? null;
+    return {
+      id: row.id as string,
+      user_id: row.userid as string,
+      property_id: row.propertyid as string,
+      check_in: row.checkindate as string,
+      check_out: row.checkoutdate as string,
+      status: row.status as string,
+      room_type: (row.roomlabel as string) ?? null,
+      guests: (row.guestcount as number) ?? null,
+      property,
+    };
+  });
+}

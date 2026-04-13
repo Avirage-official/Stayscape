@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerProfile,
   getUpcomingStay,
+  getUpcomingStays,
 } from '@/lib/supabase/customer-repository';
 
 /**
@@ -9,7 +10,8 @@ import {
  *
  * Returns the dashboard data for a logged-in customer:
  * - profile (from public.users)
- * - upcoming stay (from public.stays + public.properties), or null
+ * - upcomingStay (first upcoming stay, for backward compat), or null
+ * - upcomingStays (all upcoming stays ordered by check-in)
  *
  * In production, derive userId from a verified session cookie.
  * For now, accept it as a query param (thin auth layer).
@@ -25,9 +27,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [profile, upcomingStay] = await Promise.all([
+    const [profile, upcomingStay, upcomingStays] = await Promise.all([
       getCustomerProfile(userId),
       getUpcomingStay(userId),
+      getUpcomingStays(userId),
     ]);
 
     if (!profile) {
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ profile, upcomingStay });
+    return NextResponse.json({ profile, upcomingStay, upcomingStays });
   } catch {
     return NextResponse.json(
       { error: 'Failed to load dashboard data' },
