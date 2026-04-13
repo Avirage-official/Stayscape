@@ -1,38 +1,103 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import type { GuestPreference, PreferenceType } from '@/types/pms';
 
-/* ─── Static guest data ─── */
-const guest = {
-  name: 'James Anderson',
-  title: 'Mr.',
-  status: 'Checked In' as const,
-  avatar: 'JA',
-  room: 'Suite 1204',
-  roomType: 'Deluxe Ocean View',
-  guests: 2,
-  checkIn: 'Dec 14, 2024',
-  checkOut: 'Dec 19, 2024',
-  arrivalNote: 'Late arrival — airport transfer arranged',
-  departureNote: 'Late checkout requested (2 PM)',
-  housekeepingSchedule: [
-    { day: 'Sat 14', clean: true },
-    { day: 'Sun 15', clean: true },
-    { day: 'Mon 16', clean: false },
-    { day: 'Tue 17', clean: true },
-    { day: 'Wed 18', clean: true },
-    { day: 'Thu 19', clean: false },
-  ],
+/* ─── Props ─── */
+
+export interface CustomerPanelProps {
+  stayId?: string | null;
+  guestTitle?: string | null;
+  guestName?: string | null;
+  roomLabel?: string | null;
+  roomType?: string | null;
+  guestCount?: number | null;
+  checkIn?: string | null;
+  checkOut?: string | null;
+  arrivalNote?: string | null;
+  departureNote?: string | null;
+}
+
+/* ─── Helpers ─── */
+
+function formatDateShort(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function generateHousekeepingSchedule(
+  checkIn: string | null | undefined,
+  checkOut: string | null | undefined,
+) {
+  if (!checkIn || !checkOut) {
+    // Fallback schedule
+    return [
+      { day: 'Sat 14', clean: true },
+      { day: 'Sun 15', clean: true },
+      { day: 'Mon 16', clean: false },
+      { day: 'Tue 17', clean: true },
+      { day: 'Wed 18', clean: true },
+      { day: 'Thu 19', clean: false },
+    ];
+  }
+  const days: { day: string; clean: boolean }[] = [];
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  let i = 0;
+  for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = d.getDate().toString();
+    days.push({ day: `${dayName} ${dayNum}`, clean: i % 3 !== 2 });
+    i++;
+  }
+  return days.slice(0, 7); // cap at 7 days for display
+}
+
+function generateStayTimeline(
+  checkIn: string | null | undefined,
+  checkOut: string | null | undefined,
+) {
+  if (!checkIn || !checkOut) {
+    return [
+      { day: 'Day 1', label: 'Arrival & check-in' },
+      { day: 'Day 2', label: 'Spa & dining' },
+      { day: 'Day 3', label: 'City excursion' },
+      { day: 'Day 4', label: 'Anniversary dinner' },
+      { day: 'Day 5', label: 'Leisure & shopping' },
+      { day: 'Day 6', label: 'Departure' },
+    ];
+  }
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  const nights = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
+  const midLabels = ['Explore & discover', 'Spa & dining', 'City excursion', 'Culture & art', 'Leisure & shopping'];
+  const entries: { day: string; label: string }[] = [];
+  for (let n = 0; n <= nights; n++) {
+    let label: string;
+    if (n === 0) label = 'Arrival & check-in';
+    else if (n === nights) label = 'Departure';
+    else label = midLabels[(n - 1) % midLabels.length];
+    entries.push({ day: `Day ${n + 1}`, label });
+  }
+  return entries;
+}
+
+const CATEGORY_TO_PREFERENCE_TYPE: Record<string, PreferenceType> = {
+  Dining: 'dining',
+  'Stay Type': 'general',
+  Housekeeping: 'room_service',
 };
 
-const stayTimeline = [
-  { day: 'Day 1', label: 'Arrival & check-in' },
-  { day: 'Day 2', label: 'Spa & dining' },
-  { day: 'Day 3', label: 'City excursion' },
-  { day: 'Day 4', label: 'Anniversary dinner' },
-  { day: 'Day 5', label: 'Leisure & shopping' },
-  { day: 'Day 6', label: 'Departure' },
-];
+function preferenceTypeToCategory(type: PreferenceType): string | null {
+  for (const [cat, pt] of Object.entries(CATEGORY_TO_PREFERENCE_TYPE)) {
+    if (pt === type) return cat;
+  }
+  return null;
+}
+
+/* ─── Static preference options ─── */
 
 interface PreferenceGroup {
   category: string;
@@ -154,7 +219,18 @@ function UpdatedStatus({ visible }: { visible: boolean }) {
 
 /* ─── Main component ─── */
 
-export default function CustomerPanel() {
+export default function CustomerPanel({
+  stayId,
+  guestTitle,
+  guestName,
+  roomLabel,
+  roomType,
+  guestCount,
+  checkIn,
+  checkOut,
+  arrivalNote,
+  departureNote,
+}: CustomerPanelProps) {
   const [selected, setSelected] = useState<Record<string, Set<string>>>(() => {
     const init: Record<string, Set<string>> = {};
     for (const key of Object.keys(defaultSelected)) {
@@ -165,19 +241,63 @@ export default function CustomerPanel() {
 
   const [showUpdated, setShowUpdated] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userModifiedRef = useRef(false);
+
+  // Fetch existing preferences on mount when stay is available
+  useState(() => {
+    if (!stayId) return;
+    fetch(`/api/pms/preferences?stay_id=${stayId}`)
+      .then((r) => r.json())
+      .then(({ data }: { data: GuestPreference[] }) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const init: Record<string, Set<string>> = {};
+        for (const pref of data) {
+          const category = preferenceTypeToCategory(pref.preference_type);
+          if (!category) continue;
+          const chips = pref.preference_data?.selected_chips;
+          if (Array.isArray(chips)) {
+            init[category] = new Set(chips as string[]);
+          }
+        }
+        if (Object.keys(init).length > 0) {
+          setSelected(init);
+        }
+      })
+      .catch(() => {});
+  });
+
+  // Debounced preference save — only fires after user modifies chips
+  useEffect(() => {
+    if (!stayId || !userModifiedRef.current) return;
+    const timer = setTimeout(() => {
+      Object.entries(selected).forEach(([category, chips]) => {
+        const preferenceType = CATEGORY_TO_PREFERENCE_TYPE[category];
+        if (!preferenceType) return;
+        fetch('/api/pms/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stay_id: stayId,
+            preference_type: preferenceType,
+            preference_data: { selected_chips: Array.from(chips) },
+          }),
+        }).catch(() => {});
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [selected, stayId]);
 
   const toggleChip = useCallback(
     (category: string, chip: string) => {
+      userModifiedRef.current = true;
       setSelected((prev) => {
-        const next = { ...prev };
         const set = new Set(prev[category] ?? []);
         if (set.has(chip)) {
           set.delete(chip);
         } else {
           set.add(chip);
         }
-        next[category] = set;
-        return next;
+        return { ...prev, [category]: set };
       });
 
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -186,6 +306,22 @@ export default function CustomerPanel() {
     },
     [],
   );
+
+  // Derived display values
+  const displayName = guestName ?? null;
+  const displayTitle = guestTitle ?? null;
+  const displayRoom = roomLabel ?? null;
+  const displayRoomType = roomType ?? null;
+  const displayGuests = guestCount ?? null;
+  const displayCheckIn = formatDateShort(checkIn);
+  const displayCheckOut = formatDateShort(checkOut);
+  const displayArrivalNote = arrivalNote ?? null;
+  const displayDepartureNote = departureNote ?? null;
+  const avatarInitials = displayName
+    ? displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'G';
+  const housekeepingSchedule = generateHousekeepingSchedule(checkIn, checkOut);
+  const stayTimeline = generateStayTimeline(checkIn, checkOut);
 
   return (
     <div className="flex h-full overflow-hidden bg-[var(--panel-bg)] animate-slide-in-left">
@@ -199,14 +335,16 @@ export default function CustomerPanel() {
           {/* Guest identity */}
           <div className="flex items-center space-x-3 mb-3">
             <div className="w-11 h-11 rounded-[7px] bg-[var(--gold)]/10 border border-[var(--gold)]/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-[13px] font-medium text-[var(--gold)]">{guest.avatar}</span>
+              <span className="text-[13px] font-medium text-[var(--gold)]">{avatarInitials}</span>
             </div>
             <div className="min-w-0">
               <h2 className="text-[14px] font-medium text-[var(--text-primary)] tracking-wide">
-                {guest.title} {guest.name}
+                {displayTitle ? `${displayTitle} ${displayName ?? 'Guest'}` : (displayName ?? 'Valued Guest')}
               </h2>
               <p className="text-[10px] text-[var(--text-muted)] mt-0.5 tracking-wide">
-                {guest.roomType} · {guest.guests} guests
+                {[displayRoomType, displayGuests != null ? `${displayGuests} guest${displayGuests !== 1 ? 's' : ''}` : null]
+                  .filter(Boolean)
+                  .join(' · ') || 'Room details unavailable'}
               </p>
             </div>
           </div>
@@ -214,9 +352,11 @@ export default function CustomerPanel() {
           {/* Status & room */}
           <div className="flex items-center space-x-2.5 mb-4">
             <span className="inline-flex items-center px-2 py-[3px] rounded-[4px] text-[9px] font-medium bg-emerald-500/8 text-emerald-400 border border-emerald-500/15 tracking-wide uppercase">
-              {guest.status}
+              Checked In
             </span>
-            <span className="text-[10px] text-[var(--text-secondary)]">{guest.room}</span>
+            {displayRoom && (
+              <span className="text-[10px] text-[var(--text-secondary)]">{displayRoom}</span>
+            )}
           </div>
 
           {/* Dates */}
@@ -224,7 +364,7 @@ export default function CustomerPanel() {
             <div className="flex items-center justify-between text-[11px]">
               <div>
                 <p className="text-[9px] text-[var(--text-faint)] uppercase tracking-wider mb-0.5">Arrival</p>
-                <p className="text-[var(--text-secondary)]">{guest.checkIn}</p>
+                <p className="text-[var(--text-secondary)]">{displayCheckIn ?? '—'}</p>
               </div>
               <div className="flex items-center px-3">
                 <div className="w-6 h-px bg-[var(--border)]" />
@@ -233,21 +373,27 @@ export default function CustomerPanel() {
               </div>
               <div className="text-right">
                 <p className="text-[9px] text-[var(--text-faint)] uppercase tracking-wider mb-0.5">Departure</p>
-                <p className="text-[var(--text-secondary)]">{guest.checkOut}</p>
+                <p className="text-[var(--text-secondary)]">{displayCheckOut ?? '—'}</p>
               </div>
             </div>
 
             {/* Arrival / Departure notes */}
-            <div className="mt-3 pt-2.5 border-t border-[var(--card-border)] space-y-1.5">
-              <p className="text-[10px] text-[var(--text-muted)] leading-snug">
-                <span className="text-[var(--gold)]/50 mr-1">↓</span>
-                {guest.arrivalNote}
-              </p>
-              <p className="text-[10px] text-[var(--text-muted)] leading-snug">
-                <span className="text-[var(--gold)]/50 mr-1">↑</span>
-                {guest.departureNote}
-              </p>
-            </div>
+            {(displayArrivalNote || displayDepartureNote) && (
+              <div className="mt-3 pt-2.5 border-t border-[var(--card-border)] space-y-1.5">
+                {displayArrivalNote && (
+                  <p className="text-[10px] text-[var(--text-muted)] leading-snug">
+                    <span className="text-[var(--gold)]/50 mr-1">↓</span>
+                    {displayArrivalNote}
+                  </p>
+                )}
+                {displayDepartureNote && (
+                  <p className="text-[10px] text-[var(--text-muted)] leading-snug">
+                    <span className="text-[var(--gold)]/50 mr-1">↑</span>
+                    {displayDepartureNote}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -256,7 +402,7 @@ export default function CustomerPanel() {
           <div className="animate-fade-in-up stagger-1">
             <SectionLabel>Housekeeping Schedule</SectionLabel>
             <div className="flex gap-1.5">
-              {guest.housekeepingSchedule.map((d) => {
+              {housekeepingSchedule.map((d) => {
                 const [dayName, dayNum] = d.day.split(' ');
                 return (
                 <div

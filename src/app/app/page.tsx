@@ -14,6 +14,8 @@ import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { MapPlace } from '@/types';
 import { useRegion } from '@/lib/context/region-context';
+import { useAuth } from '@/lib/context/auth-context';
+import type { DashboardData } from '@/types/customer';
 
 type ActiveTab = 'concierge' | 'discover' | 'itinerary';
 type MobileView = 'map' | 'guest' | 'assistant';
@@ -21,10 +23,12 @@ type MobileView = 'map' | 'guest' | 'assistant';
 export default function Home() {
   const router = useRouter();
   const { region } = useRegion();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('map');
   const panelRef = useRef<TravelAssistantPanelHandle>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   /* Redirect to region selection if no region chosen */
   useEffect(() => {
@@ -32,6 +36,17 @@ export default function Home() {
       router.replace('/select-region');
     }
   }, [region, router]);
+
+  /* Fetch dashboard / stay data when user is available */
+  useState(() => {
+    if (!user?.id) return;
+    fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: DashboardData | null) => {
+        if (data) setDashboardData(data);
+      })
+      .catch(() => {});
+  });
 
   const handleSelectPlace = useCallback((place: MapPlace) => {
     setSelectedPlace(place);
@@ -136,7 +151,15 @@ export default function Home() {
               <>
                 {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
                 <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--charcoal-light)]/80`}>
-                  <CustomerPanel />
+                  <CustomerPanel
+                    stayId={dashboardData?.upcomingStay?.id}
+                    guestName={dashboardData?.profile?.full_name ?? undefined}
+                    roomLabel={dashboardData?.upcomingStay?.room_type ?? undefined}
+                    roomType={dashboardData?.upcomingStay?.room_type ?? undefined}
+                    guestCount={dashboardData?.upcomingStay?.guests ?? undefined}
+                    checkIn={dashboardData?.upcomingStay?.check_in ?? undefined}
+                    checkOut={dashboardData?.upcomingStay?.check_out ?? undefined}
+                  />
                 </div>
 
                 {/* Center — Map workspace */}

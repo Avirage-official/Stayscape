@@ -115,7 +115,7 @@ function GuestArrivalContent({
         {loadState === 'ready' && data && (
           <>
             <div className="h-full flex flex-col items-center justify-center pb-16">
-              <ConciergePrompt firstName={firstName} />
+              <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
             </div>
 
             {/* Stay awareness strip at bottom */}
