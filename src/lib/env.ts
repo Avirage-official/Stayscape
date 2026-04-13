@@ -50,6 +50,11 @@ export function getAnthropicApiKey(): string {
   return getServerEnv('ANTHROPIC_API_KEY');
 }
 
+/** PMS webhook API key for validating incoming bookings (backend only). */
+export function getPmsWebhookApiKey(): string {
+  return getServerEnv('PMS_WEBHOOK_API_KEY');
+}
+
 /** Upstash Redis REST URL for rate limiting (optional — returns '' if not set). */
 export const UPSTASH_REDIS_REST_URL =
   process.env.UPSTASH_REDIS_REST_URL ?? '';

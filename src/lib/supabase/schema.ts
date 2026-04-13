@@ -30,10 +30,16 @@ CREATE TABLE IF NOT EXISTS users (
 -- PROPERTIES
 -- ═══════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS properties (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        TEXT NOT NULL,
-  image_url   TEXT,
-  address     TEXT
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            TEXT NOT NULL,
+  image_url       TEXT,
+  address         TEXT,
+  city            TEXT,
+  country         TEXT,
+  latitude        DOUBLE PRECISION,
+  longitude       DOUBLE PRECISION,
+  region_id       UUID REFERENCES regions(id),
+  pms_property_id TEXT UNIQUE
 );
 
 -- ═══════════════════════════════════════════════════════════
@@ -51,17 +57,54 @@ CREATE TABLE IF NOT EXISTS property_rooms (
 -- STAYS
 -- ═══════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS stays (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userid       UUID NOT NULL REFERENCES users(id),
-  propertyid   UUID NOT NULL REFERENCES properties(id),
-  checkindate  DATE NOT NULL,
-  checkoutdate DATE NOT NULL,
-  status       TEXT NOT NULL DEFAULT 'confirmed',
-  roomlabel    TEXT,
-  guestcount   INTEGER
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  userid            UUID NOT NULL REFERENCES users(id),
+  propertyid        UUID NOT NULL REFERENCES properties(id),
+  checkindate       DATE NOT NULL,
+  checkoutdate      DATE NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'confirmed',
+  roomlabel         TEXT,
+  guestcount        INTEGER,
+  booking_reference TEXT UNIQUE,
+  trip_type         TEXT,
+  notes             TEXT,
+  pms_callback_url  TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_stays_userid ON stays(userid);
+CREATE INDEX IF NOT EXISTS idx_stays_booking_ref ON stays(booking_reference);
+
+-- ═══════════════════════════════════════════════════════════
+-- STAY_CURATIONS (AI-generated curated content per stay)
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS stay_curations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stay_id         UUID NOT NULL REFERENCES stays(id) ON DELETE CASCADE,
+  curation_type   TEXT NOT NULL CHECK (curation_type IN ('default_itinerary', 'recommended_places', 'regional_activities', 'safety_tips')),
+  content         JSONB NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  UNIQUE (stay_id, curation_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stay_curations_stay ON stay_curations(stay_id);
+
+-- ═══════════════════════════════════════════════════════════
+-- GUEST_PREFERENCES (concierge/map selections to push to PMS)
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS guest_preferences (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stay_id           UUID NOT NULL REFERENCES stays(id) ON DELETE CASCADE,
+  preference_type   TEXT NOT NULL CHECK (preference_type IN ('dining', 'activity', 'transport', 'room_service', 'spa', 'excursion', 'general')),
+  preference_data   JSONB NOT NULL,
+  synced_to_pms     BOOLEAN NOT NULL DEFAULT false,
+  synced_at         TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_guest_preferences_stay ON guest_preferences(stay_id);
+CREATE INDEX IF NOT EXISTS idx_guest_preferences_unsynced ON guest_preferences(stay_id) WHERE synced_to_pms = false;
 
 -- ═══════════════════════════════════════════════════════════
 -- STAY_ROOM_PREFERENCES
