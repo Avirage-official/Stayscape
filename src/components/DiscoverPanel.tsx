@@ -15,6 +15,7 @@ import {
   useDiscoverPlaces,
   useLocalInsights,
   useDiscoverEvents,
+  useCurations,
 } from '@/hooks/useDiscoverData';
 import type { EventCard } from '@/hooks/useDiscoverData';
 import {
@@ -29,10 +30,16 @@ import UpcomingEventCard from '@/components/discover/UpcomingEventCard';
 import InsightKnowledgeCard from '@/components/discover/InsightKnowledgeCard';
 import AddToDayDialog from '@/components/discover/AddToDayDialog';
 import SuccessToast from '@/components/discover/SuccessToast';
+import {
+  PopularGuestCard,
+  RegionalActivityCard,
+  curatedItemToPlaceCard,
+} from '@/components/discover/CuratedItemCard';
+import type { CuratedItem } from '@/types/pms';
 
 /* ─── Main DiscoverPanel component ─── */
 
-export default function DiscoverPanel() {
+export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
   const { region } = useRegion();
   const [activeCategory, setActiveCategory] = useState<string>('top-places');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -51,6 +58,7 @@ export default function DiscoverPanel() {
   const { places: dbPlaces, refetch: refetchPlaces } = useDiscoverPlaces();
   const { insights, refetch: refetchInsights } = useLocalInsights();
   const { events, refetch: refetchEvents } = useDiscoverEvents();
+  const { curations, refetch: refetchCurations } = useCurations(stayId);
 
   // Trigger initial data load once (using null-check pattern for eslint refs rule)
   if (dataLoadedRef.current == null) {
@@ -59,6 +67,7 @@ export default function DiscoverPanel() {
     refetchInsights();
     refetchPlaces('top-places', 'Top Places');
     if (region?.id) refetchEvents(region.id);
+    if (stayId) refetchCurations();
   }
 
   // Use DB places if available, otherwise fall back to hardcoded
@@ -83,14 +92,19 @@ export default function DiscoverPanel() {
     setAddDialogOpen(true);
   }, [places]);
 
+  const handleAddCuratedItem = useCallback((item: CuratedItem, idx: number) => {
+    setAddingPlace(curatedItemToPlaceCard(item, idx));
+    setAddDialogOpen(true);
+  }, []);
+
   const handleConfirmAdd = useCallback((placeId: string, day: string) => {
-    const place = places.find((p) => p.id === placeId);
+    const place = places.find((p) => p.id === placeId) ?? addingPlace;
     if (place) {
       setSuccessToast({ placeName: place.name, dayValue: day, bookingUrl: place.bookingUrl });
     }
     setAddDialogOpen(false);
     setAddingPlace(null);
-  }, [places]);
+  }, [places, addingPlace]);
 
   const handleDismissToast = useCallback(() => {
     setSuccessToast(null);
@@ -125,8 +139,8 @@ export default function DiscoverPanel() {
                   Discover
                 </h2>
               </div>
-              <p className="text-[12px] text-[var(--discover-body)] ml-[30px]">
-                Curated places and local insights for your New York stay
+      <p className="text-[12px] text-[var(--discover-body)] ml-[30px]">
+                Curated places and local insights{region?.name ? ` for your ${region.name} stay` : ''}
               </p>
             </div>
             <Tooltip>
@@ -225,6 +239,44 @@ export default function DiscoverPanel() {
             {/* ── Separator ── */}
             <div className="h-px bg-[var(--discover-border)]" />
 
+            {/* ── Popular with Guests (recommended_places curation) ── */}
+            {curations.recommended_places && curations.recommended_places.content.items.length > 0 && (
+              <>
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                        Popular with Guests
+                      </h3>
+                      <p className="text-[10px] text-[var(--discover-body)]/60 mt-0.5">
+                        Loved by previous guests
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-[var(--discover-gold)] flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--discover-gold)">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                      Highly recommended
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {curations.recommended_places.content.items.map((item, idx) => (
+                      <PopularGuestCard
+                        key={`popular-${idx}`}
+                        item={item}
+                        idx={idx}
+                        onAdd={(curatedItem) => handleAddCuratedItem(curatedItem, idx)}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* ── Separator ── */}
+                <div className="h-px bg-[var(--discover-border)]" />
+              </>
+            )}
+
             {/* ── Place cards ── */}
             {places.length > 0 && (
               <section>
@@ -284,13 +336,46 @@ export default function DiscoverPanel() {
               </>
             )}
 
+            {/* ── Discover the Region (regional_activities curation) ── */}
+            {curations.regional_activities && curations.regional_activities.content.items.length > 0 && (
+              <>
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                        {region?.name ? `Discover ${region.name}` : 'Discover the Region'}
+                      </h3>
+                      <p className="text-[10px] text-[var(--discover-body)]/60 mt-0.5">
+                        {curations.regional_activities.content.summary}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x discover-slide-in">
+                    {curations.regional_activities.content.items.map((item, idx) => (
+                      <div key={`regional-${idx}`} className="snap-start">
+                        <RegionalActivityCard
+                          item={item}
+                          idx={idx}
+                          onAdd={(curatedItem) => handleAddCuratedItem(curatedItem, idx)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* ── Separator ── */}
+                <div className="h-px bg-[var(--discover-border)]" />
+              </>
+            )}
+
             {/* ── Local insights rail ── */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
                   Local Insights
                 </h3>
-                <span className="text-[10px] text-[var(--discover-body)]">New York City</span>
+                <span className="text-[10px] text-[var(--discover-body)]">{region?.name ?? 'Local'}</span>
               </div>
 
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x">

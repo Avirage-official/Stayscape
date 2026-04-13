@@ -12,6 +12,9 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import type { StayCuration } from '@/types/pms';
+
+export type { StayCuration };
 import {
   fetchCategories,
   fetchItemsByCategory,
@@ -177,4 +180,58 @@ export function useDiscoverEvents(): UseDiscoverEventsResult {
   }, []);
 
   return { events, loading, error, refetch };
+}
+
+/* ── AI Curations ─────────────────────────────────────────── */
+
+export interface CurationsData {
+  recommended_places: StayCuration | null;
+  regional_activities: StayCuration | null;
+}
+
+interface UseCurationsResult {
+  curations: CurationsData;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+const EMPTY_CURATIONS: CurationsData = {
+  recommended_places: null,
+  regional_activities: null,
+};
+
+export function useCurations(stayId: string | null | undefined): UseCurationsResult {
+  const [curations, setCurations] = useState<CurationsData>(EMPTY_CURATIONS);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(() => {
+    if (!stayId) {
+      setCurations(EMPTY_CURATIONS);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    fetch(`/api/curations?stay_id=${encodeURIComponent(stayId)}`)
+      .then((res) => res.json())
+      .then((body: { data?: StayCuration[]; error?: string }) => {
+        if (body.error) {
+          setCurations(EMPTY_CURATIONS);
+          return;
+        }
+        const data = body.data ?? [];
+        setCurations({
+          recommended_places: data.find((c) => c.curation_type === 'recommended_places') ?? null,
+          regional_activities: data.find((c) => c.curation_type === 'regional_activities') ?? null,
+        });
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load curations');
+        setCurations(EMPTY_CURATIONS);
+      })
+      .finally(() => setLoading(false));
+  }, [stayId]);
+
+  return { curations, loading, error, refetch };
 }

@@ -48,9 +48,10 @@ import MapFallback from './map/MapFallback';
 interface MapPlaceholderProps {
   onSelectPlace?: (place: MapPlace) => void;
   selectedPlaceId?: string | null;
+  stayId?: string | null;
 }
 
-export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPlaceholderProps) {
+export default function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlaceholderProps) {
   const { region } = useRegion();
   const { addItem } = useItinerary();
   /* Keep region in a ref so initMap (stable callback) can read the latest value */
@@ -79,6 +80,11 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const prevSelectedIdRef = useRef<number | null>(null);
   const uuidToFeatureIdRef = useRef<Map<string, number>>(new Map());
 
+  /* ─── Curated places: place_id → { reason, name } map, and DOM markers ─── */
+  const curatedPlaceInfoRef = useRef<Map<string, { reason: string; name: string; description: string }>>(new Map());
+  const curatedMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const reconcileCuratedMarkersRef = useRef<(() => void) | null>(null);
+
   /* ─── Geolocation refs & state ─── */
   const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   const userMapMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -104,6 +110,36 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
   const [filterOpen, setFilterOpen] = useState(false);
   const filterOpenRef = useRef(false);
   useEffect(() => { filterOpenRef.current = filterOpen; }, [filterOpen]);
+
+  /* ─── Fetch recommended_places curations when stayId changes ─── */
+  useEffect(() => {
+    if (!stayId) {
+      curatedPlaceInfoRef.current.clear();
+      curatedMarkersRef.current.forEach((m) => m.remove());
+      curatedMarkersRef.current = [];
+      return;
+    }
+    fetch(`/api/curations?stay_id=${encodeURIComponent(stayId)}&type=recommended_places`)
+      .then((res) => res.json())
+      .then((body: { data?: Array<{ curation_type: string; content: { items: Array<{ name: string; description: string; reason?: string; place_id?: string | null }> } }>; error?: string }) => {
+        if (body.error || !body.data?.length) return;
+        const curation = body.data[0];
+        if (!curation) return;
+        curatedPlaceInfoRef.current.clear();
+        curation.content.items.forEach((item) => {
+          if (item.place_id) {
+            curatedPlaceInfoRef.current.set(item.place_id, {
+              name: item.name,
+              reason: item.reason ?? '',
+              description: item.description,
+            });
+          }
+        });
+        /* Try to reconcile if the map is already initialised */
+        reconcileCuratedMarkersRef.current?.();
+      })
+      .catch(() => { /* silently ignore curation fetch errors */ });
+  }, [stayId]);
 
   /* ─── 3D filter toggle animation ─── */
   useEffect(() => {
@@ -543,7 +579,60 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
               }
             }
           }
+
+          /* Reconcile curated markers after source update */
+          reconcileCuratedMarkers(m);
         };
+
+        /* ── Curated place gold-star markers ── */
+        const reconcileCuratedMarkers = (m: mapboxgl.Map) => {
+          /* Remove old curated markers */
+          curatedMarkersRef.current.forEach((marker) => marker.remove());
+          curatedMarkersRef.current = [];
+
+          if (curatedPlaceInfoRef.current.size === 0) return;
+
+          curatedPlaceInfoRef.current.forEach((info, placeId) => {
+            const place = placesRef.current.find((p) => p.id === placeId);
+            if (!place) return;
+
+            /* Gold star marker element */
+            const el = document.createElement('div');
+            el.style.cssText = 'cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;';
+            el.innerHTML = [
+              '<div style="',
+              'position:relative;',
+              'width:30px;height:30px;',
+              'border-radius:50%;',
+              'background:rgba(201,168,76,0.15);',
+              'border:1.5px solid rgba(201,168,76,0.7);',
+              'display:flex;align-items:center;justify-content:center;',
+              'box-shadow:0 0 14px rgba(201,168,76,0.45),0 0 5px rgba(201,168,76,0.6);',
+              'animation:gentlePulse 3s ease-in-out infinite;',
+              '">',
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A84C" style="filter:drop-shadow(0 0 3px rgba(201,168,76,0.7))">',
+              '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',
+              '</svg>',
+              '</div>',
+            ].join('');
+
+            el.addEventListener('click', () => {
+              /* Show the place in the standard info card, with reason as editorial summary */
+              onSelectPlaceRef.current?.({
+                ...place,
+                editorial_summary: info.reason || place.editorial_summary,
+              });
+            });
+
+            const marker = new mapboxgl.default.Marker({ element: el, anchor: 'center' })
+              .setLngLat([place.longitude, place.latitude])
+              .addTo(m);
+            curatedMarkersRef.current.push(marker);
+          });
+        };
+
+        /* Store reconcile fn in ref so the stayId effect can trigger it */
+        reconcileCuratedMarkersRef.current = () => reconcileCuratedMarkers(map);
 
         /* ── Viewport-based fetch: debounced, merges into cache ── */
         const fetchPlacesForViewport = (m: mapboxgl.Map) => {
@@ -710,6 +799,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
     const searchMarker = searchMarkerRef;
     const itinAddedTimer = itinAddedTimerRef;
     const fetchDebounce = fetchDebounceRef;
+    const curatedMarkers = curatedMarkersRef;
     return () => {
       hotelMarker.current?.remove();
       hotelMarker.current = null;
@@ -717,6 +807,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId }: MapPl
       userMarker.current = null;
       searchMarker.current?.remove();
       searchMarker.current = null;
+      curatedMarkers.current.forEach((m) => m.remove());
+      curatedMarkers.current = [];
       if (itinAddedTimer.current) {
         clearTimeout(itinAddedTimer.current);
         itinAddedTimer.current = null;
