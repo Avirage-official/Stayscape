@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { StayCuration } from '@/types/pms';
 
 export type { StayCuration };
@@ -206,30 +206,21 @@ export function useCurations(stayId: string | null | undefined): UseCurationsRes
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* Track the stayId for which a fetch has been triggered (derived-state pattern).
-   * When stayId changes, React will re-render and this update fires the fetch. */
-  const [fetchedForStayId, setFetchedForStayId] = useState<string | null>(null);
-
-  const refetch = useCallback(() => {
-    if (!stayId) {
-      setCurations(EMPTY_CURATIONS);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    fetch(`/api/curations?stay_id=${encodeURIComponent(stayId)}`)
+  /* Internal async-only fetch — no synchronous setState calls.
+   * All state updates happen inside .then() / .catch() callbacks. */
+  const performFetch = useCallback((id: string) => {
+    fetch(`/api/curations?stay_id=${encodeURIComponent(id)}`)
       .then((res) => res.json())
       .then((body: { data?: StayCuration[]; error?: string }) => {
         if (body.error) {
           setCurations(EMPTY_CURATIONS);
-          setLoading(false);
-          return;
+        } else {
+          const data = body.data ?? [];
+          setCurations({
+            recommended_places: data.find((c) => c.curation_type === 'recommended_places') ?? null,
+            regional_activities: data.find((c) => c.curation_type === 'regional_activities') ?? null,
+          });
         }
-        const data = body.data ?? [];
-        setCurations({
-          recommended_places: data.find((c) => c.curation_type === 'recommended_places') ?? null,
-          regional_activities: data.find((c) => c.curation_type === 'regional_activities') ?? null,
-        });
         setLoading(false);
       })
       .catch((err) => {
@@ -237,14 +228,23 @@ export function useCurations(stayId: string | null | undefined): UseCurationsRes
         setCurations(EMPTY_CURATIONS);
         setLoading(false);
       });
-  }, [stayId]);
+  }, []);
 
-  /* Auto-fetch when stayId first becomes available (arrives async after dashboard load).
-   * Uses React's derived-state-during-render pattern to detect the stayId change. */
-  if (stayId != null && stayId !== fetchedForStayId) {
-    setFetchedForStayId(stayId);
-    refetch();
-  }
+  /* Public refetch: sets loading synchronously (safe when called from event handlers) */
+  const refetch = useCallback(() => {
+    if (!stayId) {
+      setCurations(EMPTY_CURATIONS);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    performFetch(stayId);
+  }, [stayId, performFetch]);
+
+  /* Auto-fetch when stayId first becomes available (no synchronous setState in effect) */
+  useEffect(() => {
+    if (stayId) performFetch(stayId);
+  }, [stayId, performFetch]);
 
   return { curations, loading, error, refetch };
 }
