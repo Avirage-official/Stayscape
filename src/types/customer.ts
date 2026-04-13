@@ -34,4 +34,5 @@ export interface CustomerStay {
 export interface DashboardData {
   profile: CustomerProfile;
   upcomingStay: CustomerStay | null;
+  upcomingStays?: CustomerStay[];
 }
