@@ -11,7 +11,10 @@
 
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { StayCuration } from '@/types/pms';
+
+export type { StayCuration };
 import {
   fetchCategories,
   fetchItemsByCategory,
@@ -177,4 +180,71 @@ export function useDiscoverEvents(): UseDiscoverEventsResult {
   }, []);
 
   return { events, loading, error, refetch };
+}
+
+/* ── AI Curations ─────────────────────────────────────────── */
+
+export interface CurationsData {
+  recommended_places: StayCuration | null;
+  regional_activities: StayCuration | null;
+}
+
+interface UseCurationsResult {
+  curations: CurationsData;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+const EMPTY_CURATIONS: CurationsData = {
+  recommended_places: null,
+  regional_activities: null,
+};
+
+export function useCurations(stayId: string | null | undefined): UseCurationsResult {
+  const [curations, setCurations] = useState<CurationsData>(EMPTY_CURATIONS);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /* Internal async-only fetch — no synchronous setState calls.
+   * All state updates happen inside .then() / .catch() callbacks. */
+  const performFetch = useCallback((id: string) => {
+    fetch(`/api/curations?stay_id=${encodeURIComponent(id)}`)
+      .then((res) => res.json())
+      .then((body: { data?: StayCuration[]; error?: string }) => {
+        if (body.error) {
+          setCurations(EMPTY_CURATIONS);
+        } else {
+          const data = body.data ?? [];
+          setCurations({
+            recommended_places: data.find((c) => c.curation_type === 'recommended_places') ?? null,
+            regional_activities: data.find((c) => c.curation_type === 'regional_activities') ?? null,
+          });
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load curations');
+        setCurations(EMPTY_CURATIONS);
+        setLoading(false);
+      });
+  }, []);
+
+  /* Public refetch: sets loading synchronously (safe when called from event handlers) */
+  const refetch = useCallback(() => {
+    if (!stayId) {
+      setCurations(EMPTY_CURATIONS);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    performFetch(stayId);
+  }, [stayId, performFetch]);
+
+  /* Auto-fetch when stayId first becomes available (no synchronous setState in effect) */
+  useEffect(() => {
+    if (stayId) performFetch(stayId);
+  }, [stayId, performFetch]);
+
+  return { curations, loading, error, refetch };
 }

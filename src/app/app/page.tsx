@@ -167,6 +167,7 @@ export default function Home() {
                   <MapPlaceholder
                     onSelectPlace={handleSelectPlace}
                     selectedPlaceId={selectedPlace?.id ?? null}
+                    stayId={dashboardData?.upcomingStay?.id ?? null}
                   />
                 </div>
 
@@ -183,7 +184,7 @@ export default function Home() {
           ) : activeTab === 'discover' ? (
             /* Discover tab — full remaining width */
             <ErrorBoundary fallbackTitle="Discover">
-              <DiscoverPanel />
+              <DiscoverPanel stayId={dashboardData?.upcomingStay?.id ?? null} />
             </ErrorBoundary>
           ) : (
             /* Itinerary tab — full remaining width */
