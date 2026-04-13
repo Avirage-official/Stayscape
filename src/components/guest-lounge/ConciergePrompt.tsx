@@ -13,13 +13,14 @@ const QUICK_SUGGESTIONS = [
 
 interface ConciergePromptProps {
   firstName: string;
+  hotelName?: string | null;
 }
 
 /**
  * ConciergePrompt — the centered AI concierge input area.
  * Soft glass surface, generous width, refined placeholder.
  */
-export default function ConciergePrompt({ firstName }: ConciergePromptProps) {
+export default function ConciergePrompt({ firstName, hotelName }: ConciergePromptProps) {
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -69,7 +70,9 @@ export default function ConciergePrompt({ firstName }: ConciergePromptProps) {
         className="text-[15px] sm:text-[16px] text-white/50 mb-10 sm:mb-12 max-w-md"
         {...fadeIn(0.7)}
       >
-        Your concierge is ready
+        {hotelName
+          ? `How can I help with your stay at ${hotelName}?`
+          : 'Your concierge is ready'}
       </motion.p>
 
       {/* Prompt surface — glass / translucent */}
