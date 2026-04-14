@@ -9,6 +9,7 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { fetchAndUpdatePropertyImage } from '@/lib/services/property-image';
 import type { PmsBookingPayload, PmsWebhookResult } from '@/types/pms';
 
 /**
@@ -53,10 +54,11 @@ export async function upsertGuestUser(
 /**
  * Upsert a property by PMS property ID.
  * Uses the pms_property_id field to find or create the property record.
+ * Returns the property ID and whether it was newly created.
  */
 export async function upsertProperty(
   property: PmsBookingPayload['property'],
-): Promise<string> {
+): Promise<{ id: string; isNew: boolean }> {
   const supabase = getSupabaseAdmin();
 
   // Check if property already exists by pms_property_id
@@ -66,7 +68,7 @@ export async function upsertProperty(
     .eq('pms_property_id', property.pms_property_id)
     .maybeSingle();
 
-  if (existing) return existing.id as string;
+  if (existing) return { id: existing.id as string, isNew: false };
 
   // Create new property
   const insertData: Record<string, unknown> = {
@@ -90,7 +92,7 @@ export async function upsertProperty(
     throw new Error(`Failed to create property: ${error?.message ?? 'Unknown error'}`);
   }
 
-  return created.id as string;
+  return { id: created.id as string, isNew: true };
 }
 
 /**
@@ -189,7 +191,7 @@ export async function processWebhookBooking(
   const userId = await upsertGuestUser(payload.guest);
 
   // Step 2: Upsert property
-  const propertyId = await upsertProperty(payload.property);
+  const { id: propertyId, isNew: isNewProperty } = await upsertProperty(payload.property);
 
   // Step 3: Find matching region for the property
   let regionId: string | null = null;
@@ -211,6 +213,20 @@ export async function processWebhookBooking(
 
   // Step 4: Create stay
   const stayId = await createStayFromBooking(userId, propertyId, payload);
+
+  // Step 5: Auto-fetch property image if newly created and no image provided (fire-and-forget)
+  if (isNewProperty && !payload.property.image_url) {
+    fetchAndUpdatePropertyImage(
+      propertyId,
+      payload.property.name,
+      payload.property.city ?? null,
+      payload.property.country ?? null,
+    ).then((result) => {
+      if (result.image_url) {
+        console.log('[property-image] Auto-fetched image for property:', propertyId, 'source:', result.source);
+      }
+    });
+  }
 
   return {
     user_id: userId,
