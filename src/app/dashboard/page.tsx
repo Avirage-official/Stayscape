@@ -224,13 +224,20 @@ function GuestArrivalContent({
                   <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
                 </div>
                 {stay && (
-                  <StayContextMeta
-                    hotelName={stay.property?.name}
-                    city={stay.property?.address}
-                    checkIn={stay.check_in}
-                    checkOut={stay.check_out}
-                    status={stay.status}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/dashboard/stay/${encodeURIComponent(stay.id)}`)}
+                    className="absolute bottom-0 left-0 right-0 cursor-pointer group"
+                    aria-label="View stay details"
+                  >
+                    <StayContextMeta
+                      hotelName={stay.property?.name}
+                      city={stay.property?.address}
+                      checkIn={stay.check_in}
+                      checkOut={stay.check_out}
+                      status={stay.status}
+                    />
+                  </button>
                 )}
               </>
             ) : (
@@ -247,7 +254,7 @@ function GuestArrivalContent({
                         <div key={s.id} className="flex-shrink-0 w-[260px] sm:w-[280px]">
                           <StayCard
                             stay={s}
-                            onClick={() => setRevealStay(s)}
+                            onClick={() => router.push(`/dashboard/stay/${encodeURIComponent(s.id)}`)}
                           />
                         </div>
                       ))}
@@ -331,9 +338,7 @@ function GuestArrivalContent({
           open={!!revealStay}
           onClose={() => setRevealStay(null)}
           onViewBooking={() =>
-            router.push(
-              `/dashboard/current-booking?stayId=${encodeURIComponent(revealStay.id)}`,
-            )
+            router.push(`/dashboard/stay/${encodeURIComponent(revealStay.id)}`)
           }
         />
       )}
