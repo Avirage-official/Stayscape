@@ -69,7 +69,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="block text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">
+      <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
         {label}
         {required && <span className="text-[var(--gold)] ml-0.5">*</span>}
       </label>
@@ -79,10 +79,10 @@ function FormField({
 }
 
 const inputClassName =
-  'w-full h-11 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[14px] text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.09] transition-all duration-300';
+  'w-full h-11 px-4 rounded-xl bg-white/[0.10] border border-white/[0.12] text-[14px] text-white/85 placeholder:text-white/40 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13] transition-all duration-300';
 
 const selectClassName =
-  'w-full h-11 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[14px] text-white/85 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.09] transition-all duration-300 appearance-none cursor-pointer';
+  'w-full h-11 px-4 rounded-xl bg-white/[0.10] border border-white/[0.12] text-[14px] text-white/85 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13] transition-all duration-300 appearance-none cursor-pointer';
 
 /* ─── Demo activation panel (compact, fits inside dialog) ─── */
 
@@ -211,7 +211,7 @@ function DemoActivationPanel({
     <div className="py-2 space-y-5">
       {/* Explainer */}
       <motion.p
-        className="text-[13px] text-white/45 leading-relaxed"
+        className="text-[13px] text-white/55 leading-relaxed"
         {...fadeIn(0)}
       >
         In production, your stay appears automatically when your hotel&apos;s
@@ -231,11 +231,11 @@ function DemoActivationPanel({
                 setManualId('');
               }}
               className={`
-                relative text-left rounded-2xl p-4 border transition-all duration-300 cursor-pointer
+                relative text-left rounded-2xl p-4 border transition-all duration-300 cursor-pointer backdrop-blur-xl
                 ${
                   isSelected
-                    ? 'bg-white/[0.10] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
-                    : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14]'
+                    ? 'bg-white/[0.14] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
+                    : 'bg-white/[0.10] border-white/[0.12] hover:bg-white/[0.16] hover:border-white/[0.18]'
                 }
               `}
             >
@@ -265,13 +265,13 @@ function DemoActivationPanel({
               >
                 {hotel.hotelName}
               </p>
-              <p className="text-[11px] text-white/35 mb-2">
+              <p className="text-[11px] text-white/50 mb-2">
                 {hotel.city}, {hotel.country}
               </p>
-              <div className="pt-2 border-t border-white/[0.06]">
+              <div className="pt-2 border-t border-white/[0.10]">
                 <code
                   className={`text-[10px] tracking-wider font-mono transition-colors ${
-                    isSelected ? 'text-[var(--gold)]/70' : 'text-white/20'
+                    isSelected ? 'text-[var(--gold)]/70' : 'text-white/35'
                   }`}
                 >
                   {hotel.id}
@@ -340,7 +340,7 @@ function DemoActivationPanel({
         Activate PMS Webhook
       </button>
 
-      <p className="text-[11px] text-white/20 text-center leading-relaxed">
+      <p className="text-[11px] text-white/35 text-center leading-relaxed">
         This triggers the same webhook that a hotel&apos;s Property Management
         System calls when a booking is confirmed.
       </p>
@@ -457,7 +457,7 @@ export default function AddStayDialog({
                       <Dialog.Title className="font-serif text-xl text-white/90">
                         Add Your Stay
                       </Dialog.Title>
-                      <Dialog.Description className="text-[12px] text-white/35 mt-1">
+                      <Dialog.Description className="text-[12px] text-white/50 mt-1">
                         {activeTab === 'demo'
                           ? 'Activate a demo property via PMS webhook'
                           : step === 1
@@ -498,7 +498,7 @@ export default function AddStayDialog({
                       className={`px-4 py-2 rounded-xl text-[12px] font-medium tracking-wide transition-all duration-300 cursor-pointer ${
                         activeTab === 'demo'
                           ? 'bg-[var(--gold)]/[0.12] text-[var(--gold)] border border-[var(--gold)]/30'
-                          : 'text-white/35 hover:text-white/60 border border-transparent'
+                          : 'text-white/50 hover:text-white/70 border border-transparent'
                       }`}
                     >
                       Demo Stays
@@ -509,7 +509,7 @@ export default function AddStayDialog({
                       className={`px-4 py-2 rounded-xl text-[12px] font-medium tracking-wide transition-all duration-300 cursor-pointer ${
                         activeTab === 'manual'
                           ? 'bg-[var(--gold)]/[0.12] text-[var(--gold)] border border-[var(--gold)]/30'
-                          : 'text-white/35 hover:text-white/60 border border-transparent'
+                          : 'text-white/50 hover:text-white/70 border border-transparent'
                       }`}
                     >
                       Manual Entry
@@ -525,7 +525,7 @@ export default function AddStayDialog({
                           onSuccess={handleDemoSuccess}
                         />
                       ) : (
-                        <p className="text-[13px] text-white/35 text-center py-8">
+                        <p className="text-[13px] text-white/50 text-center py-8">
                           Demo activation requires you to be logged in.
                         </p>
                       )

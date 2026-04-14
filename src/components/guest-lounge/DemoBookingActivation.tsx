@@ -91,7 +91,7 @@ export default function DemoBookingActivation({
           <p className="text-white/90 text-[17px] font-medium tracking-tight">
             Setting up your stay experience…
           </p>
-          <p className="text-white/40 text-[13px]">
+          <p className="text-white/55 text-[13px]">
             Running the PMS webhook and curating your stay with AI
           </p>
         </div>
@@ -134,7 +134,7 @@ export default function DemoBookingActivation({
         </motion.div>
         <div className="space-y-2">
           <p className="text-white/90 text-[17px] font-medium">Stay activated!</p>
-          <p className="text-white/40 text-[13px]">Loading your curated experience…</p>
+          <p className="text-white/55 text-[13px]">Loading your curated experience…</p>
         </div>
       </div>
     );
@@ -151,7 +151,7 @@ export default function DemoBookingActivation({
         <h2 className="font-serif text-3xl sm:text-4xl text-white leading-tight">
           Good {getGreeting()}, {firstName}.
         </h2>
-        <p className="text-[14px] sm:text-[15px] text-white/50 max-w-md mx-auto leading-relaxed">
+        <p className="text-[14px] sm:text-[15px] text-white/60 max-w-md mx-auto leading-relaxed">
           In production, your stay appears here automatically when your hotel&apos;s booking system
           confirms your reservation. For this demo, select a property below.
         </p>
@@ -173,11 +173,11 @@ export default function DemoBookingActivation({
                 setManualId('');
               }}
               className={`
-                relative text-left rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer
+                relative text-left rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer backdrop-blur-xl
                 ${
                   isSelected
-                    ? 'bg-white/[0.08] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
-                    : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.14]'
+                    ? 'bg-white/[0.14] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
+                    : 'bg-white/[0.10] border-white/[0.12] hover:bg-white/[0.16] hover:border-white/[0.18]'
                 }
               `}
             >
@@ -210,16 +210,16 @@ export default function DemoBookingActivation({
               >
                 {hotel.hotelName}
               </p>
-              <p className="text-[12px] text-white/40 mb-2">
+              <p className="text-[12px] text-white/55 mb-2">
                 {hotel.city}, {hotel.country}
               </p>
-              <p className="text-[11px] text-white/30 leading-relaxed">{hotel.tagline}</p>
+              <p className="text-[11px] text-white/45 leading-relaxed">{hotel.tagline}</p>
 
               {/* Booking ID badge */}
-              <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <div className="mt-3 pt-3 border-t border-white/[0.10]">
                 <code
                   className={`text-[10px] tracking-wider font-mono transition-colors ${
-                    isSelected ? 'text-[var(--gold)]/80' : 'text-white/25'
+                    isSelected ? 'text-[var(--gold)]/80' : 'text-white/40'
                   }`}
                 >
                   {hotel.id}
@@ -243,9 +243,9 @@ export default function DemoBookingActivation({
             onChange={(e) => setManualId(e.target.value)}
             placeholder="Or enter a booking ID manually..."
             className="
-              w-full bg-white/[0.05] border border-white/[0.10] rounded-xl
-              px-5 py-3.5 text-[14px] text-white/80 placeholder:text-white/25
-              focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.07]
+              w-full bg-white/[0.10] border border-white/[0.12] rounded-xl
+              px-5 py-3.5 text-[14px] text-white/80 placeholder:text-white/40
+              focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13]
               transition-all duration-300
             "
             autoComplete="off"
@@ -299,7 +299,7 @@ export default function DemoBookingActivation({
 
       {/* Footnote */}
       <motion.p
-        className="text-[11px] text-white/25 text-center mt-5 max-w-sm leading-relaxed"
+        className="text-[11px] text-white/40 text-center mt-5 max-w-sm leading-relaxed"
         {...fadeIn(1.2)}
       >
         This triggers the same webhook that a hotel&apos;s Property Management System calls when a

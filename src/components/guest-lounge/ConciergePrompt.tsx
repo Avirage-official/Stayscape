@@ -67,7 +67,7 @@ export default function ConciergePrompt({ firstName, hotelName }: ConciergePromp
 
       {/* Sub-line */}
       <motion.p
-        className="text-[15px] sm:text-[16px] text-white/50 mb-10 sm:mb-12 max-w-md"
+        className="text-[15px] sm:text-[16px] text-white/60 mb-10 sm:mb-12 max-w-md"
         {...fadeIn(0.7)}
       >
         {hotelName
@@ -152,9 +152,9 @@ export default function ConciergePrompt({ firstName, hotelName }: ConciergePromp
             type="button"
             onClick={() => handleSuggestionClick(s)}
             className="
-              px-4 py-2 rounded-full text-[12px] sm:text-[13px] text-white/40
-              bg-white/[0.04] border border-white/[0.06]
-              hover:bg-white/[0.08] hover:text-white/60 hover:border-white/10
+              px-4 py-2 rounded-full text-[12px] sm:text-[13px] text-white/55
+              bg-white/[0.07] border border-white/[0.10]
+              hover:bg-white/[0.12] hover:text-white/70 hover:border-white/15
               transition-all duration-300 cursor-pointer
             "
           >

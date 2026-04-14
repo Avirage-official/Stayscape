@@ -55,7 +55,7 @@ export default function HeroTopNav({
           Stayscape
         </span>
         {stayContext && (
-          <span className="text-[10px] text-white/40 tracking-[0.2em] uppercase mt-0.5 hidden sm:block">
+          <span className="text-[10px] text-white/55 tracking-[0.2em] uppercase mt-0.5 hidden sm:block">
             {stayContext}
           </span>
         )}
@@ -65,7 +65,7 @@ export default function HeroTopNav({
       <button
         type="button"
         onClick={onLogout}
-        className="text-[12px] text-white/50 hover:text-white/80 tracking-[0.12em] uppercase transition-colors cursor-pointer"
+        className="text-[12px] text-white/60 hover:text-white/85 tracking-[0.12em] uppercase transition-colors cursor-pointer"
       >
         Sign out
       </button>

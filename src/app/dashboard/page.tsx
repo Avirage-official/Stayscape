@@ -67,8 +67,8 @@ function StayCard({ stay, onClick }: { stay: CustomerStay; onClick: () => void }
       onClick={onClick}
       className="
         group relative text-left w-full rounded-2xl p-5 border
-        bg-white/[0.04] border-white/[0.08]
-        hover:bg-white/[0.07] hover:border-[var(--gold)]/30
+        bg-white/[0.10] border-white/[0.12] backdrop-blur-xl
+        hover:bg-white/[0.15] hover:border-[var(--gold)]/30
         hover:shadow-[0_0_24px_rgba(201,168,76,0.10)]
         transition-all duration-300 cursor-pointer
       "
@@ -76,7 +76,7 @@ function StayCard({ stay, onClick }: { stay: CustomerStay; onClick: () => void }
       {/* Status dot */}
       <div className="flex items-center gap-2 mb-3">
         <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-        <span className="text-[11px] text-white/40 uppercase tracking-[0.18em] font-medium capitalize">
+        <span className="text-[11px] text-white/55 uppercase tracking-[0.18em] font-medium capitalize">
           {stay.status}
         </span>
       </div>
@@ -88,15 +88,15 @@ function StayCard({ stay, onClick }: { stay: CustomerStay; onClick: () => void }
 
       {/* City / address */}
       {stay.property?.address && (
-        <p className="text-[12px] text-white/35 mb-4 truncate">
+        <p className="text-[12px] text-white/50 mb-4 truncate">
           {stay.property.address}
         </p>
       )}
 
       {/* Dates */}
-      <div className="flex items-center gap-2 text-[12px] text-white/50">
+      <div className="flex items-center gap-2 text-[12px] text-white/60">
         <span className="text-white/70">{checkIn}</span>
-        <span className="text-white/20">—</span>
+        <span className="text-white/30">—</span>
         <span className="text-white/70">{checkOut}</span>
       </div>
 
@@ -232,71 +232,80 @@ function GuestArrivalContent({
                 )}
               </>
             ) : (
-              /* ── 2+ stays: show stay cards grid ── */
-              <div className="h-full overflow-y-auto">
-                <div className="px-6 sm:px-10 lg:px-14 pt-24 pb-16">
-                  {/* Compact concierge greeting */}
-                  <div className="mb-8">
-                    <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--gold)]/70 font-medium mb-2">
+              /* ── 2+ stays: stays above, concierge center, meta bottom ── */
+              <>
+                <div className="h-full overflow-y-auto flex flex-col">
+                  {/* Stay cards section — compact horizontal row above the prompt */}
+                  <div className="flex-shrink-0 px-6 sm:px-10 lg:px-14 pt-24 pb-6">
+                    <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--gold)]/70 font-medium mb-4">
                       Your Stays
                     </p>
-                    <h2 className="font-serif text-2xl sm:text-3xl text-white/90">
-                      Welcome back, {firstName}.
-                    </h2>
-                    <p className="text-[14px] text-white/45 mt-1.5">
-                      Select a stay to view your curated experience.
-                    </p>
+                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                      {stays.map((s) => (
+                        <div key={s.id} className="flex-shrink-0 w-[260px] sm:w-[280px]">
+                          <StayCard
+                            stay={s}
+                            onClick={() =>
+                              router.push(
+                                `/dashboard/current-booking?stayId=${encodeURIComponent(s.id)}`,
+                              )
+                            }
+                          />
+                        </div>
+                      ))}
+
+                      {/* Add stay card */}
+                      <button
+                        type="button"
+                        onClick={() => setAddStayOpen(true)}
+                        className="
+                          flex-shrink-0 w-[160px] group text-left rounded-2xl p-5 border
+                          border-white/[0.10] border-dashed
+                          hover:border-[var(--gold)]/30 hover:bg-white/[0.05]
+                          transition-all duration-300 cursor-pointer
+                          flex flex-col items-center justify-center gap-3
+                        "
+                      >
+                        <span className="w-10 h-10 rounded-full border border-white/15 group-hover:border-[var(--gold)]/30 flex items-center justify-center transition-colors">
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-white/45 group-hover:text-[var(--gold)]/60 transition-colors"
+                          >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        </span>
+                        <span className="text-[13px] text-white/45 group-hover:text-white/60 transition-colors text-center">
+                          Add another stay
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Stay cards grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                    {stays.map((s) => (
-                      <StayCard
-                        key={s.id}
-                        stay={s}
-                        onClick={() =>
-                          router.push(
-                            `/dashboard/current-booking?stayId=${encodeURIComponent(s.id)}`,
-                          )
-                        }
-                      />
-                    ))}
-
-                    {/* Add stay card */}
-                    <button
-                      type="button"
-                      onClick={() => setAddStayOpen(true)}
-                      className="
-                        group text-left rounded-2xl p-5 border
-                        border-white/[0.06] border-dashed
-                        hover:border-[var(--gold)]/30 hover:bg-white/[0.03]
-                        transition-all duration-300 cursor-pointer
-                        flex flex-col items-center justify-center gap-3 min-h-[120px]
-                      "
-                    >
-                      <span className="w-10 h-10 rounded-full border border-white/10 group-hover:border-[var(--gold)]/30 flex items-center justify-center transition-colors">
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-white/30 group-hover:text-[var(--gold)]/60 transition-colors"
-                        >
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                      </span>
-                      <span className="text-[13px] text-white/30 group-hover:text-white/50 transition-colors">
-                        Add another stay
-                      </span>
-                    </button>
+                  {/* ConciergePrompt — always the hero element */}
+                  <div className="flex-1 flex flex-col items-center justify-center pb-16 min-h-[280px]">
+                    <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
                   </div>
                 </div>
-              </div>
+
+                {/* StayContextMeta — absolute bottom strip showing nearest stay */}
+                {stay && (
+                  <StayContextMeta
+                    hotelName={stay.property?.name}
+                    city={stay.property?.address}
+                    checkIn={stay.check_in}
+                    checkOut={stay.check_out}
+                    status={stay.status}
+                  />
+                )}
+              </>
             )}
           </>
         )}

@@ -190,7 +190,7 @@ export default function ExpandedMenuOverlay({
             >
               {/* Label */}
               <motion.p
-                className="text-[11px] text-white/25 uppercase tracking-[0.25em] mb-8 sm:mb-10"
+                className="text-[11px] text-white/40 uppercase tracking-[0.25em] mb-8 sm:mb-10"
                 variants={itemVariants}
               >
                 Navigate
