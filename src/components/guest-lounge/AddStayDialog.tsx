@@ -69,7 +69,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="block text-[11px] font-medium text-[var(--dashboard-text-muted)] uppercase tracking-[0.14em] mb-2">
+      <label className="block text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">
         {label}
         {required && <span className="text-[var(--gold)] ml-0.5">*</span>}
       </label>
@@ -79,10 +79,10 @@ function FormField({
 }
 
 const inputClassName =
-  'w-full h-11 px-4 rounded-lg bg-[var(--dashboard-input-bg)] border border-[var(--dashboard-card-border)] text-[14px] text-[var(--dashboard-text-primary)] placeholder:text-[var(--dashboard-text-faint)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors';
+  'w-full h-11 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[14px] text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.09] transition-all duration-300';
 
 const selectClassName =
-  'w-full h-11 px-4 rounded-lg bg-[var(--dashboard-input-bg)] border border-[var(--dashboard-card-border)] text-[14px] text-[var(--dashboard-text-primary)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors appearance-none cursor-pointer';
+  'w-full h-11 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[14px] text-white/85 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.09] transition-all duration-300 appearance-none cursor-pointer';
 
 /* ─── Demo activation panel (compact, fits inside dialog) ─── */
 
@@ -150,10 +150,10 @@ function DemoActivationPanel({
           transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
         />
         <div className="space-y-1.5">
-          <p className="text-[var(--dashboard-text-primary)] text-[15px] font-medium">
+          <p className="text-white/90 text-[15px] font-medium">
             Setting up your stay…
           </p>
-          <p className="text-[var(--dashboard-text-faint)] text-[13px]">
+          <p className="text-white/40 text-[13px]">
             Running the PMS webhook and curating your stay with AI
           </p>
         </div>
@@ -195,10 +195,10 @@ function DemoActivationPanel({
           </svg>
         </motion.div>
         <div className="space-y-1.5">
-          <p className="text-[var(--dashboard-text-primary)] text-[15px] font-medium">
+          <p className="text-white/90 text-[15px] font-medium">
             Stay activated!
           </p>
-          <p className="text-[var(--dashboard-text-faint)] text-[13px]">
+          <p className="text-white/40 text-[13px]">
             Loading your curated experience…
           </p>
         </div>
@@ -211,7 +211,7 @@ function DemoActivationPanel({
     <div className="py-2 space-y-5">
       {/* Explainer */}
       <motion.p
-        className="text-[13px] text-[var(--dashboard-text-faint)] leading-relaxed"
+        className="text-[13px] text-white/45 leading-relaxed"
         {...fadeIn(0)}
       >
         In production, your stay appears automatically when your hotel&apos;s
@@ -231,21 +231,21 @@ function DemoActivationPanel({
                 setManualId('');
               }}
               className={`
-                relative text-left rounded-xl p-3.5 border transition-all duration-300 cursor-pointer
+                relative text-left rounded-2xl p-4 border transition-all duration-300 cursor-pointer
                 ${
                   isSelected
-                    ? 'bg-[var(--gold)]/[0.06] border-[var(--gold)]/40 shadow-[0_0_16px_rgba(201,168,76,0.08)]'
-                    : 'bg-[var(--dashboard-input-bg)] border-[var(--dashboard-card-border)] hover:border-[var(--gold)]/20'
+                    ? 'bg-white/[0.10] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
+                    : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14]'
                 }
               `}
             >
-              <div className="flex items-start justify-between mb-2">
-                <span className="text-xl">{hotel.flag}</span>
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-2xl">{hotel.flag}</span>
                 {isSelected && (
-                  <span className="w-4 h-4 rounded-full bg-[var(--gold)]/20 border border-[var(--gold)]/50 flex items-center justify-center flex-shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-[var(--gold)]/20 border border-[var(--gold)]/50 flex items-center justify-center flex-shrink-0">
                     <svg
-                      width="8"
-                      height="8"
+                      width="10"
+                      height="10"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="var(--gold)"
@@ -260,18 +260,18 @@ function DemoActivationPanel({
               </div>
               <p
                 className={`text-[13px] font-semibold mb-0.5 leading-snug transition-colors ${
-                  isSelected ? 'text-[var(--dashboard-text-primary)]' : 'text-[var(--dashboard-text-secondary)]'
+                  isSelected ? 'text-white' : 'text-white/75'
                 }`}
               >
                 {hotel.hotelName}
               </p>
-              <p className="text-[11px] text-[var(--dashboard-text-faint)] mb-2">
+              <p className="text-[11px] text-white/35 mb-2">
                 {hotel.city}, {hotel.country}
               </p>
-              <div className="pt-2 border-t border-[var(--dashboard-border-subtle)]">
+              <div className="pt-2 border-t border-white/[0.06]">
                 <code
                   className={`text-[10px] tracking-wider font-mono transition-colors ${
-                    isSelected ? 'text-[var(--gold)]/70' : 'text-[var(--dashboard-text-faint)]/60'
+                    isSelected ? 'text-[var(--gold)]/70' : 'text-white/20'
                   }`}
                 >
                   {hotel.id}
@@ -298,7 +298,7 @@ function DemoActivationPanel({
             <button
               type="button"
               onClick={() => setManualId('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--dashboard-text-faint)] hover:text-[var(--dashboard-text-secondary)] transition-colors cursor-pointer p-1"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors cursor-pointer p-1"
               aria-label="Clear"
             >
               <svg
@@ -335,12 +335,12 @@ function DemoActivationPanel({
         type="button"
         onClick={handleActivate}
         disabled={!effectiveBookingId}
-        className="w-full h-11 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-[0_2px_16px_rgba(201,168,76,0.2)]"
+        className="w-full h-12 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer shadow-[0_4px_24px_rgba(201,168,76,0.25)] hover:shadow-[0_6px_32px_rgba(201,168,76,0.35)]"
       >
         Activate PMS Webhook
       </button>
 
-      <p className="text-[11px] text-[var(--dashboard-text-faint)]/60 text-center leading-relaxed">
+      <p className="text-[11px] text-white/20 text-center leading-relaxed">
         This triggers the same webhook that a hotel&apos;s Property Management
         System calls when a booking is confirmed.
       </p>
@@ -426,7 +426,7 @@ export default function AddStayDialog({
           <Dialog.Portal forceMount>
             <Dialog.Overlay asChild>
               <motion.div
-                className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+                className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md"
                 {...overlayMotion}
               />
             </Dialog.Overlay>
@@ -436,14 +436,28 @@ export default function AddStayDialog({
                 className="fixed inset-0 z-50 flex items-center justify-center p-4"
                 {...contentMotion}
               >
-                <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] shadow-medium">
+                <div
+                  className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.10] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+                  style={{
+                    background:
+                      'linear-gradient(160deg, rgba(20,18,16,0.95) 0%, rgba(12,11,10,0.97) 100%)',
+                    backdropFilter: 'blur(24px)',
+                  }}
+                >
                   {/* Header */}
-                  <div className="sticky top-0 z-10 bg-[var(--dashboard-card-bg)] border-b border-[var(--dashboard-border-subtle)] px-8 py-5 flex items-center justify-between">
+                  <div
+                    className="sticky top-0 z-10 px-8 py-5 flex items-center justify-between border-b border-white/[0.07]"
+                    style={{
+                      background:
+                        'linear-gradient(160deg, rgba(20,18,16,0.98) 0%, rgba(14,13,12,0.98) 100%)',
+                      backdropFilter: 'blur(24px)',
+                    }}
+                  >
                     <div>
-                      <Dialog.Title className="font-serif text-xl text-[var(--dashboard-text-primary)]">
+                      <Dialog.Title className="font-serif text-xl text-white/90">
                         Add Your Stay
                       </Dialog.Title>
-                      <Dialog.Description className="text-[12px] text-[var(--dashboard-text-faint)] mt-1">
+                      <Dialog.Description className="text-[12px] text-white/35 mt-1">
                         {activeTab === 'demo'
                           ? 'Activate a demo property via PMS webhook'
                           : step === 1
@@ -456,7 +470,7 @@ export default function AddStayDialog({
                       <button
                         type="button"
                         onClick={handleClose}
-                        className="w-8 h-8 rounded-lg bg-[var(--dashboard-surface-raised)] border border-[var(--dashboard-border-subtle)] flex items-center justify-center text-[var(--dashboard-text-faint)] hover:text-[var(--dashboard-text-muted)] transition-colors cursor-pointer"
+                        className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center text-white/40 hover:text-white/70 transition-colors cursor-pointer"
                         aria-label="Close"
                       >
                         <svg
@@ -477,14 +491,14 @@ export default function AddStayDialog({
                   </div>
 
                   {/* Tab switcher */}
-                  <div className="px-8 pt-5 flex gap-1 bg-[var(--dashboard-card-bg)]">
+                  <div className="px-8 pt-5 flex gap-1.5">
                     <button
                       type="button"
                       onClick={() => setActiveTab('demo')}
-                      className={`px-4 py-2 rounded-lg text-[12px] font-medium tracking-wide transition-colors cursor-pointer ${
+                      className={`px-4 py-2 rounded-xl text-[12px] font-medium tracking-wide transition-all duration-300 cursor-pointer ${
                         activeTab === 'demo'
-                          ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/30'
-                          : 'text-[var(--dashboard-text-faint)] hover:text-[var(--dashboard-text-muted)]'
+                          ? 'bg-[var(--gold)]/[0.12] text-[var(--gold)] border border-[var(--gold)]/30'
+                          : 'text-white/35 hover:text-white/60 border border-transparent'
                       }`}
                     >
                       Demo Stays
@@ -492,10 +506,10 @@ export default function AddStayDialog({
                     <button
                       type="button"
                       onClick={() => setActiveTab('manual')}
-                      className={`px-4 py-2 rounded-lg text-[12px] font-medium tracking-wide transition-colors cursor-pointer ${
+                      className={`px-4 py-2 rounded-xl text-[12px] font-medium tracking-wide transition-all duration-300 cursor-pointer ${
                         activeTab === 'manual'
-                          ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/30'
-                          : 'text-[var(--dashboard-text-faint)] hover:text-[var(--dashboard-text-muted)]'
+                          ? 'bg-[var(--gold)]/[0.12] text-[var(--gold)] border border-[var(--gold)]/30'
+                          : 'text-white/35 hover:text-white/60 border border-transparent'
                       }`}
                     >
                       Manual Entry
@@ -511,7 +525,7 @@ export default function AddStayDialog({
                           onSuccess={handleDemoSuccess}
                         />
                       ) : (
-                        <p className="text-[13px] text-[var(--dashboard-text-faint)] text-center py-8">
+                        <p className="text-[13px] text-white/35 text-center py-8">
                           Demo activation requires you to be logged in.
                         </p>
                       )
@@ -520,17 +534,17 @@ export default function AddStayDialog({
                         {/* Step indicators */}
                         <div className="flex items-center gap-2 mb-6">
                           <div
-                            className={`h-1 flex-1 rounded-full transition-colors ${
+                            className={`h-px flex-1 rounded-full transition-all duration-500 ${
                               step >= 1
-                                ? 'bg-[var(--gold)]'
-                                : 'bg-[var(--dashboard-border-subtle)]'
+                                ? 'bg-[var(--gold)]/60'
+                                : 'bg-white/[0.08]'
                             }`}
                           />
                           <div
-                            className={`h-1 flex-1 rounded-full transition-colors ${
+                            className={`h-px flex-1 rounded-full transition-all duration-500 ${
                               step >= 2
-                                ? 'bg-[var(--gold)]'
-                                : 'bg-[var(--dashboard-border-subtle)]'
+                                ? 'bg-[var(--gold)]/60'
+                                : 'bg-white/[0.08]'
                             }`}
                           />
                         </div>
@@ -635,7 +649,7 @@ export default function AddStayDialog({
                                   type="button"
                                   onClick={handleNext}
                                   disabled={!canProceed}
-                                  className="h-11 px-8 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                  className="h-11 px-8 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
                                 >
                                   Continue
                                 </button>
@@ -699,7 +713,7 @@ export default function AddStayDialog({
                                     updateField('notes', e.target.value)
                                   }
                                   rows={4}
-                                  className="w-full px-4 py-3 rounded-lg bg-[var(--dashboard-input-bg)] border border-[var(--dashboard-card-border)] text-[14px] text-[var(--dashboard-text-primary)] placeholder:text-[var(--dashboard-text-faint)] focus:outline-none focus:border-[var(--gold)]/40 focus:ring-1 focus:ring-[var(--gold)]/15 transition-colors resize-none"
+                                  className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[14px] text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.09] transition-all duration-300 resize-none"
                                   placeholder="Any special requests, dietary needs, accessibility requirements…"
                                 />
                               </FormField>
@@ -708,13 +722,13 @@ export default function AddStayDialog({
                                 <button
                                   type="button"
                                   onClick={handleBack}
-                                  className="text-[13px] text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] transition-colors cursor-pointer"
+                                  className="text-[13px] text-white/35 hover:text-white/60 transition-colors cursor-pointer"
                                 >
                                   ← Back
                                 </button>
                                 <button
                                   type="submit"
-                                  className="h-11 px-8 rounded-lg bg-[var(--gold)] text-[var(--background)] text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-colors cursor-pointer"
+                                  className="h-11 px-8 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-all duration-300 cursor-pointer shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
                                 >
                                   Add Stay
                                 </button>
