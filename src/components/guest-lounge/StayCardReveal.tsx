@@ -200,6 +200,8 @@ export default function StayCardReveal({
         setCurations(json.data ?? []);
       })
       .catch(() => {
+        /* Allow re-fetch on next open by clearing the ref on failure. */
+        fetchedForRef.current = null;
         setCurations([]);
       });
   }, [open, stay.id]);
