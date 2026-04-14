@@ -47,7 +47,7 @@ export default function StayContextMeta({
       className="absolute bottom-6 sm:bottom-8 left-0 right-0 flex justify-center px-6"
       {...fadeIn}
     >
-      <div className="flex items-center gap-3 sm:gap-5 text-white/35 text-[11px] sm:text-[12px] tracking-[0.14em] uppercase">
+      <div className="flex items-center gap-3 sm:gap-5 text-white/50 text-[11px] sm:text-[12px] tracking-[0.14em] uppercase backdrop-blur-sm">
         {hotelName && <span>{hotelName}</span>}
 
         {city && hotelName && (
