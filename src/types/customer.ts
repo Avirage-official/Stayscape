@@ -28,6 +28,20 @@ export interface CustomerStay {
     name: string;
     image_url: string | null;
     address: string | null;
+    city: string | null;
+    country: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    region_id: string | null;
+    region?: {
+      id: string;
+      name: string;
+      slug: string;
+      latitude: number;
+      longitude: number;
+      radius_km: number;
+      country_code: string;
+    } | null;
   } | null;
 }
 
