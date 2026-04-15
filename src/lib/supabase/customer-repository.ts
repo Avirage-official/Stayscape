@@ -9,50 +9,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import type { CustomerProfile, CustomerStay } from '@/types/customer';
 
-function mapStayRow(row: Record<string, unknown>): CustomerStay {
-  const propertyRow = row.properties as (Record<string, unknown> & {
-    regions?: Record<string, unknown> | null;
-  }) | null;
-  const regionRow = propertyRow?.regions ?? null;
-
-  const property: CustomerStay['property'] = propertyRow
-    ? {
-        id: propertyRow.id as string,
-        name: propertyRow.name as string,
-        image_url: (propertyRow.image_url as string) ?? null,
-        address: (propertyRow.address as string) ?? null,
-        city: (propertyRow.city as string) ?? null,
-        country: (propertyRow.country as string) ?? null,
-        latitude: (propertyRow.latitude as number) ?? null,
-        longitude: (propertyRow.longitude as number) ?? null,
-        region_id: (propertyRow.region_id as string) ?? null,
-        region: regionRow
-          ? {
-              id: regionRow.id as string,
-              name: regionRow.name as string,
-              slug: regionRow.slug as string,
-              latitude: regionRow.latitude as number,
-              longitude: regionRow.longitude as number,
-              radius_km: regionRow.radius_km as number,
-              country_code: regionRow.country_code as string,
-            }
-          : null,
-      }
-    : null;
-
-  return {
-    id: row.id as string,
-    user_id: row.userid as string,
-    property_id: row.propertyid as string,
-    check_in: row.checkindate as string,
-    check_out: row.checkoutdate as string,
-    status: row.status as string,
-    room_type: (row.roomlabel as string) ?? null,
-    guests: (row.guestcount as number) ?? null,
-    property,
-  };
-}
-
 /**
  * Fetch a customer profile by their auth user id.
  */
@@ -95,10 +51,7 @@ export async function getUpcomingStay(
     .from('stays')
     .select(
       `id, userid, propertyid, checkindate, checkoutdate, status, roomlabel, guestcount,
-       properties:propertyid (
-         id, name, image_url, address, city, country, latitude, longitude, region_id,
-         regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code )
-       )`,
+       properties:propertyid ( id, name, image_url, address )`,
     )
     .eq('userid', userId)
     .gte('checkoutdate', now)
@@ -108,7 +61,21 @@ export async function getUpcomingStay(
 
   if (error || !data) return null;
 
-  return mapStayRow(data as Record<string, unknown>);
+  // Normalize the joined property data
+  const row = data as Record<string, unknown>;
+  const property = row.properties as CustomerStay['property'] ?? null;
+
+  return {
+    id: row.id as string,
+    user_id: row.userid as string,
+    property_id: row.propertyid as string,
+    check_in: row.checkindate as string,
+    check_out: row.checkoutdate as string,
+    status: row.status as string,
+    room_type: (row.roomlabel as string) ?? null,
+    guests: (row.guestcount as number) ?? null,
+    property,
+  };
 }
 
 /**
@@ -126,10 +93,7 @@ export async function getUpcomingStays(
     .from('stays')
     .select(
       `id, userid, propertyid, checkindate, checkoutdate, status, roomlabel, guestcount,
-       properties:propertyid (
-         id, name, image_url, address, city, country, latitude, longitude, region_id,
-         regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code )
-       )`,
+       properties:propertyid ( id, name, image_url, address )`,
     )
     .eq('userid', userId)
     .gte('checkoutdate', now)
@@ -137,5 +101,18 @@ export async function getUpcomingStays(
 
   if (error || !data) return [];
 
-  return (data as Record<string, unknown>[]).map(mapStayRow);
+  return (data as Record<string, unknown>[]).map((row) => {
+    const property = row.properties as CustomerStay['property'] ?? null;
+    return {
+      id: row.id as string,
+      user_id: row.userid as string,
+      property_id: row.propertyid as string,
+      check_in: row.checkindate as string,
+      check_out: row.checkoutdate as string,
+      status: row.status as string,
+      room_type: (row.roomlabel as string) ?? null,
+      guests: (row.guestcount as number) ?? null,
+      property,
+    };
+  });
 }
