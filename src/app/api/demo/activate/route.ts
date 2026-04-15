@@ -19,6 +19,29 @@ import { getCustomerProfile } from '@/lib/supabase/customer-repository';
 import { curateStay } from '@/lib/services/ai/stay-curation';
 import { getDemoBookingPayload } from '@/lib/data/demo-bookings';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { getSupabaseAdmin } from '@/lib/supabase/client';
+
+async function ensureStayLinkedToAuthUser({
+  stayId,
+  processedUserId,
+  authUserId,
+}: {
+  stayId: string;
+  processedUserId: string;
+  authUserId: string;
+}): Promise<void> {
+  if (processedUserId === authUserId) return;
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from('stays')
+    .update({ userid: authUserId })
+    .eq('id', stayId);
+
+  if (error) {
+    throw new Error(`Failed to re-link stay to authenticated user: ${error.message}`);
+  }
+}
 
 export async function POST(request: NextRequest) {
   const rateLimit = await applyRateLimit(request);
@@ -70,6 +93,13 @@ export async function POST(request: NextRequest) {
 
     // Run the real webhook pipeline
     const result = await processWebhookBooking(payload);
+    // Fail hard if we cannot reconcile ownership; otherwise we'd return success
+    // while the dashboard still cannot find the stay for the authenticated user.
+    await ensureStayLinkedToAuthUser({
+      stayId: result.stay_id,
+      processedUserId: result.user_id,
+      authUserId: body.user_id,
+    });
 
     // Fire curation asynchronously (same pattern as /api/pms/webhook)
     if (result.region_id) {
@@ -92,6 +122,7 @@ export async function POST(request: NextRequest) {
       {
         data: {
           ...result,
+          user_id: body.user_id,
           message: 'Demo booking activated successfully',
           curation_triggered: !!result.region_id,
         },
