@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { CustomerStay } from '@/types/customer';
 import type { GuestPreference, PreferenceType } from '@/types/pms';
+import MapPlaceholder from '@/components/MapPlaceholder';
+import { ItineraryProvider } from '@/components/ItineraryContext';
 
 /* ═══════════════════════════════════════════════════════════════
    Helpers
@@ -496,71 +498,10 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
               </Link>
             </div>
 
-            {/* Map placeholder */}
-            <div
-              className="relative h-[220px] sm:h-[260px] flex items-center justify-center overflow-hidden"
-              style={{ background: 'var(--map-bg, #0A0E13)' }}
-            >
-              {/* Grid lines */}
-              <svg
-                className="absolute inset-0 w-full h-full opacity-[0.08]"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-              </svg>
-
-              {/* Center pin */}
-              <div className="relative z-10 flex flex-col items-center gap-2">
-                <div
-                  className="w-10 h-10 rounded-full border-2 flex items-center justify-center"
-                  style={{
-                    background: 'rgba(201,168,76,0.15)',
-                    borderColor: 'rgba(201,168,76,0.4)',
-                    boxShadow: '0 0 24px rgba(201,168,76,0.2)',
-                  }}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-[var(--gold)]"
-                  >
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                </div>
-                {address && (
-                  <span
-                    className="px-3 py-1 rounded-full text-[11px] text-white/70"
-                    style={{
-                      background: 'rgba(255,255,255,0.07)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                    }}
-                  >
-                    {address}
-                  </span>
-                )}
-              </div>
-
-              {/* Ripple effect */}
-              <div
-                className="absolute w-24 h-24 rounded-full animate-ping"
-                style={{
-                  background: 'radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)',
-                  animationDuration: '2.5s',
-                }}
-              />
+            <div className="relative h-[260px] sm:h-[320px] overflow-hidden rounded-b-2xl">
+              <ItineraryProvider>
+                <MapPlaceholder stayId={stay.id} />
+              </ItineraryProvider>
             </div>
           </motion.div>
         </div>
