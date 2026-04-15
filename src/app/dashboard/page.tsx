@@ -13,7 +13,6 @@ import ExpandedMenuOverlay from '@/components/guest-lounge/ExpandedMenuOverlay';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import AddStayDialog from '@/components/guest-lounge/AddStayDialog';
 import DemoBookingActivation from '@/components/guest-lounge/DemoBookingActivation';
-import StayCardReveal from '@/components/guest-lounge/StayCardReveal';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -139,7 +138,6 @@ function GuestArrivalContent({
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [menuOpen, setMenuOpen] = useState(false);
   const [addStayOpen, setAddStayOpen] = useState(false);
-  const [revealStay, setRevealStay] = useState<CustomerStay | null>(null);
 
   /* Kick off initial fetch via a separate lazy initializer.
      All setters are declared above, so no circular reference. */
@@ -331,17 +329,6 @@ function GuestArrivalContent({
         onActivated={refetch}
       />
 
-      {/* Stay card reveal overlay */}
-      {revealStay && (
-        <StayCardReveal
-          stay={revealStay}
-          open={!!revealStay}
-          onClose={() => setRevealStay(null)}
-          onViewBooking={() =>
-            router.push(`/dashboard/stay/${encodeURIComponent(revealStay.id)}`)
-          }
-        />
-      )}
     </>
   );
 }
