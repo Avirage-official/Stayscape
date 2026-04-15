@@ -8,6 +8,8 @@ import type { CustomerStay } from '@/types/customer';
 import type { GuestPreference, PreferenceType } from '@/types/pms';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import { ItineraryProvider } from '@/components/ItineraryContext';
+import { RegionProvider } from '@/lib/context/region-context';
+import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
 
 /* ═══════════════════════════════════════════════════════════════
    Helpers
@@ -309,6 +311,7 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
   const propertyName = stay.property?.name ?? 'Your Stay';
   const address = stay.property?.address ?? null;
   const imageUrl = stay.property?.image_url ?? null;
+  const stayRegion = getStaySelectedRegion(stay);
 
   const statusColors: Record<string, string> = {
     confirmed: 'bg-emerald-400',
@@ -499,9 +502,11 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
             </div>
 
             <div className="relative h-[260px] sm:h-[320px] overflow-hidden rounded-b-2xl">
-              <ItineraryProvider>
-                <MapPlaceholder stayId={stay.id} />
-              </ItineraryProvider>
+              <RegionProvider initialRegion={stayRegion ?? undefined}>
+                <ItineraryProvider>
+                  <MapPlaceholder stayId={stay.id} />
+                </ItineraryProvider>
+              </RegionProvider>
             </div>
           </motion.div>
         </div>

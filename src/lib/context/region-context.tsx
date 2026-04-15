@@ -32,8 +32,16 @@ const STORAGE_KEY = 'stayscape_region';
 
 const RegionContext = createContext<RegionContextValue | null>(null);
 
-export function RegionProvider({ children }: { children: React.ReactNode }) {
+export function RegionProvider({
+  children,
+  initialRegion,
+}: {
+  children: React.ReactNode;
+  initialRegion?: SelectedRegion;
+}) {
+  const isScopedProvider = initialRegion !== undefined;
   const [region, setRegionState] = useState<SelectedRegion | null>(() => {
+    if (isScopedProvider) return initialRegion ?? null;
     if (typeof window === 'undefined') return null;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -45,21 +53,23 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
 
   const setRegion = useCallback((r: SelectedRegion) => {
     setRegionState(r);
+    if (isScopedProvider) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(r));
     } catch {
       // ignore storage errors (e.g. private browsing)
     }
-  }, []);
+  }, [isScopedProvider]);
 
   const clearRegion = useCallback(() => {
     setRegionState(null);
+    if (isScopedProvider) return;
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       // ignore
     }
-  }, []);
+  }, [isScopedProvider]);
 
   return (
     <RegionContext.Provider value={{ region, setRegion, clearRegion }}>
