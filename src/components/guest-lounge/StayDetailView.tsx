@@ -8,6 +8,8 @@ import type { CustomerStay } from '@/types/customer';
 import type { GuestPreference, PreferenceType } from '@/types/pms';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import { ItineraryProvider } from '@/components/ItineraryContext';
+import { useRegion } from '@/lib/context/region-context';
+import { getSelectedRegionFromStay } from './stay-region';
 
 /* ═══════════════════════════════════════════════════════════════
    Helpers
@@ -201,6 +203,7 @@ export interface StayDetailViewProps {
 
 export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
   const prefersReducedMotion = useReducedMotion();
+  const { region, setRegion } = useRegion();
 
   /* ─ Preferences state ─ */
   const [selected, setSelected] = useState<Record<string, Set<string>>>(() => {
@@ -309,6 +312,13 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
   const propertyName = stay.property?.name ?? 'Your Stay';
   const address = stay.property?.address ?? null;
   const imageUrl = stay.property?.image_url ?? null;
+
+  useEffect(() => {
+    const stayRegion = getSelectedRegionFromStay(stay);
+    if (!stayRegion) return;
+    if (region?.id === stayRegion.id) return;
+    setRegion(stayRegion);
+  }, [region?.id, setRegion, stay]);
 
   const statusColors: Record<string, string> = {
     confirmed: 'bg-emerald-400',
