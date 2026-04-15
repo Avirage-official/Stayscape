@@ -21,7 +21,7 @@ import { getDemoBookingPayload } from '@/lib/data/demo-bookings';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 
-export async function ensureStayLinkedToAuthUser({
+async function ensureStayLinkedToAuthUser({
   stayId,
   processedUserId,
   authUserId,
@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
 
     // Run the real webhook pipeline
     const result = await processWebhookBooking(payload);
+    // Fail hard if we cannot reconcile ownership; otherwise we'd return success
+    // while the dashboard still cannot find the stay for the authenticated user.
     await ensureStayLinkedToAuthUser({
       stayId: result.stay_id,
       processedUserId: result.user_id,
