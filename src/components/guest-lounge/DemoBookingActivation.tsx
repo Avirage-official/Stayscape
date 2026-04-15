@@ -11,7 +11,7 @@
  * dark background, gold accents, elegant serif/sans typography.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { DEMO_BOOKING_META } from '@/lib/data/demo-bookings';
 
@@ -36,8 +36,12 @@ export default function DemoBookingActivation({
   const [manualId, setManualId] = useState('');
   const [activationState, setActivationState] = useState<ActivationState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [activatedIds, setActivatedIds] = useState<Set<string>>(() => new Set());
+  const [alreadyActivatedMsg, setAlreadyActivatedMsg] = useState('');
+  const alreadyActivatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveBookingId = manualId.trim() || selectedId;
+  const effectiveBookingIsActivated = activatedIds.has(effectiveBookingId);
 
   const fadeIn = (delay: number) =>
     prefersReducedMotion
@@ -50,6 +54,15 @@ export default function DemoBookingActivation({
 
   async function handleActivate() {
     if (!effectiveBookingId) return;
+    if (activatedIds.has(effectiveBookingId)) {
+      setAlreadyActivatedMsg('This stay is already in your bookings');
+      if (alreadyActivatedTimerRef.current) clearTimeout(alreadyActivatedTimerRef.current);
+      alreadyActivatedTimerRef.current = setTimeout(
+        () => setAlreadyActivatedMsg(''),
+        3000,
+      );
+      return;
+    }
     setActivationState('loading');
     setErrorMsg('');
 
@@ -66,6 +79,11 @@ export default function DemoBookingActivation({
         throw new Error(json.error ?? 'Activation failed');
       }
 
+      setActivatedIds((prev) => {
+        const next = new Set(prev);
+        next.add(effectiveBookingId);
+        return next;
+      });
       setActivationState('success');
 
       // Brief success pause, then trigger dashboard refetch
@@ -77,6 +95,12 @@ export default function DemoBookingActivation({
       setActivationState('error');
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (alreadyActivatedTimerRef.current) clearTimeout(alreadyActivatedTimerRef.current);
+    };
+  }, []);
 
   // ── Loading state ──────────────────────────────────────────────
   if (activationState === 'loading') {
@@ -164,6 +188,7 @@ export default function DemoBookingActivation({
       >
         {DEMO_BOOKING_META.map((hotel) => {
           const isSelected = selectedId === hotel.id && !manualId.trim();
+          const isActivated = activatedIds.has(hotel.id);
           return (
             <button
               key={hotel.id}
@@ -174,6 +199,7 @@ export default function DemoBookingActivation({
               }}
               className={`
                 relative text-left rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer backdrop-blur-xl
+                ${isActivated ? 'opacity-65' : ''}
                 ${
                   isSelected
                     ? 'bg-white/[0.14] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
@@ -184,7 +210,7 @@ export default function DemoBookingActivation({
               {/* Flag + selected indicator */}
               <div className="flex items-start justify-between mb-3">
                 <span className="text-2xl">{hotel.flag}</span>
-                {isSelected && (
+                {(isSelected || isActivated) && (
                   <span className="w-5 h-5 rounded-full bg-[var(--gold)]/20 border border-[var(--gold)]/50 flex items-center justify-center flex-shrink-0">
                     <svg
                       width="10"
@@ -213,6 +239,9 @@ export default function DemoBookingActivation({
               <p className="text-[12px] text-white/55 mb-2">
                 {hotel.city}, {hotel.country}
               </p>
+              {isActivated && (
+                <p className="text-[11px] text-[var(--gold)]/75 mb-2">Already booked</p>
+              )}
               <p className="text-[11px] text-white/45 leading-relaxed">{hotel.tagline}</p>
 
               {/* Booking ID badge */}
@@ -277,12 +306,21 @@ export default function DemoBookingActivation({
           {errorMsg}
         </motion.p>
       )}
+      {alreadyActivatedMsg && (
+        <motion.p
+          className="text-[var(--gold)]/80 text-[13px] mb-4 text-center"
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          {alreadyActivatedMsg}
+        </motion.p>
+      )}
 
       {/* Activate button */}
       <motion.button
         type="button"
         onClick={handleActivate}
-        disabled={!effectiveBookingId}
+        disabled={!effectiveBookingId || effectiveBookingIsActivated}
         className="
           w-full sm:w-auto px-10 py-4 rounded-2xl font-medium text-[14px] tracking-wide
           bg-[var(--gold)] text-black
@@ -294,7 +332,7 @@ export default function DemoBookingActivation({
         "
         {...fadeIn(1.0)}
       >
-        Activate PMS Webhook
+        {effectiveBookingIsActivated ? 'Already booked' : 'Activate PMS Webhook'}
       </motion.button>
 
       {/* Footnote */}

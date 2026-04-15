@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, useCallback } from 'react';
+import { useState, type FormEvent, useCallback, useRef, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { DEMO_BOOKING_META } from '@/lib/data/demo-bookings';
@@ -17,6 +17,7 @@ interface AddStayDialogProps {
   userId?: string;
   /** Called after a successful demo activation so the parent can refetch. */
   onActivated?: () => void;
+  existingBookingRefs?: string[];
 }
 
 interface StayFormData {
@@ -89,17 +90,25 @@ const selectClassName =
 function DemoActivationPanel({
   userId,
   onSuccess,
+  existingBookingRefs = [],
 }: {
   userId: string;
   onSuccess: () => void;
+  existingBookingRefs?: string[];
 }) {
   const prefersReducedMotion = useReducedMotion();
   const [selectedId, setSelectedId] = useState<string>(DEMO_BOOKING_META[0].id);
   const [manualId, setManualId] = useState('');
   const [activationState, setActivationState] = useState<ActivationState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [activatedIds, setActivatedIds] = useState<Set<string>>(
+    () => new Set(existingBookingRefs),
+  );
+  const [alreadyActivatedMsg, setAlreadyActivatedMsg] = useState('');
+  const alreadyActivatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const effectiveBookingId = manualId.trim() || selectedId;
+  const effectiveBookingIsActivated = activatedIds.has(effectiveBookingId);
 
   const fadeIn = (delay: number) =>
     prefersReducedMotion
@@ -112,6 +121,15 @@ function DemoActivationPanel({
 
   async function handleActivate() {
     if (!effectiveBookingId) return;
+    if (activatedIds.has(effectiveBookingId)) {
+      setAlreadyActivatedMsg('This stay is already in your bookings');
+      if (alreadyActivatedTimerRef.current) clearTimeout(alreadyActivatedTimerRef.current);
+      alreadyActivatedTimerRef.current = setTimeout(
+        () => setAlreadyActivatedMsg(''),
+        3000,
+      );
+      return;
+    }
     setActivationState('loading');
     setErrorMsg('');
 
@@ -128,6 +146,11 @@ function DemoActivationPanel({
         throw new Error(json.error ?? 'Activation failed');
       }
 
+      setActivatedIds((prev) => {
+        const next = new Set(prev);
+        next.add(effectiveBookingId);
+        return next;
+      });
       setActivationState('success');
 
       // Brief success pause, then trigger parent refetch and close dialog
@@ -139,6 +162,16 @@ function DemoActivationPanel({
       setActivationState('error');
     }
   }
+
+  useEffect(() => {
+    setActivatedIds((prev) => new Set([...prev, ...existingBookingRefs]));
+  }, [existingBookingRefs]);
+
+  useEffect(() => {
+    return () => {
+      if (alreadyActivatedTimerRef.current) clearTimeout(alreadyActivatedTimerRef.current);
+    };
+  }, []);
 
   // ── Loading state ──
   if (activationState === 'loading') {
@@ -222,6 +255,7 @@ function DemoActivationPanel({
       <motion.div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5" {...fadeIn(0.05)}>
         {DEMO_BOOKING_META.map((hotel) => {
           const isSelected = selectedId === hotel.id && !manualId.trim();
+          const isActivated = activatedIds.has(hotel.id);
           return (
             <button
               key={hotel.id}
@@ -232,6 +266,7 @@ function DemoActivationPanel({
               }}
               className={`
                 relative text-left rounded-2xl p-4 border transition-all duration-300 cursor-pointer backdrop-blur-xl
+                ${isActivated ? 'opacity-70' : ''}
                 ${
                   isSelected
                     ? 'bg-white/[0.14] border-[var(--gold)]/50 shadow-[0_0_24px_rgba(201,168,76,0.12)]'
@@ -241,7 +276,7 @@ function DemoActivationPanel({
             >
               <div className="flex items-start justify-between mb-3">
                 <span className="text-2xl">{hotel.flag}</span>
-                {isSelected && (
+                {(isSelected || isActivated) && (
                   <span className="w-5 h-5 rounded-full bg-[var(--gold)]/20 border border-[var(--gold)]/50 flex items-center justify-center flex-shrink-0">
                     <svg
                       width="10"
@@ -268,6 +303,9 @@ function DemoActivationPanel({
               <p className="text-[11px] text-white/50 mb-2">
                 {hotel.city}, {hotel.country}
               </p>
+              {isActivated && (
+                <p className="text-[11px] text-[var(--gold)]/75 mb-2">Already booked</p>
+              )}
               <div className="pt-2 border-t border-white/[0.10]">
                 <code
                   className={`text-[10px] tracking-wider font-mono transition-colors ${
@@ -329,15 +367,24 @@ function DemoActivationPanel({
           {errorMsg}
         </motion.p>
       )}
+      {alreadyActivatedMsg && (
+        <motion.p
+          className="text-[var(--gold)]/80 text-[13px] text-center"
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          {alreadyActivatedMsg}
+        </motion.p>
+      )}
 
       {/* Activate button */}
       <button
         type="button"
         onClick={handleActivate}
-        disabled={!effectiveBookingId}
+        disabled={!effectiveBookingId || effectiveBookingIsActivated}
         className="w-full h-12 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer shadow-[0_4px_24px_rgba(201,168,76,0.25)] hover:shadow-[0_6px_32px_rgba(201,168,76,0.35)]"
       >
-        Activate PMS Webhook
+        {effectiveBookingIsActivated ? 'Already booked' : 'Activate PMS Webhook'}
       </button>
 
       <p className="text-[11px] text-white/35 text-center leading-relaxed">
@@ -355,6 +402,7 @@ export default function AddStayDialog({
   onOpenChange,
   userId,
   onActivated,
+  existingBookingRefs,
 }: AddStayDialogProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<DialogTab>('demo');
@@ -523,6 +571,7 @@ export default function AddStayDialog({
                         <DemoActivationPanel
                           userId={userId}
                           onSuccess={handleDemoSuccess}
+                          existingBookingRefs={existingBookingRefs}
                         />
                       ) : (
                         <p className="text-[13px] text-white/50 text-center py-8">
@@ -748,4 +797,3 @@ export default function AddStayDialog({
     </Dialog.Root>
   );
 }
-
