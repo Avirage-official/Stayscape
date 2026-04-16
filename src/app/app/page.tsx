@@ -6,7 +6,6 @@ import Header from '@/components/Header';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import CustomerPanel from '@/components/CustomerPanel';
 import TravelAssistantPanel, { TravelAssistantPanelHandle } from '@/components/TravelAssistantPanel';
-import ConciergeSearch from '@/components/ConciergeSearch';
 import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
@@ -54,143 +53,62 @@ export default function Home() {
 
   return (
     <ItineraryProvider>
-    <div className="relative flex flex-col h-screen overflow-hidden">
-      <div
-        className="absolute inset-0 -z-20 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80)',
-          backgroundAttachment: 'fixed',
-        }}
-      />
-      <div className="absolute inset-0 -z-10 bg-[rgba(0,0,0,0.80)]" />
-      <Header />
-
-      {/* ── Tab bar ── */}
-      <div className="flex items-center px-4 sm:px-6 h-[44px] bg-[rgba(8,8,10,0.80)] border-b border-[rgba(255,255,255,0.06)] flex-shrink-0">
-        <div className="w-[80px] flex items-center">
-          <button
-            type="button"
-            onClick={() => router.push('/dashboard')}
-            aria-label="Back to dashboard"
-            className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:text-[var(--dashboard-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 rounded-full"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-            Back
-          </button>
-        </div>
-
-        <div role="tablist" aria-label="Concierge app sections" className="flex-1 flex items-center justify-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('concierge')}
-            id="tab-concierge"
-            role="tab"
-            aria-selected={activeTab === 'concierge'}
-            aria-controls="tabpanel-concierge"
-            className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
-              activeTab === 'concierge'
-                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
-                : 'text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
-            }`}
-          >
-            Concierge
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('discover')}
-            id="tab-discover"
-            role="tab"
-            aria-selected={activeTab === 'discover'}
-            aria-controls="tabpanel-discover"
-            className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
-              activeTab === 'discover'
-                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
-                : 'text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
-            }`}
-          >
-            Discover
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('itinerary')}
-            id="tab-itinerary"
-            role="tab"
-            aria-selected={activeTab === 'itinerary'}
-            aria-controls="tabpanel-itinerary"
-            className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
-              activeTab === 'itinerary'
-                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
-                : 'text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
-            }`}
-          >
-            Itinerary
-          </button>
-        </div>
-
-        <div className="w-[80px]" />
+      {/* Cinematic background */}
+      <div className="fixed inset-0 -z-10">
+        <img
+          src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80&auto=format&fit=crop"
+          alt=""
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/55" />
       </div>
 
-      {/* Mobile sub-nav — Map / Guest / Assistant (only on Concierge tab, only mobile) */}
-      {activeTab === 'concierge' && (
-        <div className="lg:hidden flex items-center justify-around h-[40px] bg-[var(--header-bg)] border-b border-[var(--header-border)] flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => setMobileView('map')}
-            className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 ${
-              mobileView === 'map' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-              <line x1="8" y1="2" x2="8" y2="18" />
-              <line x1="16" y1="6" x2="16" y2="22" />
-            </svg>
-            Map
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView('guest')}
-            className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 ${
-              mobileView === 'guest' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            Guest
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView('assistant')}
-            className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 ${
-              mobileView === 'assistant' ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            Assistant
-          </button>
-        </div>
-      )}
+      <div className="relative flex flex-col h-screen overflow-hidden">
+        <Header />
 
-      <div className="relative flex-1 flex flex-col overflow-hidden">
-        {/* Floating concierge search — only on concierge tab */}
-        {activeTab === 'concierge' && <ConciergeSearch />}
-        <main
-          className="flex flex-col lg:flex-row flex-1 overflow-hidden"
-          role="tabpanel"
-          id={`tabpanel-${activeTab}`}
-          aria-labelledby={`tab-${activeTab}`}
-        >
+        {/* Tab bar */}
+        <div className="flex items-center px-5 sm:px-8 h-[42px] bg-black/50 border-b border-white/10 flex-shrink-0 gap-6">
+          {(['concierge', 'discover', 'itinerary'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`h-full flex items-center text-[11px] tracking-[0.14em] uppercase font-medium border-b-2 transition-colors duration-200 cursor-pointer ${
+                activeTab === tab
+                  ? 'text-[#C9A84C] border-[#C9A84C]'
+                  : 'text-white/45 border-transparent hover:text-white/75'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile sub-nav */}
+        {activeTab === 'concierge' && (
+          <div className="lg:hidden flex items-center justify-around h-[40px] bg-black/50 border-b border-white/10 flex-shrink-0">
+            {(['map', 'guest', 'assistant'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                onClick={() => setMobileView(view)}
+                className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 cursor-pointer uppercase ${
+                  mobileView === view ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/70'
+                }`}
+              >
+                {view.charAt(0).toUpperCase() + view.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Main layout */}
+        <main className="flex flex-1 overflow-hidden">
           {activeTab === 'concierge' ? (
             <ErrorBoundary fallbackTitle="Map & Concierge">
               <>
-                {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
-                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--dashboard-card-border)]/80`}>
+                {/* Left — Guest/Concierge panel */}
+                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[310px] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
                   <CustomerPanel
                     stayId={dashboardData?.upcomingStay?.id}
                     guestName={dashboardData?.profile?.full_name ?? undefined}
@@ -202,7 +120,7 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Center — Map workspace */}
+                {/* Centre — Map */}
                 <div className={`${mobileView === 'map' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 relative min-h-0 flex-col`}>
                   <MapPlaceholder
                     onSelectPlace={handleSelectPlace}
@@ -211,8 +129,8 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Right panel — AI Travel Assistant */}
-                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[360px] w-full flex-col overflow-hidden lg:border-l border-[var(--dashboard-card-border)]/80`}>
+                {/* Right — AI Assistant */}
+                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[350px] flex-col overflow-hidden border-l border-white/10 bg-black/70`}>
                   <TravelAssistantPanel
                     ref={panelRef}
                     selectedPlace={selectedPlace}
@@ -222,20 +140,16 @@ export default function Home() {
               </>
             </ErrorBoundary>
           ) : activeTab === 'discover' ? (
-            /* Discover tab — full remaining width */
             <ErrorBoundary fallbackTitle="Discover">
               <DiscoverPanel stayId={dashboardData?.upcomingStay?.id ?? null} />
             </ErrorBoundary>
           ) : (
-            /* Itinerary tab — full remaining width */
             <ErrorBoundary fallbackTitle="Itinerary">
               <ItineraryPanel />
             </ErrorBoundary>
           )}
         </main>
       </div>
-
-    </div>
     </ItineraryProvider>
   );
 }

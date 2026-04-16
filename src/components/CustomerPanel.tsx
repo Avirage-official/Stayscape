@@ -154,7 +154,7 @@ const defaultSelected: Record<string, Set<string>> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[10px] font-medium text-[var(--dashboard-text-muted)] uppercase tracking-[0.14em] mb-2.5 ml-0.5">
+    <h3 className="text-[9px] font-medium text-white/35 uppercase tracking-[0.18em] mb-2">
       {children}
     </h3>
   );
@@ -173,10 +173,10 @@ function PreferenceChip({
     <button
       type="button"
       onClick={onClick}
-      className={`px-2.5 py-[5px] rounded-[5px] text-[10px] border transition-all duration-200 cursor-pointer ${
+      className={`text-[10px] px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-200 ${
         active
-          ? 'bg-[var(--gold)]/12 border-[var(--gold)]/30 text-[var(--gold)]'
-          : 'bg-[var(--dashboard-card-bg)] border-[var(--dashboard-card-border)] text-[var(--dashboard-text-muted)] hover:border-[var(--border)] hover:text-[var(--dashboard-text-secondary)]'
+          ? 'bg-[#C9A84C]/15 border border-[#C9A84C]/35 text-[#C9A84C]'
+          : 'bg-white/5 border border-white/10 text-white/55 hover:text-white/80 hover:border-white/20'
       }`}
     >
       {label}
@@ -193,13 +193,13 @@ function UpdatedStatus({ visible }: { visible: boolean }) {
           : 'opacity-0 translate-y-1 pointer-events-none'
       }`}
     >
-      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--gold)]/12 border border-[var(--gold)]/25 gold-check-pulse">
+      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#C9A84C]/12 border border-[#C9A84C]/25 gold-check-pulse">
         <svg
           width="8"
           height="8"
           viewBox="0 0 10 10"
           fill="none"
-          className="text-[var(--gold)]"
+          className="text-[#C9A84C]"
         >
           <path
             d="M2 5.5L4 7.5L8 3"
@@ -210,7 +210,7 @@ function UpdatedStatus({ visible }: { visible: boolean }) {
           />
         </svg>
       </span>
-      <span className="text-[10px] text-[var(--gold)]/70 tracking-wide">
+      <span className="text-[#C9A84C]/70 text-[10px] tracking-wide">
         Guest Preferences Updated
       </span>
     </div>
@@ -324,24 +324,20 @@ export default function CustomerPanel({
   const stayTimeline = generateStayTimeline(checkIn, checkOut);
 
   return (
-    <div className="flex h-full overflow-hidden bg-[rgba(10,10,13,0.95)] animate-slide-in-left">
-      {/* Thin vertical accent rail */}
-      <div className="w-[3px] flex-shrink-0 bg-gradient-to-b from-[var(--gold)]/20 via-[var(--gold)]/8 to-transparent" />
-
-      {/* Main dossier content */}
+    <div className="flex flex-col h-full overflow-hidden animate-slide-in-left">
       <div className="flex-1 flex flex-col overflow-y-auto scrollbar-hide">
         {/* ── Room & Stay Summary ── */}
-        <div className="px-5 pt-5 pb-4 border-b border-[rgba(255,255,255,0.06)]">
+        <div className="px-4 pt-5 pb-4 border-b border-white/8">
           {/* Guest identity */}
           <div className="flex items-center space-x-3 mb-3">
-            <div className="w-11 h-11 rounded-[7px] bg-[var(--gold)]/10 border border-[var(--gold)]/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-[13px] font-medium text-[var(--gold)]">{avatarInitials}</span>
+            <div className="w-10 h-10 rounded-xl bg-[#C9A84C]/10 border border-[#C9A84C]/25 flex items-center justify-center flex-shrink-0">
+              <span className="text-[12px] font-medium text-[#C9A84C]">{avatarInitials}</span>
             </div>
             <div className="min-w-0">
-              <h2 className="text-[14px] font-medium text-[var(--dashboard-text-primary)] tracking-wide">
+              <h2 className="text-[14px] font-medium text-white tracking-wide">
                 {displayTitle ? `${displayTitle} ${displayName ?? 'Guest'}` : (displayName ?? 'Valued Guest')}
               </h2>
-              <p className="text-[10px] text-[var(--dashboard-text-muted)] mt-0.5 tracking-wide">
+              <p className="text-[10px] text-white/45 mt-0.5 tracking-wide">
                 {[displayRoomType, displayGuests != null ? `${displayGuests} guest${displayGuests !== 1 ? 's' : ''}` : null]
                   .filter(Boolean)
                   .join(' · ') || 'Room details unavailable'}
@@ -351,44 +347,44 @@ export default function CustomerPanel({
 
           {/* Status & room */}
           <div className="flex items-center space-x-2.5 mb-4">
-            <span className="inline-flex items-center px-2 py-[3px] rounded-[4px] text-[9px] font-medium bg-emerald-500/8 text-emerald-400 border border-emerald-500/15 tracking-wide uppercase">
+            <span className="inline-flex items-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] px-2 py-0.5 rounded-md uppercase tracking-wider">
               Checked In
             </span>
             {displayRoom && (
-              <span className="text-[10px] text-[var(--dashboard-text-secondary)]">{displayRoom}</span>
+              <span className="text-[10px] text-white/60">{displayRoom}</span>
             )}
           </div>
 
           {/* Dates */}
-          <div className="bg-[var(--dashboard-card-bg)] rounded-[6px] p-3.5 border border-[var(--dashboard-card-border)]">
+          <div className="bg-white/5 rounded-xl p-3.5 border border-white/8">
             <div className="flex items-center justify-between text-[11px]">
               <div>
-                <p className="text-[9px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-0.5">Arrival</p>
-                <p className="text-[var(--dashboard-text-secondary)]">{displayCheckIn ?? '—'}</p>
+                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-0.5">Arrival</p>
+                <p className="text-[11px] text-white/70">{displayCheckIn ?? '—'}</p>
               </div>
               <div className="flex items-center px-3">
-                <div className="w-6 h-px bg-[var(--border)]" />
-                <div className="w-1 h-1 rounded-full bg-[var(--gold)]/40 mx-1" />
-                <div className="w-6 h-px bg-[var(--border)]" />
+                <div className="w-6 h-px bg-white/15" />
+                <div className="w-1 h-1 rounded-full bg-[#C9A84C]/30 mx-1" />
+                <div className="w-6 h-px bg-white/15" />
               </div>
               <div className="text-right">
-                <p className="text-[9px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-0.5">Departure</p>
-                <p className="text-[var(--dashboard-text-secondary)]">{displayCheckOut ?? '—'}</p>
+                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-0.5">Departure</p>
+                <p className="text-[11px] text-white/70">{displayCheckOut ?? '—'}</p>
               </div>
             </div>
 
             {/* Arrival / Departure notes */}
             {(displayArrivalNote || displayDepartureNote) && (
-              <div className="mt-3 pt-2.5 border-t border-[var(--dashboard-card-border)] space-y-1.5">
+              <div className="mt-3 pt-2.5 border-t border-white/8 space-y-1.5">
                 {displayArrivalNote && (
-                  <p className="text-[10px] text-[var(--dashboard-text-muted)] leading-snug">
-                    <span className="text-[var(--gold)]/50 mr-1">↓</span>
+                  <p className="text-[10px] text-white/55 leading-snug">
+                    <span className="text-[#C9A84C]/50 mr-1">↓</span>
                     {displayArrivalNote}
                   </p>
                 )}
                 {displayDepartureNote && (
-                  <p className="text-[10px] text-[var(--dashboard-text-muted)] leading-snug">
-                    <span className="text-[var(--gold)]/50 mr-1">↑</span>
+                  <p className="text-[10px] text-white/55 leading-snug">
+                    <span className="text-[#C9A84C]/50 mr-1">↑</span>
                     {displayDepartureNote}
                   </p>
                 )}
@@ -397,7 +393,7 @@ export default function CustomerPanel({
           </div>
         </div>
 
-        <div className="px-5 py-4 space-y-4 flex-1">
+        <div className="px-4 py-4 space-y-5 flex-1">
           {/* ── Housekeeping Schedule ── */}
           <div className="animate-fade-in-up stagger-1">
             <SectionLabel>Housekeeping Schedule</SectionLabel>
@@ -407,21 +403,21 @@ export default function CustomerPanel({
                 return (
                 <div
                   key={d.day}
-                  className={`flex-1 rounded-[5px] py-2 text-center border ${
+                  className={`flex-1 rounded-lg py-2 text-center border ${
                     d.clean
-                      ? 'bg-[var(--dashboard-card-bg)] border-[var(--dashboard-card-border)]'
-                      : 'bg-[var(--dashboard-card-bg)]/50 border-[rgba(255,255,255,0.03)]'
+                      ? 'bg-white/5 border-white/8'
+                      : 'bg-transparent border-white/5 opacity-40'
                   }`}
                 >
-                  <p className="text-[8px] text-[var(--dashboard-text-faint)] uppercase tracking-wider leading-none mb-1">
+                  <p className="text-[8px] text-white/30 uppercase tracking-wider leading-none mb-1">
                     {dayName}
                   </p>
-                  <p className="text-[9px] text-[var(--dashboard-text-muted)] leading-none mb-1.5">
+                  <p className="text-[9px] text-white/50 leading-none mb-1.5">
                     {dayNum}
                   </p>
                   <span
                     className={`text-[10px] ${
-                      d.clean ? 'text-emerald-400/80' : 'text-[var(--dashboard-text-faint)]'
+                      d.clean ? 'text-emerald-400/70' : 'text-white/30'
                     }`}
                   >
                     {d.clean ? '✓' : '—'}
@@ -459,20 +455,20 @@ export default function CustomerPanel({
               {stayTimeline.map((entry, i) => (
                 <div
                   key={entry.day}
-                  className={`rounded-[5px] px-2.5 py-2 border ${
+                  className={`rounded-xl px-2.5 py-2 border ${
                     i < 2
-                      ? 'bg-[var(--gold)]/5 border-[var(--gold)]/15'
-                      : 'bg-[var(--dashboard-card-bg)] border-[var(--dashboard-card-border)]'
+                      ? 'bg-[#C9A84C]/8 border-[#C9A84C]/15'
+                      : 'bg-white/[0.04] border-white/8'
                   }`}
                 >
                   <p
                     className={`text-[9px] font-medium uppercase tracking-wider mb-0.5 ${
-                      i < 2 ? 'text-[var(--gold)]/70' : 'text-[var(--dashboard-text-faint)]'
+                      i < 2 ? 'text-[#C9A84C]/60' : 'text-white/30'
                     }`}
                   >
                     {entry.day}
                   </p>
-                  <p className="text-[10px] text-[var(--dashboard-text-secondary)] leading-snug">{entry.label}</p>
+                  <p className="text-white/60 text-[10px] leading-snug">{entry.label}</p>
                 </div>
               ))}
             </div>
@@ -480,7 +476,7 @@ export default function CustomerPanel({
         </div>
 
         {/* ── Updated status ── */}
-        <div className="px-5 pb-3 flex-shrink-0">
+        <div className="px-4 pb-3 flex-shrink-0">
           <UpdatedStatus visible={showUpdated} />
         </div>
       </div>
