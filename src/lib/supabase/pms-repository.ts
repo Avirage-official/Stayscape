@@ -19,6 +19,7 @@ import type { PmsBookingPayload, PmsWebhookResult } from '@/types/pms';
  */
 export async function upsertGuestUser(
   guest: PmsBookingPayload['guest'],
+  authUserId?: string,
 ): Promise<string> {
   const supabase = getSupabaseAdmin();
 
@@ -31,11 +32,11 @@ export async function upsertGuestUser(
 
   if (existing) return existing.id as string;
 
-  // Create new user with a generated UUID
+  // Create new user with provided auth ID when available
   const { data: created, error } = await supabase
     .from('users')
     .insert({
-      id: crypto.randomUUID(),
+      id: authUserId ?? crypto.randomUUID(),
       email: guest.email,
       firstname: guest.first_name,
       lastname: guest.last_name,
@@ -186,9 +187,10 @@ export async function createStayFromBooking(
  */
 export async function processWebhookBooking(
   payload: PmsBookingPayload,
+  authUserId?: string,
 ): Promise<PmsWebhookResult> {
   // Step 1: Upsert guest user
-  const userId = await upsertGuestUser(payload.guest);
+  const userId = await upsertGuestUser(payload.guest, authUserId);
 
   // Step 2: Upsert property
   const { id: propertyId, isNew: isNewProperty } = await upsertProperty(payload.property);

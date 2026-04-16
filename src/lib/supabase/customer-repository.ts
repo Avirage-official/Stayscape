@@ -9,6 +9,30 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import type { CustomerProfile, CustomerStay } from '@/types/customer';
 
+async function resolveUserId(authId: string): Promise<string | null> {
+  const supabase = getSupabaseAdmin();
+
+  const { data: direct } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', authId)
+    .maybeSingle();
+
+  if (direct) return direct.id as string;
+
+  const { data: authData } = await supabase.auth.admin.getUserById(authId);
+  const email = authData?.user?.email;
+  if (!email) return null;
+
+  const { data: byEmail } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  return byEmail ? (byEmail.id as string) : null;
+}
+
 function mapStayRow(row: Record<string, unknown>): CustomerStay {
   const propertyRaw = row.properties as Record<string, unknown> | null;
   const regionRaw = propertyRaw?.regions as Record<string, unknown> | null;
@@ -56,12 +80,15 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
 export async function getCustomerProfile(
   userId: string,
 ): Promise<CustomerProfile | null> {
+  const effectiveId = await resolveUserId(userId);
+  if (!effectiveId) return null;
+
   const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('users')
     .select('id, email, firstname, lastname, phone, createdat')
-    .eq('id', userId)
+    .eq('id', effectiveId)
     .single();
 
   if (error || !data) return null;
@@ -84,6 +111,9 @@ export async function getCustomerProfile(
 export async function getUpcomingStay(
   userId: string,
 ): Promise<CustomerStay | null> {
+  const effectiveId = await resolveUserId(userId);
+  if (!effectiveId) return null;
+
   const supabase = getSupabaseAdmin();
 
   const now = new Date().toISOString();
@@ -95,7 +125,7 @@ export async function getUpcomingStay(
        properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id,
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`,
     )
-    .eq('userid', userId)
+    .eq('userid', effectiveId)
     .gte('checkoutdate', now)
     .order('checkindate', { ascending: true })
     .limit(1)
@@ -113,6 +143,9 @@ export async function getUpcomingStay(
 export async function getUpcomingStays(
   userId: string,
 ): Promise<CustomerStay[]> {
+  const effectiveId = await resolveUserId(userId);
+  if (!effectiveId) return [];
+
   const supabase = getSupabaseAdmin();
 
   const now = new Date().toISOString();
@@ -124,7 +157,7 @@ export async function getUpcomingStays(
        properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id,
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`,
     )
-    .eq('userid', userId)
+    .eq('userid', effectiveId)
     .gte('checkoutdate', now)
     .order('checkindate', { ascending: true });
 
