@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
     // Build a PMS-compatible payload from the manual form data
-    const pmsPropertyId = `manual-${body.city.toLowerCase().replace(/\s+/g, '-')}-${crypto.randomUUID()}`;
+    const pmsPropertyId = `manual-${crypto.randomUUID()}`;
     const bookingRef = body.booking_reference || `MANUAL-${crypto.randomUUID()}`;
 
     const payload: PmsBookingPayload = {
