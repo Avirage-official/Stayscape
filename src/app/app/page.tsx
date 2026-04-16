@@ -10,7 +10,6 @@ import ConciergeSearch from '@/components/ConciergeSearch';
 import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
-import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { MapPlace } from '@/types';
 import { useRegion } from '@/lib/context/region-context';
@@ -73,7 +72,7 @@ export default function Home() {
             type="button"
             onClick={() => router.push('/dashboard')}
             aria-label="Back to dashboard"
-            className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 rounded-full"
+            className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:text-[var(--dashboard-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 rounded-full"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m15 18-6-6 6-6" />
@@ -92,8 +91,8 @@ export default function Home() {
             aria-controls="tabpanel-concierge"
             className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
               activeTab === 'concierge'
-                ? 'bg-[var(--gold)]/12 text-[var(--gold)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)]'
+                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
+                : 'text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
             }`}
           >
             Concierge
@@ -107,8 +106,8 @@ export default function Home() {
             aria-controls="tabpanel-discover"
             className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
               activeTab === 'discover'
-                ? 'bg-[var(--gold)]/12 text-[var(--gold)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)]'
+                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
+                : 'text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
             }`}
           >
             Discover
@@ -122,8 +121,8 @@ export default function Home() {
             aria-controls="tabpanel-itinerary"
             className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
               activeTab === 'itinerary'
-                ? 'bg-[var(--gold)]/12 text-[var(--gold)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)]'
+                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
+                : 'text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
             }`}
           >
             Itinerary
@@ -191,7 +190,7 @@ export default function Home() {
             <ErrorBoundary fallbackTitle="Map & Concierge">
               <>
                 {/* Left panel — Customer dossier (desktop: always visible, mobile: shown when mobileView=guest) */}
-                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--charcoal-light)]/80`}>
+                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[320px] w-full flex-col overflow-hidden lg:border-r border-[var(--dashboard-card-border)]/80`}>
                   <CustomerPanel
                     stayId={dashboardData?.upcomingStay?.id}
                     guestName={dashboardData?.profile?.full_name ?? undefined}
@@ -213,7 +212,7 @@ export default function Home() {
                 </div>
 
                 {/* Right panel — AI Travel Assistant */}
-                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[360px] w-full flex-col overflow-hidden lg:border-l border-[var(--charcoal-light)]/80`}>
+                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-initial lg:w-[360px] w-full flex-col overflow-hidden lg:border-l border-[var(--dashboard-card-border)]/80`}>
                   <TravelAssistantPanel
                     ref={panelRef}
                     selectedPlace={selectedPlace}
@@ -234,7 +233,6 @@ export default function Home() {
             </ErrorBoundary>
           )}
         </main>
-        <Footer />
       </div>
 
     </div>
