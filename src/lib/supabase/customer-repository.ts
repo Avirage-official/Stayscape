@@ -33,6 +33,11 @@ async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | 
   return byEmail ? (byEmail.id as string) : null;
 }
 
+/** Shared SELECT clause for stay queries (joins properties → regions). */
+const STAY_SELECT = `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount,
+       properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id,
+       regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`;
+
 function mapStayRow(row: Record<string, unknown>): CustomerStay {
   const propertyRaw = row.properties as Record<string, unknown> | null;
   const regionRaw = propertyRaw?.regions as Record<string, unknown> | null;
@@ -121,11 +126,7 @@ export async function getUpcomingStay(
 
   const { data, error } = await supabase
     .from('stays')
-    .select(
-      `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount,
-       properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id,
-       regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`,
-    )
+    .select(STAY_SELECT)
     .eq('userid', effectiveId)
     .gte('checkoutdate', today)
     .order('checkindate', { ascending: true })
@@ -158,11 +159,7 @@ export async function getUpcomingStays(
 
   const { data, error } = await supabase
     .from('stays')
-    .select(
-      `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount,
-       properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id,
-       regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`,
-    )
+    .select(STAY_SELECT)
     .eq('userid', effectiveId)
     .gte('checkoutdate', today)
     .order('checkindate', { ascending: true });
@@ -174,4 +171,34 @@ export async function getUpcomingStays(
   if (!data) return [];
 
   return (data as Record<string, unknown>[]).map(mapStayRow);
+}
+
+/**
+ * Fetch a single stay by its ID.
+ * Verifies that the stay belongs to the given user for access control.
+ * Returns null if the stay doesn't exist or doesn't belong to the user.
+ */
+export async function getStayById(
+  userId: string,
+  stayId: string,
+): Promise<CustomerStay | null> {
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
+  if (!effectiveId) return null;
+
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from('stays')
+    .select(STAY_SELECT)
+    .eq('id', stayId)
+    .eq('userid', effectiveId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getStayById] DB error:', error.message);
+    return null;
+  }
+  if (!data) return null;
+
+  return mapStayRow(data as Record<string, unknown>);
 }

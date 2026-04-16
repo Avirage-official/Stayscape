@@ -56,6 +56,7 @@ function StayCard({ stay, onClick }: { stay: CustomerStay; onClick: () => void }
 
   const statusColors: Record<string, string> = {
     confirmed: 'bg-emerald-500',
+    active: 'bg-blue-500',
     pending: 'bg-amber-400',
     cancelled: 'bg-red-500',
   };
