@@ -7,6 +7,8 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { DEMO_BOOKING_META } from '@/lib/data/demo-bookings';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
+const DUPLICATE_REDIRECT_DELAY_MS = 700;
+const SUCCESS_REDIRECT_DELAY_MS = 1500;
 
 type DialogTab = 'demo' | 'manual';
 type ActivationState = 'idle' | 'loading' | 'success' | 'error';
@@ -174,7 +176,7 @@ function DemoActivationPanel({
         if (stayId) {
           router.push(`/dashboard/stay/${encodeURIComponent(stayId)}`);
         }
-      }, isDuplicate ? 700 : 1500);
+      }, isDuplicate ? DUPLICATE_REDIRECT_DELAY_MS : SUCCESS_REDIRECT_DELAY_MS);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setActivationState('error');

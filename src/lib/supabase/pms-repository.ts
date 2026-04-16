@@ -164,7 +164,8 @@ export async function createStayFromBooking(
     };
   }
 
-  // Fallback duplicate check for the same user/property/period
+  // Fallback duplicate check for the same user/property/period.
+  // This only runs when booking_reference did not match an existing stay.
   const { data: existingByPeriod } = await supabase
     .from('stays')
     .select('id')

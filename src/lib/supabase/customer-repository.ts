@@ -305,7 +305,10 @@ export async function getDashboardBundle(userId: string): Promise<DashboardData 
     id: profileRow.id as string,
     email: profileRow.email as string,
     full_name:
-      [profileRow.firstname, profileRow.lastname].filter(v => v != null).join(' ').trim() || null,
+      [profileRow.firstname, profileRow.lastname]
+        .filter(v => v !== null && v !== undefined)
+        .join(' ')
+        .trim() || null,
     avatar_url: null,
     phone: (profileRow.phone as string) ?? null,
     created_at: profileRow.createdat as string,
@@ -328,10 +331,13 @@ export async function getDashboardBundle(userId: string): Promise<DashboardData 
     }
   }
 
+  // Keep past stays most-recent-first for dashboard history UX.
   pastStays.sort((a, b) => b.check_out.localeCompare(a.check_out));
 
   return {
     profile,
+    // Keep backward compatibility: dashboard consumers expect upcomingStay to
+    // represent the next actionable stay, preferring current over future stays.
     upcomingStay: currentStays[0] ?? upcomingStays[0] ?? null,
     currentStays,
     upcomingStays,
