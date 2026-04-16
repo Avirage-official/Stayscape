@@ -224,11 +224,9 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
           aria-label="Search results"
           className="mb-1.5 rounded-[9px] overflow-hidden overflow-y-auto max-h-[220px]"
           style={{
-            background: 'var(--card-bg)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            background: 'var(--dashboard-card-bg)',
             border: '1px solid var(--card-border)',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+            boxShadow: '0 10px 32px rgba(0,0,0,0.55)',
           }}
         >
           {results.map((result, i) => {
@@ -338,11 +336,9 @@ export default function MapSearch({ onSelect, onClear }: MapSearchProps) {
       <div
         className="flex items-center gap-2 rounded-[9px] px-3 py-2"
         style={{
-          background: 'var(--card-bg)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          background: 'var(--dashboard-card-bg)',
           border: `1px solid ${isOpen || query ? `${MARKER_COLOR_GOLD}40` : 'var(--card-border)'}`,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           transition: 'border-color 0.2s',
         }}
       >

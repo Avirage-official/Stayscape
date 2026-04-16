@@ -90,9 +90,9 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[var(--panel-bg)] animate-slide-in-right">
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--dashboard-bg)] animate-slide-in-right">
         {/* Panel Header */}
-        <div className="px-4 pt-4 pb-3.5 border-b border-[var(--charcoal-light)] flex-shrink-0">
+        <div className="px-4 pt-4 pb-3.5 border-b border-[var(--dashboard-card-border)] flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-5 h-5 rounded-[4px] bg-[var(--gold)]/8 border border-[var(--gold)]/15 flex items-center justify-center">
@@ -136,7 +136,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                   <button
                     key={suggestion}
                     onClick={() => handleSend(suggestion)}
-                    className="text-[10px] text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[5px] px-2.5 py-[5px] hover:border-[var(--gold)]/20 hover:text-[var(--text-primary)] transition-all duration-200 tracking-wide"
+                    className="text-[10px] text-[var(--text-secondary)] bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-[5px] px-2.5 py-[5px] hover:border-[var(--gold)]/20 hover:text-[var(--text-primary)] transition-all duration-200 tracking-wide"
                   >
                     {suggestion}
                   </button>
@@ -168,8 +168,8 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
         </div>
 
         {/* Chat input — always visible at bottom */}
-        <div className="px-4 py-3 border-t border-[var(--charcoal-light)] flex-shrink-0">
-          <div className="flex items-center space-x-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[6px] px-3 py-2.5 focus-within:border-[var(--gold)]/20 transition-colors duration-200">
+        <div className="px-4 py-3 border-t border-[var(--dashboard-card-border)] flex-shrink-0">
+          <div className="flex items-center space-x-2 bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-[6px] px-3 py-2.5 focus-within:border-[var(--gold)]/20 transition-colors duration-200">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
@@ -196,4 +196,3 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
 });
 
 export default TravelAssistantPanel;
-

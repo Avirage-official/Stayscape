@@ -705,7 +705,7 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId 
             '    <span style="position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid rgba(201,168,76,0.28);"></span>',
             '    <div style="position:relative;width:13px;height:13px;border-radius:50%;background:#C9A84C;box-shadow:0 0 14px rgba(201,168,76,0.6),0 0 5px rgba(201,168,76,0.9);z-index:1;"></div>',
             '  </div>',
-            '  <div style="background:rgba(12,15,19,0.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(201,168,76,0.2);border-radius:5px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">',
+            '  <div style="background:#141418;border:1px solid rgba(201,168,76,0.2);border-radius:5px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">',
                 `    <span style="font-size:10px;font-family:system-ui,sans-serif;color:#E8E6E1;letter-spacing:0.04em;font-weight:500;">${regionLabel}</span>`,
             '  </div>',
             '</div>',
