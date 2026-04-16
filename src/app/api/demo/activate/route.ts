@@ -20,27 +20,51 @@ import { curateStay } from '@/lib/services/ai/stay-curation';
 import { getDemoBookingPayload } from '@/lib/data/demo-bookings';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import type { CustomerProfile } from '@/types/customer';
 
-async function ensureStayLinkedToAuthUser({
-  stayId,
-  processedUserId,
-  authUserId,
-}: {
-  stayId: string;
-  processedUserId: string;
-  authUserId: string;
-}): Promise<void> {
-  if (processedUserId === authUserId) return;
+async function ensureUserProfileExists(authUserId: string): Promise<CustomerProfile | null> {
+  const existingProfile = await getCustomerProfile(authUserId);
+  if (existingProfile) return existingProfile;
 
   const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from('stays')
-    .update({ userid: authUserId })
-    .eq('id', stayId);
+  const { data: authData } = await supabase.auth.admin.getUserById(authUserId);
+  const authUser = authData?.user;
 
-  if (error) {
-    throw new Error(`Failed to re-link stay to authenticated user: ${error.message}`);
+  if (!authUser?.email) return null;
+
+  const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+  const metadataFirstName =
+    typeof metadata.first_name === 'string' ? metadata.first_name : null;
+  const metadataLastName =
+    typeof metadata.last_name === 'string' ? metadata.last_name : null;
+  const metadataFullName =
+    typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
+  const fullNameParts = metadataFullName ? metadataFullName.split(/\s+/) : [];
+  const firstName = metadataFirstName ?? fullNameParts[0] ?? null;
+  const lastName =
+    metadataLastName ?? (fullNameParts.length > 1 ? fullNameParts.slice(1).join(' ') : null);
+
+  const { data: byEmail } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', authUser.email)
+    .maybeSingle();
+
+  if (!byEmail) {
+    const { error } = await supabase.from('users').insert({
+      id: authUserId,
+      email: authUser.email,
+      firstname: firstName,
+      lastname: lastName,
+      phone: null,
+    });
+
+    if (error) {
+      throw new Error(`Failed to create user profile: ${error.message}`);
+    }
   }
+
+  return getCustomerProfile(authUserId);
 }
 
 export async function POST(request: NextRequest) {
@@ -63,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the authenticated user's profile to get name details
-    const profile = await getCustomerProfile(body.user_id);
+    const profile = await ensureUserProfileExists(body.user_id);
     if (!profile) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -92,14 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Run the real webhook pipeline
-    const result = await processWebhookBooking(payload);
-    // Fail hard if we cannot reconcile ownership; otherwise we'd return success
-    // while the dashboard still cannot find the stay for the authenticated user.
-    await ensureStayLinkedToAuthUser({
-      stayId: result.stay_id,
-      processedUserId: result.user_id,
-      authUserId: body.user_id,
-    });
+    const result = await processWebhookBooking(payload, body.user_id);
 
     // Fire curation asynchronously (same pattern as /api/pms/webhook)
     if (result.region_id) {
@@ -122,7 +139,6 @@ export async function POST(request: NextRequest) {
       {
         data: {
           ...result,
-          user_id: body.user_id,
           message: 'Demo booking activated successfully',
           curation_triggered: !!result.region_id,
         },
