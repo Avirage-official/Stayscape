@@ -142,7 +142,11 @@ export async function createStayFromBooking(
   userId: string,
   propertyId: string,
   booking: PmsBookingPayload,
-): Promise<string> {
+): Promise<{
+  id: string;
+  existed: boolean;
+  duplicateReason: 'booking_reference' | 'property_period' | null;
+}> {
   const supabase = getSupabaseAdmin();
 
   // Check for duplicate booking reference
@@ -152,7 +156,31 @@ export async function createStayFromBooking(
     .eq('booking_reference', booking.booking_reference)
     .maybeSingle();
 
-  if (existing) return existing.id as string;
+  if (existing) {
+    return {
+      id: existing.id as string,
+      existed: true,
+      duplicateReason: 'booking_reference',
+    };
+  }
+
+  // Fallback duplicate check for the same user/property/period
+  const { data: existingByPeriod } = await supabase
+    .from('stays')
+    .select('id')
+    .eq('userid', userId)
+    .eq('propertyid', propertyId)
+    .eq('checkindate', booking.check_in)
+    .eq('checkoutdate', booking.check_out)
+    .maybeSingle();
+
+  if (existingByPeriod) {
+    return {
+      id: existingByPeriod.id as string,
+      existed: true,
+      duplicateReason: 'property_period',
+    };
+  }
 
   const insertData: Record<string, unknown> = {
     userid: userId,
@@ -178,7 +206,11 @@ export async function createStayFromBooking(
     throw new Error(`Failed to create stay: ${error?.message ?? 'Unknown error'}`);
   }
 
-  return created.id as string;
+  return {
+    id: created.id as string,
+    existed: false,
+    duplicateReason: null,
+  };
 }
 
 /**
@@ -214,7 +246,7 @@ export async function processWebhookBooking(
   }
 
   // Step 4: Create stay
-  const stayId = await createStayFromBooking(userId, propertyId, payload);
+  const stayResult = await createStayFromBooking(userId, propertyId, payload);
 
   // Step 5: Auto-fetch property image if newly created and no image provided (fire-and-forget)
   if (isNewProperty && !payload.property.image_url) {
@@ -233,10 +265,12 @@ export async function processWebhookBooking(
   return {
     user_id: userId,
     property_id: propertyId,
-    stay_id: stayId,
+    stay_id: stayResult.id,
     booking_reference: payload.booking_reference,
     region_id: regionId,
     curation_triggered: false,
+    stay_existed: stayResult.existed,
+    duplicate_reason: stayResult.duplicateReason,
   };
 }
 

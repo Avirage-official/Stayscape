@@ -183,4 +183,30 @@ describe('POST /api/demo/activate', () => {
     expect(response.status).toBe(201);
     expect(mocks.usersInsert).not.toHaveBeenCalled();
   });
+
+  it('returns existing stay info for duplicate demo activations', async () => {
+    mocks.processWebhookBooking.mockResolvedValue({
+      user_id: 'auth-user',
+      property_id: 'property-1',
+      stay_id: 'stay-existing',
+      booking_reference: 'BR-123',
+      region_id: 'region-1',
+      curation_triggered: false,
+      stay_existed: true,
+      duplicate_reason: 'booking_reference',
+    });
+
+    const request = new Request('http://localhost/api/demo/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_id: 'demo-1', user_id: 'auth-user' }),
+    });
+
+    const response = await POST(request as never);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect((body as { data?: { redirect_stay_id?: string } }).data?.redirect_stay_id).toBe('stay-existing');
+    expect(mocks.curateStay).not.toHaveBeenCalled();
+  });
 });

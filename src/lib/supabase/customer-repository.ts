@@ -7,7 +7,7 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/client';
-import type { CustomerProfile, CustomerStay } from '@/types/customer';
+import type { CustomerProfile, CustomerStay, DashboardData } from '@/types/customer';
 
 async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | null> {
   const supabase = getSupabaseAdmin();
@@ -266,4 +266,75 @@ export async function getStayById(
   if (!data) return null;
 
   return mapStayRow(data as Record<string, unknown>);
+}
+
+/**
+ * Fetches the entire dashboard payload in one bundled read path:
+ * - resolves effective user id once
+ * - loads profile once
+ * - loads all stays once, then partitions in memory
+ */
+export async function getDashboardBundle(userId: string): Promise<DashboardData | null> {
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
+  if (!effectiveId) return null;
+
+  const supabase = getSupabaseAdmin();
+  const today = new Date().toISOString().split('T')[0];
+
+  const [{ data: profileData, error: profileError }, { data: staysData, error: staysError }] =
+    await Promise.all([
+      supabase
+        .from('users')
+        .select('id, email, firstname, lastname, phone, createdat')
+        .eq('id', effectiveId)
+        .single(),
+      supabase
+        .from('stays')
+        .select(STAY_SELECT)
+        .eq('userid', effectiveId)
+        .order('checkindate', { ascending: true }),
+    ]);
+
+  if (profileError || !profileData) return null;
+  if (staysError) {
+    throw new Error(staysError.message);
+  }
+
+  const profileRow = profileData as Record<string, unknown>;
+  const profile: CustomerProfile = {
+    id: profileRow.id as string,
+    email: profileRow.email as string,
+    full_name:
+      [profileRow.firstname, profileRow.lastname].filter(v => v != null).join(' ').trim() || null,
+    avatar_url: null,
+    phone: (profileRow.phone as string) ?? null,
+    created_at: profileRow.createdat as string,
+  };
+
+  const allStays = (staysData ?? []) as Record<string, unknown>[];
+  const mappedStays = allStays.map(mapStayRow);
+
+  const currentStays: CustomerStay[] = [];
+  const upcomingStays: CustomerStay[] = [];
+  const pastStays: CustomerStay[] = [];
+
+  for (const stay of mappedStays) {
+    if (stay.check_in <= today && stay.check_out >= today) {
+      currentStays.push(stay);
+    } else if (stay.check_in > today) {
+      upcomingStays.push(stay);
+    } else {
+      pastStays.push(stay);
+    }
+  }
+
+  pastStays.sort((a, b) => b.check_out.localeCompare(a.check_out));
+
+  return {
+    profile,
+    upcomingStay: currentStays[0] ?? upcomingStays[0] ?? null,
+    currentStays,
+    upcomingStays,
+    pastStays,
+  };
 }
