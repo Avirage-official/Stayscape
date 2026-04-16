@@ -83,17 +83,17 @@ function EditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[380px] sm:max-w-[420px] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-[380px] sm:max-w-[420px] rounded-2xl bg-black/90 border-white/10 p-0 overflow-hidden gap-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
         <div className="p-5 sm:p-6">
           {/* Place reminder */}
           <div className="flex items-center gap-3 mb-4">
             <div
-              className="w-11 h-11 rounded-xl bg-cover bg-center flex-shrink-0 border border-[var(--discover-border)]"
+              className="w-11 h-11 rounded-xl bg-cover bg-center flex-shrink-0 border border-white/10"
               style={{ backgroundImage: `url(${item.image})` }}
             />
             <div className="min-w-0">
-              <DialogTitle className="text-[14px] font-semibold text-[var(--discover-title)] truncate">{item.name}</DialogTitle>
-              <DialogDescription className="text-[11px] text-[var(--discover-body)]">Edit schedule</DialogDescription>
+              <DialogTitle className="text-[14px] font-serif text-white/90 truncate">{item.name}</DialogTitle>
+              <DialogDescription className="text-[11px] uppercase tracking-[0.14em] text-white/50">Edit schedule</DialogDescription>
             </div>
           </div>
 
@@ -101,17 +101,17 @@ function EditDialog({
 
           {/* Date picker */}
           <div className="mb-4">
-            <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)] mb-2 block">
+            <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/50 mb-2 block">
               Date
             </label>
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="w-full h-10 rounded-xl border border-[var(--discover-border)] bg-[var(--discover-card)] px-3.5 text-left text-[13px] text-[var(--discover-title)] hover:border-[var(--discover-gold)]/40 transition-colors cursor-pointer flex items-center justify-between"
+                  className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3.5 text-left text-[13px] text-white/90 hover:bg-white/[0.12] transition-colors cursor-pointer flex items-center justify-between"
                 >
                   {selectedDate ? format(selectedDate, 'EEE, MMM d, yyyy') : 'Choose a date'}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--discover-body)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/50">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                     <line x1="16" y1="2" x2="16" y2="6" />
                     <line x1="8" y1="2" x2="8" y2="6" />
@@ -119,7 +119,7 @@ function EditDialog({
                   </svg>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
+              <PopoverContent className="w-auto p-3 bg-black/90 border border-white/10" align="start">
                 <Calendar
                   selected={selectedDate}
                   onSelect={(d) => { setSelectedDate(d); setCalendarOpen(false); }}
@@ -133,13 +133,13 @@ function EditDialog({
           {/* Time and Duration row */}
           <div className="grid grid-cols-2 gap-3 mb-5">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)] mb-2 block">
+              <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/50 mb-2 block">
                 Time
               </label>
               <select
                 value={selectedTime}
                 onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full h-10 rounded-xl border border-[var(--discover-border)] bg-[var(--discover-card)] px-3 text-[13px] text-[var(--discover-title)] hover:border-[var(--discover-gold)]/40 transition-colors cursor-pointer appearance-none"
+                className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3 text-[13px] text-white hover:bg-white/[0.12] transition-colors cursor-pointer appearance-none"
               >
                 {TIME_OPTIONS.map((t) => (
                   <option key={t} value={t}>{t}</option>
@@ -147,13 +147,13 @@ function EditDialog({
               </select>
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)] mb-2 block">
+              <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/50 mb-2 block">
                 Duration
               </label>
               <select
                 value={selectedDuration}
                 onChange={(e) => setSelectedDuration(Number(e.target.value))}
-                className="w-full h-10 rounded-xl border border-[var(--discover-border)] bg-[var(--discover-card)] px-3 text-[13px] text-[var(--discover-title)] hover:border-[var(--discover-gold)]/40 transition-colors cursor-pointer appearance-none"
+                className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3 text-[13px] text-white hover:bg-white/[0.12] transition-colors cursor-pointer appearance-none"
               >
                 {DURATION_OPTIONS.map((d) => (
                   <option key={d} value={d}>{d === 0.5 ? '30 min' : `${d} hr${d > 1 ? 's' : ''}`}</option>
@@ -167,14 +167,14 @@ function EditDialog({
             <Button
               onClick={handleSave}
               disabled={!selectedDate}
-              className="flex-1 h-10 rounded-xl text-[12px] font-semibold bg-[var(--discover-gold)] text-[var(--discover-bg)] hover:bg-[var(--discover-gold)]/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 h-10 rounded-xl text-[12px] font-semibold bg-white/10 text-white/90 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Save changes
             </Button>
             <Button
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-10 rounded-xl text-[12px] text-[var(--discover-body)] hover:text-[var(--discover-title)] px-4"
+              className="h-10 rounded-xl text-[12px] text-white/60 hover:bg-white/10 hover:text-white/90 px-4"
             >
               Cancel
             </Button>
@@ -207,30 +207,30 @@ function RemoveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[360px] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-[360px] rounded-2xl bg-black/90 border-white/10 p-0 overflow-hidden gap-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
         <div className="p-5 sm:p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M5 5L15 15M15 5L5 15" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
-          <DialogTitle className="text-[15px] font-semibold text-[var(--discover-title)] mb-1.5">
+          <DialogTitle className="text-[15px] font-serif text-white/90 mb-1.5">
             Remove from itinerary?
           </DialogTitle>
-          <DialogDescription className="text-[12px] text-[var(--discover-body)] mb-5">
-            <span className="font-medium text-[var(--discover-title)]">{item.name}</span> will be removed from your plans.
+          <DialogDescription className="text-[13px] text-white/60 mb-5">
+            <span className="font-medium text-white/90">{item.name}</span> will be removed from your plans.
           </DialogDescription>
           <div className="flex items-center gap-2.5">
             <Button
               onClick={handleRemove}
-              className="flex-1 h-10 rounded-xl text-[12px] font-semibold bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/20"
+              className="flex-1 h-10 rounded-xl text-[12px] font-semibold bg-white/10 text-white/90 hover:bg-white/20 border-white/10"
             >
               Remove
             </Button>
             <Button
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="flex-1 h-10 rounded-xl text-[12px] text-[var(--discover-body)] hover:text-[var(--discover-title)]"
+              className="flex-1 h-10 rounded-xl text-[12px] text-white/60 hover:bg-white/10 hover:text-white/90"
             >
               Keep
             </Button>
@@ -261,24 +261,24 @@ function DayChip({
         flex-shrink-0 flex flex-col items-center justify-center
         w-[60px] h-[60px] rounded-xl border transition-all duration-200 cursor-pointer
         ${isSelected
-          ? 'border-[var(--discover-gold)] bg-[var(--discover-gold-12)] shadow-[0_0_16px_rgba(200,168,90,0.1)]'
-          : 'border-[var(--discover-border)] bg-[var(--discover-card)] hover:border-[var(--discover-gold)]/30 hover:bg-[var(--discover-active-card)]'
+          ? 'border-[var(--gold)] bg-[var(--gold)]/20 shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
+          : 'border-white/10 bg-white/[0.07] hover:bg-white/[0.12]'
         }
       `}
     >
-      <span className={`text-[9px] font-medium uppercase tracking-wider ${
-        isSelected ? 'text-[var(--discover-gold)]' : 'text-[var(--discover-body)]'
+      <span className={`text-[11px] font-medium uppercase tracking-[0.14em] ${
+        isSelected ? 'text-[var(--gold)]' : 'text-white/50'
       }`}>
         {format(date, 'EEE')}
       </span>
       <span className={`text-[16px] font-bold leading-tight ${
-        isSelected ? 'text-[var(--discover-gold)]' : 'text-[var(--discover-title)]'
+        isSelected ? 'text-[var(--gold)]' : 'text-white/90'
       }`}>
         {format(date, 'd')}
       </span>
       {itemCount > 0 && (
         <div className={`w-1 h-1 rounded-full mt-0.5 ${
-          isSelected ? 'bg-[var(--discover-gold)]' : 'bg-[var(--discover-gold)]/50'
+          isSelected ? 'bg-[var(--gold)]' : 'bg-[var(--gold)]/50'
         }`} />
       )}
     </button>
@@ -344,18 +344,18 @@ export default function ItineraryPanel() {
   }, [groupedByDate, selectedDay, viewMode]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[var(--discover-bg)] discover-card-fade-in">
+    <div className="flex-1 flex flex-col overflow-hidden bg-black/70 discover-card-fade-in">
       {/* Header */}
-      <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-[var(--discover-border)]">
+      <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2.5 mb-1">
-              <span className="text-[16px] text-[var(--discover-gold)]">✦</span>
-              <h2 className="text-[18px] sm:text-[20px] font-bold tracking-tight text-[var(--discover-title)]">
+              <span className="text-[16px] text-[var(--gold)]">✦</span>
+              <h2 className="text-[18px] sm:text-[20px] font-serif tracking-tight text-white/90">
                 Itinerary
               </h2>
             </div>
-            <p className="text-[12px] text-[var(--discover-body)] ml-[30px]">
+            <p className="text-[13px] text-white/60 ml-[30px]">
               {items.length === 0
                 ? 'Plan your perfect New York experience'
                 : `${items.length} ${items.length === 1 ? 'activity' : 'activities'} · ${totalHours === 0.5 ? '30m' : `${totalHours}h`} planned`}
@@ -363,8 +363,8 @@ export default function ItineraryPanel() {
           </div>
 
           {items.length > 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--discover-gold-8)] border border-[var(--discover-gold-15)]">
-              <span className="text-[10px] font-semibold text-[var(--discover-gold)]">Dec 14–19</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.07] border border-white/10">
+              <span className="text-[11px] font-semibold text-[var(--gold)]">Dec 14–19</span>
             </div>
           )}
         </div>
@@ -376,7 +376,7 @@ export default function ItineraryPanel() {
       ) : (
         <>
           {/* Day chips */}
-          <div className="px-5 sm:px-8 pt-4 pb-3 flex-shrink-0 border-b border-[var(--discover-border)]">
+          <div className="px-5 sm:px-8 pt-4 pb-3 flex-shrink-0 border-b border-white/10">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
               {/* All days chip */}
               <button
@@ -386,13 +386,13 @@ export default function ItineraryPanel() {
                   flex-shrink-0 flex items-center justify-center
                   h-[60px] px-4 rounded-xl border transition-all duration-200 cursor-pointer
                   ${viewMode === 'all'
-                    ? 'border-[var(--discover-gold)] bg-[var(--discover-gold-12)] shadow-[0_0_16px_rgba(200,168,90,0.1)]'
-                    : 'border-[var(--discover-border)] bg-[var(--discover-card)] hover:border-[var(--discover-gold)]/30 hover:bg-[var(--discover-active-card)]'
+                    ? 'border-[var(--gold)] bg-[var(--gold)]/20 shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
+                    : 'border-white/10 bg-white/[0.07] hover:bg-white/[0.12]'
                   }
                 `}
               >
                 <span className={`text-[11px] font-semibold ${
-                  viewMode === 'all' ? 'text-[var(--discover-gold)]' : 'text-[var(--discover-body)]'
+                  viewMode === 'all' ? 'text-[var(--gold)]' : 'text-white/50'
                 }`}>
                   All
                 </span>
@@ -432,17 +432,17 @@ export default function ItineraryPanel() {
               ) : (
                 /* Empty day state */
                 <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--discover-gold-5)] border border-[var(--discover-gold-15)] flex items-center justify-center mb-3">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--discover-gold)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.07] border border-white/10 flex items-center justify-center mb-3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
                   </div>
-                  <p className="text-[13px] text-[var(--discover-body)] mb-1">
+                  <p className="text-[13px] text-white/60 mb-1">
                     Nothing planned for this day yet
                   </p>
-                  <p className="text-[11px] text-[var(--discover-body)]/60">
-                    Explore the <span className="text-[var(--discover-gold)] font-medium">Discover</span> tab to add activities
+                  <p className="text-[11px] text-white/40">
+                    Explore the <span className="text-[var(--gold)] font-medium">Discover</span> tab to add activities
                   </p>
                 </div>
               )}
