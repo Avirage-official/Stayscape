@@ -9,18 +9,18 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import type { CustomerProfile, CustomerStay } from '@/types/customer';
 
-async function resolveUserId(authId: string): Promise<string | null> {
+async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | null> {
   const supabase = getSupabaseAdmin();
 
   const { data: direct } = await supabase
     .from('users')
     .select('id')
-    .eq('id', authId)
+    .eq('id', authUserId)
     .maybeSingle();
 
   if (direct) return direct.id as string;
 
-  const { data: authData } = await supabase.auth.admin.getUserById(authId);
+  const { data: authData } = await supabase.auth.admin.getUserById(authUserId);
   const email = authData?.user?.email;
   if (!email) return null;
 
@@ -80,7 +80,7 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
 export async function getCustomerProfile(
   userId: string,
 ): Promise<CustomerProfile | null> {
-  const effectiveId = await resolveUserId(userId);
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
   if (!effectiveId) return null;
 
   const supabase = getSupabaseAdmin();
@@ -111,7 +111,7 @@ export async function getCustomerProfile(
 export async function getUpcomingStay(
   userId: string,
 ): Promise<CustomerStay | null> {
-  const effectiveId = await resolveUserId(userId);
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
   if (!effectiveId) return null;
 
   const supabase = getSupabaseAdmin();
@@ -143,7 +143,7 @@ export async function getUpcomingStay(
 export async function getUpcomingStays(
   userId: string,
 ): Promise<CustomerStay[]> {
-  const effectiveId = await resolveUserId(userId);
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
   if (!effectiveId) return [];
 
   const supabase = getSupabaseAdmin();
