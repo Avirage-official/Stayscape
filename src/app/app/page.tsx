@@ -59,15 +59,33 @@ export default function Home() {
       <Header />
 
       {/* ── Tab bar ── */}
-      <div className="flex items-center px-4 sm:px-6 h-[36px] bg-[var(--header-bg)] border-b border-[var(--header-border)] flex-shrink-0">
-        <div className="flex items-center space-x-1">
+      <div className="flex items-center px-4 sm:px-6 h-[44px] bg-[var(--header-bg)] border-b border-[var(--header-border)] flex-shrink-0">
+        <div className="w-[80px] flex items-center">
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            aria-label="Back to dashboard"
+            className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 rounded-full"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+        </div>
+
+        <div role="tablist" aria-label="Concierge app sections" className="flex-1 flex items-center justify-center gap-1">
           <button
             type="button"
             onClick={() => setActiveTab('concierge')}
-            className={`px-3.5 py-1.5 rounded-[5px] text-[10px] font-medium tracking-wide transition-all duration-200 cursor-pointer ${
+            id="tab-concierge"
+            role="tab"
+            aria-selected={activeTab === 'concierge'}
+            aria-controls="tabpanel-concierge"
+            className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
               activeTab === 'concierge'
-                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
+                ? 'bg-[var(--gold)]/12 text-[var(--gold)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)]'
             }`}
           >
             Concierge
@@ -75,10 +93,14 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setActiveTab('discover')}
-            className={`px-3.5 py-1.5 rounded-[5px] text-[10px] font-medium tracking-wide transition-all duration-200 cursor-pointer ${
+            id="tab-discover"
+            role="tab"
+            aria-selected={activeTab === 'discover'}
+            aria-controls="tabpanel-discover"
+            className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
               activeTab === 'discover'
-                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
+                ? 'bg-[var(--gold)]/12 text-[var(--gold)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)]'
             }`}
           >
             Discover
@@ -86,15 +108,21 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setActiveTab('itinerary')}
-            className={`px-3.5 py-1.5 rounded-[5px] text-[10px] font-medium tracking-wide transition-all duration-200 cursor-pointer ${
+            id="tab-itinerary"
+            role="tab"
+            aria-selected={activeTab === 'itinerary'}
+            aria-controls="tabpanel-itinerary"
+            className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] transition-all duration-200 cursor-pointer ${
               activeTab === 'itinerary'
-                ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/25'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)] border border-transparent'
+                ? 'bg-[var(--gold)]/12 text-[var(--gold)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--tab-hover)]'
             }`}
           >
             Itinerary
           </button>
         </div>
+
+        <div className="w-[80px]" />
       </div>
 
       {/* Mobile sub-nav — Map / Guest / Assistant (only on Concierge tab, only mobile) */}
@@ -145,7 +173,12 @@ export default function Home() {
       <div className="relative flex-1 flex flex-col overflow-hidden">
         {/* Floating concierge search — only on concierge tab */}
         {activeTab === 'concierge' && <ConciergeSearch />}
-        <main className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        <main
+          className="flex flex-col lg:flex-row flex-1 overflow-hidden"
+          role="tabpanel"
+          id={`tabpanel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+        >
           {activeTab === 'concierge' ? (
             <ErrorBoundary fallbackTitle="Map & Concierge">
               <>
