@@ -48,6 +48,12 @@ export interface CustomerStay {
 
 export interface DashboardData {
   profile: CustomerProfile;
+  /** @deprecated Use currentStays / upcomingStays / pastStays instead. */
   upcomingStay: CustomerStay | null;
-  upcomingStays?: CustomerStay[];
+  /** Stays where check-in ≤ today ≤ check-out. */
+  currentStays: CustomerStay[];
+  /** Stays where check-in > today. */
+  upcomingStays: CustomerStay[];
+  /** Stays where check-out < today (most recent first). */
+  pastStays: CustomerStay[];
 }

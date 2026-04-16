@@ -168,8 +168,12 @@ function GuestArrivalContent({
   }, [userId]);
 
   const firstName = data?.profile.full_name?.split(' ')[0] ?? 'Guest';
-  const stays = data?.upcomingStays ?? (data?.upcomingStay ? [data.upcomingStay] : []);
-  const stay = stays[0] ?? null;
+  const currentStays = data?.currentStays ?? [];
+  const upcomingStays = data?.upcomingStays ?? [];
+  const pastStays = data?.pastStays ?? [];
+  // "active" stays = current + upcoming (for display / concierge logic)
+  const activeStays = [...currentStays, ...upcomingStays];
+  const stay = activeStays[0] ?? null;
   const stayContext = stay?.property?.name
     ? `${stay.property.name}${stay.property.address ? ` · ${stay.property.address}` : ''}`
     : null;
@@ -207,7 +211,7 @@ function GuestArrivalContent({
         {/* Main content */}
         {loadState === 'ready' && data && (
           <>
-            {stays.length === 0 ? (
+            {activeStays.length === 0 && pastStays.length === 0 ? (
               /* ── No stay yet: show the demo PMS activation flow ── */
               <div className="h-full overflow-y-auto flex flex-col items-center justify-center">
                 <DemoBookingActivation
@@ -216,8 +220,8 @@ function GuestArrivalContent({
                   onActivated={refetch}
                 />
               </div>
-            ) : stays.length === 1 ? (
-              /* ── Exactly 1 stay: show the concierge prompt ── */
+            ) : activeStays.length === 1 && pastStays.length === 0 ? (
+              /* ── Exactly 1 active stay, no history: show the concierge prompt ── */
               <>
                 <div className="h-full flex flex-col items-center justify-center pb-16">
                   <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
@@ -240,30 +244,75 @@ function GuestArrivalContent({
                 )}
               </>
             ) : (
-              /* ── 2+ stays: stays above, concierge center, meta bottom ── */
+              /* ── Multiple stays or has history: show categorised sections ── */
               <>
                 <div className="h-full overflow-y-auto flex flex-col">
-                  {/* Stay cards section — compact horizontal row above the prompt */}
-                  <div className="flex-shrink-0 px-6 sm:px-10 lg:px-14 pt-24 pb-6">
-                    <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--gold)]/70 font-medium mb-4">
-                      Your Stays
-                    </p>
-                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-                      {stays.map((s) => (
-                        <div key={s.id} className="flex-shrink-0 w-[260px] sm:w-[280px]">
-                          <StayCard
-                            stay={s}
-                            onClick={() => router.push(`/dashboard/stay/${encodeURIComponent(s.id)}`)}
-                          />
-                        </div>
-                      ))}
+                  <div className="flex-shrink-0 px-6 sm:px-10 lg:px-14 pt-24 pb-6 space-y-8">
 
-                      {/* Add stay card */}
+                    {/* Current stays */}
+                    {currentStays.length > 0 && (
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--gold)]/70 font-medium mb-4">
+                          Current Stay{currentStays.length > 1 ? 's' : ''}
+                        </p>
+                        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                          {currentStays.map((s) => (
+                            <div key={s.id} className="flex-shrink-0 w-[260px] sm:w-[280px]">
+                              <StayCard
+                                stay={s}
+                                onClick={() => router.push(`/dashboard/stay/${encodeURIComponent(s.id)}`)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upcoming stays */}
+                    {upcomingStays.length > 0 && (
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--gold)]/70 font-medium mb-4">
+                          Upcoming Stay{upcomingStays.length > 1 ? 's' : ''}
+                        </p>
+                        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                          {upcomingStays.map((s) => (
+                            <div key={s.id} className="flex-shrink-0 w-[260px] sm:w-[280px]">
+                              <StayCard
+                                stay={s}
+                                onClick={() => router.push(`/dashboard/stay/${encodeURIComponent(s.id)}`)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Past stays */}
+                    {pastStays.length > 0 && (
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.15em] text-white/40 font-medium mb-4">
+                          Past Stay{pastStays.length > 1 ? 's' : ''}
+                        </p>
+                        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                          {pastStays.map((s) => (
+                            <div key={s.id} className="flex-shrink-0 w-[260px] sm:w-[280px] opacity-60">
+                              <StayCard
+                                stay={s}
+                                onClick={() => router.push(`/dashboard/stay/${encodeURIComponent(s.id)}`)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add stay card */}
+                    <div className="flex justify-center">
                       <button
                         type="button"
                         onClick={() => setAddStayOpen(true)}
                         className="
-                          flex-shrink-0 w-[160px] group text-left rounded-2xl p-5 border
+                          w-[160px] group text-left rounded-2xl p-5 border
                           border-white/[0.10] border-dashed
                           hover:border-[var(--gold)]/30 hover:bg-white/[0.05]
                           transition-all duration-300 cursor-pointer
@@ -294,9 +343,11 @@ function GuestArrivalContent({
                   </div>
 
                   {/* ConciergePrompt — always the hero element */}
-                  <div className="flex-1 flex flex-col items-center justify-center pb-16 min-h-[280px]">
-                    <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
-                  </div>
+                  {stay && (
+                    <div className="flex-1 flex flex-col items-center justify-center pb-16 min-h-[280px]">
+                      <ConciergePrompt firstName={firstName} hotelName={stay.property?.name} />
+                    </div>
+                  )}
                 </div>
 
                 {/* StayContextMeta — absolute bottom strip showing nearest stay */}
@@ -328,7 +379,7 @@ function GuestArrivalContent({
         onOpenChange={setAddStayOpen}
         userId={userId}
         onActivated={refetch}
-        existingBookingRefs={stays.map((s) => s.booking_reference).filter((ref): ref is string => Boolean(ref))}
+        existingBookingRefs={[...currentStays, ...upcomingStays].map((s) => s.booking_reference).filter((ref): ref is string => Boolean(ref))}
       />
 
     </>

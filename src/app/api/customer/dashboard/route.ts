@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerProfile,
+  getCurrentStays,
   getUpcomingStays,
+  getPastStays,
 } from '@/lib/supabase/customer-repository';
 
 /**
@@ -9,8 +11,10 @@ import {
  *
  * Returns the dashboard data for a logged-in customer:
  * - profile (from public.users)
- * - upcomingStay (first upcoming stay, for backward compat), or null
- * - upcomingStays (all upcoming stays ordered by check-in)
+ * - currentStays (check-in ≤ today ≤ check-out)
+ * - upcomingStays (check-in > today)
+ * - pastStays (check-out < today, most recent first)
+ * - upcomingStay (first current or upcoming stay, for backward compat)
  *
  * In production, derive userId from a verified session cookie.
  * For now, accept it as a query param (thin auth layer).
@@ -26,9 +30,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [profile, upcomingStays] = await Promise.all([
+    const [profile, currentStays, upcomingStays, pastStays] = await Promise.all([
       getCustomerProfile(userId),
+      getCurrentStays(userId),
       getUpcomingStays(userId),
+      getPastStays(userId),
     ]);
 
     if (!profile) {
@@ -38,10 +44,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // upcomingStay is the first stay for backward compatibility
-    const upcomingStay = upcomingStays[0] ?? null;
+    // upcomingStay: prefer current stay, then upcoming, for backward compatibility
+    const upcomingStay = currentStays[0] ?? upcomingStays[0] ?? null;
 
-    return NextResponse.json({ profile, upcomingStay, upcomingStays });
+    return NextResponse.json({ profile, upcomingStay, currentStays, upcomingStays, pastStays });
   } catch {
     return NextResponse.json(
       { error: 'Failed to load dashboard data' },
