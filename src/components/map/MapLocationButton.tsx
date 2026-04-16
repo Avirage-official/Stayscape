@@ -38,16 +38,14 @@ export default function MapLocationButton({ locationState, onRequestLocation }: 
           background:
             locationState === 'granted'
               ? 'rgba(59,130,246,0.15)'
-              : 'var(--card-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+              : 'var(--dashboard-card-bg)',
           border:
             locationState === 'granted'
               ? '1px solid rgba(59,130,246,0.4)'
               : locationState === 'denied'
               ? '1px solid var(--border-subtle)'
-              : '1px solid var(--card-border)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+              : '1px solid var(--dashboard-card-border)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
           color:
             locationState === 'granted'
               ? '#3B82F6'

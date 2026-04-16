@@ -23,11 +23,9 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
       <div
         className="rounded-[9px] p-3.5"
         style={{
-          background: 'var(--card-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          background: 'var(--dashboard-card-bg)',
           border: `1px solid ${getCategoryColor(place.category)}35`,
-          boxShadow: `0 6px 24px rgba(0,0,0,0.35), 0 0 0 1px ${getCategoryColor(place.category)}10`,
+          boxShadow: `0 8px 28px rgba(0,0,0,0.55), 0 0 0 1px ${getCategoryColor(place.category)}10`,
         }}
       >
         <div className="flex items-start gap-2 mb-2">
@@ -41,10 +39,10 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
             boxShadow: `0 0 6px ${getCategoryColor(place.category)}70`,
           }} />
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
+            <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight truncate">
               {place.name}
             </p>
-            <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
+            <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">
               {place.editorial_summary ?? place.description ?? place.address ?? ''}
             </p>
           </div>
@@ -163,7 +161,7 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
       <div
         className="absolute bottom-[-5px] left-5 w-2.5 h-2.5 rotate-45"
         style={{
-          background: 'var(--card-bg)',
+          background: 'var(--dashboard-card-bg)',
           border: `1px solid ${getCategoryColor(place.category)}35`,
           borderTop: 'none',
           borderLeft: 'none',

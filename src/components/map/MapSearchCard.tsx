@@ -16,11 +16,9 @@ export default function MapSearchCard({ searchedPlace }: MapSearchCardProps) {
       <div
         className="rounded-[9px] p-3.5"
         style={{
-          background: 'var(--card-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          background: 'var(--dashboard-card-bg)',
           border: `1px solid ${MARKER_COLOR_GOLD}30`,
-          boxShadow: `0 6px 24px rgba(0,0,0,0.35), 0 0 0 1px ${MARKER_COLOR_GOLD}10`,
+          boxShadow: `0 8px 28px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_GOLD}10`,
         }}
       >
         <div className="flex items-start gap-2 mb-2">
@@ -34,11 +32,11 @@ export default function MapSearchCard({ searchedPlace }: MapSearchCardProps) {
             boxShadow: `0 0 5px ${MARKER_COLOR_GOLD}60`,
           }} />
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight truncate">
+            <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight truncate">
               {searchedPlace.name}
             </p>
             {searchedPlace.subtitle && (
-              <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 truncate">
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">
                 {searchedPlace.subtitle}
               </p>
             )}

@@ -11,11 +11,11 @@ export default function ConciergeSearch() {
       <div
         className={`
           relative flex items-center
-          bg-[var(--card-bg)] border rounded-[8px]
+          bg-[var(--dashboard-card-bg)] border rounded-[8px]
           transition-all duration-300 ease-out
           ${isFocused
-            ? 'border-[var(--gold)]/35 shadow-[0_6px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(201,168,76,0.1)] -translate-y-0.5'
-            : 'border-[var(--border)] shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
+            ? 'border-[var(--gold)]/35 shadow-[0_8px_32px_rgba(0,0,0,0.55),0_0_0_1px_rgba(201,168,76,0.1)] -translate-y-0.5'
+            : 'border-[var(--dashboard-card-border)] shadow-[0_8px_32px_rgba(0,0,0,0.55)]'
           }
         `}
       >
