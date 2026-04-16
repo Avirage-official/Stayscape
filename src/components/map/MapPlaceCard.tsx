@@ -25,7 +25,7 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
         style={{
           background: 'var(--dashboard-card-bg)',
           border: `1px solid ${getCategoryColor(place.category)}35`,
-          boxShadow: `0 8px 28px rgba(0,0,0,0.55), 0 0 0 1px ${getCategoryColor(place.category)}10`,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.65)',
         }}
       >
         <div className="flex items-start gap-2 mb-2">

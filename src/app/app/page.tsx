@@ -55,11 +55,19 @@ export default function Home() {
 
   return (
     <ItineraryProvider>
-    <div className="flex flex-col h-screen bg-[var(--background)] overflow-hidden">
+    <div className="relative flex flex-col h-screen overflow-hidden">
+      <div
+        className="absolute inset-0 -z-20 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: 'url(https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80)',
+          backgroundAttachment: 'fixed',
+        }}
+      />
+      <div className="absolute inset-0 -z-10 bg-[rgba(0,0,0,0.80)]" />
       <Header />
 
       {/* ── Tab bar ── */}
-      <div className="flex items-center px-4 sm:px-6 h-[44px] bg-[var(--header-bg)] border-b border-[var(--header-border)] flex-shrink-0">
+      <div className="flex items-center px-4 sm:px-6 h-[44px] bg-[rgba(8,8,10,0.80)] border-b border-[rgba(255,255,255,0.06)] flex-shrink-0">
         <div className="w-[80px] flex items-center">
           <button
             type="button"

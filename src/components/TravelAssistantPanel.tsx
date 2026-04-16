@@ -90,7 +90,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[var(--dashboard-bg)] animate-slide-in-right">
+    <div className="flex flex-col h-full overflow-hidden bg-[rgba(10,10,13,0.95)] animate-slide-in-right">
         {/* Panel Header */}
         <div className="px-4 pt-4 pb-3.5 border-b border-[var(--dashboard-card-border)] flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -99,19 +99,19 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                 <span className="text-[10px] text-[var(--gold)]">✦</span>
               </div>
               <div>
-                <h2 className="text-[12px] font-medium text-[var(--text-primary)] tracking-wide">Travel Assistant</h2>
+                <h2 className="text-[13px] font-medium text-[var(--dashboard-text-primary)] tracking-wide">Travel Assistant</h2>
               </div>
             </div>
             {selectedPlace && (
               <button
                 onClick={onClearSelection}
-                className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[5px] px-2.5 py-1 transition-colors duration-200 tracking-wide"
+                className="text-[10px] text-[var(--dashboard-text-muted)] hover:text-[var(--dashboard-text-secondary)] bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-[5px] px-2.5 py-1 transition-colors duration-200 tracking-wide"
               >
                 Back to chat
               </button>
             )}
           </div>
-          <p className="text-[9px] text-[var(--text-faint)] mt-1.5 ml-7 tracking-wide">
+          <p className="text-[9px] text-[var(--dashboard-text-faint)] mt-1.5 ml-7 tracking-wide">
             Your personal concierge · Ask anything
           </p>
         </div>
@@ -124,10 +124,10 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
               <div className="w-12 h-12 rounded-[8px] bg-[var(--gold)]/8 border border-[var(--gold)]/15 flex items-center justify-center mb-4">
                 <span className="text-[18px] text-[var(--gold)]">✦</span>
               </div>
-              <h3 className="text-[14px] font-medium text-[var(--text-primary)] tracking-wide mb-2">
+              <h3 className="text-[16px] font-medium text-[var(--dashboard-text-primary)] tracking-wide mb-2">
                 Welcome to Stayscape
               </h3>
-              <p className="text-[11px] text-[var(--text-muted)] leading-[1.7] max-w-[240px] mb-6">
+              <p className="text-[12px] text-[var(--dashboard-text-muted)] leading-[1.7] max-w-[240px] mb-6">
                 I&apos;m your personal travel assistant. Ask me anything about your stay, nearby places, dining, activities, or select a place on the map to learn more.
               </p>
               {/* Suggestion chips */}
@@ -136,7 +136,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                   <button
                     key={suggestion}
                     onClick={() => handleSend(suggestion)}
-                    className="text-[10px] text-[var(--text-secondary)] bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-[5px] px-2.5 py-[5px] hover:border-[var(--gold)]/20 hover:text-[var(--text-primary)] transition-all duration-200 tracking-wide"
+                    className="text-[10px] text-[var(--dashboard-text-secondary)] bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-[5px] px-2.5 py-[5px] hover:border-[var(--gold)]/20 hover:text-[var(--dashboard-text-primary)] transition-all duration-200 tracking-wide"
                   >
                     {suggestion}
                   </button>
@@ -170,7 +170,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
         {/* Chat input — always visible at bottom */}
         <div className="px-4 py-3 border-t border-[var(--dashboard-card-border)] flex-shrink-0">
           <div className="flex items-center space-x-2 bg-[var(--dashboard-card-bg)] border border-[var(--dashboard-card-border)] rounded-[6px] px-3 py-2.5 focus-within:border-[var(--gold)]/20 transition-colors duration-200">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--dashboard-text-dim)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             <input
@@ -179,11 +179,11 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your stay…"
-              className="flex-1 bg-transparent text-[11px] text-[var(--text-secondary)] placeholder-[var(--text-faint)] focus:outline-none tracking-wide"
+              className="flex-1 bg-transparent text-[12px] text-[var(--dashboard-text-secondary)] placeholder-[var(--dashboard-text-faint)] focus:outline-none tracking-wide"
             />
             <button
               onClick={() => handleSend()}
-              className="text-[var(--text-faint)] hover:text-[var(--gold)] transition-colors duration-200"
+              className="text-[var(--dashboard-text-faint)] hover:text-[var(--gold)] transition-colors duration-200"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m5 12 14-7-4 7 4 7z" />

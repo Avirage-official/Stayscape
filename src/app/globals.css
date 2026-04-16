@@ -270,10 +270,9 @@ body {
 
 /* ── Map UI — Glassmorphism utility ─────────────────────── */
 .glass-dark {
-  background: rgba(10, 14, 19, 0.78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(201, 168, 76, 0.12);
+  background: var(--dashboard-card-bg);
+  border: 1px solid var(--dashboard-card-border);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.55);
 }
 
 /* ── Map UI — Animations ────────────────────────────────── */

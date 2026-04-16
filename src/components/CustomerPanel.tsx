@@ -154,7 +154,7 @@ const defaultSelected: Record<string, Set<string>> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[9px] font-medium text-[var(--text-muted)] uppercase tracking-[0.14em] mb-2.5 ml-0.5">
+    <h3 className="text-[10px] font-medium text-[var(--dashboard-text-muted)] uppercase tracking-[0.14em] mb-2.5 ml-0.5">
       {children}
     </h3>
   );
@@ -176,7 +176,7 @@ function PreferenceChip({
       className={`px-2.5 py-[5px] rounded-[5px] text-[10px] border transition-all duration-200 cursor-pointer ${
         active
           ? 'bg-[var(--gold)]/12 border-[var(--gold)]/30 text-[var(--gold)]'
-          : 'bg-[var(--card-bg)] border-[var(--card-border)] text-[var(--text-muted)] hover:border-[var(--border)] hover:text-[var(--text-secondary)]'
+          : 'bg-[var(--dashboard-card-bg)] border-[var(--dashboard-card-border)] text-[var(--dashboard-text-muted)] hover:border-[var(--border)] hover:text-[var(--dashboard-text-secondary)]'
       }`}
     >
       {label}
@@ -324,24 +324,24 @@ export default function CustomerPanel({
   const stayTimeline = generateStayTimeline(checkIn, checkOut);
 
   return (
-    <div className="flex h-full overflow-hidden bg-[var(--panel-bg)] animate-slide-in-left">
+    <div className="flex h-full overflow-hidden bg-[rgba(10,10,13,0.95)] animate-slide-in-left">
       {/* Thin vertical accent rail */}
       <div className="w-[3px] flex-shrink-0 bg-gradient-to-b from-[var(--gold)]/20 via-[var(--gold)]/8 to-transparent" />
 
       {/* Main dossier content */}
       <div className="flex-1 flex flex-col overflow-y-auto scrollbar-hide">
         {/* ── Room & Stay Summary ── */}
-        <div className="px-5 pt-5 pb-4 border-b border-[var(--charcoal-light)]">
+        <div className="px-5 pt-5 pb-4 border-b border-[rgba(255,255,255,0.06)]">
           {/* Guest identity */}
           <div className="flex items-center space-x-3 mb-3">
             <div className="w-11 h-11 rounded-[7px] bg-[var(--gold)]/10 border border-[var(--gold)]/20 flex items-center justify-center flex-shrink-0">
               <span className="text-[13px] font-medium text-[var(--gold)]">{avatarInitials}</span>
             </div>
             <div className="min-w-0">
-              <h2 className="text-[14px] font-medium text-[var(--text-primary)] tracking-wide">
+              <h2 className="text-[14px] font-medium text-[var(--dashboard-text-primary)] tracking-wide">
                 {displayTitle ? `${displayTitle} ${displayName ?? 'Guest'}` : (displayName ?? 'Valued Guest')}
               </h2>
-              <p className="text-[10px] text-[var(--text-muted)] mt-0.5 tracking-wide">
+              <p className="text-[10px] text-[var(--dashboard-text-muted)] mt-0.5 tracking-wide">
                 {[displayRoomType, displayGuests != null ? `${displayGuests} guest${displayGuests !== 1 ? 's' : ''}` : null]
                   .filter(Boolean)
                   .join(' · ') || 'Room details unavailable'}
@@ -355,16 +355,16 @@ export default function CustomerPanel({
               Checked In
             </span>
             {displayRoom && (
-              <span className="text-[10px] text-[var(--text-secondary)]">{displayRoom}</span>
+              <span className="text-[10px] text-[var(--dashboard-text-secondary)]">{displayRoom}</span>
             )}
           </div>
 
           {/* Dates */}
-          <div className="bg-[var(--card-bg)] rounded-[6px] p-3.5 border border-[var(--card-border)]">
+          <div className="bg-[var(--dashboard-card-bg)] rounded-[6px] p-3.5 border border-[var(--dashboard-card-border)]">
             <div className="flex items-center justify-between text-[11px]">
               <div>
-                <p className="text-[9px] text-[var(--text-faint)] uppercase tracking-wider mb-0.5">Arrival</p>
-                <p className="text-[var(--text-secondary)]">{displayCheckIn ?? '—'}</p>
+                <p className="text-[9px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-0.5">Arrival</p>
+                <p className="text-[var(--dashboard-text-secondary)]">{displayCheckIn ?? '—'}</p>
               </div>
               <div className="flex items-center px-3">
                 <div className="w-6 h-px bg-[var(--border)]" />
@@ -372,22 +372,22 @@ export default function CustomerPanel({
                 <div className="w-6 h-px bg-[var(--border)]" />
               </div>
               <div className="text-right">
-                <p className="text-[9px] text-[var(--text-faint)] uppercase tracking-wider mb-0.5">Departure</p>
-                <p className="text-[var(--text-secondary)]">{displayCheckOut ?? '—'}</p>
+                <p className="text-[9px] text-[var(--dashboard-text-faint)] uppercase tracking-wider mb-0.5">Departure</p>
+                <p className="text-[var(--dashboard-text-secondary)]">{displayCheckOut ?? '—'}</p>
               </div>
             </div>
 
             {/* Arrival / Departure notes */}
             {(displayArrivalNote || displayDepartureNote) && (
-              <div className="mt-3 pt-2.5 border-t border-[var(--card-border)] space-y-1.5">
+              <div className="mt-3 pt-2.5 border-t border-[var(--dashboard-card-border)] space-y-1.5">
                 {displayArrivalNote && (
-                  <p className="text-[10px] text-[var(--text-muted)] leading-snug">
+                  <p className="text-[10px] text-[var(--dashboard-text-muted)] leading-snug">
                     <span className="text-[var(--gold)]/50 mr-1">↓</span>
                     {displayArrivalNote}
                   </p>
                 )}
                 {displayDepartureNote && (
-                  <p className="text-[10px] text-[var(--text-muted)] leading-snug">
+                  <p className="text-[10px] text-[var(--dashboard-text-muted)] leading-snug">
                     <span className="text-[var(--gold)]/50 mr-1">↑</span>
                     {displayDepartureNote}
                   </p>
@@ -409,19 +409,19 @@ export default function CustomerPanel({
                   key={d.day}
                   className={`flex-1 rounded-[5px] py-2 text-center border ${
                     d.clean
-                      ? 'bg-[var(--card-bg)] border-[var(--card-border)]'
-                      : 'bg-[var(--card-bg)]/50 border-[var(--charcoal-light)]/50'
+                      ? 'bg-[var(--dashboard-card-bg)] border-[var(--dashboard-card-border)]'
+                      : 'bg-[var(--dashboard-card-bg)]/50 border-[rgba(255,255,255,0.03)]'
                   }`}
                 >
-                  <p className="text-[8px] text-[var(--text-faint)] uppercase tracking-wider leading-none mb-1">
+                  <p className="text-[8px] text-[var(--dashboard-text-faint)] uppercase tracking-wider leading-none mb-1">
                     {dayName}
                   </p>
-                  <p className="text-[9px] text-[var(--text-muted)] leading-none mb-1.5">
+                  <p className="text-[9px] text-[var(--dashboard-text-muted)] leading-none mb-1.5">
                     {dayNum}
                   </p>
                   <span
                     className={`text-[10px] ${
-                      d.clean ? 'text-emerald-400/80' : 'text-[var(--text-faint)]'
+                      d.clean ? 'text-emerald-400/80' : 'text-[var(--dashboard-text-faint)]'
                     }`}
                   >
                     {d.clean ? '✓' : '—'}
@@ -462,17 +462,17 @@ export default function CustomerPanel({
                   className={`rounded-[5px] px-2.5 py-2 border ${
                     i < 2
                       ? 'bg-[var(--gold)]/5 border-[var(--gold)]/15'
-                      : 'bg-[var(--card-bg)] border-[var(--card-border)]'
+                      : 'bg-[var(--dashboard-card-bg)] border-[var(--dashboard-card-border)]'
                   }`}
                 >
                   <p
                     className={`text-[9px] font-medium uppercase tracking-wider mb-0.5 ${
-                      i < 2 ? 'text-[var(--gold)]/70' : 'text-[var(--text-faint)]'
+                      i < 2 ? 'text-[var(--gold)]/70' : 'text-[var(--dashboard-text-faint)]'
                     }`}
                   >
                     {entry.day}
                   </p>
-                  <p className="text-[10px] text-[var(--text-secondary)] leading-snug">{entry.label}</p>
+                  <p className="text-[10px] text-[var(--dashboard-text-secondary)] leading-snug">{entry.label}</p>
                 </div>
               ))}
             </div>
