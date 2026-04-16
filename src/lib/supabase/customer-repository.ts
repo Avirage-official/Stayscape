@@ -116,7 +116,8 @@ export async function getUpcomingStay(
 
   const supabase = getSupabaseAdmin();
 
-  const now = new Date().toISOString();
+  // Use date-only string (YYYY-MM-DD) to match the DATE column type
+  const today = new Date().toISOString().split('T')[0];
 
   const { data, error } = await supabase
     .from('stays')
@@ -126,12 +127,16 @@ export async function getUpcomingStay(
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`,
     )
     .eq('userid', effectiveId)
-    .gte('checkoutdate', now)
+    .gte('checkoutdate', today)
     .order('checkindate', { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error('[getUpcomingStay] DB error:', error.message);
+    return null;
+  }
+  if (!data) return null;
 
   return mapStayRow(data as Record<string, unknown>);
 }
@@ -148,7 +153,8 @@ export async function getUpcomingStays(
 
   const supabase = getSupabaseAdmin();
 
-  const now = new Date().toISOString();
+  // Use date-only string (YYYY-MM-DD) to match the DATE column type
+  const today = new Date().toISOString().split('T')[0];
 
   const { data, error } = await supabase
     .from('stays')
@@ -158,10 +164,14 @@ export async function getUpcomingStays(
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`,
     )
     .eq('userid', effectiveId)
-    .gte('checkoutdate', now)
+    .gte('checkoutdate', today)
     .order('checkindate', { ascending: true });
 
-  if (error || !data) return [];
+  if (error) {
+    console.error('[getUpcomingStays] DB error:', error.message);
+    return [];
+  }
+  if (!data) return [];
 
   return (data as Record<string, unknown>[]).map(mapStayRow);
 }
