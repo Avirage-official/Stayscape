@@ -168,9 +168,13 @@ function CurrentBookingContent({ userId }: { userId: string }) {
   }
 
   // Resolve which stays to show
-  const allStays: CustomerStay[] =
-    data?.upcomingStays ??
-    (data?.upcomingStay ? [data.upcomingStay] : []);
+  const currentStays: CustomerStay[] = data?.currentStays ?? [];
+  const upcomingStaysData: CustomerStay[] = data?.upcomingStays ?? [];
+  const allActiveStays: CustomerStay[] = [...currentStays, ...upcomingStaysData];
+  // Fallback for backward compatibility
+  const allStays = allActiveStays.length > 0
+    ? allActiveStays
+    : (data?.upcomingStay ? [data.upcomingStay] : []);
 
   // If a specific stayId was requested, reorder so that stay is first
   let displayStays = allStays;

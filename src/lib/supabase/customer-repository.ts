@@ -143,7 +143,8 @@ export async function getUpcomingStay(
 }
 
 /**
- * Fetch ALL upcoming stays for a customer, ordered by check-in date ascending.
+ * Fetch upcoming stays for a customer (check-in > today), ordered by check-in ascending.
+ * Does NOT include current stays (use getCurrentStays for those).
  * Returns an empty array if there are no upcoming stays.
  */
 export async function getUpcomingStays(
@@ -161,11 +162,75 @@ export async function getUpcomingStays(
     .from('stays')
     .select(STAY_SELECT)
     .eq('userid', effectiveId)
-    .gte('checkoutdate', today)
+    .gt('checkindate', today)
     .order('checkindate', { ascending: true });
 
   if (error) {
     console.error('[getUpcomingStays] DB error:', error.message);
+    return [];
+  }
+  if (!data) return [];
+
+  return (data as Record<string, unknown>[]).map(mapStayRow);
+}
+
+/**
+ * Fetch current stays for a customer (check-in ≤ today ≤ check-out).
+ * Returns an empty array if there are no current stays.
+ */
+export async function getCurrentStays(
+  userId: string,
+): Promise<CustomerStay[]> {
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
+  if (!effectiveId) return [];
+
+  const supabase = getSupabaseAdmin();
+
+  // Use date-only string (YYYY-MM-DD) to match the DATE column type
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('stays')
+    .select(STAY_SELECT)
+    .eq('userid', effectiveId)
+    .lte('checkindate', today)
+    .gte('checkoutdate', today)
+    .order('checkindate', { ascending: true });
+
+  if (error) {
+    console.error('[getCurrentStays] DB error:', error.message);
+    return [];
+  }
+  if (!data) return [];
+
+  return (data as Record<string, unknown>[]).map(mapStayRow);
+}
+
+/**
+ * Fetch past stays for a customer (check-out < today).
+ * Returns an empty array if there are no past stays.
+ * Ordered by check-out date descending (most recent first).
+ */
+export async function getPastStays(
+  userId: string,
+): Promise<CustomerStay[]> {
+  const effectiveId = await resolveUserIdByAuthOrEmail(userId);
+  if (!effectiveId) return [];
+
+  const supabase = getSupabaseAdmin();
+
+  // Use date-only string (YYYY-MM-DD) to match the DATE column type
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('stays')
+    .select(STAY_SELECT)
+    .eq('userid', effectiveId)
+    .lt('checkoutdate', today)
+    .order('checkoutdate', { ascending: false });
+
+  if (error) {
+    console.error('[getPastStays] DB error:', error.message);
     return [];
   }
   if (!data) return [];
