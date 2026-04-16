@@ -22,7 +22,7 @@ export default function MapEventCard({ event, itinAdded, onAddToItinerary, onClo
         style={{
           background: 'var(--dashboard-card-bg)',
           border: `1px solid ${MARKER_COLOR_PINK}35`,
-          boxShadow: `0 8px 28px rgba(0,0,0,0.55), 0 0 0 1px ${MARKER_COLOR_PINK}10`,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.65)',
         }}
       >
         {/* Header row */}
