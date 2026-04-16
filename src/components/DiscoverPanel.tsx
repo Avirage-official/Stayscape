@@ -126,19 +126,19 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
 
   return (
     <TooltipProvider>
-      <div className="flex-1 flex flex-col overflow-hidden bg-[var(--discover-bg)] discover-card-fade-in">
+      <div className="flex-1 flex flex-col overflow-hidden bg-black/70 discover-card-fade-in">
 
         {/* ── Compact header ── */}
-        <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-[var(--discover-border)]">
+        <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2.5 mb-1">
-                <span className="text-[16px] text-[var(--discover-gold)]">✦</span>
-                <h2 className="text-[18px] sm:text-[20px] font-bold tracking-tight text-[var(--discover-title)]">
+                <span className="text-[16px] text-[var(--gold)]">✦</span>
+                <h2 className="text-[18px] sm:text-[20px] font-serif tracking-tight text-white/90">
                   Discover
                 </h2>
               </div>
-      <p className="text-[12px] text-[var(--discover-body)] ml-[30px]">
+              <p className="text-[13px] text-white/60 ml-[30px]">
                 Curated places and local insights{region?.name ? ` for your ${region.name} stay` : ''}
               </p>
             </div>
@@ -148,11 +148,11 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                   type="button"
                   className="
                     w-8 h-8 rounded-lg flex items-center justify-center
-                    border border-[var(--discover-border)]
-                    bg-[var(--discover-card)]
-                    text-[var(--discover-body)]
-                    hover:border-[var(--discover-gold)]/40
-                    hover:text-[var(--discover-title)]
+                    border border-white/10
+                    bg-white/[0.07]
+                    text-white/60
+                    hover:bg-white/[0.12]
+                    hover:text-white/90
                     transition-all duration-200 cursor-pointer
                   "
                 >
@@ -176,7 +176,7 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
             {/* ── Category carousel ── */}
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
                   Browse Categories
                 </h3>
                 <div className="flex items-center gap-1.5">
@@ -185,11 +185,11 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                     onClick={() => scrollCarousel('left')}
                     className="
                       w-7 h-7 rounded-lg flex items-center justify-center
-                      border border-[var(--discover-border)]
-                      bg-[var(--discover-card)]
-                      text-[var(--discover-body)]
-                      hover:border-[var(--discover-gold)]/40
-                      hover:text-[var(--discover-title)]
+                      border border-white/10
+                      bg-white/[0.07]
+                      text-white/60
+                      hover:bg-white/[0.12]
+                      hover:text-white/90
                       transition-all duration-200 cursor-pointer
                     "
                     aria-label="Scroll categories left"
@@ -203,11 +203,11 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                     onClick={() => scrollCarousel('right')}
                     className="
                       w-7 h-7 rounded-lg flex items-center justify-center
-                      border border-[var(--discover-border)]
-                      bg-[var(--discover-card)]
-                      text-[var(--discover-body)]
-                      hover:border-[var(--discover-gold)]/40
-                      hover:text-[var(--discover-title)]
+                      border border-white/10
+                      bg-white/[0.07]
+                      text-white/60
+                      hover:bg-white/[0.12]
+                      hover:text-white/90
                       transition-all duration-200 cursor-pointer
                     "
                     aria-label="Scroll categories right"
@@ -236,7 +236,7 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
             </section>
 
             {/* ── Separator ── */}
-            <div className="h-px bg-[var(--discover-border)]" />
+            <div className="h-px bg-white/10" />
 
             {/* ── Popular with Guests (recommended_places curation) ── */}
             {curations.recommended_places && curations.recommended_places.content.items.length > 0 && (
@@ -244,15 +244,15 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
                         Popular with Guests
                       </h3>
-                      <p className="text-[10px] text-[var(--discover-body)]/60 mt-0.5">
+                      <p className="text-[11px] text-white/40 mt-0.5">
                         Loved by previous guests
                       </p>
                     </div>
-                    <span className="text-[10px] text-[var(--discover-gold)] flex items-center gap-1">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--discover-gold)">
+                    <span className="text-[11px] text-[var(--gold)] flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                       </svg>
                       Highly recommended
@@ -272,7 +272,7 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                 </section>
 
                 {/* ── Separator ── */}
-                <div className="h-px bg-[var(--discover-border)]" />
+                <div className="h-px bg-white/10" />
               </>
             )}
 
@@ -280,10 +280,10 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
             {places.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
                     {categories.find((c) => c.id === activeCategory)?.label ?? 'Places'}
                   </h3>
-                  <span className="text-[11px] text-[var(--discover-body)]">
+                  <span className="text-[11px] text-white/50">
                     {places.length} {places.length === 1 ? 'place' : 'places'}
                   </span>
                 </div>
@@ -304,17 +304,17 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
             )}
 
             {/* ── Separator ── */}
-            <div className="h-px bg-[var(--discover-border)]" />
+            <div className="h-px bg-white/10" />
 
             {/* ── Upcoming events carousel (only shown when events available) ── */}
             {events.length > 0 && (
               <>
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
                       Upcoming Events
                     </h3>
-                    <span className="text-[11px] text-[var(--discover-body)]">
+                    <span className="text-[11px] text-white/50">
                       {events.length} {events.length === 1 ? 'event' : 'events'}
                     </span>
                   </div>
@@ -331,7 +331,7 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                 </section>
 
                 {/* ── Separator ── */}
-                <div className="h-px bg-[var(--discover-border)]" />
+                <div className="h-px bg-white/10" />
               </>
             )}
 
@@ -341,10 +341,10 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
                         {region?.name ? `Discover ${region.name}` : 'Discover the Region'}
                       </h3>
-                      <p className="text-[10px] text-[var(--discover-body)]/60 mt-0.5">
+                      <p className="text-[11px] text-white/40 mt-0.5">
                         {curations.regional_activities.content.summary}
                       </p>
                     </div>
@@ -364,17 +364,17 @@ export default function DiscoverPanel({ stayId }: { stayId?: string | null }) {
                 </section>
 
                 {/* ── Separator ── */}
-                <div className="h-px bg-[var(--discover-border)]" />
+                <div className="h-px bg-white/10" />
               </>
             )}
 
             {/* ── Local insights rail ── */}
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--discover-body)]">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
                   Local Insights
                 </h3>
-                <span className="text-[10px] text-[var(--discover-body)]">{region?.name ?? 'Local'}</span>
+                <span className="text-[11px] text-white/50">{region?.name ?? 'Local'}</span>
               </div>
 
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x">
