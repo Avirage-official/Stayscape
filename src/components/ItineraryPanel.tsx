@@ -83,7 +83,7 @@ function EditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[380px] sm:max-w-[420px] rounded-2xl bg-black/90 border border-white/10 p-0 overflow-hidden gap-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+      <DialogContent className="max-w-[380px] sm:max-w-[420px] rounded-2xl bg-black/90 border-white/10 p-0 overflow-hidden gap-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
         <div className="p-5 sm:p-6">
           {/* Place reminder */}
           <div className="flex items-center gap-3 mb-4">
@@ -139,7 +139,7 @@ function EditDialog({
               <select
                 value={selectedTime}
                 onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3 text-[13px] text-white placeholder:text-white/30 hover:bg-white/[0.12] transition-colors cursor-pointer appearance-none"
+                className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3 text-[13px] text-white hover:bg-white/[0.12] transition-colors cursor-pointer appearance-none"
               >
                 {TIME_OPTIONS.map((t) => (
                   <option key={t} value={t}>{t}</option>
@@ -153,7 +153,7 @@ function EditDialog({
               <select
                 value={selectedDuration}
                 onChange={(e) => setSelectedDuration(Number(e.target.value))}
-                className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3 text-[13px] text-white placeholder:text-white/30 hover:bg-white/[0.12] transition-colors cursor-pointer appearance-none"
+                className="w-full h-10 rounded-xl border border-white/10 bg-white/[0.07] px-3 text-[13px] text-white hover:bg-white/[0.12] transition-colors cursor-pointer appearance-none"
               >
                 {DURATION_OPTIONS.map((d) => (
                   <option key={d} value={d}>{d === 0.5 ? '30 min' : `${d} hr${d > 1 ? 's' : ''}`}</option>
@@ -207,7 +207,7 @@ function RemoveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[360px] rounded-2xl bg-black/90 border border-white/10 p-0 overflow-hidden gap-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+      <DialogContent className="max-w-[360px] rounded-2xl bg-black/90 border-white/10 p-0 overflow-hidden gap-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
         <div className="p-5 sm:p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -223,7 +223,7 @@ function RemoveDialog({
           <div className="flex items-center gap-2.5">
             <Button
               onClick={handleRemove}
-              className="flex-1 h-10 rounded-xl text-[12px] font-semibold bg-white/10 text-white/90 hover:bg-white/20 border border-white/10"
+              className="flex-1 h-10 rounded-xl text-[12px] font-semibold bg-white/10 text-white/90 hover:bg-white/20 border-white/10"
             >
               Remove
             </Button>
