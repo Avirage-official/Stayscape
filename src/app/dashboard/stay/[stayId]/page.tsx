@@ -3,24 +3,25 @@
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
-import type { DashboardData, CustomerStay } from '@/types/customer';
+import type { CustomerStay } from '@/types/customer';
 
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import StayDetailView from '@/components/guest-lounge/StayDetailView';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-async function fetchDashboardApi(userId: string): Promise<DashboardData> {
+async function fetchStayApi(userId: string, stayId: string): Promise<CustomerStay> {
   const res = await fetch(
-    `/api/customer/dashboard?userId=${encodeURIComponent(userId)}`,
+    `/api/customer/stays/${encodeURIComponent(stayId)}?userId=${encodeURIComponent(userId)}`,
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      (body as { error?: string }).error ?? 'Failed to load dashboard',
+      (body as { error?: string }).error ?? 'Failed to load stay',
     );
   }
-  return res.json() as Promise<DashboardData>;
+  const json = (await res.json()) as { stay: CustomerStay };
+  return json.stay;
 }
 
 /* ─── Inner content (needs userId + stayId) ─── */
@@ -36,21 +37,11 @@ function StayDetailContent({
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [stay, setStay] = useState<CustomerStay | null>(null);
 
-  /* Fetch once on mount using useState lazy initializer — avoids
-     react-hooks/set-state-in-effect lint errors (matches codebase pattern). */
+  /* Fetch the single stay on mount using useState lazy initializer —
+     avoids react-hooks/set-state-in-effect lint errors (matches codebase pattern). */
   useState(() => {
-    fetchDashboardApi(userId)
-      .then((data) => {
-        /* Merge both upcomingStays array and singular upcomingStay */
-        const allStays: CustomerStay[] = [
-          ...(data.upcomingStays ?? []),
-          ...(data.upcomingStay ? [data.upcomingStay] : []),
-        ];
-        const found = allStays.find((s) => s.id === stayId);
-        if (!found) {
-          setLoadState('error');
-          return;
-        }
+    fetchStayApi(userId, stayId)
+      .then((found) => {
         setStay(found);
         setLoadState('ready');
       })

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCustomerProfile,
-  getUpcomingStay,
   getUpcomingStays,
 } from '@/lib/supabase/customer-repository';
 
@@ -27,9 +26,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [profile, upcomingStay, upcomingStays] = await Promise.all([
+    const [profile, upcomingStays] = await Promise.all([
       getCustomerProfile(userId),
-      getUpcomingStay(userId),
       getUpcomingStays(userId),
     ]);
 
@@ -39,6 +37,9 @@ export async function GET(request: NextRequest) {
         { status: 404 },
       );
     }
+
+    // upcomingStay is the first stay for backward compatibility
+    const upcomingStay = upcomingStays[0] ?? null;
 
     return NextResponse.json({ profile, upcomingStay, upcomingStays });
   } catch {

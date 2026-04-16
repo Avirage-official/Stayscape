@@ -408,6 +408,8 @@ export default function AddStayDialog({
   const [activeTab, setActiveTab] = useState<DialogTab>('demo');
   const [form, setForm] = useState<StayFormData>(INITIAL_FORM);
   const [step, setStep] = useState<1 | 2>(1);
+  const [manualState, setManualState] = useState<ActivationState>('idle');
+  const [manualError, setManualError] = useState('');
 
   const updateField = useCallback(
     (field: keyof StayFormData, value: string) => {
@@ -417,14 +419,53 @@ export default function AddStayDialog({
   );
 
   const handleSubmit = useCallback(
-    (e: FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
-      // Future: POST to API
-      onOpenChange(false);
-      setForm(INITIAL_FORM);
-      setStep(1);
+      if (!userId) return;
+
+      setManualState('loading');
+      setManualError('');
+
+      try {
+        const res = await fetch('/api/customer/stays', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            country: form.country,
+            city: form.city,
+            hotel_name: form.hotelName,
+            check_in: form.checkIn,
+            check_out: form.checkOut,
+            guests: form.guests ? parseInt(form.guests, 10) : undefined,
+            trip_type: form.tripType || undefined,
+            room_type: form.roomType || undefined,
+            booking_reference: form.bookingReference || undefined,
+            notes: form.notes || undefined,
+            contact_email: form.contactEmail || undefined,
+            contact_phone: form.contactPhone || undefined,
+          }),
+        });
+
+        const json = (await res.json()) as { data?: unknown; error?: string };
+        if (!res.ok) {
+          throw new Error(json.error ?? 'Failed to add stay');
+        }
+
+        setManualState('success');
+        setTimeout(() => {
+          onOpenChange(false);
+          setForm(INITIAL_FORM);
+          setStep(1);
+          setManualState('idle');
+          onActivated?.();
+        }, 1500);
+      } catch (err) {
+        setManualError(err instanceof Error ? err.message : 'Something went wrong');
+        setManualState('error');
+      }
     },
-    [onOpenChange],
+    [userId, form, onOpenChange, onActivated],
   );
 
   const handleNext = useCallback(() => {
@@ -440,6 +481,8 @@ export default function AddStayDialog({
     setForm(INITIAL_FORM);
     setStep(1);
     setActiveTab('demo');
+    setManualState('idle');
+    setManualError('');
   }, [onOpenChange]);
 
   const handleDemoSuccess = useCallback(() => {
@@ -580,6 +623,42 @@ export default function AddStayDialog({
                       )
                     ) : (
                       <>
+                        {/* Manual entry loading state */}
+                        {manualState === 'loading' ? (
+                          <div className="flex flex-col items-center justify-center text-center py-12 gap-6">
+                            <motion.div
+                              className="w-12 h-12 rounded-full border-2 border-[var(--gold)]/30 border-t-[var(--gold)]"
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                            />
+                            <div className="space-y-1.5">
+                              <p className="text-white/90 text-[15px] font-medium">
+                                Adding your stay…
+                              </p>
+                              <p className="text-white/40 text-[13px]">
+                                Setting up your property and curating with AI
+                              </p>
+                            </div>
+                          </div>
+                        ) : manualState === 'success' ? (
+                          <div className="flex flex-col items-center justify-center text-center py-12 gap-5">
+                            <motion.div
+                              className="w-12 h-12 rounded-full bg-[var(--gold)]/10 border border-[var(--gold)]/30 flex items-center justify-center"
+                              initial={{ scale: 0.7, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                            >
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </motion.div>
+                            <div className="space-y-1.5">
+                              <p className="text-white/90 text-[15px] font-medium">Stay added!</p>
+                              <p className="text-white/40 text-[13px]">Loading your curated experience…</p>
+                            </div>
+                          </div>
+                        ) : (
+                        <>
                         {/* Step indicators */}
                         <div className="flex items-center gap-2 mb-6">
                           <div
@@ -597,6 +676,17 @@ export default function AddStayDialog({
                             }`}
                           />
                         </div>
+
+                        {/* Error message */}
+                        {manualState === 'error' && manualError && (
+                          <motion.p
+                            className="text-red-400/80 text-[13px] text-center mb-4"
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                          >
+                            {manualError}
+                          </motion.p>
+                        )}
 
                         {/* Form */}
                         <form onSubmit={handleSubmit}>
@@ -785,6 +875,8 @@ export default function AddStayDialog({
                             </div>
                           )}
                         </form>
+                        </>
+                        )}
                       </>
                     )}
                   </div>
