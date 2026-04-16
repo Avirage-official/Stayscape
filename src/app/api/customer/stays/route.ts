@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
     // Build a PMS-compatible payload from the manual form data
-    const pmsPropertyId = `manual-${body.city.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const bookingRef = body.booking_reference || `MANUAL-${Date.now()}`;
+    const pmsPropertyId = `manual-${body.city.toLowerCase().replace(/\s+/g, '-')}-${crypto.randomUUID()}`;
+    const bookingRef = body.booking_reference || `MANUAL-${crypto.randomUUID()}`;
 
     const payload: PmsBookingPayload = {
       booking_reference: bookingRef,
@@ -130,9 +130,9 @@ export async function POST(request: NextRequest) {
       { status: 201, headers: rateLimit.headers },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[customer/stays] POST error:', error);
     return NextResponse.json(
-      { error: message },
+      { error: 'Failed to create stay' },
       { status: 500 },
     );
   }

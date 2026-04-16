@@ -39,7 +39,8 @@ export async function GET(
     }
 
     return NextResponse.json({ stay });
-  } catch {
+  } catch (error) {
+    console.error('[customer/stays] GET error:', error);
     return NextResponse.json(
       { error: 'Failed to load stay' },
       { status: 500 },
