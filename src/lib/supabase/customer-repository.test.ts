@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
   const staysSecondFilter = vi.fn(() => ({ order: staysOrder }));
   // First date filter after eq — returns an object that supports either a second filter or order
   const staysFirstFilter = vi.fn(() => ({ gte: staysSecondFilter, order: staysOrder }));
-  const staysEq = vi.fn(() => ({ gt: staysFirstFilter, gte: staysFirstFilter, lt: staysFirstFilter, lte: staysFirstFilter }));
+  const staysEq = vi.fn(() => ({ gt: staysFirstFilter, gte: staysFirstFilter, lt: staysFirstFilter, lte: staysFirstFilter, order: staysOrder }));
   const staysSelect = vi.fn(() => ({ eq: staysEq }));
 
   const from = vi.fn((table: string) => {
@@ -61,7 +61,7 @@ vi.mock('@/lib/supabase/client', () => ({
   getSupabaseAdmin: mocks.getSupabaseAdmin,
 }));
 
-import { getCustomerProfile, getUpcomingStays, getCurrentStays, getPastStays } from './customer-repository';
+import { getCustomerProfile, getUpcomingStays, getCurrentStays, getPastStays, getDashboardBundle } from './customer-repository';
 
 describe('customer-repository auth/user id fallback', () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe('customer-repository auth/user id fallback', () => {
     // Re-wire mock return values (cleared mocks lose their implementation)
     mocks.staysSecondFilter.mockReturnValue({ order: mocks.staysOrder });
     mocks.staysFirstFilter.mockReturnValue({ gte: mocks.staysSecondFilter, order: mocks.staysOrder });
-    mocks.staysEq.mockReturnValue({ gt: mocks.staysFirstFilter, gte: mocks.staysFirstFilter, lt: mocks.staysFirstFilter, lte: mocks.staysFirstFilter });
+    mocks.staysEq.mockReturnValue({ gt: mocks.staysFirstFilter, gte: mocks.staysFirstFilter, lt: mocks.staysFirstFilter, lte: mocks.staysFirstFilter, order: mocks.staysOrder });
   });
 
   it('resolves profile by auth email when users.id does not match auth id', async () => {
@@ -232,6 +232,85 @@ describe('customer-repository auth/user id fallback', () => {
     expect(stays).toHaveLength(1);
     expect(stays[0]?.id).toBe('stay-past');
     expect(stays[0]?.check_out).toBe('2026-03-05');
+    expect(mocks.staysEq).toHaveBeenCalledWith('userid', 'user-1');
+  });
+
+  it('loads dashboard data in one bundled read path and partitions stays', async () => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0] as string;
+    const upcomingDate = new Date(now);
+    upcomingDate.setDate(upcomingDate.getDate() + 5);
+    const upcomingCheckIn = upcomingDate.toISOString().split('T')[0] as string;
+    const upcomingCheckoutDate = new Date(upcomingDate);
+    upcomingCheckoutDate.setDate(upcomingCheckoutDate.getDate() + 3);
+    const upcomingCheckOut = upcomingCheckoutDate.toISOString().split('T')[0] as string;
+    const pastDate = new Date(now);
+    pastDate.setDate(pastDate.getDate() - 5);
+    const pastCheckOut = pastDate.toISOString().split('T')[0] as string;
+    const pastCheckInDate = new Date(pastDate);
+    pastCheckInDate.setDate(pastCheckInDate.getDate() - 3);
+    const pastCheckIn = pastCheckInDate.toISOString().split('T')[0] as string;
+
+    mocks.usersMaybeSingleById.mockResolvedValueOnce({ data: { id: 'user-1' } });
+    mocks.usersSingleById.mockResolvedValue({
+      data: {
+        id: 'user-1',
+        email: 'guest@example.com',
+        firstname: 'Demo',
+        lastname: 'Guest',
+        phone: null,
+        createdat: '2026-01-01T00:00:00Z',
+      },
+      error: null,
+    });
+    mocks.staysOrder.mockResolvedValue({
+      data: [
+        {
+          id: 'stay-current',
+          userid: 'user-1',
+          propertyid: 'property-1',
+          booking_reference: 'BR-CURRENT',
+          checkindate: today,
+          checkoutdate: today,
+          status: 'confirmed',
+          roomlabel: null,
+          guestcount: 2,
+          properties: { id: 'property-1', name: 'Hotel A', region_id: null, regions: null },
+        },
+        {
+          id: 'stay-upcoming',
+          userid: 'user-1',
+          propertyid: 'property-2',
+          booking_reference: 'BR-UPCOMING',
+          checkindate: upcomingCheckIn,
+          checkoutdate: upcomingCheckOut,
+          status: 'confirmed',
+          roomlabel: null,
+          guestcount: 1,
+          properties: { id: 'property-2', name: 'Hotel B', region_id: null, regions: null },
+        },
+        {
+          id: 'stay-past',
+          userid: 'user-1',
+          propertyid: 'property-3',
+          booking_reference: 'BR-PAST',
+          checkindate: pastCheckIn,
+          checkoutdate: pastCheckOut,
+          status: 'confirmed',
+          roomlabel: null,
+          guestcount: 1,
+          properties: { id: 'property-3', name: 'Hotel C', region_id: null, regions: null },
+        },
+      ],
+      error: null,
+    });
+
+    const dashboard = await getDashboardBundle('user-1');
+
+    expect(dashboard?.profile.id).toBe('user-1');
+    expect(dashboard?.currentStays.map((s) => s.id)).toEqual(['stay-current']);
+    expect(dashboard?.upcomingStays.map((s) => s.id)).toEqual(['stay-upcoming']);
+    expect(dashboard?.pastStays.map((s) => s.id)).toEqual(['stay-past']);
     expect(mocks.staysEq).toHaveBeenCalledWith('userid', 'user-1');
   });
 });

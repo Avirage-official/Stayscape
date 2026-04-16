@@ -64,6 +64,10 @@ export interface PmsWebhookResult {
   booking_reference: string;
   region_id: string | null;
   curation_triggered: boolean;
+  /** True when an existing stay was reused instead of creating a new one. */
+  stay_existed?: boolean;
+  /** Why a duplicate/existing stay was matched. */
+  duplicate_reason?: 'booking_reference' | 'property_period' | null;
 }
 
 /* ═══════════════════════════════════════════════════════════════

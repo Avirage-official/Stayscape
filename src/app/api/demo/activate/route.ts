@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     const result = await processWebhookBooking(payload, body.user_id);
 
     // Fire curation asynchronously (same pattern as /api/pms/webhook)
-    if (result.region_id) {
+    if (result.region_id && !result.stay_existed) {
       void curateStay(result.stay_id).then(
         (curation) => {
           console.log(
@@ -135,15 +135,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const isDuplicate = !!result.stay_existed;
+    const status = isDuplicate ? 200 : 201;
+    const message = isDuplicate
+      ? 'This stay already exists — opening your existing stay details'
+      : 'Demo booking activated successfully';
+
     return NextResponse.json(
       {
         data: {
           ...result,
-          message: 'Demo booking activated successfully',
-          curation_triggered: !!result.region_id,
+          message,
+          curation_triggered: !!result.region_id && !isDuplicate,
+          redirect_stay_id: result.stay_id,
         },
       },
-      { status: 201, headers: rateLimit.headers },
+      { status, headers: rateLimit.headers },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

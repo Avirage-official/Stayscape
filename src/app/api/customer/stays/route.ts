@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const result = await processWebhookBooking(payload, body.user_id);
 
     // Fire curation asynchronously if region was found
-    if (result.region_id) {
+    if (result.region_id && !result.stay_existed) {
       void curateStay(result.stay_id).then(
         (curation) => {
           console.log(

@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { DEMO_BOOKING_META } from '@/lib/data/demo-bookings';
 
@@ -23,14 +24,25 @@ interface DemoBookingActivationProps {
 }
 
 type ActivationState = 'idle' | 'loading' | 'success' | 'error';
+type DemoActivationResponse = {
+  data?: {
+    stay_id?: string;
+    redirect_stay_id?: string;
+    stay_existed?: boolean;
+  };
+  error?: string;
+};
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
+const DUPLICATE_REDIRECT_DELAY_MS = 700;
+const SUCCESS_REDIRECT_DELAY_MS = 1800;
 
 export default function DemoBookingActivation({
   userId,
   firstName,
   onActivated,
 }: DemoBookingActivationProps) {
+  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const [selectedId, setSelectedId] = useState<string>(DEMO_BOOKING_META[0].id);
   const [manualId, setManualId] = useState('');
@@ -73,11 +85,15 @@ export default function DemoBookingActivation({
         body: JSON.stringify({ booking_id: effectiveBookingId, user_id: userId }),
       });
 
-      const json = (await res.json()) as { data?: unknown; error?: string };
+      const json = (await res.json()) as DemoActivationResponse;
 
       if (!res.ok) {
         throw new Error(json.error ?? 'Activation failed');
       }
+
+      const responseData = json.data;
+      const stayId = responseData?.redirect_stay_id ?? responseData?.stay_id;
+      const isDuplicate = !!responseData?.stay_existed;
 
       setActivatedIds((prev) => {
         const next = new Set(prev);
@@ -89,7 +105,10 @@ export default function DemoBookingActivation({
       // Brief success pause, then trigger dashboard refetch
       setTimeout(() => {
         onActivated();
-      }, 1800);
+        if (stayId) {
+          router.push(`/dashboard/stay/${encodeURIComponent(stayId)}`);
+        }
+      }, isDuplicate ? DUPLICATE_REDIRECT_DELAY_MS : SUCCESS_REDIRECT_DELAY_MS);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setActivationState('error');

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getCustomerProfile,
-  getCurrentStays,
-  getUpcomingStays,
-  getPastStays,
+  getDashboardBundle,
 } from '@/lib/supabase/customer-repository';
 
 /**
@@ -30,24 +27,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [profile, currentStays, upcomingStays, pastStays] = await Promise.all([
-      getCustomerProfile(userId),
-      getCurrentStays(userId),
-      getUpcomingStays(userId),
-      getPastStays(userId),
-    ]);
-
-    if (!profile) {
+    const dashboard = await getDashboardBundle(userId);
+    if (!dashboard) {
       return NextResponse.json(
         { error: 'Customer not found' },
         { status: 404 },
       );
     }
-
-    // upcomingStay: prefer current stay, then upcoming, for backward compatibility
-    const upcomingStay = currentStays[0] ?? upcomingStays[0] ?? null;
-
-    return NextResponse.json({ profile, upcomingStay, currentStays, upcomingStays, pastStays });
+    return NextResponse.json(dashboard);
   } catch {
     return NextResponse.json(
       { error: 'Failed to load dashboard data' },
