@@ -47,6 +47,8 @@ interface DiscoverPanelProps {
 }
 
 type PlacesTab = 'recommendations' | 'places' | 'images' | 'sources';
+const MAX_ASSISTANT_MESSAGES = 8;
+const MAX_VISIBLE_SOURCES = 8;
 
 export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelProps) {
   const { region } = useRegion();
@@ -131,17 +133,21 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     const messageText = (text ?? assistantInput).trim();
     if (!messageText) return;
 
+    const userMessageId = `discover-user-${assistantIdRef.current + 1}`;
+    const assistantMessageId = `discover-assistant-${assistantIdRef.current + 2}`;
+    assistantIdRef.current += 2;
+
     const userMessage = {
-      id: `discover-user-${++assistantIdRef.current}`,
+      id: userMessageId,
       role: 'user' as const,
       text: messageText,
     };
     const assistantMessage = {
-      id: `discover-assistant-${++assistantIdRef.current}`,
+      id: assistantMessageId,
       role: 'assistant' as const,
       text: getAssistantResponse(messageText),
     };
-    setAssistantMessages((prev) => [...prev, userMessage, assistantMessage].slice(-8));
+    setAssistantMessages((prev) => [...prev, userMessage, assistantMessage].slice(-MAX_ASSISTANT_MESSAGES));
     setAssistantInput('');
   }, [assistantInput]);
 
@@ -149,6 +155,27 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     () => places.slice(0, 4).map((place) => place.name),
     [places],
   );
+
+  const getSafeBackgroundImage = useCallback((imageUrl: string | undefined) => {
+    if (!imageUrl) return 'none';
+    try {
+      const parsed = new URL(imageUrl.trim());
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'none';
+      if (/[\\()"'\n\r]/.test(parsed.href)) return 'none';
+      return `url("${parsed.href}")`;
+    } catch {
+      return 'none';
+    }
+  }, []);
+
+  const getSourceLabel = useCallback((sourceUrl: string | undefined) => {
+    if (!sourceUrl) return 'Local source unavailable';
+    try {
+      return new URL(sourceUrl).host;
+    } catch {
+      return sourceUrl;
+    }
+  }, []);
 
   const scrollCarousel = useCallback((direction: 'left' | 'right') => {
     if (carouselRef.current) {
@@ -216,7 +243,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     sendAssistantMessage();
                   }
                 }}
-                placeholder="Ask the assistant…"
+                placeholder="Ask the assistant..."
+                aria-label="Ask discover assistant"
                 className="text-[11px] text-white placeholder-white/35 bg-transparent focus:outline-none flex-1"
               />
               <button
@@ -495,8 +523,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       >
                         <div
                           className="w-full h-28 bg-cover bg-center"
-                          style={{ backgroundImage: `url(${place.image})` }}
-                          aria-label={place.name}
+                          style={{ backgroundImage: getSafeBackgroundImage(place.image) }}
+                          aria-label={`Image of ${place.name}`}
                           role="img"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
@@ -511,10 +539,10 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] text-white/65">
                       Sources are collected from curated recommendations and local discovery feeds.
                     </div>
-                    {places.slice(0, 8).map((place) => (
+                    {places.slice(0, MAX_VISIBLE_SOURCES).map((place) => (
                       <div key={`${place.id}-source`} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
                         <p className="text-[11px] text-white/85">{place.name}</p>
-                        <p className="text-[10px] text-white/50 mt-0.5">{place.bookingUrl || 'Local source unavailable'}</p>
+                        <p className="text-[10px] text-white/50 mt-0.5">{getSourceLabel(place.bookingUrl)}</p>
                       </div>
                     ))}
                   </div>

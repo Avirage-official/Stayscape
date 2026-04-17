@@ -124,7 +124,7 @@ export default function Home() {
             <ErrorBoundary fallbackTitle="Discover">
               <DiscoverPanel
                 stayId={dashboardData?.upcomingStay?.id ?? null}
-                guestName={dashboardData?.profile?.guestName ?? ''}
+                guestName={dashboardData?.profile?.guestName ?? dashboardData?.profile?.full_name ?? ''}
               />
             </ErrorBoundary>
           ) : (
