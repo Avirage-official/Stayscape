@@ -1,288 +1,34 @@
 /**
- * Supabase — Recommended Table Schemas
+ * Supabase — Authoritative Table Schemas (Documentation)
  *
- * This file documents the Supabase table schemas that the application
- * expects. Run these SQL statements in the Supabase SQL editor to
- * create the tables. The application code (repositories, services)
- * is designed to work with these schemas without rewriting.
+ * This file documents the REAL Supabase table schemas as they exist in the
+ * production database. The application code (repositories, services) is
+ * designed to work with these schemas.
  *
  * ──────────────────────────────────────────────────────────────
  * NOTE: This file is documentation only — it is NOT executed at
  *       runtime. It exists so the table structure is version-
  *       controlled alongside the application code.
+ *
+ * SOURCE OF TRUTH: The real Supabase database. If this file
+ *   disagrees with the database, the database wins.
  * ──────────────────────────────────────────────────────────────
  */
 
 export const SCHEMA_SQL = `
 -- ═══════════════════════════════════════════════════════════
--- USERS
+-- ENUMS (Supabase USER-DEFINED types)
 -- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS users (
-  id          UUID PRIMARY KEY,
-  email       TEXT NOT NULL UNIQUE,
-  firstname   TEXT,
-  lastname    TEXT,
-  phone       TEXT,
-  createdat   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- These are the actual Postgres enums in the Supabase database.
 
--- ═══════════════════════════════════════════════════════════
--- PROPERTIES
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS properties (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name            TEXT NOT NULL,
-  image_url       TEXT,
-  address         TEXT,
-  city            TEXT,
-  country         TEXT,
-  latitude        DOUBLE PRECISION,
-  longitude       DOUBLE PRECISION,
-  region_id       UUID REFERENCES regions(id),
-  pms_property_id TEXT UNIQUE
-);
-
--- ═══════════════════════════════════════════════════════════
--- PROPERTY_ROOMS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS property_rooms (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  propertyid   UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  roomlabel    TEXT NOT NULL,
-  description  TEXT,
-  maxguests    INTEGER
-);
-
--- ═══════════════════════════════════════════════════════════
--- STAYS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS stays (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userid            UUID NOT NULL REFERENCES users(id),
-  propertyid        UUID NOT NULL REFERENCES properties(id),
-  checkindate       DATE NOT NULL,
-  checkoutdate      DATE NOT NULL,
-  status            TEXT NOT NULL DEFAULT 'confirmed',
-  roomlabel         TEXT,
-  guestcount        INTEGER,
-  booking_reference TEXT UNIQUE,
-  trip_type         TEXT,
-  notes             TEXT,
-  pms_callback_url  TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_stays_userid ON stays(userid);
-CREATE INDEX IF NOT EXISTS idx_stays_booking_ref ON stays(booking_reference);
-
--- ═══════════════════════════════════════════════════════════
--- STAY_CURATIONS (AI-generated curated content per stay)
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS stay_curations (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  stay_id         UUID NOT NULL REFERENCES stays(id) ON DELETE CASCADE,
-  curation_type   TEXT NOT NULL CHECK (curation_type IN ('default_itinerary', 'recommended_places', 'regional_activities', 'safety_tips')),
-  content         JSONB NOT NULL,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  UNIQUE (stay_id, curation_type)
-);
-
-CREATE INDEX IF NOT EXISTS idx_stay_curations_stay ON stay_curations(stay_id);
-
--- ═══════════════════════════════════════════════════════════
--- GUEST_PREFERENCES (concierge/map selections to push to PMS)
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS guest_preferences (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  stay_id           UUID NOT NULL REFERENCES stays(id) ON DELETE CASCADE,
-  preference_type   TEXT NOT NULL CHECK (preference_type IN ('dining', 'activity', 'transport', 'room_service', 'spa', 'excursion', 'general')),
-  preference_data   JSONB NOT NULL,
-  synced_to_pms     BOOLEAN NOT NULL DEFAULT false,
-  synced_at         TIMESTAMPTZ,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_guest_preferences_stay ON guest_preferences(stay_id);
-CREATE INDEX IF NOT EXISTS idx_guest_preferences_unsynced ON guest_preferences(stay_id) WHERE synced_to_pms = false;
-
--- ═══════════════════════════════════════════════════════════
--- STAY_ROOM_PREFERENCES
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS stay_room_preferences (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  stayid    UUID NOT NULL REFERENCES stays(id) ON DELETE CASCADE,
-  preference TEXT NOT NULL
-);
-
--- ═══════════════════════════════════════════════════════════
--- STAY_BREAKFAST_PREFERENCES
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS stay_breakfast_preferences (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  stayid     UUID NOT NULL REFERENCES stays(id) ON DELETE CASCADE,
-  preference TEXT NOT NULL
-);
-
--- ═══════════════════════════════════════════════════════════
--- STAFF_PROFILES
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS staff_profiles (
-  id          UUID PRIMARY KEY,
-  email       TEXT NOT NULL UNIQUE,
-  firstname   TEXT,
-  lastname    TEXT,
-  role        TEXT NOT NULL DEFAULT 'staff',
-  createdat   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ═══════════════════════════════════════════════════════════
--- SERVICE_TASKS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS service_tasks (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  stayid      UUID REFERENCES stays(id),
-  title       TEXT NOT NULL,
-  description TEXT,
-  status      TEXT NOT NULL DEFAULT 'open',
-  createdat   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updatedat   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ═══════════════════════════════════════════════════════════
--- SERVICE_TASK_EVENTS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS service_task_events (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  taskid      UUID NOT NULL REFERENCES service_tasks(id) ON DELETE CASCADE,
-  staffid     UUID REFERENCES staff_profiles(id),
-  eventtype   TEXT NOT NULL,
-  notes       TEXT,
-  createdat   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERCATEGORIES
--- ═══════════════════════════════════════════════════════════
+CREATE TYPE IF NOT EXISTS userrole AS ENUM ('guest', 'admin');
+CREATE TYPE IF NOT EXISTS staystatus AS ENUM ('upcoming', 'active', 'completed', 'cancelled', 'confirmed', 'checked_in', 'checked_out');
+CREATE TYPE IF NOT EXISTS itinerarystatus AS ENUM ('active');
+CREATE TYPE IF NOT EXISTS itineraryitemstatus AS ENUM ('planned');
+CREATE TYPE IF NOT EXISTS itemsource AS ENUM ('discover');
 CREATE TYPE IF NOT EXISTS contentstatus AS ENUM ('draft', 'published', 'archived');
-
-CREATE TABLE IF NOT EXISTS discovercategories (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name      TEXT NOT NULL,
-  iconname  TEXT NOT NULL,
-  imageurl  TEXT NOT NULL,
-  subtitle  TEXT NOT NULL DEFAULT '',
-  sortorder INTEGER NOT NULL DEFAULT 0,
-  isactive  BOOLEAN NOT NULL DEFAULT true
-);
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERITEMS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS discoveritems (
-  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  categoryid                UUID NOT NULL REFERENCES discovercategories(id) ON DELETE CASCADE,
-  title                     TEXT NOT NULL,
-  shortdescription          TEXT NOT NULL DEFAULT '',
-  fulldescription           TEXT,
-  locationname              TEXT,
-  distancekm                DOUBLE PRECISION,
-  ratingvalue               DOUBLE PRECISION,
-  recommendeddurationhours  TEXT,
-  besttimetogo              TEXT,
-  imageurl                  TEXT,
-  websiteurl                TEXT,
-  gradient                  TEXT,
-  latitude                  DOUBLE PRECISION,
-  longitude                 DOUBLE PRECISION,
-  status                    contentstatus NOT NULL DEFAULT 'draft'
-);
-
-CREATE INDEX IF NOT EXISTS idx_discoveritems_category ON discoveritems(categoryid);
-CREATE INDEX IF NOT EXISTS idx_discoveritems_status ON discoveritems(status);
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERITEMTIPS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS discoveritemtips (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  discoveritemid  UUID NOT NULL REFERENCES discoveritems(id) ON DELETE CASCADE,
-  content         TEXT NOT NULL,
-  tiptype         TEXT NOT NULL DEFAULT 'things_to_do',
-  sortorder       INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS idx_discoveritemtips_item ON discoveritemtips(discoveritemid);
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERITEMLINKS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS discoveritemlinks (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  discoveritemid  UUID NOT NULL REFERENCES discoveritems(id) ON DELETE CASCADE,
-  label           TEXT NOT NULL,
-  url             TEXT NOT NULL,
-  sortorder       INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS idx_discoveritemlinks_item ON discoveritemlinks(discoveritemid);
-
--- ═══════════════════════════════════════════════════════════
--- LOCALINSIGHTS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS localinsights (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title     TEXT NOT NULL,
-  summary   TEXT NOT NULL DEFAULT '',
-  iconname  TEXT NOT NULL DEFAULT '',
-  body      TEXT NOT NULL DEFAULT '',
-  sortorder INTEGER NOT NULL DEFAULT 0,
-  status    contentstatus NOT NULL DEFAULT 'draft'
-);
-
-CREATE INDEX IF NOT EXISTS idx_localinsights_status ON localinsights(status);
-
--- ═══════════════════════════════════════════════════════════
--- ITINERARIES
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS itineraries (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  stayid    UUID REFERENCES stays(id),
-  userid    UUID REFERENCES users(id),
-  createdat TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updatedat TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_itineraries_stayid ON itineraries(stayid);
-
--- ═══════════════════════════════════════════════════════════
--- ITINERARYITEMS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS itineraryitems (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  itineraryid     UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
-  discoveritemid  UUID REFERENCES discoveritems(id),
-  name            TEXT NOT NULL,
-  category        TEXT NOT NULL DEFAULT '',
-  image           TEXT NOT NULL DEFAULT '',
-  scheduleddate   DATE NOT NULL,
-  starttime       TIME NOT NULL,
-  durationhours   DOUBLE PRECISION NOT NULL DEFAULT 1,
-  createdat       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updatedat       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_itineraryitems_itinerary ON itineraryitems(itineraryid);
-
--- ═══════════════════════════════════════════════════════════
--- ITINERARYITEMSNAPSHOTS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS itineraryitemsnapshots (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  itineraryitemid UUID NOT NULL REFERENCES itineraryitems(id) ON DELETE CASCADE,
-  snapshotdata    JSONB NOT NULL,
-  createdat       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+CREATE TYPE IF NOT EXISTS roomstatus AS ENUM ('vacant_clean', 'vacant_dirty', 'occupied', 'out_of_order');
+CREATE TYPE IF NOT EXISTS servicetaskstatus AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
 
 -- ═══════════════════════════════════════════════════════════
 -- REGIONS
@@ -299,6 +45,365 @@ CREATE TABLE IF NOT EXISTS regions (
   is_active     BOOLEAN NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- USERS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS users (
+  id          UUID PRIMARY KEY,
+  firstname   VARCHAR,
+  lastname    VARCHAR,
+  email       VARCHAR UNIQUE,
+  phone       VARCHAR,
+  role        userrole NOT NULL DEFAULT 'guest',
+  createdat   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_users_auth FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- PROPERTIES
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS properties (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            VARCHAR NOT NULL,
+  slug            VARCHAR DEFAULT gen_random_uuid()::text,
+  city            VARCHAR NOT NULL,
+  country         VARCHAR NOT NULL,
+  timezone        VARCHAR NOT NULL DEFAULT 'UTC',
+  address         TEXT,
+  createdat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  image_url       TEXT,
+  latitude        DOUBLE PRECISION,
+  longitude       DOUBLE PRECISION,
+  region_id       UUID REFERENCES regions(id),
+  pms_property_id TEXT
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- PROPERTY_ROOMS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS property_rooms (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  propertyid   UUID NOT NULL REFERENCES properties(id),
+  room_number  TEXT NOT NULL,
+  floor        TEXT,
+  room_type    TEXT,
+  bed_config   TEXT,
+  max_occupancy INTEGER,
+  status       roomstatus NOT NULL DEFAULT 'vacant_clean',
+  notes        TEXT,
+  createdat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- STAYS
+-- ═══════════════════════════════════════════════════════════
+-- Note on booking reference fields:
+--   bookingreference (VARCHAR) — original/legacy column
+--   booking_reference (TEXT)   — newer column used by all runtime code
+-- The runtime code reads/writes booking_reference exclusively.
+-- The legacy bookingreference column exists in the schema but is not
+-- used by the application. Do not insert into bookingreference.
+CREATE TABLE IF NOT EXISTS stays (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  userid            UUID NOT NULL REFERENCES users(id),
+  propertyid        UUID NOT NULL REFERENCES properties(id),
+  bookingreference  VARCHAR,              -- legacy column, not used by app
+  checkindate       DATE NOT NULL,
+  checkoutdate      DATE NOT NULL,
+  roomlabel         VARCHAR,
+  guestcount        INTEGER NOT NULL DEFAULT 1 CHECK (guestcount > 0),
+  status            staystatus NOT NULL DEFAULT 'upcoming',
+  createdat         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  booking_reference TEXT,                 -- active booking reference column
+  trip_type         TEXT,
+  notes             TEXT,
+  pms_callback_url  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_stays_userid ON stays(userid);
+CREATE INDEX IF NOT EXISTS idx_stays_booking_ref ON stays(booking_reference);
+
+-- ═══════════════════════════════════════════════════════════
+-- STAY_CURATIONS (AI-generated curated content per stay)
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS stay_curations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stay_id         UUID REFERENCES stays(id),
+  curation_type   TEXT NOT NULL,
+  content         JSONB NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stay_curations_stay ON stay_curations(stay_id);
+
+-- ═══════════════════════════════════════════════════════════
+-- GUEST_PREFERENCES (concierge/map selections to push to PMS)
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS guest_preferences (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stay_id           UUID REFERENCES stays(id),
+  preference_type   TEXT NOT NULL,
+  preference_data   JSONB NOT NULL,
+  synced_to_pms     BOOLEAN DEFAULT false,
+  synced_at         TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_guest_preferences_stay ON guest_preferences(stay_id);
+CREATE INDEX IF NOT EXISTS idx_guest_preferences_unsynced ON guest_preferences(stay_id) WHERE synced_to_pms = false;
+
+-- ═══════════════════════════════════════════════════════════
+-- STAY_ROOM_PREFERENCES
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS stay_room_preferences (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stayid                UUID NOT NULL UNIQUE REFERENCES stays(id),
+  roomid                UUID REFERENCES property_rooms(id),
+  prefers_late_clean    BOOLEAN NOT NULL DEFAULT false,
+  prefers_morning_clean BOOLEAN NOT NULL DEFAULT false,
+  do_not_disturb        BOOLEAN NOT NULL DEFAULT false,
+  notes_to_housekeeping TEXT,
+  createdat             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- STAY_BREAKFAST_PREFERENCES
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS stay_breakfast_preferences (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stayid              UUID NOT NULL UNIQUE REFERENCES stays(id),
+  breakfast_included  BOOLEAN NOT NULL DEFAULT false,
+  preferred_slot      TEXT,
+  in_room_breakfast   BOOLEAN NOT NULL DEFAULT false,
+  notes_to_kitchen    TEXT,
+  createdat           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- STAFF_PROFILES
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS staff_profiles (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  userid      UUID NOT NULL REFERENCES users(id),
+  propertyid  UUID NOT NULL REFERENCES properties(id),
+  role        TEXT NOT NULL,
+  is_active   BOOLEAN NOT NULL DEFAULT true,
+  createdat   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- SERVICE_TASKS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS service_tasks (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  propertyid        UUID NOT NULL REFERENCES properties(id),
+  roomid            UUID REFERENCES property_rooms(id),
+  stayid            UUID REFERENCES stays(id),
+  task_type         USER-DEFINED NOT NULL,
+  status            servicetaskstatus NOT NULL DEFAULT 'pending',
+  priority          INTEGER NOT NULL DEFAULT 0,
+  title             TEXT NOT NULL,
+  description       TEXT,
+  breakfast_required BOOLEAN NOT NULL DEFAULT false,
+  created_by        UUID REFERENCES staff_profiles(id),
+  assigned_to       UUID REFERENCES staff_profiles(id),
+  scheduled_for     TIMESTAMPTZ,
+  started_at        TIMESTAMPTZ,
+  completed_at      TIMESTAMPTZ,
+  cancelled_at      TIMESTAMPTZ,
+  cancel_reason     TEXT,
+  createdat         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- SERVICE_TASK_EVENTS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS service_task_events (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  taskid       UUID NOT NULL REFERENCES service_tasks(id),
+  event_type   TEXT NOT NULL,
+  old_status   servicetaskstatus,
+  new_status   servicetaskstatus,
+  old_assignee UUID REFERENCES staff_profiles(id),
+  new_assignee UUID REFERENCES staff_profiles(id),
+  notes        TEXT,
+  created_by   UUID REFERENCES staff_profiles(id),
+  createdat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- DISCOVERCATEGORIES
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS discovercategories (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  propertyid   UUID REFERENCES properties(id),
+  slug         VARCHAR NOT NULL,
+  name         VARCHAR NOT NULL,
+  categorytype USER-DEFINED NOT NULL,
+  iconname     VARCHAR,
+  imageurl     TEXT,
+  sortorder    INTEGER NOT NULL DEFAULT 0,
+  isactive     BOOLEAN NOT NULL DEFAULT true,
+  createdat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  subtitle     VARCHAR DEFAULT ''
+);
+
+-- ═══════════════════════════════════════════════════════════
+-- DISCOVERITEMS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS discoveritems (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  propertyid                UUID REFERENCES properties(id),
+  categoryid                UUID NOT NULL REFERENCES discovercategories(id),
+  itemtype                  USER-DEFINED NOT NULL,
+  title                     VARCHAR NOT NULL,
+  shortdescription          VARCHAR NOT NULL,
+  fulldescription           TEXT,
+  locationname              VARCHAR,
+  address                   TEXT,
+  latitude                  NUMERIC,
+  longitude                 NUMERIC,
+  location                  USER-DEFINED,
+  distancekm                NUMERIC,
+  ratingvalue               NUMERIC CHECK (ratingvalue IS NULL OR ratingvalue >= 0 AND ratingvalue <= 5),
+  ratingcount               INTEGER CHECK (ratingcount IS NULL OR ratingcount >= 0),
+  recommendeddurationhours  NUMERIC CHECK (recommendeddurationhours IS NULL OR recommendeddurationhours > 0),
+  besttimetogo              VARCHAR,
+  imageurl                  TEXT,
+  thumbnailurl              TEXT,
+  websiteurl                TEXT,
+  isfeatured                BOOLEAN NOT NULL DEFAULT false,
+  isbookable                BOOLEAN NOT NULL DEFAULT true,
+  status                    contentstatus NOT NULL DEFAULT 'draft',
+  sortorder                 INTEGER NOT NULL DEFAULT 0,
+  sourceprovider            VARCHAR,
+  sourceid                  VARCHAR,
+  sourcesyncedat            TIMESTAMPTZ,
+  createdat                 TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat                 TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  gradient                  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_discoveritems_category ON discoveritems(categoryid);
+CREATE INDEX IF NOT EXISTS idx_discoveritems_status ON discoveritems(status);
+
+-- ═══════════════════════════════════════════════════════════
+-- DISCOVERITEMTIPS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS discoveritemtips (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  discoveritemid  UUID NOT NULL REFERENCES discoveritems(id),
+  tiptype         USER-DEFINED NOT NULL,
+  content         TEXT NOT NULL,
+  sortorder       INTEGER NOT NULL DEFAULT 0,
+  createdat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_discoveritemtips_item ON discoveritemtips(discoveritemid);
+
+-- ═══════════════════════════════════════════════════════════
+-- DISCOVERITEMLINKS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS discoveritemlinks (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  discoveritemid  UUID NOT NULL REFERENCES discoveritems(id),
+  linktype        USER-DEFINED NOT NULL,
+  label           VARCHAR NOT NULL,
+  url             TEXT NOT NULL,
+  sortorder       INTEGER NOT NULL DEFAULT 0,
+  createdat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_discoveritemlinks_item ON discoveritemlinks(discoveritemid);
+
+-- ═══════════════════════════════════════════════════════════
+-- LOCALINSIGHTS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS localinsights (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  propertyid  UUID REFERENCES properties(id),
+  categoryid  UUID REFERENCES discovercategories(id),
+  title       VARCHAR NOT NULL,
+  insighttype USER-DEFINED NOT NULL,
+  summary     VARCHAR NOT NULL,
+  body        TEXT NOT NULL,
+  iconname    VARCHAR,
+  imageurl    TEXT,
+  sortorder   INTEGER NOT NULL DEFAULT 0,
+  status      contentstatus NOT NULL DEFAULT 'draft',
+  createdat   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_localinsights_status ON localinsights(status);
+
+-- ═══════════════════════════════════════════════════════════
+-- ITINERARIES
+-- ═══════════════════════════════════════════════════════════
+-- Note: stayid is NOT NULL and UNIQUE — one itinerary per stay.
+CREATE TABLE IF NOT EXISTS itineraries (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stayid    UUID NOT NULL UNIQUE REFERENCES stays(id),
+  userid    UUID NOT NULL REFERENCES users(id),
+  title     VARCHAR,
+  status    itinerarystatus NOT NULL DEFAULT 'active',
+  createdat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_itineraries_stayid ON itineraries(stayid);
+
+-- ═══════════════════════════════════════════════════════════
+-- ITINERARYITEMS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS itineraryitems (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  itineraryid     UUID NOT NULL REFERENCES itineraries(id),
+  discoveritemid  UUID REFERENCES discoveritems(id),
+  scheduleddate   DATE NOT NULL,
+  starttime       TIME,
+  durationhours   NUMERIC CHECK (durationhours IS NULL OR durationhours > 0),
+  endtime         TIME,
+  titleoverride   VARCHAR,
+  notes           TEXT,
+  status          itineraryitemstatus NOT NULL DEFAULT 'planned',
+  source          itemsource NOT NULL DEFAULT 'discover',
+  createdat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  name            VARCHAR,
+  category        VARCHAR,
+  image           TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_itineraryitems_itinerary ON itineraryitems(itineraryid);
+
+-- ═══════════════════════════════════════════════════════════
+-- ITINERARYITEMSNAPSHOTS
+-- ═══════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS itineraryitemsnapshots (
+  id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  itineraryitemid          UUID NOT NULL UNIQUE REFERENCES itineraryitems(id),
+  title                    VARCHAR NOT NULL,
+  shortdescription         VARCHAR,
+  imageurl                 TEXT,
+  locationname             VARCHAR,
+  websiteurl               TEXT,
+  recommendeddurationhours NUMERIC,
+  createdat                TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ═══════════════════════════════════════════════════════════
@@ -326,7 +431,7 @@ CREATE TABLE IF NOT EXISTS places (
   image_urls          JSONB NOT NULL DEFAULT '[]',
   rating              DOUBLE PRECISION,
   rating_count        INTEGER,
-  price_level         INTEGER CHECK (price_level BETWEEN 1 AND 4),
+  price_level         INTEGER CHECK (price_level >= 1 AND price_level <= 4),
   opening_hours       JSONB,
   is_featured         BOOLEAN NOT NULL DEFAULT false,
   is_active           BOOLEAN NOT NULL DEFAULT true,
@@ -334,9 +439,7 @@ CREATE TABLE IF NOT EXISTS places (
   external_id         TEXT,
   last_synced_at      TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  UNIQUE (external_source, external_id)
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_places_region ON places(region_id);
@@ -349,14 +452,12 @@ CREATE INDEX IF NOT EXISTS idx_places_external ON places(external_source, extern
 -- ═══════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS place_tags (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  place_id    UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+  place_id    UUID NOT NULL REFERENCES places(id),
   tag         TEXT NOT NULL,
   tag_type    TEXT NOT NULL DEFAULT 'general',
   source      TEXT NOT NULL DEFAULT 'manual',
   confidence  DOUBLE PRECISION,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  UNIQUE (place_id, tag, tag_type)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_place_tags_place ON place_tags(place_id);
@@ -385,7 +486,7 @@ CREATE TABLE IF NOT EXISTS events (
   price_min           DOUBLE PRECISION,
   price_max           DOUBLE PRECISION,
   currency            TEXT DEFAULT 'USD',
-  start_date          TIMESTAMPTZ NOT NULL,
+  start_date          TIMESTAMPTZ NOT NULL DEFAULT now(),
   end_date            TIMESTAMPTZ,
   start_time          TEXT,
   end_time            TEXT,
@@ -396,9 +497,7 @@ CREATE TABLE IF NOT EXISTS events (
   last_synced_at      TIMESTAMPTZ,
   expires_at          TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  UNIQUE (external_source, external_id)
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_region ON events(region_id);
@@ -412,14 +511,12 @@ CREATE INDEX IF NOT EXISTS idx_events_external ON events(external_source, extern
 -- ═══════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS event_tags (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id    UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  event_id    UUID NOT NULL REFERENCES events(id),
   tag         TEXT NOT NULL,
   tag_type    TEXT NOT NULL DEFAULT 'general',
   source      TEXT NOT NULL DEFAULT 'manual',
   confidence  DOUBLE PRECISION,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  UNIQUE (event_id, tag, tag_type)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_event_tags_event ON event_tags(event_id);

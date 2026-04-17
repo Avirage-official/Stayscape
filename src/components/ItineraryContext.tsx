@@ -51,13 +51,13 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
             id: row.id,
-            placeId: row.discoveritemid,
-            name: row.name,
-            category: row.category,
-            image: row.image,
+            placeId: row.discoveritemid ?? '',
+            name: row.name ?? '',
+            category: row.category ?? '',
+            image: row.image ?? '',
             date: new Date(row.scheduleddate),
-            time: row.starttime,
-            durationHours: row.durationhours,
+            time: row.starttime ?? '',
+            durationHours: row.durationhours ?? 1,
           }));
           setItems(mapped);
         }

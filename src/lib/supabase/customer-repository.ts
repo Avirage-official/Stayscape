@@ -7,7 +7,7 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/client';
-import type { CustomerProfile, CustomerStay, DashboardData } from '@/types/customer';
+import type { CustomerProfile, CustomerStay, DashboardData, StayStatus } from '@/types/customer';
 
 async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | null> {
   const supabase = getSupabaseAdmin();
@@ -49,7 +49,7 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
     booking_reference: (row.booking_reference as string) ?? null,
     check_in: row.checkindate as string,
     check_out: row.checkoutdate as string,
-    status: row.status as string,
+    status: (row.status as StayStatus) ?? 'upcoming',
     room_type: (row.roomlabel as string) ?? null,
     guests: (row.guestcount as number) ?? null,
     property: propertyRaw
