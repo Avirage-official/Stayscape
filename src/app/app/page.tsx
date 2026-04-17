@@ -8,6 +8,9 @@ import TravelAssistantPanel from '@/components/TravelAssistantPanel';
 import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
+import ItineraryTimeline from '@/components/concierge/ItineraryTimeline';
+import QuickActions from '@/components/concierge/QuickActions';
+import InsightsStrip from '@/components/concierge/InsightsStrip';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useRegion } from '@/lib/context/region-context';
 import { useAuth } from '@/lib/context/auth-context';
@@ -97,28 +100,43 @@ export default function Home() {
         <main className="flex flex-1 overflow-hidden">
           {activeTab === 'concierge' ? (
             <ErrorBoundary fallbackTitle="Map & Concierge">
-              <>
-                {/* Left — Guest/Concierge panel */}
-                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[45%] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
-                  <CustomerPanel
-                    stayId={dashboardData?.upcomingStay?.id}
-                    guestName={dashboardData?.profile?.full_name ?? undefined}
-                    roomLabel={dashboardData?.upcomingStay?.room_type ?? undefined}
-                    roomType={dashboardData?.upcomingStay?.room_type ?? undefined}
-                    guestCount={dashboardData?.upcomingStay?.guests ?? undefined}
-                    checkIn={dashboardData?.upcomingStay?.check_in ?? undefined}
-                    checkOut={dashboardData?.upcomingStay?.check_out ?? undefined}
-                  />
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Left — Guest panel */}
+                  <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[38%] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
+                    <CustomerPanel
+                      stayId={dashboardData?.upcomingStay?.id}
+                      guestName={dashboardData?.profile?.full_name ?? undefined}
+                      roomLabel={dashboardData?.upcomingStay?.room_type ?? undefined}
+                      roomType={dashboardData?.upcomingStay?.room_type ?? undefined}
+                      guestCount={dashboardData?.upcomingStay?.guests ?? undefined}
+                      checkIn={dashboardData?.upcomingStay?.check_in ?? undefined}
+                      checkOut={dashboardData?.upcomingStay?.check_out ?? undefined}
+                    />
+                  </div>
+
+                  {/* Center — Timeline + quick actions */}
+                  <div className="hidden lg:flex lg:w-[24%] flex-col overflow-y-auto scrollbar-hide border-r border-white/10 bg-black/70 p-4 gap-4">
+                    <ItineraryTimeline />
+                    <QuickActions
+                      stayId={dashboardData?.upcomingStay?.id}
+                      onContactAI={() => setMobileView('assistant')}
+                    />
+                  </div>
+
+                  {/* Right — AI Assistant */}
+                  <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 flex-col overflow-hidden bg-black/70`}>
+                    <TravelAssistantPanel
+                      selectedPlace={null}
+                      onClearSelection={() => {}}
+                    />
+                  </div>
                 </div>
 
-                {/* Right — AI Assistant */}
-                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 flex-col overflow-hidden border-l border-white/10 bg-black/70`}>
-                  <TravelAssistantPanel
-                    selectedPlace={null}
-                    onClearSelection={() => {}}
-                  />
+                <div className="border-t border-white/10 bg-black/60">
+                  <InsightsStrip />
                 </div>
-              </>
+              </div>
             </ErrorBoundary>
           ) : activeTab === 'discover' ? (
             <ErrorBoundary fallbackTitle="Discover">
