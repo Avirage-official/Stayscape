@@ -5,21 +5,10 @@
  * plus lightweight join data for the dashboard view.
  */
 
-/**
- * Valid stay status values.
- *
- * The real Supabase column is `staystatus` — a Postgres enum with default 'upcoming'.
- * The original enum values are: upcoming, active, completed, cancelled.
- * The migration added PMS webhook values: confirmed, checked_in, checked_out.
- */
-export type StayStatus =
-  | 'upcoming'
-  | 'active'
-  | 'completed'
-  | 'cancelled'
-  | 'confirmed'
-  | 'checked_in'
-  | 'checked_out';
+import type { StayStatus } from '@/types/enums';
+
+// Re-export so existing imports from '@/types/customer' keep working.
+export type { StayStatus } from '@/types/enums';
 
 export interface CustomerProfile {
   id: string;

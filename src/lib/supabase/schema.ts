@@ -30,6 +30,16 @@ CREATE TYPE IF NOT EXISTS contentstatus AS ENUM ('draft', 'published', 'archived
 CREATE TYPE IF NOT EXISTS roomstatus AS ENUM ('vacant_clean', 'vacant_dirty', 'occupied', 'out_of_order');
 CREATE TYPE IF NOT EXISTS servicetaskstatus AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
 
+-- The following enums exist in Supabase as USER-DEFINED types.
+-- Exact enum values are property-defined and maintained in the database;
+-- they are NOT exhaustively listed here because they may vary by deployment.
+-- categorytype    — used by discovercategories.categorytype
+-- itemtype        — used by discoveritems.itemtype
+-- tiptype         — used by discoveritemtips.tiptype
+-- linktype        — used by discoveritemlinks.linktype
+-- insighttype     — used by localinsights.insighttype
+-- servicetasktype — used by service_tasks.task_type
+
 -- ═══════════════════════════════════════════════════════════
 -- REGIONS
 -- ═══════════════════════════════════════════════════════════
