@@ -5,6 +5,22 @@
  * plus lightweight join data for the dashboard view.
  */
 
+/**
+ * Valid stay status values.
+ *
+ * The real Supabase column is `staystatus` — a Postgres enum with default 'upcoming'.
+ * The original enum values are: upcoming, active, completed, cancelled.
+ * The migration added PMS webhook values: confirmed, checked_in, checked_out.
+ */
+export type StayStatus =
+  | 'upcoming'
+  | 'active'
+  | 'completed'
+  | 'cancelled'
+  | 'confirmed'
+  | 'checked_in'
+  | 'checked_out';
+
 export interface CustomerProfile {
   id: string;
   email: string;
@@ -19,10 +35,16 @@ export interface CustomerStay {
   id: string;
   user_id: string;
   property_id: string;
+  /**
+   * The active booking reference (from stays.booking_reference TEXT column).
+   * Note: the schema also has a legacy `bookingreference` VARCHAR column
+   * which is NOT used by the application.
+   */
   booking_reference: string | null;
   check_in: string;
   check_out: string;
-  status: string;
+  /** staystatus enum — see StayStatus type. */
+  status: StayStatus;
   room_type: string | null;
   guests: number | null;
   property?: {

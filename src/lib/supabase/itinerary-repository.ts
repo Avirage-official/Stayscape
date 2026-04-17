@@ -4,30 +4,53 @@
  * Handles real database reads/writes to the itineraries and
  * itineraryitems tables. Falls back gracefully when the tables
  * are missing or the Supabase client is unavailable.
+ *
+ * Schema notes (source of truth: Supabase):
+ *   itineraries.stayid  — uuid NOT NULL UNIQUE (one itinerary per stay)
+ *   itineraries.userid  — uuid NOT NULL
+ *   itineraries.title   — varchar (nullable)
+ *   itineraries.status  — itinerarystatus enum, default 'active'
+ *
+ *   itineraryitems.status — itineraryitemstatus enum, default 'planned'
+ *   itineraryitems.source — itemsource enum, default 'discover'
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 /* ── Raw DB row types ────────────────────────────────────── */
 
+/** Matches the real Supabase `itineraries` table. */
 export interface DbItinerary {
   id: string;
-  stayid?: string;
-  userid?: string;
+  /** NOT NULL UNIQUE — every itinerary belongs to exactly one stay. */
+  stayid: string;
+  /** NOT NULL — the owning user. */
+  userid: string;
+  title?: string | null;
+  /** itinerarystatus enum: 'active' | … */
+  status?: string;
   createdat: string;
   updatedat?: string;
 }
 
+/** Matches the real Supabase `itineraryitems` table. */
 export interface DbItineraryItem {
   id: string;
   itineraryid: string;
-  discoveritemid: string;
-  name: string;
-  category: string;
-  image: string;
+  discoveritemid: string | null;
+  name: string | null;
+  category: string | null;
+  image: string | null;
   scheduleddate: string;
-  starttime: string;
-  durationhours: number;
+  starttime: string | null;
+  durationhours: number | null;
+  endtime?: string | null;
+  titleoverride?: string | null;
+  notes?: string | null;
+  /** itineraryitemstatus enum, default 'planned'. */
+  status?: string;
+  /** itemsource enum, default 'discover'. */
+  source?: string;
   createdat?: string;
   updatedat?: string;
 }
@@ -36,9 +59,13 @@ export interface DbItineraryItem {
 
 /**
  * Get or create the itinerary for the authenticated user's stay.
- * When `stayId` is omitted the lookup falls back to `userid` only,
- * so the itinerary still works without an active stay record.
- * Returns the itinerary id, or null if Supabase is unavailable.
+ *
+ * The real Supabase schema requires `itineraries.stayid` to be NOT NULL
+ * and UNIQUE (one itinerary per stay). Both userId and stayId are mandatory.
+ *
+ * Returns the itinerary id, or null if:
+ *  - Supabase is unavailable, or
+ *  - the insert/lookup fails.
  */
 export async function getOrCreateItinerary(
   userId: string,
@@ -47,29 +74,36 @@ export async function getOrCreateItinerary(
   const sb = getSupabaseBrowser();
   if (!sb) return null;
 
-  // Try to find existing itinerary for this user (+ stay if provided)
-  const findQuery = sb
-    .from('itineraries')
-    .select('id')
-    .eq('userid', userId);
-
-  if (stayId) {
-    findQuery.eq('stayid', stayId);
+  // Guard: the real schema enforces stayid NOT NULL.
+  // If callers don't have a stayId yet we cannot safely create an itinerary.
+  if (!stayId) {
+    console.warn('[itinerary] getOrCreateItinerary called without stayId — cannot insert (stayid is NOT NULL in schema).');
+    // Still attempt to find an existing itinerary for this user as a read-only fallback
+    const { data: fallback } = await sb
+      .from('itineraries')
+      .select('id')
+      .eq('userid', userId)
+      .limit(1)
+      .maybeSingle();
+    return fallback ? (fallback.id as string) : null;
   }
 
-  const { data: existing, error: findErr } = await findQuery.limit(1).maybeSingle();
+  // Try to find existing itinerary for this stay (UNIQUE constraint)
+  const { data: existing, error: findErr } = await sb
+    .from('itineraries')
+    .select('id')
+    .eq('stayid', stayId)
+    .limit(1)
+    .maybeSingle();
 
   if (findErr) return null;
   if (existing) return existing.id as string;
 
-  // Create a new itinerary
-  const insertPayload: Record<string, string> = { userid: userId };
-  if (stayId) insertPayload.stayid = stayId;
-
+  // Create a new itinerary — stayid is always provided here
   const { data: created, error: createErr } = await sb
     .from('itineraries')
     .insert({
-      stayid: stayId ?? null,
+      stayid: stayId,
       userid: userId,
     })
     .select('id')
@@ -159,6 +193,10 @@ export async function removeItineraryItem(itemId: string): Promise<boolean> {
 /**
  * Fetch all itinerary items for the authenticated user's (optional) stay.
  * Returns null if Supabase is unavailable or the table is missing.
+ *
+ * When stayId is provided, lookup is via the UNIQUE stayid constraint
+ * (preferred). Falls back to userid-only lookup for read paths where
+ * stayId may not yet be available.
  */
 export async function fetchItineraryItems(
   userId: string,
@@ -167,17 +205,25 @@ export async function fetchItineraryItems(
   const sb = getSupabaseBrowser();
   if (!sb) return null;
 
-  // First get the itinerary id
-  const itinQuery = sb
-    .from('itineraries')
-    .select('id')
-    .eq('userid', userId);
-
+  // First get the itinerary id — prefer by stayId (UNIQUE), fallback to userId
+  let itinQuery;
   if (stayId) {
-    itinQuery.eq('stayid', stayId);
+    itinQuery = sb
+      .from('itineraries')
+      .select('id')
+      .eq('stayid', stayId)
+      .limit(1)
+      .maybeSingle();
+  } else {
+    itinQuery = sb
+      .from('itineraries')
+      .select('id')
+      .eq('userid', userId)
+      .limit(1)
+      .maybeSingle();
   }
 
-  const { data: itin, error: itinErr } = await itinQuery.limit(1).maybeSingle();
+  const { data: itin, error: itinErr } = await itinQuery;
 
   if (itinErr || !itin) return null;
 

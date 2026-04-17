@@ -34,12 +34,17 @@ function nightsBetween(checkIn: string, checkOut: string): number {
 
 function getStatusConfig(status: string): { label: string; dotColor: string } {
   const s = status.toLowerCase();
+  // staystatus enum values: upcoming, active, completed, cancelled, confirmed, checked_in, checked_out
   if (s === 'confirmed' || s === 'paid')
     return { label: status, dotColor: 'bg-emerald-400/80' };
-  if (s === 'booked')
-    return { label: 'Booked', dotColor: 'bg-[var(--gold)]/80' };
+  if (s === 'upcoming' || s === 'booked')
+    return { label: 'Upcoming', dotColor: 'bg-[var(--gold)]/80' };
   if (s === 'checked_in' || s === 'active')
     return { label: 'Checked In', dotColor: 'bg-emerald-400/80' };
+  if (s === 'checked_out' || s === 'completed')
+    return { label: 'Completed', dotColor: 'bg-white/60' };
+  if (s === 'cancelled')
+    return { label: 'Cancelled', dotColor: 'bg-red-400/60' };
   return { label: status, dotColor: 'bg-white/40' };
 }
 
