@@ -18,61 +18,100 @@ import type {
   PlaceDetailExtra,
 } from '@/lib/data/discover-fallback';
 
+import type {
+  ContentStatus,
+  CategoryType,
+  ItemType,
+  TipType,
+  LinkType,
+  InsightType,
+} from '@/types/enums';
+
 /* ── Raw DB row types (match expected table columns) ──── */
 
 interface DbDiscoverCategory {
   id: string;
+  propertyid: string | null;
+  slug: string;
   name: string;
-  iconname: string;
-  imageurl: string;
+  categorytype: CategoryType;
+  iconname: string | null;
+  imageurl: string | null;
+  sortorder: number;
+  isactive: boolean;
+  createdat: string;
+  updatedat: string;
   subtitle: string;
-  sortorder?: number;
-  isactive?: boolean;
 }
 
 interface DbDiscoverItem {
   id: string;
+  propertyid: string | null;
   categoryid: string;
+  itemtype: ItemType;
   title: string;
   shortdescription: string;
-  fulldescription?: string;
-  locationname?: string;
-  distancekm?: number;
-  ratingvalue?: number;
-  recommendeddurationhours?: string;
-  besttimetogo?: string;
-  imageurl?: string;
-  websiteurl?: string;
-  gradient?: string;
-  latitude?: number;
-  longitude?: number;
-  status?: string;
+  fulldescription: string | null;
+  locationname: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location: unknown | null;
+  distancekm: number | null;
+  ratingvalue: number | null;
+  ratingcount: number | null;
+  recommendeddurationhours: number | null;
+  besttimetogo: string | null;
+  imageurl: string | null;
+  thumbnailurl: string | null;
+  websiteurl: string | null;
+  isfeatured: boolean;
+  isbookable: boolean;
+  status: ContentStatus;
+  sortorder: number;
+  sourceprovider: string | null;
+  sourceid: string | null;
+  sourcesyncedat: string | null;
+  createdat: string;
+  updatedat: string;
+  gradient: string | null;
 }
 
 interface DbDiscoverItemTip {
   id: string;
   discoveritemid: string;
+  tiptype: TipType;
   content: string;
-  tiptype: string;
-  sortorder?: number;
+  sortorder: number;
+  createdat: string;
+  updatedat: string;
 }
 
 interface DbDiscoverItemLink {
   id: string;
   discoveritemid: string;
+  linktype: LinkType;
   label: string;
   url: string;
-  sortorder?: number;
+  sortorder: number;
+  createdat: string;
+  updatedat: string;
 }
 
 interface DbLocalInsight {
   id: string;
+  propertyid: string | null;
+  categoryid: string | null;
   title: string;
+  insighttype: InsightType;
   summary: string;
-  iconname: string;
   body: string;
-  sortorder?: number;
-  status?: string;
+  iconname: string | null;
+  imageurl: string | null;
+  sortorder: number;
+  status: ContentStatus;
+  createdat: string;
+  updatedat: string;
 }
 
 /* ── Shape transformers ─────────────────────────────────── */
@@ -81,8 +120,8 @@ function toCategory(row: DbDiscoverCategory): CategoryItem {
   return {
     id: row.id,
     label: row.name,
-    icon: row.iconname,
-    image: row.imageurl,
+    icon: row.iconname ?? '',
+    image: row.imageurl ?? '',
     subtitle: row.subtitle,
   };
 }
@@ -106,7 +145,7 @@ function toInsight(row: DbLocalInsight): InsightCard {
     id: row.id,
     title: row.title,
     subtitle: row.summary,
-    icon: row.iconname,
+    icon: row.iconname ?? '',
     content: row.body,
   };
 }
@@ -270,7 +309,7 @@ export async function fetchItemDetail(
     thingsToDo: grouped.thingsToDo,
     whatToLookOutFor: grouped.whatToLookOutFor,
     whatToBring: grouped.whatToBring,
-    recommendedDuration: item.recommendeddurationhours ?? '1–3 hours',
+    recommendedDuration: item.recommendeddurationhours != null ? String(item.recommendeddurationhours) : '1–3 hours',
     bestTimeToGo: item.besttimetogo ?? 'Morning or late afternoon',
   };
 
@@ -285,9 +324,9 @@ export async function fetchItemDetail(
  * (from `discoveritems`) AND synced geo-data places side-by-side.
  *
  * NOTE: In the future, the `discoveritems` table could be deprecated in
- * favour of using `places` + `curated_collections` / `curated_collection_items`
- * (already defined in the schema) as the single source of truth for all
- * discoverable content.
+ * favour of using `places` + a curation layer (e.g. `stay_curations`)
+ * as the single source of truth for all discoverable content.
+ * (There is no `curated_collections` table in the current schema.)
  *
  * @param regionId  Optional region filter — pass to scope results to a
  *                  specific region; omit for all active places.

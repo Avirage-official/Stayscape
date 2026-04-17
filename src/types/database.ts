@@ -163,11 +163,18 @@ export interface EventTag {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Saved Items (user bookmarks / itinerary items)
+   ⚠️  NOT-IN-SCHEMA / PLACEHOLDER TYPES
+   ─────────────────────────────────────────────────────────────
+   The following types do NOT correspond to real tables in the
+   current Supabase database. They were defined speculatively
+   during early planning. They are retained here as future
+   placeholders but MUST NOT be treated as active data models.
    ═══════════════════════════════════════════════════════════════ */
 
+/** @deprecated NOT IN SCHEMA — no `saved_items` table exists in Supabase. Placeholder only. */
 export type SavedItemType = 'place' | 'event';
 
+/** @deprecated NOT IN SCHEMA — no `saved_items` table exists in Supabase. Placeholder only. */
 export interface SavedItem {
   id: string;
   user_id: string;
@@ -186,6 +193,7 @@ export interface SavedItem {
    User Preferences
    ═══════════════════════════════════════════════════════════════ */
 
+/** @deprecated NOT IN SCHEMA — no `user_preferences` table exists in Supabase. See `guest_preferences` for the real table. Placeholder only. */
 export interface UserPreferences {
   id: string;
   user_id: string;
@@ -225,6 +233,7 @@ export interface SyncRun {
    Provider Raw Payloads (optional audit / debug table)
    ═══════════════════════════════════════════════════════════════ */
 
+/** @deprecated NOT IN SCHEMA — no `provider_raw_payloads` table exists in Supabase. Placeholder only. */
 export interface ProviderRawPayload {
   id: string;
   provider: ExternalSource;
@@ -238,6 +247,7 @@ export interface ProviderRawPayload {
    Curated Collections (optional editorial grouping)
    ═══════════════════════════════════════════════════════════════ */
 
+/** @deprecated NOT IN SCHEMA — no `curated_collections` table exists in Supabase. See `stay_curations` for the real curation table. Placeholder only. */
 export interface CuratedCollection {
   id: string;
   region_id: string;
@@ -251,6 +261,7 @@ export interface CuratedCollection {
   updated_at: string;
 }
 
+/** @deprecated NOT IN SCHEMA — no `curated_collection_items` table exists in Supabase. Placeholder only. */
 export interface CuratedCollectionItem {
   id: string;
   collection_id: string;

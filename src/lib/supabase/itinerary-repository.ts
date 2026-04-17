@@ -16,6 +16,11 @@
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import type {
+  ItineraryStatus,
+  ItineraryItemStatus,
+  ItemSource,
+} from '@/types/enums';
 
 /* ── Raw DB row types ────────────────────────────────────── */
 
@@ -26,11 +31,11 @@ export interface DbItinerary {
   stayid: string;
   /** NOT NULL — the owning user. */
   userid: string;
-  title?: string | null;
-  /** itinerarystatus enum: 'active' | … */
-  status?: string;
+  title: string | null;
+  /** itinerarystatus enum — default 'active'. */
+  status: ItineraryStatus;
   createdat: string;
-  updatedat?: string;
+  updatedat: string;
 }
 
 /** Matches the real Supabase `itineraryitems` table. */
@@ -38,21 +43,21 @@ export interface DbItineraryItem {
   id: string;
   itineraryid: string;
   discoveritemid: string | null;
-  name: string | null;
-  category: string | null;
-  image: string | null;
   scheduleddate: string;
   starttime: string | null;
   durationhours: number | null;
-  endtime?: string | null;
-  titleoverride?: string | null;
-  notes?: string | null;
+  endtime: string | null;
+  titleoverride: string | null;
+  notes: string | null;
   /** itineraryitemstatus enum, default 'planned'. */
-  status?: string;
+  status: ItineraryItemStatus;
   /** itemsource enum, default 'discover'. */
-  source?: string;
-  createdat?: string;
-  updatedat?: string;
+  source: ItemSource;
+  createdat: string;
+  updatedat: string;
+  name: string | null;
+  category: string | null;
+  image: string | null;
 }
 
 /* ── Itinerary helpers ──────────────────────────────────── */
