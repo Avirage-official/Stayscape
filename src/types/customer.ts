@@ -9,6 +9,7 @@ export interface CustomerProfile {
   id: string;
   email: string;
   full_name: string | null;
+  guestName?: string | null;
   avatar_url: string | null;
   phone: string | null;
   created_at: string;

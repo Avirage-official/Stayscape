@@ -1,31 +1,27 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import MapPlaceholder from '@/components/MapPlaceholder';
 import CustomerPanel from '@/components/CustomerPanel';
-import TravelAssistantPanel, { TravelAssistantPanelHandle } from '@/components/TravelAssistantPanel';
+import TravelAssistantPanel from '@/components/TravelAssistantPanel';
 import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { MapPlace } from '@/types';
 import { useRegion } from '@/lib/context/region-context';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
 
 type ActiveTab = 'concierge' | 'discover' | 'itinerary';
-type MobileView = 'map' | 'guest' | 'assistant';
+type MobileView = 'guest' | 'assistant';
 
 export default function Home() {
   const router = useRouter();
   const { region } = useRegion();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
-  const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
-  const [mobileView, setMobileView] = useState<MobileView>('map');
-  const panelRef = useRef<TravelAssistantPanelHandle>(null);
+  const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   /* Redirect to region selection if no region chosen */
@@ -45,11 +41,6 @@ export default function Home() {
       })
       .catch(() => {});
   });
-
-  const handleSelectPlace = useCallback((place: MapPlace) => {
-    setSelectedPlace(place);
-    panelRef.current?.selectPlace(place);
-  }, []);
 
   return (
     <ItineraryProvider>
@@ -87,7 +78,7 @@ export default function Home() {
         {/* Mobile sub-nav */}
         {activeTab === 'concierge' && (
           <div className="lg:hidden flex items-center justify-around h-[40px] bg-black/50 border-b border-white/10 flex-shrink-0">
-            {(['map', 'guest', 'assistant'] as const).map((view) => (
+            {(['guest', 'assistant'] as const).map((view) => (
               <button
                 key={view}
                 type="button"
@@ -108,7 +99,7 @@ export default function Home() {
             <ErrorBoundary fallbackTitle="Map & Concierge">
               <>
                 {/* Left — Guest/Concierge panel */}
-                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[310px] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
+                <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[45%] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
                   <CustomerPanel
                     stayId={dashboardData?.upcomingStay?.id}
                     guestName={dashboardData?.profile?.full_name ?? undefined}
@@ -120,28 +111,21 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Centre — Map */}
-                <div className={`${mobileView === 'map' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 relative min-h-0 flex-col`}>
-                  <MapPlaceholder
-                    onSelectPlace={handleSelectPlace}
-                    selectedPlaceId={selectedPlace?.id ?? null}
-                    stayId={dashboardData?.upcomingStay?.id ?? null}
-                  />
-                </div>
-
                 {/* Right — AI Assistant */}
-                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[350px] flex-col overflow-hidden border-l border-white/10 bg-black/70`}>
+                <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 flex-col overflow-hidden border-l border-white/10 bg-black/70`}>
                   <TravelAssistantPanel
-                    ref={panelRef}
-                    selectedPlace={selectedPlace}
-                    onClearSelection={() => setSelectedPlace(null)}
+                    selectedPlace={null}
+                    onClearSelection={() => {}}
                   />
                 </div>
               </>
             </ErrorBoundary>
           ) : activeTab === 'discover' ? (
             <ErrorBoundary fallbackTitle="Discover">
-              <DiscoverPanel stayId={dashboardData?.upcomingStay?.id ?? null} />
+              <DiscoverPanel
+                stayId={dashboardData?.upcomingStay?.id ?? null}
+                guestName={dashboardData?.profile?.guestName ?? dashboardData?.profile?.full_name ?? ''}
+              />
             </ErrorBoundary>
           ) : (
             <ErrorBoundary fallbackTitle="Itinerary">
