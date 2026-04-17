@@ -7,6 +7,8 @@
  * into the frontend — everything is normalized here first.
  */
 
+import type { UserRole, StayStatus } from '@/types/enums';
+
 /* ═══════════════════════════════════════════════════════════════
    Region
    ═══════════════════════════════════════════════════════════════ */
@@ -36,7 +38,7 @@ export interface DbUser {
   email: string | null;
   phone: string | null;
   /** userrole enum — DB default 'guest'. */
-  role: import('@/types/enums').UserRole;
+  role: UserRole;
   createdat: string;
   updatedat: string;
 }
@@ -83,7 +85,7 @@ export interface DbStay {
   roomlabel: string | null;
   guestcount: number;
   /** staystatus enum — DB default 'upcoming'. */
-  status: import('@/types/enums').StayStatus;
+  status: StayStatus;
   createdat: string;
   updatedat: string;
   /** Active booking reference column (TEXT). Used by all runtime code. */
