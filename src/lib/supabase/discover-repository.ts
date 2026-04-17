@@ -7,6 +7,15 @@
  *
  * If the Supabase client is unavailable or a table returns no rows,
  * callers should fall back to the local dummy data.
+ *
+ * Enum-backed columns (values are DB-controlled, not exhaustive in TS):
+ *   discovercategories.categorytype  → CategoryType
+ *   discoveritems.itemtype           → ItemType
+ *   discoveritemtips.tiptype         → TipType (known: things_to_do,
+ *                                       what_to_look_out_for, what_to_bring)
+ *   discoveritemlinks.linktype       → LinkType
+ *   localinsights.insighttype        → InsightType
+ *   discoveritems.status / localinsights.status → ContentStatus
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';

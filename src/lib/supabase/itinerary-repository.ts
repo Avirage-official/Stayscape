@@ -13,6 +13,12 @@
  *
  *   itineraryitems.status — itineraryitemstatus enum, default 'planned'
  *   itineraryitems.source — itemsource enum, default 'discover'
+ *
+ *   itineraryitemsnapshots — related table (1:1 with itineraryitems via
+ *     UNIQUE FK). Stores a denormalized copy of discover-item data at
+ *     the time the itinerary item was created. Not currently written or
+ *     read by this repository — see ItineraryItemSnapshot in
+ *     types/database for the schema shape.
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';

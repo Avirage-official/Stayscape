@@ -23,6 +23,7 @@ function buildStay(): CustomerStay {
       latitude: 1.2,
       longitude: 103.8,
       region_id: 'region-1',
+      timezone: 'Asia/Singapore',
       region: {
         id: 'region-1',
         name: 'Singapore',
