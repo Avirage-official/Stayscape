@@ -56,6 +56,11 @@ export async function upsertGuestUser(
  * Upsert a property by PMS property ID.
  * Uses the pms_property_id field to find or create the property record.
  * Returns the property ID and whether it was newly created.
+ *
+ * Note: properties.slug and properties.timezone are NOT set here —
+ * they have DB-level defaults (gen_random_uuid()::text and 'UTC'
+ * respectively) and are populated automatically on insert.
+ * See Property type in types/database for the full row shape.
  */
 export async function upsertProperty(
   property: PmsBookingPayload['property'],

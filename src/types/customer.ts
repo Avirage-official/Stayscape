@@ -3,6 +3,13 @@
  *
  * These types model the `public.users` and `public.stays` tables,
  * plus lightweight join data for the dashboard view.
+ *
+ * Intentionally omitted from the consumer view:
+ *   - users.role       — userrole enum (DB default 'guest'). Not used by
+ *                         the consumer dashboard; see DbUser for the full shape.
+ *   - users.updatedat  — tracked in DB but not surfaced in profile card.
+ *   - properties.slug  — DB-generated, not used by consumer UI.
+ *   - properties.createdat / updatedat — not relevant for dashboard display.
  */
 
 import type { StayStatus } from '@/types/enums';
@@ -46,6 +53,8 @@ export interface CustomerStay {
     latitude: number | null;
     longitude: number | null;
     region_id: string | null;
+    /** DB default 'UTC'. Available for display context (e.g. local check-in times). */
+    timezone: string | null;
     region: {
       id: string;
       name: string;

@@ -7,6 +7,8 @@
  * into the frontend — everything is normalized here first.
  */
 
+import type { UserRole, StayStatus } from '@/types/enums';
+
 /* ═══════════════════════════════════════════════════════════════
    Region
    ═══════════════════════════════════════════════════════════════ */
@@ -23,6 +25,74 @@ export interface Region {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   User (public.users)
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface DbUser {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+  email: string | null;
+  phone: string | null;
+  /** userrole enum — DB default 'guest'. */
+  role: UserRole;
+  createdat: string;
+  updatedat: string;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Property (public.properties)
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface Property {
+  id: string;
+  name: string;
+  /** DB-generated default (gen_random_uuid()::text). */
+  slug: string;
+  city: string;
+  country: string;
+  /** DB default 'UTC'. */
+  timezone: string;
+  address: string | null;
+  createdat: string;
+  updatedat: string;
+  image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  region_id: string | null;
+  /** External PMS property identifier, used for upsert matching. */
+  pms_property_id: string | null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Stay (public.stays)
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface DbStay {
+  id: string;
+  userid: string;
+  propertyid: string;
+  /**
+   * Legacy VARCHAR column — exists in schema but is NOT used by the
+   * application. See `booking_reference` (TEXT) for the active column.
+   */
+  bookingreference: string | null;
+  checkindate: string;
+  checkoutdate: string;
+  roomlabel: string | null;
+  guestcount: number;
+  /** staystatus enum — DB default 'upcoming'. */
+  status: StayStatus;
+  createdat: string;
+  updatedat: string;
+  /** Active booking reference column (TEXT). Used by all runtime code. */
+  booking_reference: string | null;
+  trip_type: string | null;
+  notes: string | null;
+  pms_callback_url: string | null;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -227,6 +297,27 @@ export interface SyncRun {
   error_message: string | null;
   started_at: string;
   completed_at: string | null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Itinerary Item Snapshot (public.itineraryitemsnapshots)
+   ─────────────────────────────────────────────────────────────
+   Denormalized snapshot of discover-item data captured at the
+   time an itinerary item is created. One-to-one with
+   itineraryitems (UNIQUE FK). Not currently read by UI but
+   exists in the real schema for data-preservation purposes.
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface ItineraryItemSnapshot {
+  id: string;
+  itineraryitemid: string;
+  title: string;
+  shortdescription: string | null;
+  imageurl: string | null;
+  locationname: string | null;
+  websiteurl: string | null;
+  recommendeddurationhours: number | null;
+  createdat: string;
 }
 
 /* ═══════════════════════════════════════════════════════════════

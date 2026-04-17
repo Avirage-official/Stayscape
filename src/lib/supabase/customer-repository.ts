@@ -33,9 +33,16 @@ async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | 
   return byEmail ? (byEmail.id as string) : null;
 }
 
-/** Shared SELECT clause for stay queries (joins properties → regions). */
+/**
+ * Shared SELECT clause for stay queries (joins properties → regions).
+ *
+ * Intentionally omits some schema columns for the consumer view:
+ *   - stays.bookingreference  (legacy VARCHAR — app uses booking_reference TEXT)
+ *   - stays.trip_type, stays.notes, stays.pms_callback_url (PMS-internal)
+ *   - properties.slug, properties.createdat, properties.updatedat (not displayed)
+ */
 const STAY_SELECT = `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount,
-       properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id,
+       properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id, timezone,
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`;
 
 function mapStayRow(row: Record<string, unknown>): CustomerStay {
@@ -63,6 +70,7 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
           latitude: (propertyRaw.latitude as number) ?? null,
           longitude: (propertyRaw.longitude as number) ?? null,
           region_id: (propertyRaw.region_id as string) ?? null,
+          timezone: (propertyRaw.timezone as string) ?? null,
           region: regionRaw
             ? {
                 id: regionRaw.id as string,
@@ -81,6 +89,10 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
 
 /**
  * Fetch a customer profile by their auth user id.
+ *
+ * Note: users.role and users.updatedat exist in the schema but are
+ * intentionally omitted — this query only fetches display-relevant fields.
+ * See DbUser in types/database for the full row shape.
  */
 export async function getCustomerProfile(
   userId: string,
