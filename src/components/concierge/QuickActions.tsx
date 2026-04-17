@@ -13,7 +13,11 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
-  const savePreference = async (payload: Record<string, unknown>) => {
+  const savePreference = async (
+    payload: Record<string, unknown>,
+    successLabel: string,
+    errorLabel: string,
+  ) => {
     if (!stayId) return;
     setIsSaving(true);
     setStatus(null);
@@ -24,9 +28,9 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Request failed');
-      setStatus('Saved');
+      setStatus(successLabel);
     } catch {
-      setStatus('Unable to save');
+      setStatus(errorLabel);
     } finally {
       setIsSaving(false);
     }
@@ -34,27 +38,37 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
 
   const handleHousekeeping = () => {
     if (!stayId) return;
-    void savePreference({
-      stay_id: stayId,
-      preference_type: 'room_service',
-      preference_data: { request: 'housekeeping' },
-    });
+    void savePreference(
+      {
+        stay_id: stayId,
+        preference_type: 'room_service',
+        preference_data: { request: 'housekeeping' },
+      },
+      'Housekeeping request sent',
+      'Unable to save housekeeping request',
+    );
   };
 
   const handleSaveNote = () => {
     const trimmed = note.trim();
     if (!stayId || !trimmed) return;
-    void savePreference({
-      stay_id: stayId,
-      preference_type: 'general',
-      preference_data: { note: trimmed },
-    });
+    void savePreference(
+      {
+        stay_id: stayId,
+        preference_type: 'general',
+        preference_data: { note: trimmed },
+      },
+      'Note saved',
+      'Unable to save note',
+    );
     setNote('');
     setShowNoteInput(false);
   };
 
   const actionBase =
     'w-full rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-3 text-left text-[12px] text-white/85 transition-colors hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-50';
+  const noteToggleButton =
+    'w-full text-left text-[12px] text-white/85 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
@@ -74,7 +88,7 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
             type="button"
             onClick={() => setShowNoteInput((v) => !v)}
             disabled={!stayId}
-            className={`${actionBase} !bg-transparent !border-none !p-0`}
+            className={noteToggleButton}
           >
             Leave a Note
           </button>
