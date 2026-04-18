@@ -223,7 +223,7 @@ function GuestArrivalContent({
             ) : activeStays.length === 1 && pastStays.length === 0 ? (
               /* ── Exactly 1 active stay, no history: show the concierge prompt ── */
               <>
-                <div className="h-full flex flex-col items-center justify-center pb-16">
+                <div className="h-full flex flex-col items-center justify-center pb-28 sm:pb-32">
                   <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
                 </div>
                 {stay && (
