@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
@@ -24,7 +24,7 @@ function ProfileContent({ userId }: { userId: string }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
 
-  useState(() => {
+  useEffect(() => {
     fetchDashboardApi(userId)
       .then((json) => {
         setData(json);
@@ -34,7 +34,7 @@ function ProfileContent({ userId }: { userId: string }) {
         setErrorMsg(err.message);
         setLoadState('error');
       });
-  });
+  }, [userId]);
 
   const refetch = useCallback(() => {
     setLoadState('loading');

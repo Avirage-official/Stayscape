@@ -15,9 +15,11 @@ import type { PmsBookingPayload } from '@/types/pms';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 async function regionHasFreshData(regionId: string): Promise<boolean> {
   const supabase = getSupabaseAdmin();
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - ONE_DAY_MS).toISOString();
   const { data, error } = await supabase
     .from('places')
     .select('id')

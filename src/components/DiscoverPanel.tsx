@@ -51,6 +51,7 @@ const MAX_ASSISTANT_MESSAGES = 8;
 const MAX_VISIBLE_SOURCES = 8;
 const PLACES_PAGE_SIZE = 10;
 const MAX_DISCOVER_PLACES = 20;
+const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
 
 export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelProps) {
   const { region } = useRegion();
@@ -145,7 +146,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   useEffect(() => {
     if (!region?.id) return;
 
-    const storageKey = `stayscape_discover_visited_${region.id}`;
+    const storageKey = `${DISCOVER_VISITED_KEY_PREFIX}${region.id}`;
     const currentVisitTimestamp = Date.now();
     setShowSyncUpdateToast(false);
 
@@ -165,7 +166,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
           const syncedAtMs = new Date(lastSyncedAt).getTime();
           if (
             Number.isFinite(syncedAtMs)
-            && (lastVisitMs == null || syncedAtMs > lastVisitMs)
+            && syncedAtMs > (lastVisitMs ?? 0)
           ) {
             setShowSyncUpdateToast(true);
           }

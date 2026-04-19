@@ -12,9 +12,9 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 
 interface SyncPlacesBody {
   mode?: 'single_region' | 'all_active_regions';
-  region_id: string;
-  latitude: number;
-  longitude: number;
+  region_id?: string;
+  latitude?: number;
+  longitude?: number;
   radius_meters?: number;
   categories?: string[];
   limit?: number;
@@ -81,7 +81,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.region_id || body.latitude == null || body.longitude == null) {
+    const hasCoordinates = body.latitude !== null
+      && body.latitude !== undefined
+      && body.longitude !== null
+      && body.longitude !== undefined;
+    if (!body.region_id || !hasCoordinates) {
       return NextResponse.json(
         { error: 'Missing required fields: region_id, latitude, longitude' },
         { status: 400 },
