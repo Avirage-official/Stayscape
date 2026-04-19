@@ -387,8 +387,8 @@ export default function PitchStory() {
             style={{ fontFamily: "'DM Sans', sans-serif", color: '#8a8580' }}
           >
             Hotels are moving beyond isolated tools toward AI-first operations
-            and guest engagement models. Hyper-personalization is moving toward
-            a performance requirement, not a premium extra.
+            and guest engagement models, and hyper-personalization is moving
+            toward a performance requirement, not a premium extra.
           </p>
           <p
             className="mx-auto mt-8 max-w-3xl text-lg italic leading-8"
