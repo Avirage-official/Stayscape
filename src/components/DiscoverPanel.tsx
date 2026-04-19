@@ -528,7 +528,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
                     {(places.length > PLACES_PAGE_SIZE || hasMorePlaces) && (
                       <p className="text-[11px] text-white/45 text-center">
-                        Showing {Math.min(places.length, MAX_DISCOVER_PLACES)} of {MAX_DISCOVER_PLACES}
+                        Showing {Math.min(places.length, MAX_DISCOVER_PLACES)}
+                        {hasMorePlaces ? ` (max ${MAX_DISCOVER_PLACES})` : ''}
                       </p>
                     )}
 

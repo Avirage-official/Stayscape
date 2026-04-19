@@ -16,6 +16,7 @@ import type { CurationType, CurationResult, CuratedItem } from '@/types/pms';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
+const REGION_PLACE_CONTEXT_LIMIT = 40;
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -146,7 +147,7 @@ async function getExistingRegionPlaces(regionId: string | null): Promise<Existin
     .eq('region_id', regionId)
     .eq('is_active', true)
     .order('rating', { ascending: false })
-    .limit(40);
+    .limit(REGION_PLACE_CONTEXT_LIMIT);
 
   if (error || !data) return [];
   return data as ExistingRegionPlace[];
@@ -294,7 +295,17 @@ Respond with a single JSON object (no markdown, no extra text):
 Generate 6-10 tips.`;
 
     default:
-      throw new Error(`Unsupported curation type: ${type}`);
+      return `${baseContext}
+
+Select region-relevant recommendations from the provided database places.
+
+Respond with a single JSON object (no markdown, no extra text):
+{
+  "title": "Local Recommendations",
+  "summary": "Suggested places and activities for this stay",
+  "items": [],
+  "gap_categories": []
+}`;
   }
 }
 
