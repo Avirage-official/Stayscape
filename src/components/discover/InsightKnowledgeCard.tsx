@@ -25,29 +25,21 @@ export default function InsightKnowledgeCard({ insight }: { insight: InsightCard
           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.06] group-hover:bg-[rgba(201,169,110,0.12)] transition-all duration-300 text-[16px] leading-none">
             {insight.icon}
           </div>
-          <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-white/[0.06] text-[#8a8580] transition-colors duration-300 group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e]">
-            {insight.subtitle}
-          </span>
-        </div>
+            <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-white/[0.06] text-[#8a8580] transition-colors duration-300 group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e] truncate max-w-[100px]">
+              {insight.subtitle}
+            </span>
+          </div>
 
         {/* Title */}
         <h3
-          className="font-medium tracking-tight text-[14px] text-[#e8e4dc] leading-snug"
+          className="font-medium tracking-tight text-[14px] text-[#e8e4dc] leading-snug truncate"
           style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
         >
           {insight.title}
         </h3>
 
         {/* Description */}
-        <p
-          className="text-[11px] text-[#8a8580] leading-relaxed"
-          style={{
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
+        <p className="text-[11px] text-[#8a8580] leading-relaxed line-clamp-3 overflow-hidden break-words">
           {insight.content}
         </p>
 

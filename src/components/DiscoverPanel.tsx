@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useCallback, useMemo } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Tooltip,
   TooltipContent,
@@ -302,7 +301,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
             </div>
           </div>
 
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="px-5 sm:px-8 py-6 space-y-8">
               {/* ── Categories carousel ── */}
               <section>
@@ -555,7 +554,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
               <div className="h-4" />
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         {/* ── Add-to-day dialog ── */}
