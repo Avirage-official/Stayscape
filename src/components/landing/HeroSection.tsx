@@ -9,15 +9,34 @@ import {
 } from 'framer-motion'
 
 const HEADLINE_LINES = [
-  'Your guests arrive.',
-  'They open Google.',
-  'And you lose them.',
+  "Today's guests expect",
+  'more than a room.',
 ]
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const
 
-function scrollToWalkthrough() {
-  const el = document.getElementById('walkthrough')
+const STORY_CARDS = [
+  {
+    label: '01 — THE SHIFT',
+    headline: 'Expectations',
+    body: 'Guests want seamless, personal guidance.',
+  },
+  {
+    label: '02 — THE OPPORTUNITY',
+    headline: 'Guidance',
+    body: 'Better recommendations create stronger stays.',
+  },
+  {
+    label: '03 — WHAT WE DO',
+    headline: 'Concierge',
+    body: 'A branded digital layer across the journey.',
+  },
+] as const
+
+function scrollToStory() {
+  const el =
+    document.getElementById('pitch-story') ??
+    document.getElementById('walkthrough')
   if (el) {
     el.scrollIntoView({ behavior: 'smooth' })
   }
@@ -34,6 +53,9 @@ export default function HeroSection() {
 
   // Parallax: translate background image up to 20% of viewport
   const bgY = useTransform(scrollYProgress, [0, 1], ['0%', '20%'])
+  const topCardY = useTransform(scrollYProgress, [0, 1], ['0%', '-28%'])
+  const middleCardY = useTransform(scrollYProgress, [0, 1], ['18px', '-6%'])
+  const bottomCardY = useTransform(scrollYProgress, [0, 1], ['36px', '16px'])
 
   const lineVariants = {
     hidden: {
@@ -87,61 +109,146 @@ export default function HeroSection() {
       />
 
       {/* Content — lower-left positioning */}
-      <div className="relative z-[2] flex min-h-screen flex-col justify-end px-6 pb-28 sm:px-12 md:px-20 lg:px-28">
-        {/* Headline */}
-        <div className="mb-6">
-          {HEADLINE_LINES.map((line, i) => (
-            <motion.h1
-              key={line}
-              className="font-serif font-bold leading-[1.1]"
+      <div className="relative z-[2] flex min-h-screen items-end px-6 pb-28 sm:px-12 md:px-20 lg:px-28">
+        <div className="grid w-full items-end gap-12 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            {/* Headline */}
+            <div className="mb-6">
+              {HEADLINE_LINES.map((line, i) => (
+                <motion.h1
+                  key={line}
+                  className="font-serif font-bold leading-[1.1]"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 'clamp(3rem, 5.5vw, 5rem)',
+                    letterSpacing: '-0.02em',
+                    color: '#e8e4dc',
+                  }}
+                  custom={i}
+                  variants={lineVariants}
+                  initial={prefersReducedMotion ? 'visible' : 'hidden'}
+                  animate="visible"
+                >
+                  {line}
+                </motion.h1>
+              ))}
+            </div>
+
+            {/* Sub-line */}
+            <motion.p
+              className="mb-8 max-w-[620px]"
               style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
-                letterSpacing: '-0.02em',
-                color: '#e8e4dc',
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '18px',
+                color: '#8a8580',
+                lineHeight: 1.6,
               }}
-              custom={i}
-              variants={lineVariants}
-              initial={prefersReducedMotion ? 'visible' : 'hidden'}
-              animate="visible"
+              {...fadeIn(1.2)}
             >
-              {line}
-            </motion.h1>
-          ))}
-        </div>
+              Stayscape gives every hotel a branded concierge layer —
+              seamless, personal, and built around the guest journey.
+            </motion.p>
 
-        {/* Sub-line */}
-        <motion.p
-          className="mb-8 max-w-[480px]"
-          style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '18px',
-            color: '#8a8580',
-            lineHeight: 1.6,
-          }}
-          {...fadeIn(1.2)}
-        >
-          Stayscape gives every guest a personal concierge — in their pocket,
-          from the moment they check in.
-        </motion.p>
+            {/* CTA */}
+            <motion.div
+              className="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+              {...fadeIn(1.5)}
+            >
+              <button
+                type="button"
+                onClick={scrollToStory}
+                className="min-h-11 cursor-pointer text-sm font-semibold tracking-wide transition-opacity duration-200 hover:opacity-90"
+                style={{
+                  backgroundColor: '#c9a96e',
+                  color: '#0f0e0d',
+                  borderRadius: '4px',
+                  padding: '14px 32px',
+                }}
+              >
+                Explore the Stayscape Story
+              </button>
+              <a
+                href="/stayscape-pitch.pdf"
+                download
+                className="inline-flex min-h-11 items-center text-sm font-medium tracking-wide transition-colors duration-200 hover:bg-white/5"
+                style={{
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  color: '#e8e4dc',
+                  background: 'transparent',
+                  borderRadius: '4px',
+                  padding: '14px 32px',
+                }}
+              >
+                Download the Pitch Deck
+              </a>
+            </motion.div>
+          </div>
 
-        {/* CTA */}
-        <motion.div {...fadeIn(1.5)}>
-          <button
-            type="button"
-            onClick={scrollToWalkthrough}
-            className="cursor-pointer text-sm font-medium tracking-wide transition-colors duration-200 hover:bg-white/10"
-            style={{
-              border: '1px solid rgba(255,255,255,0.3)',
-              background: 'transparent',
-              color: '#e8e4dc',
-              borderRadius: '4px',
-              padding: '12px 28px',
-            }}
+          <motion.div
+            className="relative hidden h-[340px] w-full lg:col-span-5 lg:block"
+            {...fadeIn(1.1)}
           >
-            See How It Works
-          </button>
-        </motion.div>
+            {STORY_CARDS.map((card, index) => {
+              const rotate = index === 0 ? -1 : index === 1 ? 0 : 1
+              const cardY =
+                index === 0
+                  ? prefersReducedMotion
+                    ? '0%'
+                    : topCardY
+                  : index === 1
+                    ? prefersReducedMotion
+                      ? '18px'
+                      : middleCardY
+                    : prefersReducedMotion
+                      ? '36px'
+                      : bottomCardY
+
+              return (
+                <motion.div
+                  key={card.label}
+                  className="absolute right-0 w-[92%] max-w-[420px] p-7"
+                  style={{
+                    y: cardY,
+                    rotate: `${rotate}deg`,
+                    background: '#1a1916',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <span
+                    className="block text-[11px] uppercase"
+                    style={{
+                      color: '#c9a96e',
+                      fontFamily: "'DM Sans', sans-serif",
+                      letterSpacing: '0.2em',
+                      opacity: 0.9,
+                    }}
+                  >
+                    {card.label}
+                  </span>
+                  <h3
+                    className="mt-4 text-2xl font-semibold"
+                    style={{
+                      color: '#e8e4dc',
+                      fontFamily: "'Playfair Display', Georgia, serif",
+                    }}
+                  >
+                    {card.headline}
+                  </h3>
+                  <p
+                    className="mt-2 text-sm"
+                    style={{
+                      color: '#8a8580',
+                      fontFamily: "'DM Sans', sans-serif",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {card.body}
+                  </p>
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        </div>
       </div>
 
       {/* Scroll indicator — bottom center */}

@@ -1,5 +1,6 @@
 import LandingNav from '@/components/landing/LandingNav'
 import HeroSection from '@/components/landing/HeroSection'
+import PitchStory from '@/components/landing/PitchStory'
 import PainPointStats from '@/components/landing/PainPointStats'
 import ProductWalkthrough from '@/components/landing/ProductWalkthrough'
 import BenefitSection from '@/components/landing/BenefitSection'
@@ -15,6 +16,7 @@ export default function LandingPage() {
       <LandingNav />
       <main>
         <HeroSection />
+        <PitchStory />
         <PainPointStats />
         <ProductWalkthrough />
         <BenefitSection />
