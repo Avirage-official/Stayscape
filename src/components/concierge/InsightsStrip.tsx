@@ -16,7 +16,7 @@ export default function InsightsStrip() {
   }
 
   return (
-    <section className="px-4 sm:px-5 py-4 border-t border-white/[0.07]">
+    <section className="px-4 sm:px-5 py-4 border-t border-white/[0.07] overflow-visible">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-[#C9A84C] text-[14px]">✦</span>
         <h3
@@ -28,7 +28,7 @@ export default function InsightsStrip() {
       </div>
 
       <div
-        className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1"
+        className="w-full min-w-0 flex gap-2.5 overflow-x-auto scrollbar-hide pb-1"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {insights.map((insight) => {
