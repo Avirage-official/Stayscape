@@ -2,7 +2,7 @@
  * Stayscape Data Architecture — Canonical Types
  *
  * These types define the owned data model that sits between
- * third-party providers (Geoapify, Ticketmaster, etc.) and the
+ * third-party providers (Geoapify, etc.) and the
  * existing Stayscape frontend. No provider-specific shapes leak
  * into the frontend — everything is normalized here first.
  */

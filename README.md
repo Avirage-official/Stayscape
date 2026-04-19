@@ -37,8 +37,9 @@ See `.env.example` for all required and optional environment variables. Copy it 
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Supabase service role key (backend only) |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | ✅ | Mapbox public token |
 | `GEOAPIFY_API_KEY` | ✅ | Geoapify key (backend only) |
-| `TICKETMASTER_API_KEY` | ⬜ | Ticketmaster key (backend only) |
 | `OPENAI_API_KEY` | ⬜ | OpenAI key for AI enrichment (backend only) |
+| `ADMIN_SYNC_KEY` | ⬜ | Admin key for automated sync triggers |
+| `APP_URL` | ⬜ | Public app URL used by scheduled sync workflow |
 | `UPSTASH_REDIS_REST_URL` | ⬜ | Upstash Redis URL for rate limiting |
 | `UPSTASH_REDIS_REST_TOKEN` | ⬜ | Upstash Redis token for rate limiting |
 

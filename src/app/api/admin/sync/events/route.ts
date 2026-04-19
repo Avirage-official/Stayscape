@@ -2,7 +2,7 @@
  * POST /api/admin/sync/events
  *
  * Admin endpoint to trigger an events sync from the configured
- * event provider (defaults to Ticketmaster).
+ * event provider.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

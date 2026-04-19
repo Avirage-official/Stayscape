@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +29,7 @@ import UpcomingEventCard from '@/components/discover/UpcomingEventCard';
 import InsightKnowledgeCard from '@/components/discover/InsightKnowledgeCard';
 import AddToDayDialog from '@/components/discover/AddToDayDialog';
 import SuccessToast from '@/components/discover/SuccessToast';
+import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
 import {
   PopularGuestCard,
   RegionalActivityCard,
@@ -58,6 +59,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingPlace, setAddingPlace] = useState<PlaceCard | null>(null);
   const [successToast, setSuccessToast] = useState<{ placeName: string; dayValue: string; bookingUrl: string } | null>(null);
+  const [showSyncUpdateToast, setShowSyncUpdateToast] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailPlace, setDetailPlace] = useState<PlaceCard | null>(null);
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
@@ -135,6 +137,46 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const handleDismissToast = useCallback(() => {
     setSuccessToast(null);
   }, []);
+
+  const handleDismissSyncUpdateToast = useCallback(() => {
+    setShowSyncUpdateToast(false);
+  }, []);
+
+  useEffect(() => {
+    if (!region?.id) return;
+
+    const storageKey = `stayscape_discover_visited_${region.id}`;
+    const currentVisitTimestamp = Date.now();
+    setShowSyncUpdateToast(false);
+
+    const fetchSyncStatus = async () => {
+      try {
+        const response = await fetch(
+          `/api/discovery/region-sync-status?regionId=${encodeURIComponent(region.id)}`,
+        );
+        if (!response.ok) return;
+
+        const body = (await response.json()) as { last_synced_at?: string | null };
+        const lastSyncedAt = body.last_synced_at;
+        const lastVisitRaw = window.localStorage.getItem(storageKey);
+        const lastVisitMs = lastVisitRaw ? Number(lastVisitRaw) : null;
+
+        if (lastSyncedAt) {
+          const syncedAtMs = new Date(lastSyncedAt).getTime();
+          if (
+            Number.isFinite(syncedAtMs)
+            && (lastVisitMs == null || syncedAtMs > lastVisitMs)
+          ) {
+            setShowSyncUpdateToast(true);
+          }
+        }
+      } finally {
+        window.localStorage.setItem(storageKey, String(currentVisitTimestamp));
+      }
+    };
+
+    void fetchSyncStatus();
+  }, [region?.id]);
 
   const handleEventCardClick = useCallback((event: EventCard) => {
     setDetailEvent(event);
@@ -624,6 +666,10 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
             bookingUrl={successToast.bookingUrl}
             onDismiss={handleDismissToast}
           />
+        )}
+
+        {showSyncUpdateToast && (
+          <SyncUpdateToast onDismiss={handleDismissSyncUpdateToast} />
         )}
       </div>
     </TooltipProvider>

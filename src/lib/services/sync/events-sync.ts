@@ -20,7 +20,11 @@ import {
   completeSyncRun,
   failSyncRun,
 } from '@/lib/supabase';
-import { getEventProvider, type EventSearchParams } from '@/lib/services/events';
+import {
+  getAvailableProviders,
+  getEventProvider,
+  type EventSearchParams,
+} from '@/lib/services/events';
 import { enrichNewEvents } from '@/lib/services/ai/enrichment';
 import type { ExternalSource } from '@/types/database';
 
@@ -51,8 +55,37 @@ export async function syncEvents(
   options: EventSyncOptions,
 ): Promise<EventSyncResult> {
   const supabase = getSupabaseAdmin();
-  const providerKey = options.provider ?? 'ticketmaster';
-  const provider = getEventProvider(providerKey);
+  const providerKey = options.provider ?? getAvailableProviders()[0] ?? null;
+  if (!providerKey) {
+    console.warn(
+      '[syncEvents] No event providers are registered. Skipping event sync.',
+    );
+    return {
+      sync_run_id: 'skipped_no_provider',
+      records_fetched: 0,
+      records_created: 0,
+      records_updated: 0,
+      records_deactivated: 0,
+      records_expired: 0,
+    };
+  }
+
+  let provider;
+  try {
+    provider = getEventProvider(providerKey);
+  } catch {
+    console.warn(
+      `[syncEvents] Provider "${providerKey}" is not registered. Skipping event sync.`,
+    );
+    return {
+      sync_run_id: 'skipped_no_provider',
+      records_fetched: 0,
+      records_created: 0,
+      records_updated: 0,
+      records_deactivated: 0,
+      records_expired: 0,
+    };
+  }
   const syncStartedAt = new Date().toISOString();
 
   const syncRun = await createSyncRun(supabase, {
