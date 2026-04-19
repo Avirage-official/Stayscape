@@ -27,14 +27,14 @@ export default function InsightsStrip() {
               key={insight.id}
               type="button"
               onClick={() => setExpandedId(expanded ? null : insight.id)}
-              className="min-w-[220px] max-w-[280px] rounded-2xl border border-white/[0.15] bg-white/[0.10] p-3 text-left shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:bg-white/[0.16] hover:border-[var(--gold)]/30 hover:shadow-[0_4px_20px_rgba(201,168,76,0.10)] transition-all duration-300 overflow-hidden relative group"
+              className="w-[220px] flex-shrink-0 rounded-2xl border border-white/[0.15] bg-white/[0.10] p-3 text-left shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:bg-white/[0.16] hover:border-[var(--gold)]/30 hover:shadow-[0_4px_20px_rgba(201,168,76,0.10)] transition-all duration-300 overflow-hidden relative group"
             >
               <div className="absolute left-0 top-0 bottom-0 w-[2px] rounded-l-2xl bg-[var(--gold)]/0 group-hover:bg-[var(--gold)]/40 transition-all duration-300" />
               <div className="flex items-start gap-2">
-                <div className="w-8 h-8 rounded-lg bg-white/[0.08] flex items-center justify-center flex-shrink-0 text-[16px]">{insight.icon}</div>
-                <div>
+                <div className="w-8 h-8 rounded-lg bg-white/[0.08] flex items-center justify-center flex-shrink-0 overflow-hidden leading-none text-[16px]">{insight.icon}</div>
+                <div className="min-w-0 flex-1 overflow-hidden">
                   <p className="text-[12px] text-white/90 truncate">{insight.title}</p>
-                  <p className="text-[11px] text-white/55 line-clamp-2">{insight.subtitle}</p>
+                  <p className="text-[11px] text-white/55 truncate">{insight.subtitle}</p>
                 </div>
               </div>
               {expanded && (
