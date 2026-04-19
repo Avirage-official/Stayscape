@@ -3,14 +3,16 @@
 import { motion } from 'framer-motion';
 import type { InsightCard } from '@/lib/data/discover-fallback';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 const cardVariants = {
   rest: { y: 0 },
-  hover: { y: -3, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } },
+  hover: { y: -3, transition: { duration: 0.22, ease: EASE } },
 };
 
 const lineVariants = {
   rest: { scaleX: 0 },
-  hover: { scaleX: 1, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+  hover: { scaleX: 1, transition: { duration: 0.28, ease: EASE } },
 };
 
 export default function InsightKnowledgeCard({ insight }: { insight: InsightCard }) {
