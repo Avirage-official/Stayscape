@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { useLocalInsights } from '@/hooks/useDiscoverData';
 
 export default function InsightsStrip() {
@@ -15,102 +16,115 @@ export default function InsightsStrip() {
   }
 
   return (
-    <section style={{ padding: '16px 16px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ color: '#C9A84C', fontSize: 14 }}>✦</span>
-        <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.95)', margin: 0 }}>Local Insights</h3>
+    <section className="px-4 sm:px-5 py-4 border-t border-white/[0.07]">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[#C9A84C] text-[14px]">✦</span>
+        <h3
+          className="text-[15px] font-medium text-white/95"
+          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+        >
+          Local Insights
+        </h3>
       </div>
-      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
+
+      <div
+        className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {insights.map((insight) => {
           const expanded = expandedId === insight.id;
           return (
-            <motion.button
+            <button
               key={insight.id}
               type="button"
               onClick={() => setExpandedId(expanded ? null : insight.id)}
               aria-expanded={expanded}
               aria-controls={`insight-content-${insight.id}`}
-              whileHover={!expanded ? { backgroundColor: 'rgba(255,255,255,0.09)' } : undefined}
-              transition={{ duration: 0.2 }}
-              style={{
-                width: 200,
-                flexShrink: 0,
-                borderRadius: 12,
-                background: expanded ? 'rgba(201,169,110,0.06)' : 'rgba(255,255,255,0.06)',
-                border: expanded ? '1px solid rgba(201,169,110,0.3)' : '1px solid rgba(255,255,255,0.1)',
-                padding: 12,
-                textAlign: 'left',
-                overflow: 'hidden',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s ease, background 0.2s ease',
-              }}
+              className={cn(
+                'group relative p-3 rounded-xl overflow-hidden transition-all duration-300 text-left will-change-transform',
+                'border bg-[#111110]',
+                'w-[200px] flex-shrink-0 cursor-pointer',
+                expanded
+                  ? 'border-[rgba(201,169,110,0.3)] shadow-[0_4px_24px_rgba(201,169,110,0.08)]'
+                  : 'border-white/[0.08] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(201,169,110,0.06)]',
+              )}
             >
+              {/* Dot pattern */}
               <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  background: 'rgba(201,169,110,0.1)',
-                  border: '1px solid rgba(201,169,110,0.2)',
-                  borderRadius: 99,
-                  padding: '2px 8px',
-                }}
-              >
-                <span style={{ fontSize: 11, lineHeight: 1, verticalAlign: 'middle', marginRight: 4 }}>{insight.icon}</span>
-                <span style={{ fontSize: 9, color: '#c9a96e', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-dm-sans), sans-serif' }}>{insight.subtitle}</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                <p
-                  style={{
-                    flex: 1,
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: '#e8e4dc',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    margin: 0,
-                  }}
-                >{insight.title}</p>
-                <motion.span
-                  animate={{ rotate: expanded ? 180 : 0 }}
-                  transition={{ duration: 0.25 }}
-                  style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0, display: 'flex' }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </motion.span>
-              </div>
-
-              <AnimatePresence initial={false}>
-                {expanded && (
-                  <motion.div
-                    key="content"
-                    id={`insight-content-${insight.id}`}
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ height: 1, background: 'rgba(201,169,110,0.2)', margin: '10px 0 0' }} />
-                    <p
-                      style={{
-                        paddingTop: 10,
-                        fontSize: 11,
-                        color: 'rgba(255,255,255,0.6)',
-                        lineHeight: 1.65,
-                        fontFamily: 'var(--font-dm-sans), sans-serif',
-                        margin: 0,
-                      }}
-                    >{insight.content}</p>
-                  </motion.div>
+                className={cn(
+                  'absolute inset-0 transition-opacity duration-300 pointer-events-none',
+                  expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
                 )}
-              </AnimatePresence>
-            </motion.button>
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,169,110,0.04)_1px,transparent_1px)] bg-[length:4px_4px]" />
+              </div>
+
+              <div className="relative flex flex-col space-y-2">
+                {/* Icon + badge */}
+                <div className="flex items-center justify-between">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.06] group-hover:bg-[rgba(201,169,110,0.12)] transition-all duration-300 text-[14px] leading-none flex-shrink-0">
+                    {insight.icon}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[9px] font-medium px-1.5 py-0.5 rounded-md transition-colors duration-300',
+                      expanded
+                        ? 'bg-[rgba(201,169,110,0.1)] text-[#c9a96e]'
+                        : 'bg-white/[0.06] text-[#8a8580] group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e]',
+                    )}
+                  >
+                    {insight.subtitle}
+                  </span>
+                </div>
+
+                {/* Title + chevron */}
+                <div className="flex items-center gap-1.5">
+                  <p
+                    className="flex-1 text-[12px] font-medium text-[#e8e4dc] leading-snug truncate"
+                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  >
+                    {insight.title}
+                  </p>
+                  <motion.span
+                    animate={{ rotate: expanded ? 180 : 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="text-white/30 flex-shrink-0 flex items-center"
+                  >
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </motion.span>
+                </div>
+
+                {/* Expandable body */}
+                <AnimatePresence initial={false}>
+                  {expanded && (
+                    <motion.div
+                      key="content"
+                      id={`insight-content-${insight.id}`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] as const }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div className="h-px bg-[rgba(201,169,110,0.2)] mt-1 mb-2" />
+                      <p className="text-[11px] text-white/55 leading-relaxed">
+                        {insight.content}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Gradient border on hover/expanded */}
+              <div
+                className={cn(
+                  'absolute inset-0 -z-10 rounded-xl p-px bg-gradient-to-br from-transparent via-[rgba(201,169,110,0.12)] to-transparent transition-opacity duration-300',
+                  expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                )}
+              />
+            </button>
           );
         })}
       </div>
