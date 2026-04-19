@@ -165,7 +165,7 @@ export function PopularGuestCard({
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="mr-1">
               <path d="M6 2.5V9.5M2.5 6H9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            Add to Day
+            + Itinerary
           </Button>
         </div>
       </div>
@@ -249,7 +249,7 @@ export function RegionalActivityCard({
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="mr-1">
             <path d="M6 2.5V9.5M2.5 6H9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-          Add to Day
+          Add to Trip
         </Button>
       </div>
     </div>

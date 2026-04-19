@@ -30,17 +30,15 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = request.nextUrl;
+  const requestedLimit = Number.parseInt(searchParams.get('limit') ?? '10', 10);
+  const requestedOffset = Number.parseInt(searchParams.get('offset') ?? '0', 10);
   const params = {
     region_id: searchParams.get('region_id') ?? undefined,
     category: (searchParams.get('category') as PlaceCategory) ?? undefined,
     featured_only: searchParams.get('featured') === 'true',
     search: searchParams.get('search') ?? undefined,
-    limit: searchParams.get('limit')
-      ? parseInt(searchParams.get('limit')!, 10)
-      : 20,
-    offset: searchParams.get('offset')
-      ? parseInt(searchParams.get('offset')!, 10)
-      : 0,
+    limit: Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 20) : 10,
+    offset: Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0,
   };
 
   try {

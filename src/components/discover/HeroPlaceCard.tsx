@@ -28,6 +28,8 @@ export default function HeroPlaceCard({
   isFirst: boolean;
   idx: number;
 }) {
+  const hasBookingUrl = Boolean(place.bookingUrl && place.bookingUrl !== '#');
+
   return (
     <div
       className={`
@@ -76,26 +78,44 @@ export default function HeroPlaceCard({
           {place.description}
         </p>
 
-        {/* Rating + Add button */}
+        {/* Rating + Actions */}
         <div className="flex items-center justify-between">
           <StarRating rating={place.rating} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); onAdd(place.id); }}
-            className="
-              border-[var(--discover-gold)]/60 text-[var(--discover-gold)]
-              bg-[var(--discover-gold)]/10 backdrop-blur-sm
-              hover:bg-[var(--discover-gold)]/20 hover:border-[var(--discover-gold)]
-              rounded-lg text-[12px] h-8 px-4
-              transition-all duration-200
-            "
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="mr-1">
-              <path d="M6 2.5V9.5M2.5 6H9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            Add
-          </Button>
+          <div className="flex items-center gap-2">
+            {hasBookingUrl && (
+              <a
+                href={place.bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="
+                  inline-flex items-center justify-center rounded-lg text-[12px] h-8 px-3
+                  border border-white/25 text-white/85 bg-black/35
+                  hover:text-[#C9A84C] hover:border-[#C9A84C]/60
+                  transition-all duration-200
+                "
+              >
+                Book
+              </a>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onAdd(place.id); }}
+              className="
+                border-[var(--discover-gold)]/60 text-[var(--discover-gold)]
+                bg-[var(--discover-gold)]/10 backdrop-blur-sm
+                hover:bg-[var(--discover-gold)]/20 hover:border-[var(--discover-gold)]
+                rounded-lg text-[12px] h-8 px-4
+                transition-all duration-200
+              "
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="mr-1">
+                <path d="M6 2.5V9.5M2.5 6H9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              + Itinerary
+            </Button>
+          </div>
         </div>
       </div>
     </div>

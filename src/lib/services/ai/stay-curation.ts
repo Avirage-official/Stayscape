@@ -2,7 +2,6 @@
  * Stay Curation Service
  *
  * Uses Claude AI to generate curated content for a guest's stay:
- * - Default itinerary based on stay duration, location, trip type
  * - Recommended places (food, shopping, safe areas) near the hotel
  * - Regional activities and experiences ("Discover the Region")
  *
@@ -17,6 +16,7 @@ import type { CurationType, CurationResult, CuratedItem } from '@/types/pms';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
+const REGION_PLACE_CONTEXT_LIMIT = 40;
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -33,6 +33,7 @@ interface StayContext {
   guests: number | null;
   trip_type: string | null;
   notes: string | null;
+  region_id: string | null;
   region_name: string | null;
 }
 
@@ -40,6 +41,19 @@ interface CurationContent {
   title: string;
   summary: string;
   items: CuratedItem[];
+  gap_categories?: string[];
+}
+
+interface ExistingRegionPlace {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  editorial_summary: string | null;
+  booking_url: string | null;
+  website: string | null;
+  rating: number | null;
+  address: string | null;
 }
 
 /* ── Main orchestrator ──────────────────────────────────────── */
@@ -57,16 +71,16 @@ export async function curateStay(
   }
 
   const curationTypes: CurationType[] = [
-    'default_itinerary',
     'recommended_places',
     'regional_activities',
   ];
+  const existingPlaces = await getExistingRegionPlaces(context.region_id);
 
   const createdTypes: CurationType[] = [];
 
   for (const type of curationTypes) {
     try {
-      const content = await generateCuration(context, type);
+      const content = await generateCuration(context, type, existingPlaces);
       if (content) {
         await upsertCuration(stayId, type, content);
         createdTypes.push(type);
@@ -118,8 +132,25 @@ async function getStayContext(stayId: string): Promise<StayContext | null> {
     guests: (row.guestcount as number) ?? null,
     trip_type: (row.trip_type as string) ?? null,
     notes: (row.notes as string) ?? null,
+    region_id: (property?.region_id as string) ?? null,
     region_name: (region?.name as string) ?? null,
   };
+}
+
+async function getExistingRegionPlaces(regionId: string | null): Promise<ExistingRegionPlace[]> {
+  if (!regionId) return [];
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('places')
+    .select('id, name, category, description, editorial_summary, booking_url, website, rating, address')
+    .eq('region_id', regionId)
+    .eq('is_active', true)
+    .order('rating', { ascending: false })
+    .limit(REGION_PLACE_CONTEXT_LIMIT);
+
+  if (error || !data) return [];
+  return data as ExistingRegionPlace[];
 }
 
 /* ── AI curation generators ─────────────────────────────────── */
@@ -127,6 +158,7 @@ async function getStayContext(stayId: string): Promise<StayContext | null> {
 async function generateCuration(
   context: StayContext,
   type: CurationType,
+  existingPlaces: ExistingRegionPlace[],
 ): Promise<CurationContent | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -134,12 +166,16 @@ async function generateCuration(
     return generateFallbackCuration(context, type);
   }
 
-  const prompt = buildCurationPrompt(context, type);
+  const prompt = buildCurationPrompt(context, type, existingPlaces);
   const raw = await callClaude(apiKey, prompt);
   return parseCurationResponse(raw);
 }
 
-function buildCurationPrompt(context: StayContext, type: CurationType): string {
+function buildCurationPrompt(
+  context: StayContext,
+  type: CurationType,
+  existingPlaces: ExistingRegionPlace[],
+): string {
   const stayDays = Math.max(
     1,
     Math.ceil(
@@ -168,36 +204,21 @@ function buildCurationPrompt(context: StayContext, type: CurationType): string {
 
   const baseContext = `You are the AI concierge for Stayscape, a premium hospitality platform.
 A guest is staying at ${locationInfo} for ${stayDays} nights (${context.check_in} to ${context.check_out}).
-${guestInfo ? `Guest details: ${guestInfo}` : ''}`;
+${guestInfo ? `Guest details: ${guestInfo}` : ''}
+
+Existing places from our database for this region (use these first whenever possible and reference their exact ids):
+${JSON.stringify(existingPlaces, null, 2)}
+`;
 
   switch (type) {
-    case 'default_itinerary':
-      return `${baseContext}
-
-Generate a suggested day-by-day itinerary for this ${stayDays}-night stay. Include common activities that most travellers enjoy in this area — morning, afternoon, and evening suggestions for each day.
-
-Respond with a single JSON object (no markdown, no extra text):
-{
-  "title": "Your ${stayDays}-Night ${context.city ?? 'Getaway'} Itinerary",
-  "summary": "A brief 1-2 sentence overview of the itinerary",
-  "items": [
-    {
-      "name": "Activity name",
-      "category": "one of: dining, sightseeing, shopping, wellness, nightlife, nature, cultural, adventure",
-      "description": "1-2 sentence description",
-      "reason": "Why this is recommended",
-      "time_of_day": "morning/afternoon/evening",
-      "duration": "e.g. 2 hours"
-    }
-  ]
-}
-
-Generate ${Math.min(stayDays * 3, 15)} items covering the full stay.`;
-
     case 'recommended_places':
       return `${baseContext}
 
-Recommend the top places near the hotel that guests commonly need — focus on:
+Select the top places near the hotel that guests commonly need.
+Prioritize places from the provided database list and set "place_id" to the matching id when selected.
+Only use general regional knowledge when there is a clear coverage gap in the database.
+
+Focus on:
 - **Food & Dining**: Best-reviewed restaurants, cafes, local food
 - **Shopping**: Popular shopping areas, markets, boutiques
 - **Safe & Popular Areas**: Well-known, safe, walkable areas around the hotel
@@ -210,10 +231,12 @@ Respond with a single JSON object (no markdown, no extra text):
     {
       "name": "Place name",
       "category": "one of: dining, shopping, safe_area, cafe, market, nightlife",
+      "place_id": "existing place id when selected from DB, else null",
       "description": "1-2 sentence description of why this place is great",
       "reason": "What makes it stand out"
     }
-  ]
+  ],
+  "gap_categories": ["categories missing or weak in DB coverage for this stay"]
 }
 
 Generate 8-12 items with a good mix of food, shopping, and safe areas.`;
@@ -221,7 +244,11 @@ Generate 8-12 items with a good mix of food, shopping, and safe areas.`;
     case 'regional_activities':
       return `${baseContext}
 
-Curate a "Discover the Region" guide with activities and experiences common to ${context.region_name ?? context.city ?? 'this area'}. Focus on:
+Curate a "Discover the Region" guide with activities and experiences common to ${context.region_name ?? context.city ?? 'this area'}.
+Select from the provided database places first and set "place_id" when a match exists.
+Supplement with general regional knowledge only when DB coverage is missing for a category.
+
+Focus on:
 - Cultural experiences unique to the region
 - Must-see attractions and landmarks
 - Seasonal/local events and festivals
@@ -236,11 +263,13 @@ Respond with a single JSON object (no markdown, no extra text):
     {
       "name": "Activity/Experience name",
       "category": "one of: cultural, nature, food_wine, landmark, festival, adventure, wellness",
+      "place_id": "existing place id when selected from DB, else null",
       "description": "2-3 sentence description of the experience",
       "reason": "Why it's special to this region",
       "duration": "e.g. half day, 2 hours"
     }
-  ]
+  ],
+  "gap_categories": ["categories missing or weak in DB coverage for this region"]
 }
 
 Generate 8-12 regional activities.`;
@@ -264,6 +293,19 @@ Respond with a single JSON object (no markdown, no extra text):
 }
 
 Generate 6-10 tips.`;
+
+    default:
+      return `${baseContext}
+
+Select region-relevant recommendations from the provided database places.
+
+Respond with a single JSON object (no markdown, no extra text):
+{
+  "title": "Local Recommendations",
+  "summary": "Suggested places and activities for this stay",
+  "items": [],
+  "gap_categories": []
+}`;
   }
 }
 
@@ -312,18 +354,23 @@ function parseCurationResponse(raw: string): CurationContent | null {
     return {
       title: parsed.title,
       summary: parsed.summary ?? '',
-      items: parsed.items.map((item) => ({
-        name: item.name ?? '',
-        category: item.category ?? 'general',
-        description: item.description ?? '',
-        reason: item.reason,
-        time_of_day: item.time_of_day,
-        duration: item.duration,
-        place_id: null,
-      })),
-    };
-  } catch {
-    return null;
+        items: parsed.items.map((item) => ({
+          name: item.name ?? '',
+          category: item.category ?? 'general',
+          description: item.description ?? '',
+          reason: item.reason,
+          time_of_day: item.time_of_day,
+          duration: item.duration,
+          place_id: typeof item.place_id === 'string' && item.place_id.trim().length > 0
+            ? item.place_id
+            : null,
+        })),
+        gap_categories: Array.isArray(parsed.gap_categories)
+          ? parsed.gap_categories.filter((gap): gap is string => typeof gap === 'string')
+          : [],
+      };
+    } catch {
+      return null;
   }
 }
 
@@ -336,33 +383,12 @@ function generateFallbackCuration(
   const city = context.city ?? 'your destination';
 
   switch (type) {
-    case 'default_itinerary':
-      return {
-        title: `Your ${city} Itinerary`,
-        summary: `A curated itinerary will be generated once AI services are configured.`,
-        items: [
-          {
-            name: 'Explore the neighbourhood',
-            category: 'sightseeing',
-            description: `Take a walk around ${context.property_name} and discover the local area.`,
-            time_of_day: 'morning',
-            duration: '2 hours',
-          },
-          {
-            name: 'Local dining experience',
-            category: 'dining',
-            description: `Try the highly-rated restaurants near your hotel.`,
-            time_of_day: 'evening',
-            duration: '2 hours',
-          },
-        ],
-      };
-
     case 'recommended_places':
       return {
         title: `Top Picks Near ${context.property_name}`,
         summary: `Recommended places will be curated once AI services are configured.`,
         items: [],
+        gap_categories: [],
       };
 
     case 'regional_activities':
@@ -370,12 +396,20 @@ function generateFallbackCuration(
         title: `Discover ${city}`,
         summary: `Regional activities will be curated once AI services are configured.`,
         items: [],
+        gap_categories: [],
       };
 
     case 'safety_tips':
       return {
         title: 'Safety & Practical Tips',
         summary: 'Safety information will be curated once AI services are configured.',
+        items: [],
+      };
+
+    default:
+      return {
+        title: `Discover ${city}`,
+        summary: 'Curation is temporarily unavailable.',
         items: [],
       };
   }

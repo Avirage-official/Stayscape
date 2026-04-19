@@ -29,6 +29,8 @@ import {
   type InsightCard,
 } from '@/lib/data/discover-fallback';
 
+const MAX_DISCOVER_PLACES = 20;
+
 /* ── Categories ─────────────────────────────────────────── */
 
 interface UseDiscoverCategoriesResult {
@@ -64,36 +66,71 @@ export function useDiscoverCategories(): UseDiscoverCategoriesResult {
 
 interface UseDiscoverPlacesResult {
   places: PlaceCard[];
+  hasMore: boolean;
   loading: boolean;
   error: string | null;
-  refetch: (categoryId: string, categoryLabel: string) => void;
+  refetch: (
+    categoryId: string,
+    categoryLabel: string,
+    options?: { offset?: number; limit?: number; append?: boolean },
+  ) => void;
 }
 
 export function useDiscoverPlaces(): UseDiscoverPlacesResult {
   const [places, setPlaces] = useState<PlaceCard[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback((categoryId: string, categoryLabel: string) => {
+  const refetch = useCallback((
+    categoryId: string,
+    categoryLabel: string,
+    options?: { offset?: number; limit?: number; append?: boolean },
+  ) => {
+    const limit = Math.min(Math.max(options?.limit ?? 10, 1), 20);
+    const offset = Math.max(options?.offset ?? 0, 0);
+    const append = options?.append === true;
+    // Fetch one extra item so we can determine whether another page exists.
+    const fetchLimit = Math.min(limit + 1, MAX_DISCOVER_PLACES);
     setLoading(true);
     setError(null);
-    fetchItemsByCategory(categoryId, categoryLabel)
+    fetchItemsByCategory(categoryId, categoryLabel, fetchLimit, offset)
       .then((result) => {
+        const mergePlaces = (nextBatch: PlaceCard[]) => {
+          if (append) {
+            setPlaces((prev) => [...prev, ...nextBatch].slice(0, MAX_DISCOVER_PLACES));
+          } else {
+            setPlaces(nextBatch.slice(0, MAX_DISCOVER_PLACES));
+          }
+        };
+
         if (result && result.length > 0) {
-          setPlaces(result);
+          const nextBatch = result.slice(0, limit);
+          mergePlaces(nextBatch);
+          setHasMore(result.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
         } else {
           // Fallback: use hardcoded data for the category
-          setPlaces(FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? []);
+          const fallbackAll = FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? [];
+          const fallback = fallbackAll.slice(offset, offset + limit);
+          mergePlaces(fallback);
+          setHasMore(offset + fallback.length < Math.min(fallbackAll.length, MAX_DISCOVER_PLACES));
         }
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load places');
-        setPlaces(FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? []);
+        const fallbackAll = FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? [];
+        const fallback = fallbackAll.slice(offset, offset + limit);
+        if (append) {
+          setPlaces((prev) => [...prev, ...fallback].slice(0, MAX_DISCOVER_PLACES));
+        } else {
+          setPlaces(fallback.slice(0, MAX_DISCOVER_PLACES));
+        }
+        setHasMore(offset + fallback.length < Math.min(fallbackAll.length, MAX_DISCOVER_PLACES));
       })
       .finally(() => setLoading(false));
   }, []);
 
-  return { places, loading, error, refetch };
+  return { places, hasMore, loading, error, refetch };
 }
 
 /* ── Local insights ─────────────────────────────────────── */
