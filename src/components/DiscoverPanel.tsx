@@ -48,6 +48,8 @@ interface DiscoverPanelProps {
 type PlacesTab = 'recommendations' | 'places' | 'images' | 'sources';
 const MAX_ASSISTANT_MESSAGES = 8;
 const MAX_VISIBLE_SOURCES = 8;
+const PLACES_PAGE_SIZE = 10;
+const MAX_DISCOVER_PLACES = 20;
 
 export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelProps) {
   const { region } = useRegion();
@@ -69,7 +71,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
   // DB-first hooks with dummy fallback
   const { categories, refetch: refetchCategories } = useDiscoverCategories();
-  const { places: dbPlaces, refetch: refetchPlaces } = useDiscoverPlaces();
+  const { places: dbPlaces, hasMore: hasMorePlaces, refetch: refetchPlaces } = useDiscoverPlaces();
   const { insights, refetch: refetchInsights } = useLocalInsights();
   const { events, refetch: refetchEvents } = useDiscoverEvents();
   const { curations } = useCurations(stayId);
@@ -79,7 +81,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     dataLoadedRef.current = true;
     refetchCategories();
     refetchInsights();
-    refetchPlaces('top-places', 'Top Places');
+    refetchPlaces('top-places', 'Top Places', { limit: PLACES_PAGE_SIZE, offset: 0 });
     if (region?.id) refetchEvents(region.id);
   }
 
@@ -91,8 +93,18 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
   const handleCategoryClick = useCallback((item: CategoryItem) => {
     setActiveCategory(item.id);
-    refetchPlaces(item.id, item.label);
+    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0 });
   }, [refetchPlaces]);
+
+  const handleShowMorePlaces = useCallback(() => {
+    if (places.length >= MAX_DISCOVER_PLACES) return;
+    const activeLabel = categories.find((c) => c.id === activeCategory)?.label ?? 'Places';
+    refetchPlaces(activeCategory, activeLabel, {
+      limit: PLACES_PAGE_SIZE,
+      offset: places.length,
+      append: true,
+    });
+  }, [places.length, categories, activeCategory, refetchPlaces]);
 
   const handleCardClick = useCallback((place: PlaceCard) => {
     setDetailPlace(place);
@@ -106,9 +118,10 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   }, [places]);
 
   const handleAddCuratedItem = useCallback((item: CuratedItem, idx: number) => {
-    setAddingPlace(curatedItemToPlaceCard(item, idx));
+    const matchedPlace = item.place_id ? places.find((place) => place.id === item.place_id) : null;
+    setAddingPlace(matchedPlace ?? curatedItemToPlaceCard(item, idx));
     setAddDialogOpen(true);
-  }, []);
+  }, [places]);
 
   const handleConfirmAdd = useCallback((placeId: string, day: string) => {
     const place = places.find((p) => p.id === placeId) ?? addingPlace;
@@ -512,6 +525,29 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                         idx={idx}
                       />
                     ))}
+
+                    {(places.length > PLACES_PAGE_SIZE || hasMorePlaces) && (
+                      <p className="text-[11px] text-white/45 text-center">
+                        Showing {Math.min(places.length, MAX_DISCOVER_PLACES)} of {MAX_DISCOVER_PLACES}
+                      </p>
+                    )}
+
+                    {hasMorePlaces && places.length < MAX_DISCOVER_PLACES && (
+                      <div className="pt-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={handleShowMorePlaces}
+                          className="
+                            text-[11px] uppercase tracking-[0.12em] px-4 py-2 rounded-lg border
+                            border-white/20 bg-black/40 text-white/75
+                            hover:text-[#C9A84C] hover:border-[#C9A84C]/60 hover:bg-[#C9A84C]/10
+                            transition-colors cursor-pointer
+                          "
+                        >
+                          Show more
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

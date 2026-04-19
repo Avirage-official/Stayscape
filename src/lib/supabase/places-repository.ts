@@ -58,9 +58,9 @@ export async function queryPlaces(
   if (params.category) query = query.eq('category', params.category);
   if (params.featured_only) query = query.eq('is_featured', true);
   if (params.search) query = query.ilike('name', `%${params.search}%`);
-  const limit = params.limit ?? 20;
-  query = query.limit(limit);
-  if (params.offset) query = query.range(params.offset, params.offset + limit - 1);
+  const limit = Math.min(Math.max(params.limit ?? 10, 1), 20);
+  const offset = Math.max(params.offset ?? 0, 0);
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error } = await query;
   if (error) throw new Error(`queryPlaces failed: ${error.message}`);
