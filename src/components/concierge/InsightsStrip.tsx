@@ -72,7 +72,7 @@ export default function InsightsStrip() {
                   </span>
                   <span
                     className={cn(
-                      'text-[9px] font-medium px-1.5 py-0.5 rounded-md transition-colors duration-300 truncate max-w-[80px] flex-shrink-0',
+                      'text-[9px] font-medium px-1.5 py-0.5 rounded-md transition-colors duration-300 truncate max-w-[90px] flex-shrink-0',
                       expanded
                         ? 'bg-[rgba(201,169,110,0.1)] text-[#c9a96e]'
                         : 'bg-white/[0.06] text-[#8a8580] group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e]',
