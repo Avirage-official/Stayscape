@@ -43,7 +43,7 @@ export default function InsightsStrip() {
               className={cn(
                 'group relative p-3 rounded-xl overflow-hidden transition-all duration-300 text-left will-change-transform',
                 'border bg-[#111110]',
-                'w-[200px] flex-shrink-0 cursor-pointer',
+                'w-[180px] flex-shrink-0 cursor-pointer',
                 expanded
                   ? 'border-[rgba(201,169,110,0.3)] shadow-[0_4px_24px_rgba(201,169,110,0.08)]'
                   : 'border-white/[0.08] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(201,169,110,0.06)]',
@@ -59,15 +59,20 @@ export default function InsightsStrip() {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,169,110,0.04)_1px,transparent_1px)] bg-[length:4px_4px]" />
               </div>
 
-              <div className="relative flex flex-col space-y-2">
-                {/* Icon + badge */}
+              <div className="relative flex flex-col gap-1.5">
+                {/* Row 1: Icon left, category pill right */}
                 <div className="flex items-center justify-between">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.06] group-hover:bg-[rgba(201,169,110,0.12)] transition-all duration-300 text-[14px] leading-none flex-shrink-0">
+                  <span
+                    className="w-8 h-8 min-w-[2rem] rounded-lg flex items-center justify-center bg-white/[0.06] group-hover:bg-[rgba(201,169,110,0.12)] transition-all duration-300 flex-shrink-0 select-none"
+                    role="img"
+                    aria-hidden="true"
+                    style={{ fontSize: 16, lineHeight: 1 }}
+                  >
                     {insight.icon}
-                  </div>
+                  </span>
                   <span
                     className={cn(
-                      'text-[9px] font-medium px-1.5 py-0.5 rounded-md transition-colors duration-300',
+                      'text-[9px] font-medium px-1.5 py-0.5 rounded-md transition-colors duration-300 truncate max-w-[80px] flex-shrink-0',
                       expanded
                         ? 'bg-[rgba(201,169,110,0.1)] text-[#c9a96e]'
                         : 'bg-white/[0.06] text-[#8a8580] group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e]',
@@ -77,10 +82,10 @@ export default function InsightsStrip() {
                   </span>
                 </div>
 
-                {/* Title + chevron */}
-                <div className="flex items-center gap-1.5">
+                {/* Row 2: Title + chevron */}
+                <div className="flex items-center gap-1.5 min-w-0">
                   <p
-                    className="flex-1 text-[12px] font-medium text-[#e8e4dc] leading-snug truncate"
+                    className="flex-1 min-w-0 text-[12px] font-medium text-[#e8e4dc] leading-tight truncate"
                     style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
                   >
                     {insight.title}
@@ -88,7 +93,7 @@ export default function InsightsStrip() {
                   <motion.span
                     animate={{ rotate: expanded ? 180 : 0 }}
                     transition={{ duration: 0.25 }}
-                    className="text-white/30 flex-shrink-0 flex items-center"
+                    className="text-white/30 flex-shrink-0 flex items-center justify-center w-4 h-4"
                   >
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
                       <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -108,7 +113,7 @@ export default function InsightsStrip() {
                       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] as const }}
                       style={{ overflow: 'hidden' }}
                     >
-                      <div className="h-px bg-[rgba(201,169,110,0.2)] mt-1 mb-2" />
+                      <div className="h-px bg-[rgba(201,169,110,0.2)] mt-0.5 mb-1.5" />
                       <p className="text-[11px] text-white/55 leading-relaxed">
                         {insight.content}
                       </p>
