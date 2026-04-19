@@ -352,7 +352,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
                 <div
                   ref={carouselRef}
-                  className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory discover-slide-in"
+                  className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
                 >
                   {categories.map((cat) => (
                     <div key={cat.id} className="snap-start">
@@ -486,9 +487,12 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                         <span className="text-[11px] text-white/50">{region?.name ?? 'Local'}</span>
                       </div>
 
-                      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x">
+                      <div
+                        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x"
+                        style={{ WebkitOverflowScrolling: 'touch' }}
+                      >
                         {insights.map((insight) => (
-                          <div key={insight.id} className="snap-start">
+                          <div key={insight.id} className="snap-start flex-shrink-0">
                             <InsightKnowledgeCard insight={insight} />
                           </div>
                         ))}
