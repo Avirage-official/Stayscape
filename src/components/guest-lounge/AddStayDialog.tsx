@@ -32,70 +32,8 @@ interface AddStayDialogProps {
   existingBookingRefs?: string[];
 }
 
-interface StayFormData {
-  country: string;
-  city: string;
-  hotelName: string;
-  checkIn: string;
-  checkOut: string;
-  contactEmail: string;
-  contactPhone: string;
-  guests: string;
-  tripType: string;
-  roomType: string;
-  bookingReference: string;
-  notes: string;
-}
-
-const INITIAL_FORM: StayFormData = {
-  country: '',
-  city: '',
-  hotelName: '',
-  checkIn: '',
-  checkOut: '',
-  contactEmail: '',
-  contactPhone: '',
-  guests: '2',
-  tripType: '',
-  roomType: '',
-  bookingReference: '',
-  notes: '',
-};
-
-const TRIP_TYPES = [
-  'Leisure',
-  'Business',
-  'Romantic',
-  'Family',
-  'Adventure',
-  'Wellness',
-];
-
-function FormField({
-  label,
-  required = false,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-        {label}
-        {required && <span className="text-[var(--gold)] ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 const inputClassName =
   'w-full h-11 px-4 rounded-xl bg-white/[0.10] border border-white/[0.12] text-[14px] text-white/85 placeholder:text-white/40 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13] transition-all duration-300';
-
-const selectClassName =
-  'w-full h-11 px-4 rounded-xl bg-white/[0.10] border border-white/[0.12] text-[14px] text-white/85 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13] transition-all duration-300 appearance-none cursor-pointer';
 
 /* ─── Demo activation panel (compact, fits inside dialog) ─── */
 
@@ -424,82 +362,60 @@ export default function AddStayDialog({
   onActivated,
   existingBookingRefs,
 }: AddStayDialogProps) {
+  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<DialogTab>('demo');
-  const [form, setForm] = useState<StayFormData>(INITIAL_FORM);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [manualBookingId, setManualBookingId] = useState('');
   const [manualState, setManualState] = useState<ActivationState>('idle');
   const [manualError, setManualError] = useState('');
-
-  const updateField = useCallback(
-    (field: keyof StayFormData, value: string) => {
-      setForm((prev) => ({ ...prev, [field]: value }));
-    },
-    [],
-  );
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (!userId) return;
+      const bookingId = manualBookingId.trim();
+      if (!userId || !bookingId) return;
 
       setManualState('loading');
       setManualError('');
 
       try {
-        const res = await fetch('/api/customer/stays', {
+        const res = await fetch('/api/demo/activate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             user_id: userId,
-            country: form.country,
-            city: form.city,
-            hotel_name: form.hotelName,
-            check_in: form.checkIn,
-            check_out: form.checkOut,
-            guests: form.guests ? parseInt(form.guests, 10) : undefined,
-            trip_type: form.tripType || undefined,
-            room_type: form.roomType || undefined,
-            booking_reference: form.bookingReference || undefined,
-            notes: form.notes || undefined,
-            contact_email: form.contactEmail || undefined,
-            contact_phone: form.contactPhone || undefined,
+            booking_id: bookingId,
           }),
         });
 
-        const json = (await res.json()) as { data?: unknown; error?: string };
+        const json = (await res.json()) as DemoActivationResponse;
         if (!res.ok) {
-          throw new Error(json.error ?? 'Failed to add stay');
+          throw new Error(json.error ?? 'Activation failed');
         }
 
+        const responseData = json.data;
+        const stayId = responseData?.redirect_stay_id ?? responseData?.stay_id;
         setManualState('success');
         setTimeout(() => {
           onOpenChange(false);
-          setForm(INITIAL_FORM);
-          setStep(1);
+          setManualBookingId('');
           setManualState('idle');
+          if (stayId) {
+            router.push(`/dashboard/stay/${encodeURIComponent(stayId)}`);
+          }
           onActivated?.();
-        }, 1500);
+        }, SUCCESS_REDIRECT_DELAY_MS);
       } catch (err) {
         setManualError(err instanceof Error ? err.message : 'Something went wrong');
         setManualState('error');
       }
     },
-    [userId, form, onOpenChange, onActivated],
+    [userId, manualBookingId, onOpenChange, onActivated, router],
   );
-
-  const handleNext = useCallback(() => {
-    setStep(2);
-  }, []);
-
-  const handleBack = useCallback(() => {
-    setStep(1);
-  }, []);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
-    setForm(INITIAL_FORM);
-    setStep(1);
+    setManualBookingId('');
     setActiveTab('demo');
     setManualState('idle');
     setManualError('');
@@ -509,8 +425,6 @@ export default function AddStayDialog({
     handleClose();
     onActivated?.();
   }, [handleClose, onActivated]);
-
-  const canProceed = form.country && form.city && form.hotelName && form.checkIn && form.checkOut && form.checkOut > form.checkIn;
 
   const overlayMotion = prefersReducedMotion
     ? {}
@@ -568,13 +482,11 @@ export default function AddStayDialog({
                       <Dialog.Title className="font-serif text-xl text-white/90">
                         Add Your Stay
                       </Dialog.Title>
-                      <Dialog.Description className="text-[12px] text-white/50 mt-1">
-                        {activeTab === 'demo'
-                          ? 'Activate a demo property via PMS webhook'
-                          : step === 1
-                          ? 'Tell us about your destination'
-                          : 'Additional details & preferences'}
-                      </Dialog.Description>
+                        <Dialog.Description className="text-[12px] text-white/50 mt-1">
+                          {activeTab === 'demo'
+                            ? 'Activate a demo property via PMS webhook'
+                            : 'Enter your booking reference to pull your stay from the PMS'}
+                        </Dialog.Description>
                     </div>
 
                     <Dialog.Close asChild>
@@ -653,10 +565,10 @@ export default function AddStayDialog({
                             />
                             <div className="space-y-1.5">
                               <p className="text-white/90 text-[15px] font-medium">
-                                Adding your stay…
+                                Looking up your stay…
                               </p>
                               <p className="text-white/40 text-[13px]">
-                                Setting up your property and curating with AI
+                                Pulling reservation details from the PMS
                               </p>
                             </div>
                           </div>
@@ -673,229 +585,48 @@ export default function AddStayDialog({
                               </svg>
                             </motion.div>
                             <div className="space-y-1.5">
-                              <p className="text-white/90 text-[15px] font-medium">Stay added!</p>
+                              <p className="text-white/90 text-[15px] font-medium">Stay activated!</p>
                               <p className="text-white/40 text-[13px]">Loading your curated experience…</p>
                             </div>
                           </div>
                         ) : (
-                        <>
-                        {/* Step indicators */}
-                        <div className="flex items-center gap-2 mb-6">
-                          <div
-                            className={`h-px flex-1 rounded-full transition-all duration-500 ${
-                              step >= 1
-                                ? 'bg-[var(--gold)]/60'
-                                : 'bg-white/[0.08]'
-                            }`}
-                          />
-                          <div
-                            className={`h-px flex-1 rounded-full transition-all duration-500 ${
-                              step >= 2
-                                ? 'bg-[var(--gold)]/60'
-                                : 'bg-white/[0.08]'
-                            }`}
-                          />
-                        </div>
+                          <>
+                            {/* Error message */}
+                            {manualState === 'error' && manualError && (
+                              <motion.p
+                                className="text-red-400/80 text-[13px] text-center mb-4"
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                              >
+                                {manualError}
+                              </motion.p>
+                            )}
 
-                        {/* Error message */}
-                        {manualState === 'error' && manualError && (
-                          <motion.p
-                            className="text-red-400/80 text-[13px] text-center mb-4"
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                          >
-                            {manualError}
-                          </motion.p>
-                        )}
-
-                        {/* Form */}
-                        <form onSubmit={handleSubmit}>
-                          {step === 1 ? (
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-3">
-                                <FormField label="Country" required>
-                                  <input
-                                    type="text"
-                                    value={form.country}
-                                    onChange={(e) =>
-                                      updateField('country', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                    placeholder="e.g. France"
-                                  />
-                                </FormField>
-                                <FormField label="City" required>
-                                  <input
-                                    type="text"
-                                    value={form.city}
-                                    onChange={(e) =>
-                                      updateField('city', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                    placeholder="e.g. Paris"
-                                  />
-                                </FormField>
-                              </div>
-
-                              <FormField label="Hotel Name" required>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                              <div>
+                                <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
+                                  BOOKING ID
+                                </label>
                                 <input
                                   type="text"
-                                  value={form.hotelName}
-                                  onChange={(e) =>
-                                    updateField('hotelName', e.target.value)
-                                  }
+                                  value={manualBookingId}
+                                  onChange={(e) => setManualBookingId(e.target.value)}
                                   className={inputClassName}
-                                  placeholder="e.g. Le Bristol"
+                                  placeholder="Enter your booking ID…"
+                                  autoComplete="off"
+                                  spellCheck={false}
                                 />
-                              </FormField>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <FormField label="Check-in" required>
-                                  <input
-                                    type="date"
-                                    value={form.checkIn}
-                                    onChange={(e) =>
-                                      updateField('checkIn', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                  />
-                                </FormField>
-                                <FormField label="Check-out" required>
-                                  <input
-                                    type="date"
-                                    value={form.checkOut}
-                                    onChange={(e) =>
-                                      updateField('checkOut', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                  />
-                                </FormField>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-3">
-                                <FormField label="Guests">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="20"
-                                    value={form.guests}
-                                    onChange={(e) =>
-                                      updateField('guests', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                  />
-                                </FormField>
-                                <FormField label="Trip Type">
-                                  <select
-                                    value={form.tripType}
-                                    onChange={(e) =>
-                                      updateField('tripType', e.target.value)
-                                    }
-                                    className={selectClassName}
-                                  >
-                                    <option value="">Select…</option>
-                                    {TRIP_TYPES.map((t) => (
-                                      <option key={t} value={t}>
-                                        {t}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </FormField>
-                              </div>
-
-                              <div className="pt-4 flex justify-end">
-                                <button
-                                  type="button"
-                                  onClick={handleNext}
-                                  disabled={!canProceed}
-                                  className="h-11 px-8 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
-                                >
-                                  Continue
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <FormField label="Room Type">
-                                <input
-                                  type="text"
-                                  value={form.roomType}
-                                  onChange={(e) =>
-                                    updateField('roomType', e.target.value)
-                                  }
-                                  className={inputClassName}
-                                  placeholder="e.g. Deluxe Suite"
-                                />
-                              </FormField>
-
-                              <FormField label="Booking Reference">
-                                <input
-                                  type="text"
-                                  value={form.bookingReference}
-                                  onChange={(e) =>
-                                    updateField('bookingReference', e.target.value)
-                                  }
-                                  className={inputClassName}
-                                  placeholder="e.g. BK-12345"
-                                />
-                              </FormField>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <FormField label="Hotel Email">
-                                  <input
-                                    type="email"
-                                    value={form.contactEmail}
-                                    onChange={(e) =>
-                                      updateField('contactEmail', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                    placeholder="hotel@example.com"
-                                  />
-                                </FormField>
-                                <FormField label="Hotel Phone / WhatsApp">
-                                  <input
-                                    type="tel"
-                                    value={form.contactPhone}
-                                    onChange={(e) =>
-                                      updateField('contactPhone', e.target.value)
-                                    }
-                                    className={inputClassName}
-                                    placeholder="+33 1 234 567"
-                                  />
-                                </FormField>
-                              </div>
-
-                              <FormField label="Notes & Preferences">
-                                <textarea
-                                  value={form.notes}
-                                  onChange={(e) =>
-                                    updateField('notes', e.target.value)
-                                  }
-                                  rows={4}
-                                  className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[14px] text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.09] transition-all duration-300 resize-none"
-                                  placeholder="Any special requests, dietary needs, accessibility requirements…"
-                                />
-                              </FormField>
-
-                              <div className="pt-4 flex items-center justify-between">
-                                <button
-                                  type="button"
-                                  onClick={handleBack}
-                                  className="text-[13px] text-white/35 hover:text-white/60 transition-colors cursor-pointer"
-                                >
-                                  ← Back
-                                </button>
-                                <button
-                                  type="submit"
-                                  className="h-11 px-8 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-all duration-300 cursor-pointer shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
-                                >
-                                  Add Stay
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </form>
-                        </>
+                              <button
+                                type="submit"
+                                disabled={!manualBookingId.trim() || !userId}
+                                className="w-full h-11 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
+                              >
+                                Look Up Stay
+                              </button>
+                            </form>
+                          </>
                         )}
                       </>
                     )}

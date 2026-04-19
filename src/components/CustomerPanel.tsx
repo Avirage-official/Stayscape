@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { differenceInCalendarDays } from 'date-fns';
 import type { GuestPreference, PreferenceType } from '@/types/pms';
 
 /* ─── Props ─── */
@@ -25,6 +26,10 @@ function formatDateShort(dateStr: string | null | undefined): string | null {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function parseLocalDate(s: string): Date {
+  return new Date(`${s}T00:00:00`);
 }
 
 function generateHousekeepingSchedule(
@@ -322,6 +327,9 @@ export default function CustomerPanel({
     : 'G';
   const housekeepingSchedule = generateHousekeepingSchedule(checkIn, checkOut);
   const stayTimeline = generateStayTimeline(checkIn, checkOut);
+  const currentDayNumber = checkIn
+    ? Math.max(1, differenceInCalendarDays(new Date(), parseLocalDate(checkIn)) + 1)
+    : null;
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-slide-in-left">
@@ -452,25 +460,29 @@ export default function CustomerPanel({
           <div className="animate-fade-in-up stagger-5">
             <SectionLabel>Stay Timeline</SectionLabel>
             <div className="grid grid-cols-3 gap-1.5">
-              {stayTimeline.map((entry, i) => (
-                <div
-                  key={entry.day}
-                  className={`rounded-xl px-2.5 py-2 border ${
-                    i < 2
-                      ? 'bg-[#C9A84C]/8 border-[#C9A84C]/15'
-                      : 'bg-white/[0.04] border-white/8'
-                  }`}
-                >
-                  <p
-                    className={`text-[9px] font-medium uppercase tracking-wider mb-0.5 ${
-                      i < 2 ? 'text-[#C9A84C]/60' : 'text-white/30'
-                    }`}
-                  >
-                    {entry.day}
-                  </p>
-                  <p className="text-white/60 text-[10px] leading-snug">{entry.label}</p>
-                </div>
-              ))}
+              {stayTimeline.map((entry) => {
+                  const dayNumber = Number(entry.day.replace('Day ', ''));
+                  const isCurrentDay = currentDayNumber != null && dayNumber === currentDayNumber;
+                  const isPastDay = currentDayNumber != null && dayNumber < currentDayNumber;
+
+                  return (
+                    <div
+                      key={entry.day}
+                      className={`rounded-xl px-2.5 py-2 border bg-white/[0.04] border-white/8 ${
+                        isCurrentDay ? 'border-[var(--gold)]/50 bg-[var(--gold)]/[0.08]' : ''
+                      } ${isPastDay ? 'opacity-50' : ''}`}
+                    >
+                      <p
+                        className={`text-[9px] font-medium uppercase tracking-wider mb-0.5 ${
+                          isCurrentDay ? 'text-[#C9A84C]' : 'text-white/30'
+                        }`}
+                      >
+                        {entry.day}
+                      </p>
+                      <p className="text-white/60 text-[10px] leading-snug">{entry.label}</p>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
