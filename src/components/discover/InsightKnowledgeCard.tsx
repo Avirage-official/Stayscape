@@ -1,58 +1,99 @@
 'use client';
 
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { InsightCard } from '@/lib/data/discover-fallback';
 
 export default function InsightKnowledgeCard({ insight }: { insight: InsightCard }) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => setExpanded((v) => !v)}
+      aria-expanded={expanded}
       className={cn(
-        'group relative p-4 rounded-xl overflow-hidden transition-all duration-300',
-        'border border-white/[0.08] bg-[#111110]',
-        'hover:shadow-[0_4px_24px_rgba(201,169,110,0.08)]',
-        'hover:-translate-y-0.5 will-change-transform',
-        'w-[220px] flex-shrink-0 cursor-default',
+        'group relative p-3 rounded-xl overflow-hidden transition-all duration-300 text-left will-change-transform',
+        'border bg-[#111110]',
+        'w-[200px] flex-shrink-0 cursor-pointer',
+        expanded
+          ? 'border-[rgba(201,169,110,0.3)] shadow-[0_4px_24px_rgba(201,169,110,0.08)]'
+          : 'border-white/[0.08] hover:border-white/[0.14] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(201,169,110,0.06)]',
       )}
     >
       {/* Dot pattern on hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+      <div
+        className={cn(
+          'absolute inset-0 transition-opacity duration-300 pointer-events-none',
+          expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+        )}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,169,110,0.04)_1px,transparent_1px)] bg-[length:4px_4px]" />
       </div>
 
-      <div className="relative flex flex-col space-y-3">
-        {/* Icon + status */}
+      <div className="relative flex flex-col gap-1.5">
+        {/* Row 1: Icon left, category pill right */}
         <div className="flex items-center justify-between">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.06] group-hover:bg-[rgba(201,169,110,0.12)] transition-all duration-300 text-[16px] leading-none">
+          <span
+            className="w-8 h-8 min-w-[2rem] rounded-lg flex items-center justify-center bg-white/[0.06] group-hover:bg-[rgba(201,169,110,0.12)] transition-all duration-300 flex-shrink-0 select-none"
+            role="img"
+            aria-hidden="true"
+            style={{ fontSize: 16, lineHeight: 1 }}
+          >
             {insight.icon}
-          </div>
-            <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-white/[0.06] text-[#8a8580] transition-colors duration-300 group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e] truncate max-w-[100px]">
-              {insight.subtitle}
-            </span>
-          </div>
-
-        {/* Title */}
-        <h3
-          className="font-medium tracking-tight text-[14px] text-[#e8e4dc] leading-snug truncate"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-        >
-          {insight.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-[11px] text-[#8a8580] leading-relaxed line-clamp-3 overflow-hidden break-words">
-          {insight.content}
-        </p>
-
-        {/* CTA on hover */}
-        <div className="flex justify-end">
-          <span className="text-[10px] text-[#c9a96e] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            Read more →
+          </span>
+          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.06] text-[#8a8580] group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e] transition-colors duration-300 truncate max-w-[90px] flex-shrink-0">
+            {insight.subtitle}
           </span>
         </div>
+
+        {/* Row 2: Title + chevron */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3
+            className="flex-1 min-w-0 font-medium tracking-tight text-[13px] text-[#e8e4dc] leading-tight truncate"
+            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+          >
+            {insight.title}
+          </h3>
+          <motion.span
+            animate={{ rotate: expanded ? 180 : 0 }}
+            transition={{ duration: 0.25 }}
+            className="text-white/30 flex-shrink-0 flex items-center justify-center w-4 h-4"
+          >
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+              <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </motion.span>
+        </div>
+
+        {/* Expandable body */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              key="content"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] as const }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div className="h-px bg-[rgba(201,169,110,0.2)] mt-0.5 mb-1.5" />
+              <p className="text-[11px] text-white/55 leading-relaxed">
+                {insight.content}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Gradient border on hover */}
-      <div className="absolute inset-0 -z-10 rounded-xl p-px bg-gradient-to-br from-transparent via-[rgba(201,169,110,0.15)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-    </div>
+      {/* Gradient border on hover/expanded */}
+      <div
+        className={cn(
+          'absolute inset-0 -z-10 rounded-xl p-px bg-gradient-to-br from-transparent via-[rgba(201,169,110,0.12)] to-transparent transition-opacity duration-300',
+          expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+        )}
+      />
+    </button>
   );
 }
