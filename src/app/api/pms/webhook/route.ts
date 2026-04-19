@@ -13,6 +13,30 @@ import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { curateStay } from '@/lib/services/ai/stay-curation';
 import type { PmsBookingPayload } from '@/types/pms';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { getSupabaseAdmin } from '@/lib/supabase/client';
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+async function regionHasFreshData(regionId: string): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  const cutoff = new Date(Date.now() - ONE_DAY_MS).toISOString();
+  const { data, error } = await supabase
+    .from('places')
+    .select('id')
+    .eq('region_id', regionId)
+    .eq('is_active', true)
+    .gte('last_synced_at', cutoff)
+    .limit(1);
+
+  if (error) {
+    console.warn(
+      '[pms webhook] Failed to check region freshness, proceeding with curation.',
+      error.message,
+    );
+    return false;
+  }
+  return (data?.length ?? 0) > 0;
+}
 
 export async function POST(request: NextRequest) {
   const rateLimit = await applyRateLimit(request, 'admin');
@@ -64,21 +88,35 @@ export async function POST(request: NextRequest) {
     // Process the webhook
     const result = await processWebhookBooking(body);
 
-    // Trigger AI curation asynchronously (fire-and-forget)
+    // Trigger AI curation asynchronously (fire-and-forget), unless region data is already fresh
+    let curationTriggered = false;
+    let curationSkippedReason: 'region_data_fresh' | null = null;
     if (result.region_id) {
-      curateStay(result.stay_id).then(
-        (curation) => {
-          console.log(
-            'Curation completed for stay:',
-            result.stay_id,
-            curation.curations_created,
-            'curations created',
-          );
-        },
-        (err) => {
-          console.error('Curation failed for stay:', result.stay_id, err);
-        },
-      );
+      const isFresh = await regionHasFreshData(result.region_id);
+      if (isFresh) {
+        curationSkippedReason = 'region_data_fresh';
+        console.log(
+          '[pms webhook] Skipping curation for stay:',
+          result.stay_id,
+          'reason:',
+          curationSkippedReason,
+        );
+      } else {
+        curationTriggered = true;
+        curateStay(result.stay_id).then(
+          (curation) => {
+            console.log(
+              'Curation completed for stay:',
+              result.stay_id,
+              curation.curations_created,
+              'curations created',
+            );
+          },
+          (err) => {
+            console.error('Curation failed for stay:', result.stay_id, err);
+          },
+        );
+      }
     }
 
     return NextResponse.json(
@@ -86,7 +124,10 @@ export async function POST(request: NextRequest) {
         data: {
           ...result,
           message: 'Booking processed successfully',
-          curation_triggered: !!result.region_id,
+          curation_triggered: curationTriggered,
+          ...(curationSkippedReason
+            ? { curation_skipped_reason: curationSkippedReason }
+            : {}),
         },
       },
       { status: 201, headers: rateLimit.headers },

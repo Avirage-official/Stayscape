@@ -1,0 +1,21 @@
+name: Daily Region Sync
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    permissions: {}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily sync for all active regions
+        run: |
+          curl -X POST "${{ secrets.APP_URL }}/api/admin/sync/places" \
+            -H "Content-Type: application/json" \
+            -H "x-admin-key: ${{ secrets.ADMIN_SYNC_KEY }}" \
+            -d '{"mode": "all_active_regions"}' \
+            --fail --silent --show-error
+      - name: Log completion
+        run: echo "Daily sync triggered at $(date -u)"

@@ -42,12 +42,9 @@ export interface EventProvider {
 
 /* ── Provider registry ───────────────────────────────────── */
 
-import { TicketmasterProvider } from './providers/ticketmaster';
-
 const PROVIDERS = new Map<ExternalSource, EventProvider>();
 
-// Register built-in providers
-PROVIDERS.set('ticketmaster', new TicketmasterProvider());
+// No event providers registered — add providers here when needed
 
 /**
  * Get a registered event provider by source key.
