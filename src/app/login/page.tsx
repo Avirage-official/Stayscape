@@ -8,6 +8,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
+  const [mode, setMode] = useState<'guest' | 'staff'>('guest');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export default function LoginPage() {
       setError(result.error);
       setIsSubmitting(false);
     } else {
-      router.push('/dashboard');
+      router.push(mode === 'guest' ? '/dashboard' : '/admin');
     }
   }
 
@@ -37,12 +38,47 @@ export default function LoginPage() {
             Stayscape
           </h1>
           <p className="text-[13px] text-[var(--text-muted)] tracking-wide">
-            Sign in to your account
+            {mode === 'guest'
+              ? 'Sign in to your guest account'
+              : 'Hotel Staff Portal'}
           </p>
         </div>
 
         {/* Login card */}
         <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-6 sm:p-8">
+          <div className="mb-5 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('guest');
+                setError(null);
+              }}
+              aria-pressed={mode === 'guest'}
+              className={`h-10 rounded-full text-[12px] font-medium tracking-wide transition-all ${
+                mode === 'guest'
+                  ? 'bg-[var(--gold)] text-[var(--background)]'
+                  : 'border border-white/15 text-white/50 hover:border-white/25 hover:text-white/70'
+              }`}
+            >
+              Guest
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('staff');
+                setError(null);
+              }}
+              aria-pressed={mode === 'staff'}
+              className={`h-10 rounded-full text-[12px] font-medium tracking-wide transition-all ${
+                mode === 'staff'
+                  ? 'bg-[var(--gold)] text-[var(--background)]'
+                  : 'border border-white/15 text-white/50 hover:border-white/25 hover:text-white/70'
+              }`}
+            >
+              Hotel Staff
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
@@ -163,26 +199,34 @@ export default function LoginPage() {
             </svg>
             <div className="space-y-1">
               <p className="text-[11px] font-medium text-[var(--gold)] uppercase tracking-wider">
-                Demo Mode
+                {mode === 'guest' ? 'Demo Mode' : 'Hotel Staff'}
               </p>
-              <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
-                Email:{' '}
-                <code
-                  aria-label="Demo email address"
-                  className="text-[var(--text-secondary)] not-italic"
-                >
-                  ben.test@stayscape-demo.com
-                </code>
-              </p>
-              <p className="text-[12px] text-[var(--text-muted)]">
-                Password:{' '}
-                <code
-                  aria-label="Demo password"
-                  className="text-[var(--text-secondary)] not-italic"
-                >
-                  Demo1234!
-                </code>
-              </p>
+              {mode === 'guest' ? (
+                <>
+                  <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
+                    Email:{' '}
+                    <code
+                      aria-label="Demo email address"
+                      className="text-[var(--text-secondary)] not-italic"
+                    >
+                      ben.test@stayscape-demo.com
+                    </code>
+                  </p>
+                  <p className="text-[12px] text-[var(--text-muted)]">
+                    Password:{' '}
+                    <code
+                      aria-label="Demo password"
+                      className="text-[var(--text-secondary)] not-italic"
+                    >
+                      Demo1234!
+                    </code>
+                  </p>
+                </>
+              ) : (
+                <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
+                  Use your hotel staff credentials provided by Stayscape.
+                </p>
+              )}
             </div>
           </div>
         </div>
