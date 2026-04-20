@@ -19,6 +19,7 @@ import {
   fetchCategories,
   fetchItemsByCategory,
   fetchLocalInsights,
+  fetchPlacesAsDiscoverItems,
 } from '@/lib/supabase/discover-repository';
 import {
   FALLBACK_CATEGORIES,
@@ -72,7 +73,7 @@ interface UseDiscoverPlacesResult {
   refetch: (
     categoryId: string,
     categoryLabel: string,
-    options?: { offset?: number; limit?: number; append?: boolean },
+    options?: { offset?: number; limit?: number; append?: boolean; regionId?: string },
   ) => void;
 }
 
@@ -85,7 +86,7 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
   const refetch = useCallback((
     categoryId: string,
     categoryLabel: string,
-    options?: { offset?: number; limit?: number; append?: boolean },
+    options?: { offset?: number; limit?: number; append?: boolean; regionId?: string },
   ) => {
     const limit = Math.min(Math.max(options?.limit ?? 10, 1), 20);
     const offset = Math.max(options?.offset ?? 0, 0);
@@ -95,7 +96,7 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
     setLoading(true);
     setError(null);
     fetchItemsByCategory(categoryId, categoryLabel, fetchLimit, offset)
-      .then((result) => {
+      .then(async (result) => {
         const mergePlaces = (nextBatch: PlaceCard[]) => {
           if (append) {
             setPlaces((prev) => [...prev, ...nextBatch].slice(0, MAX_DISCOVER_PLACES));
@@ -104,10 +105,14 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
           }
         };
 
-        if (result && result.length > 0) {
-          const nextBatch = result.slice(0, limit);
+        const discoverPlaces = result && result.length > 0
+          ? result
+          : await fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset);
+
+        if (discoverPlaces && discoverPlaces.length > 0) {
+          const nextBatch = discoverPlaces.slice(0, limit);
           mergePlaces(nextBatch);
-          setHasMore(result.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
+          setHasMore(discoverPlaces.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
         } else {
           // Fallback: use hardcoded data for the category
           const fallbackAll = FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? [];

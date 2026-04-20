@@ -84,7 +84,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     dataLoadedRef.current = true;
     refetchCategories();
     refetchInsights();
-    refetchPlaces('top-places', 'Top Places', { limit: PLACES_PAGE_SIZE, offset: 0 });
+    refetchPlaces('top-places', 'Top Places', { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id });
     if (region?.id) refetchEvents(region.id);
   }
 
@@ -96,8 +96,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
   const handleCategoryClick = useCallback((item: CategoryItem) => {
     setActiveCategory(item.id);
-    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0 });
-  }, [refetchPlaces]);
+    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id });
+  }, [refetchPlaces, region?.id]);
 
   const handleShowMorePlaces = useCallback(() => {
     if (places.length >= MAX_DISCOVER_PLACES) return;
@@ -106,8 +106,9 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
       limit: PLACES_PAGE_SIZE,
       offset: places.length,
       append: true,
+      regionId: region?.id,
     });
-  }, [places.length, categories, activeCategory, refetchPlaces]);
+  }, [places.length, categories, activeCategory, refetchPlaces, region?.id]);
 
   const handleCardClick = useCallback((place: PlaceCard) => {
     setDetailPlace(place);

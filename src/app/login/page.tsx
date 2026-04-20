@@ -223,9 +223,27 @@ export default function LoginPage() {
                   </p>
                 </>
               ) : (
-                <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
-                  Use your hotel staff credentials provided by Stayscape.
-                </p>
+                <>
+                  {/* TODO Phase 2: replace with role-based auth check — for now any Supabase user on staff toggle redirects to /admin */}
+                  <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
+                    Email:{' '}
+                    <code
+                      aria-label="Staff demo email address"
+                      className="text-[var(--text-secondary)] not-italic"
+                    >
+                      staff@stayscape-demo.com
+                    </code>
+                  </p>
+                  <p className="text-[12px] text-[var(--text-muted)]">
+                    Password:{' '}
+                    <code
+                      aria-label="Staff demo password"
+                      className="text-[var(--text-secondary)] not-italic"
+                    >
+                      Staff1234!
+                    </code>
+                  </p>
+                </>
               )}
             </div>
           </div>
