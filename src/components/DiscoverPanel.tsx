@@ -28,6 +28,7 @@ import HeroPlaceCard from '@/components/discover/HeroPlaceCard';
 import UpcomingEventCard from '@/components/discover/UpcomingEventCard';
 import InsightKnowledgeCard from '@/components/discover/InsightKnowledgeCard';
 import AddToDayDialog from '@/components/discover/AddToDayDialog';
+import AddUnknownPlaceDialog from '@/components/discover/AddUnknownPlaceDialog';
 import { useItinerary } from '@/components/ItineraryContext';
 import SuccessToast from '@/components/discover/SuccessToast';
 import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
@@ -98,6 +99,10 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
   const [isAssistantLoading, setIsAssistantLoading] = useState(false);
+  const [unknownPlace, setUnknownPlace] = useState<{
+    name: string; address: string; lat: number; lng: number;
+  } | null>(null);
+  const [addUnknownPlaceOpen, setAddUnknownPlaceOpen] = useState(false);
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const dataLoadedRef = useRef<boolean | null>(null);
@@ -775,6 +780,13 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
           open={eventDetailOpen}
           onOpenChange={setEventDetailOpen}
           event={detailEvent}
+        />
+
+        {/* ── Add unknown place dialog ── */}
+        <AddUnknownPlaceDialog
+          open={addUnknownPlaceOpen}
+          onOpenChange={setAddUnknownPlaceOpen}
+          place={unknownPlace}
         />
 
         {/* ── Success toast ── */}
