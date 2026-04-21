@@ -50,6 +50,11 @@ export function getPmsWebhookApiKey(): string {
   return getServerEnv('PMS_WEBHOOK_API_KEY');
 }
 
+/** Admin sync key for protecting admin endpoints (backend only). */
+export function getAdminSyncKey(): string {
+  return getServerEnv('ADMIN_SYNC_KEY');
+}
+
 /** Upstash Redis REST URL for rate limiting (optional — returns '' if not set). */
 export const UPSTASH_REDIS_REST_URL =
   process.env.UPSTASH_REDIS_REST_URL ?? '';

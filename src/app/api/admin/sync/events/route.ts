@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncEvents, type EventSyncOptions } from '@/lib/services/sync/events-sync';
 import type { ExternalSource } from '@/types/database';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { requireAdminKey } from '@/lib/auth/require-admin-key';
 
 interface SyncEventsBody {
   region_id: string;
@@ -24,6 +25,9 @@ interface SyncEventsBody {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminKey(request);
+  if (authError) return authError;
+
   const rateLimit = await applyRateLimit(request, 'admin');
   if (!rateLimit.success) {
     return NextResponse.json(

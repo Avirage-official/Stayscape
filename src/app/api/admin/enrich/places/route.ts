@@ -16,6 +16,7 @@ import { getUnenrichedPlaces } from '@/lib/supabase/places-repository';
 import { enrichPlace } from '@/lib/services/ai/enrichment';
 import type { InternalPlace } from '@/types/database';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { requireAdminKey } from '@/lib/auth/require-admin-key';
 
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 1000;
@@ -26,6 +27,9 @@ interface EnrichPlacesBody {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminKey(request);
+  if (authError) return authError;
+
   const rateLimit = await applyRateLimit(request, 'admin');
   if (!rateLimit.success) {
     return NextResponse.json(

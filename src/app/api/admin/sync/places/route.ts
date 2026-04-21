@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncPlaces, type PlaceSyncOptions } from '@/lib/services/sync/places-sync';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { requireAdminKey } from '@/lib/auth/require-admin-key';
 
 interface SyncPlacesBody {
   mode?: 'single_region' | 'all_active_regions';
@@ -22,6 +23,9 @@ interface SyncPlacesBody {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminKey(request);
+  if (authError) return authError;
+
   const rateLimit = await applyRateLimit(request, 'admin');
   if (!rateLimit.success) {
     return NextResponse.json(

@@ -46,7 +46,7 @@ export default function Home() {
   });
 
   return (
-    <ItineraryProvider>
+    <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>
       {/* Cinematic background */}
       <div className="fixed inset-0 -z-10">
         <img
