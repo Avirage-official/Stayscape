@@ -108,7 +108,7 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
       .catch(() => {
         // Write failed — local state still has the item
       });
-  }, [user]);
+  }, [user, stayId]);
 
   const updateItem = useCallback((id: string, updates: Partial<Omit<ItineraryItem, 'id'>>) => {
     // Optimistically update local state

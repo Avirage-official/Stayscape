@@ -36,8 +36,37 @@ import {
   curatedItemToPlaceCard,
 } from '@/components/discover/CuratedItemCard';
 import MapPlaceholder from '@/components/MapPlaceholder';
-import { getAssistantResponse } from '@/components/assistant/assistant-responses';
+import { sendChatMessage } from '@/lib/ai/chat';
 import type { CuratedItem } from '@/types/pms';
+
+/* ─── Inline error component ─── */
+
+function InlineError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-red-500/20 bg-red-500/5">
+      <div className="flex items-center gap-2">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="5" stroke="#ef4444" strokeWidth="1.2" strokeOpacity="0.6" />
+          <path d="M6 3.5V6.5M6 8H6.01" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.8" />
+        </svg>
+        <span className="text-[10px] text-red-400/80">{message}</span>
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="text-[10px] text-white/50 hover:text-white/80 border border-white/15 hover:border-white/30 px-2 py-1 rounded-lg transition-colors cursor-pointer ml-3 flex-shrink-0"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
 
 /* ─── Main DiscoverPanel component ─── */
 
@@ -67,6 +96,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [detailEvent, setDetailEvent] = useState<EventCard | null>(null);
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
+  const [isAssistantLoading, setIsAssistantLoading] = useState(false);
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const dataLoadedRef = useRef<boolean | null>(null);
@@ -74,10 +104,24 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const assistantIdRef = useRef(0);
 
   // DB-first hooks with dummy fallback
-  const { categories, refetch: refetchCategories } = useDiscoverCategories();
-  const { places: dbPlaces, hasMore: hasMorePlaces, refetch: refetchPlaces } = useDiscoverPlaces();
+  const {
+    categories,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useDiscoverCategories();
+  const {
+    places: dbPlaces,
+    hasMore: hasMorePlaces,
+    loading: placesLoading,
+    error: placesError,
+    refetch: refetchPlaces,
+  } = useDiscoverPlaces();
   const { insights, refetch: refetchInsights } = useLocalInsights();
-  const { events, refetch: refetchEvents } = useDiscoverEvents();
+  const {
+    events,
+    error: eventsError,
+    refetch: refetchEvents,
+  } = useDiscoverEvents();
   const { curations } = useCurations(stayId);
 
   // Trigger initial data load once (using null-check pattern for eslint refs rule)
@@ -193,27 +237,39 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     setEventDetailOpen(true);
   }, []);
 
-  const sendAssistantMessage = useCallback((text?: string) => {
+  const sendAssistantMessage = useCallback(async (text?: string) => {
     const messageText = (text ?? assistantInput).trim();
-    if (!messageText) return;
+    if (!messageText || isAssistantLoading) return;
 
     const userMessageId = `discover-user-${assistantIdRef.current + 1}`;
-    const assistantMessageId = `discover-assistant-${assistantIdRef.current + 2}`;
-    assistantIdRef.current += 2;
+    assistantIdRef.current += 1;
 
     const userMessage = {
       id: userMessageId,
       role: 'user' as const,
       text: messageText,
     };
+    setAssistantMessages((prev) =>
+      [...prev, userMessage].slice(-MAX_ASSISTANT_MESSAGES)
+    );
+    setAssistantInput('');
+    setIsAssistantLoading(true);
+
+    const reply = await sendChatMessage(messageText, stayId);
+
+    const assistantMessageId = `discover-assistant-${assistantIdRef.current + 1}`;
+    assistantIdRef.current += 1;
+
     const assistantMessage = {
       id: assistantMessageId,
       role: 'assistant' as const,
-      text: getAssistantResponse(messageText),
+      text: reply,
     };
-    setAssistantMessages((prev) => [...prev, userMessage, assistantMessage].slice(-MAX_ASSISTANT_MESSAGES));
-    setAssistantInput('');
-  }, [assistantInput]);
+    setAssistantMessages((prev) =>
+      [...prev, assistantMessage].slice(-MAX_ASSISTANT_MESSAGES)
+    );
+    setIsAssistantLoading(false);
+  }, [assistantInput, isAssistantLoading, stayId]);
 
   const placeNameChips = useMemo(
     () => places.slice(0, 4).map((place) => place.name),
@@ -271,7 +327,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                 <button
                   key={placeName}
                   type="button"
-                  onClick={() => sendAssistantMessage(`Tell me about ${placeName}`)}
+                  onClick={() => void sendAssistantMessage(`Tell me about ${placeName}`)}
                   className="text-[10px] text-white/70 bg-white/10 border border-white/15 rounded-full px-2.5 py-1 hover:bg-white/15 transition-colors cursor-pointer"
                 >
                   {placeName}
@@ -294,6 +350,14 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                   </div>
                 ))
               )}
+              {isAssistantLoading && (
+                <div className="flex items-center gap-1.5 px-1 py-1">
+                  <span className="text-[10px] text-[#C9A84C] animate-pulse">✶</span>
+                  <span className="text-[9px] text-white/40 animate-pulse">
+                    Thinking…
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 bg-white/8 border border-white/12 rounded-xl px-3 py-2 focus-within:border-[#C9A84C]/30">
@@ -304,7 +368,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    sendAssistantMessage();
+                    void sendAssistantMessage();
                   }
                 }}
                 placeholder="Ask the assistant..."
@@ -313,7 +377,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               />
               <button
                 type="button"
-                onClick={() => sendAssistantMessage()}
+                onClick={() => void sendAssistantMessage()}
+                disabled={isAssistantLoading}
                 className="text-white/40 hover:text-[#C9A84C] transition-colors cursor-pointer"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -419,6 +484,9 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                   className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
                   style={{ WebkitOverflowScrolling: 'touch' }}
                 >
+                  {categoriesError && (
+                    <InlineError message="Couldn't load categories" onRetry={refetchCategories} />
+                  )}
                   {categories.map((cat) => (
                     <div key={cat.id} className="snap-start">
                       <CategoryCarouselCard
@@ -493,6 +561,14 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       </section>
                     )}
 
+                    {eventsError && (
+                      <section>
+                        <InlineError
+                          message="Couldn't load events right now"
+                          onRetry={() => region?.id && refetchEvents(region.id)}
+                        />
+                      </section>
+                    )}
                     {events.length > 0 && (
                       <section>
                         <div className="flex items-center justify-between mb-4">
@@ -567,6 +643,27 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
                 {activePlacesTab === 'places' && (
                   <div className="space-y-4">
+                    {placesError && (
+                      <InlineError
+                        message="Couldn't load places right now"
+                        onRetry={() =>
+                          refetchPlaces(activeCategory,
+                            categories.find((c) => c.id === activeCategory)?.label ?? 'Places',
+                            { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id }
+                          )
+                        }
+                      />
+                    )}
+                    {placesLoading && places.length === 0 && (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div
+                            key={i}
+                            className="h-24 rounded-2xl bg-white/[0.04] border border-white/8 animate-pulse"
+                          />
+                        ))}
+                      </div>
+                    )}
                     {places.map((place, idx) => (
                       <HeroPlaceCard
                         key={place.id}
