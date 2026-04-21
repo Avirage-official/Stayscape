@@ -32,6 +32,10 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   // DB-aligned values (places.category as stored in Supabase)
   localspots: 'from-orange-900/80 via-orange-950/60 to-black/80',
   topplaces: 'from-yellow-900/80 via-yellow-950/60 to-black/80',
+  // Legacy aliases (kept until all DB rows / writers are migrated)
+  local_spots: 'from-orange-900/80 via-orange-950/60 to-black/80',
+  fun_places: 'from-indigo-900/80 via-indigo-950/60 to-black/80',
+  top_places: 'from-yellow-900/80 via-yellow-950/60 to-black/80',
 };
 
 export function gradientForCategory(category: string): string {

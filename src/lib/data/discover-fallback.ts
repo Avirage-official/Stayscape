@@ -14,7 +14,7 @@ export interface CategoryItem {
   image: string;
   subtitle: string;
   /** Mapped from discovercategories.places_category — used to filter places.category. */
-  places_category?: string | null;
+  placesCategory?: string | null;
 }
 
 export interface PlaceCard {
@@ -221,7 +221,7 @@ export const FALLBACK_PLACE_DETAILS: Record<string, PlaceDetailExtra> = {
  * Maps discovercategories.slug values to places.category values.
  * Used only as a fallback when discovercategories.places_category is
  * unavailable (i.e. when falling back to local dummy categories).
- * When categories come from the DB, places_category on CategoryItem
+ * When categories come from the DB, placesCategory on CategoryItem
  * is used directly and this mapping is bypassed.
  *
  * Values must match the actual places.category column in the database:

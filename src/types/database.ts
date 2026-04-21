@@ -109,7 +109,14 @@ export type PlaceCategory =
   | 'family'
   | 'events'
   | 'localspots'
-  | 'topplaces';
+  | 'topplaces'
+  /**
+   * Backward-compatibility for legacy persisted rows and unmigrated producers.
+   * Remove once all data and integrations are normalized to the new values.
+   */
+  | 'local_spots'
+  | 'fun_places'
+  | 'top_places';
 
 export interface InternalPlace {
   id: string;
