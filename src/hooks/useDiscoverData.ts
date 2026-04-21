@@ -121,17 +121,19 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
 
         if (discoverItems.length < fetchLimit) {
           const placesCategory = CATEGORY_LABEL_TO_PLACES_CATEGORY[categoryLabel];
-          const placesResult = await fetchPlacesAsDiscoverItems(
-            options?.regionId,
-            fetchLimit,
-            offset,
-            placesCategory,
-          );
-          if (placesResult && placesResult.length > 0) {
-            // Merge, deduplicating by id
-            const existingIds = new Set(discoverItems.map((p) => p.id));
-            const newPlaces = placesResult.filter((p) => !existingIds.has(p.id));
-            combined = [...discoverItems, ...newPlaces];
+          if (placesCategory) {
+            const placesResult = await fetchPlacesAsDiscoverItems(
+              options?.regionId,
+              fetchLimit,
+              offset,
+              placesCategory,
+            );
+            if (placesResult && placesResult.length > 0) {
+              // Merge, deduplicating by id
+              const existingIds = new Set(discoverItems.map((p) => p.id));
+              const newPlaces = placesResult.filter((p) => !existingIds.has(p.id));
+              combined = [...discoverItems, ...newPlaces];
+            }
           }
         }
 
