@@ -66,7 +66,10 @@ interface DbLocalInsight {
 
 function toCategory(row: DbDiscoverCategory): CategoryItem {
   return {
-    id: row.slug,
+    // Use slug as the id so client-side lookups and CATEGORY_SLUG_TO_PLACES_CATEGORY
+    // work correctly. The schema defines slug as NOT NULL, but fall back to id
+    // defensively in case of unexpected null.
+    id: row.slug ?? row.id,
     label: row.name,
     icon: row.iconname ?? '',
     image: row.imageurl ?? '',

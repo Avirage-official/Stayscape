@@ -229,6 +229,12 @@ export const FALLBACK_PLACE_DETAILS: Record<string, PlaceDetailExtra> = {
  *   local-spots → localspots
  *   local       → localspots  (fallback category slug)
  *   (others match directly)
+ *
+ * Categories that map to null have no equivalent places.category in the
+ * live DB ('fun', 'historical', 'family', 'relaxation', 'events' are
+ * fallback-only categories not present in discovercategories). A null
+ * mapping means no category filter is applied and all active places are
+ * returned — the UI then shows whatever the DB has.
  */
 export const CATEGORY_SLUG_TO_PLACES_CATEGORY: Record<string, string | null> = {
   'top-places': 'topplaces',
@@ -236,11 +242,11 @@ export const CATEGORY_SLUG_TO_PLACES_CATEGORY: Record<string, string | null> = {
   'nature': 'nature',
   'nightlife': 'nightlife',
   'shopping': 'shopping',
-  'fun': null,
-  'historical': null,
+  'fun': null,        // fallback-only category; no DB equivalent
+  'historical': null, // fallback-only category; no DB equivalent
   'local': 'localspots',
   'local-spots': 'localspots',
-  'family': null,
-  'relaxation': null,
-  'events': null,
+  'family': null,     // fallback-only category; no DB equivalent
+  'relaxation': null, // fallback-only category; no DB equivalent
+  'events': null,     // fallback-only category; no DB equivalent
 };
