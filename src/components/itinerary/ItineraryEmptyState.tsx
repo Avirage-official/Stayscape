@@ -17,7 +17,7 @@ export default function ItineraryEmptyState() {
         Your itinerary is empty
       </h3>
       <p className="text-[13px] text-[var(--discover-body)] leading-relaxed max-w-[280px] mb-6">
-        Discover places and activities, then add them here to craft your perfect New York stay.
+        Discover places and activities, then add them here to craft your perfect stay.
       </p>
       <p className="text-[11px] text-[var(--discover-body)]/70">
         Switch to the <span className="text-[var(--discover-gold)] font-medium">Discover</span> tab to explore

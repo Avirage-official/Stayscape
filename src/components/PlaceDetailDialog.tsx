@@ -49,7 +49,7 @@ function getPlaceDetail(place: { id: string; name: string; category: string; des
   }
   return {
     ...place,
-    locationLine: `${place.category} · New York`,
+    locationLine: place.category,
     editorialDescription: place.description,
     thingsToDo: ['Explore the surroundings', 'Take in the atmosphere', 'Capture the moment'],
     whatToLookOutFor: ['Local recommendations from fellow visitors', 'Seasonal highlights and events'],

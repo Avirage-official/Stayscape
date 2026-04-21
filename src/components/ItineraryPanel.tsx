@@ -357,7 +357,7 @@ export default function ItineraryPanel() {
             </div>
             <p className="text-[13px] text-white/60 ml-[30px]">
               {items.length === 0
-                ? 'Plan your perfect New York experience'
+                ? 'Plan your perfect itinerary'
                 : `${items.length} ${items.length === 1 ? 'activity' : 'activities'} · ${totalHours === 0.5 ? '30m' : `${totalHours}h`} planned`}
             </p>
           </div>
