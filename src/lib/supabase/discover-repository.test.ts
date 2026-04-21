@@ -93,7 +93,9 @@ describe('fetchPlacesAsDiscoverItems', () => {
   });
 
   it('returns null when Supabase browser client is unavailable', async () => {
-    mocks.getSupabaseBrowser.mockReturnValueOnce(null);
+    mocks.getSupabaseBrowser.mockReturnValueOnce(
+      null as unknown as ReturnType<typeof mocks.getSupabaseBrowser>,
+    );
     const result = await fetchPlacesAsDiscoverItems('region-1', 10, 0, 'dining');
     expect(result).toBeNull();
   });
