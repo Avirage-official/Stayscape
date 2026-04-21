@@ -25,22 +25,13 @@ import {
   FALLBACK_CATEGORIES,
   FALLBACK_PLACES_BY_CATEGORY,
   FALLBACK_LOCAL_INSIGHTS,
+  CATEGORY_SLUG_TO_PLACES_CATEGORY,
   type CategoryItem,
   type PlaceCard,
   type InsightCard,
 } from '@/lib/data/discover-fallback';
 
 const MAX_DISCOVER_PLACES = 20;
-const CATEGORY_LABEL_TO_PLACES_CATEGORY: Record<string, string> = {
-  'Top Places': 'top_places',
-  'Dining': 'dining',
-  'Nature': 'nature',
-  'Nightlife': 'nightlife',
-  'Shopping': 'shopping',
-  'Fun Places': 'fun_places',
-  'Historical': 'historical',
-  'Local Spots': 'local_spots',
-};
 
 /* ── Categories ─────────────────────────────────────────── */
 
@@ -105,8 +96,12 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
     const fetchLimit = Math.min(limit + 1, MAX_DISCOVER_PLACES);
     setLoading(true);
     setError(null);
-    fetchItemsByCategory(categoryId, categoryLabel, fetchLimit, offset)
-      .then(async (result) => {
+    // Derive the places.category filter from the slug (categoryId in fallback
+    // data is the slug; in DB data it is a UUID which will simply not match,
+    // producing undefined → no category filter applied).
+    const placesCategory = CATEGORY_SLUG_TO_PLACES_CATEGORY[categoryId] ?? undefined;
+    fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset, placesCategory)
+      .then(async (placesResult) => {
         const mergePlaces = (nextBatch: PlaceCard[]) => {
           if (append) {
             setPlaces((prev) => [...prev, ...nextBatch].slice(0, MAX_DISCOVER_PLACES));
@@ -115,39 +110,30 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
           }
         };
 
-        // Use discoveritems results, then supplement from places table if not enough
-        const discoverItems = result ?? [];
-        let combined: PlaceCard[] = discoverItems;
-
-        if (discoverItems.length < fetchLimit) {
-          const placesCategory = CATEGORY_LABEL_TO_PLACES_CATEGORY[categoryLabel];
-          if (placesCategory) {
-            const placesResult = await fetchPlacesAsDiscoverItems(
-              options?.regionId,
-              fetchLimit,
-              offset,
-              placesCategory,
-            );
-            if (placesResult && placesResult.length > 0) {
-              // Merge, deduplicating by id
-              const existingIds = new Set(discoverItems.map((p) => p.id));
-              const newPlaces = placesResult.filter((p) => !existingIds.has(p.id));
-              combined = [...discoverItems, ...newPlaces];
-            }
-          }
-        }
-
-        if (combined.length > 0) {
-          const nextBatch = combined.slice(0, limit);
+        // Use places as the primary source.
+        if (placesResult && placesResult.length > 0) {
+          const nextBatch = placesResult.slice(0, limit);
           mergePlaces(nextBatch);
-          setHasMore(combined.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
-        } else {
-          // Final fallback: use hardcoded data for the category
-          const fallbackAll = FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? [];
-          const fallback = fallbackAll.slice(offset, offset + limit);
-          mergePlaces(fallback);
-          setHasMore(offset + fallback.length < Math.min(fallbackAll.length, MAX_DISCOVER_PLACES));
+          setHasMore(placesResult.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
+          return;
         }
+
+        // Silent fallback: try discoveritems when places returns nothing.
+        const discoverResult = await fetchItemsByCategory(categoryId, categoryLabel, fetchLimit, offset);
+        const discoverItems = discoverResult ?? [];
+
+        if (discoverItems.length > 0) {
+          const nextBatch = discoverItems.slice(0, limit);
+          mergePlaces(nextBatch);
+          setHasMore(discoverItems.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
+          return;
+        }
+
+        // Final fallback: use hardcoded data for the category
+        const fallbackAll = FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? [];
+        const fallback = fallbackAll.slice(offset, offset + limit);
+        mergePlaces(fallback);
+        setHasMore(offset + fallback.length < Math.min(fallbackAll.length, MAX_DISCOVER_PLACES));
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load places');

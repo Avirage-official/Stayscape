@@ -142,7 +142,7 @@ function toPlaceCard(row: DbDiscoverItem, categoryLabel: string): PlaceCard {
     category: categoryLabel,
     description: row.shortdescription,
     rating: row.ratingvalue ?? 0,
-    distance: row.distancekm != null ? `${row.distancekm} mi` : '',
+    distance: row.distancekm != null ? `${row.distancekm} km` : '',
     gradient: row.gradient ?? 'from-slate-800/80 via-slate-950/60 to-black/80',
     image: row.imageurl ?? '',
     bookingUrl: row.websiteurl ?? '#',
