@@ -42,6 +42,8 @@ interface DbDiscoverCategory {
   createdat: string;
   updatedat: string;
   subtitle: string;
+  /** Maps this UI category to a places.category value for DB filtering. */
+  places_category: string | null;
 }
 
 interface DbLocalInsight {
@@ -64,11 +66,12 @@ interface DbLocalInsight {
 
 function toCategory(row: DbDiscoverCategory): CategoryItem {
   return {
-    id: row.id,
+    id: row.slug,
     label: row.name,
     icon: row.iconname ?? '',
     image: row.imageurl ?? '',
     subtitle: row.subtitle,
+    places_category: row.places_category ?? null,
   };
 }
 

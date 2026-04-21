@@ -108,9 +108,8 @@ export type PlaceCategory =
   | 'wellness'
   | 'family'
   | 'events'
-  | 'local_spots'
-  | 'fun_places'
-  | 'top_places';
+  | 'localspots'
+  | 'topplaces';
 
 export interface InternalPlace {
   id: string;
@@ -302,12 +301,12 @@ export interface SyncRun {
 /* ═══════════════════════════════════════════════════════════════
    Itinerary Item Snapshot (public.itineraryitemsnapshots)
    ─────────────────────────────────────────────────────────────
-   Denormalized snapshot of discover-item data captured at the
-   time an itinerary item is created. One-to-one with
-   itineraryitems (UNIQUE FK). Not currently read by UI but
-   exists in the real schema for data-preservation purposes.
+   @deprecated The itineraryitemsnapshots table has been retired.
+   itineraryitems.place_id now references places directly.
+   This interface is retained only for reference.
    ═══════════════════════════════════════════════════════════════ */
 
+/** @deprecated itineraryitemsnapshots table is retired; use itineraryitems.place_id → places instead. */
 export interface ItineraryItemSnapshot {
   id: string;
   itineraryitemid: string;

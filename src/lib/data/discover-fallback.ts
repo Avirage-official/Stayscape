@@ -13,6 +13,8 @@ export interface CategoryItem {
   icon: string;
   image: string;
   subtitle: string;
+  /** Mapped from discovercategories.places_category — used to filter places.category. */
+  places_category?: string | null;
 }
 
 export interface PlaceCard {
@@ -216,20 +218,29 @@ export const FALLBACK_PLACE_DETAILS: Record<string, PlaceDetailExtra> = {
 };
 
 /**
- * Maps discovercategories.slug values to places.category enum values.
- * Used to filter the places table when a carousel category is selected.
- * Categories with no direct mapping use null (fetch all, no filter).
+ * Maps discovercategories.slug values to places.category values.
+ * Used only as a fallback when discovercategories.places_category is
+ * unavailable (i.e. when falling back to local dummy categories).
+ * When categories come from the DB, places_category on CategoryItem
+ * is used directly and this mapping is bypassed.
+ *
+ * Values must match the actual places.category column in the database:
+ *   top-places  → topplaces
+ *   local-spots → localspots
+ *   local       → localspots  (fallback category slug)
+ *   (others match directly)
  */
 export const CATEGORY_SLUG_TO_PLACES_CATEGORY: Record<string, string | null> = {
-  'top-places': 'top_places',
+  'top-places': 'topplaces',
   'dining': 'dining',
   'nature': 'nature',
   'nightlife': 'nightlife',
   'shopping': 'shopping',
-  'fun': 'fun_places',
-  'historical': 'historical',
-  'local': 'local_spots',
-  'family': 'family',
-  'relaxation': 'wellness',
-  'events': 'events',
+  'fun': null,
+  'historical': null,
+  'local': 'localspots',
+  'local-spots': 'localspots',
+  'family': null,
+  'relaxation': null,
+  'events': null,
 };

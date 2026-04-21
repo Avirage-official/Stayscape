@@ -73,7 +73,7 @@ interface UseDiscoverPlacesResult {
   refetch: (
     categoryId: string,
     categoryLabel: string,
-    options?: { offset?: number; limit?: number; append?: boolean; regionId?: string },
+    options?: { offset?: number; limit?: number; append?: boolean; regionId?: string; placesCategory?: string | null },
   ) => void;
 }
 
@@ -86,7 +86,7 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
   const refetch = useCallback((
     categoryId: string,
     categoryLabel: string,
-    options?: { offset?: number; limit?: number; append?: boolean; regionId?: string },
+    options?: { offset?: number; limit?: number; append?: boolean; regionId?: string; placesCategory?: string | null },
   ) => {
     const limit = Math.min(Math.max(options?.limit ?? 10, 1), 20);
     const offset = Math.max(options?.offset ?? 0, 0);
@@ -95,10 +95,12 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
     const fetchLimit = Math.min(limit + 1, MAX_DISCOVER_PLACES);
     setLoading(true);
     setError(null);
-    // Derive the places.category filter from the slug (categoryId in fallback
-    // data is the slug; in DB data it is a UUID which will simply not match,
-    // producing undefined → no category filter applied).
-    const placesCategory = CATEGORY_SLUG_TO_PLACES_CATEGORY[categoryId] ?? undefined;
+    // Use places_category from DB category when available; otherwise derive
+    // from the slug via the local fallback mapping.
+    const placesCategory =
+      options?.placesCategory !== undefined
+        ? (options.placesCategory ?? undefined)
+        : (CATEGORY_SLUG_TO_PLACES_CATEGORY[categoryId] ?? undefined);
     fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset, placesCategory)
       .then((placesResult) => {
         const mergePlaces = (nextBatch: PlaceCard[]) => {

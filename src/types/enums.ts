@@ -58,24 +58,6 @@ export type ContentStatus = 'draft' | 'published' | 'archived';
 export type CategoryType = string;
 
 /**
- * discoveritems.itemtype — USER-DEFINED enum.
- * Exact values are property-defined; use string for extensibility.
- */
-export type ItemType = string;
-
-/**
- * discoveritemtips.tiptype — USER-DEFINED enum.
- * Known values: 'things_to_do', 'what_to_look_out_for', 'what_to_bring'.
- */
-export type TipType = 'things_to_do' | 'what_to_look_out_for' | 'what_to_bring' | (string & {});
-
-/**
- * discoveritemlinks.linktype — USER-DEFINED enum.
- * Exact values are property-defined; use string for extensibility.
- */
-export type LinkType = string;
-
-/**
  * localinsights.insighttype — USER-DEFINED enum.
  * Exact values are property-defined; use string for extensibility.
  */
