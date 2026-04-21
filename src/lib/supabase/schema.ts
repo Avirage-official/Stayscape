@@ -551,4 +551,38 @@ CREATE TABLE IF NOT EXISTS sync_runs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sync_runs_type ON sync_runs(sync_type, provider);
+
+-- ═══════════════════════════════════════════════════════════
+-- PLACE_SEARCHES (search analytics)
+-- ═══════════════════════════════════════════════════════════
+-- Records every time a guest taps a search result.
+-- place_id is null when the result came from Mapbox (not in DB).
+CREATE TABLE IF NOT EXISTS place_searches (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  place_id     UUID REFERENCES places(id) ON DELETE SET NULL,
+  query        TEXT NOT NULL,
+  place_name   TEXT NOT NULL,
+  source       TEXT NOT NULL CHECK (source IN ('database', 'mapbox')),
+  region_id    UUID REFERENCES regions(id) ON DELETE SET NULL,
+  searched_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_place_searches_place
+  ON place_searches(place_id);
+CREATE INDEX IF NOT EXISTS idx_place_searches_region
+  ON place_searches(region_id);
+CREATE INDEX IF NOT EXISTS idx_place_searches_query
+  ON place_searches(query);
+
+-- View for staff analytics (top searched places)
+CREATE OR REPLACE VIEW place_search_counts AS
+  SELECT
+    place_name,
+    place_id,
+    source,
+    COUNT(*) AS search_count,
+    MAX(searched_at) AS last_searched_at
+  FROM place_searches
+  GROUP BY place_name, place_id, source
+  ORDER BY search_count DESC;
 `;
