@@ -92,7 +92,7 @@ async function buildSystemPrompt(stayId: string | null | undefined): Promise<str
     systemPrompt += contextLines.join('\n');
 
     // Fetch places for the region
-    const regionId = (prop as (typeof prop & { region_id?: string | null }))?.region_id ?? null;
+    const regionId = prop?.region_id ?? null;
     if (regionId) {
       const { data: places } = await supabase
         .from('places')
