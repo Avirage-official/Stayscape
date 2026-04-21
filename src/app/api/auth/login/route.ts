@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 
+// Hardcoded staff demo credentials — replace with DB-backed auth in Phase 2
+const STAFF_DEMO_CREDENTIALS = [
+  {
+    email: 'staff@stayscape-demo.com',
+    password: 'Staff1234!',
+    id: 'staff-demo-001',
+  },
+];
+
 /**
  * POST /api/auth/login
  *
@@ -23,6 +32,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check staff demo credentials first (no Supabase Auth needed yet)
+    const staffMatch = STAFF_DEMO_CREDENTIALS.find(
+      (c) => c.email === email && c.password === password,
+    );
+    if (staffMatch) {
+      return NextResponse.json({
+        user: { id: staffMatch.id, email: staffMatch.email },
+      });
+    }
+
+    // Fall through to Supabase Auth for guest accounts
     const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase.auth.signInWithPassword({

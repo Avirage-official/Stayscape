@@ -344,17 +344,19 @@ export async function fetchItemDetail(
  *
  * @param regionId  Optional region filter — pass to scope results to a
  *                  specific region; omit for all active places.
- * @param limit     Maximum number of items to return (default 10, max 20).
+ * @param limit     Maximum number of items to return (default 10, max 21).
  * @param offset    Result offset for pagination (default 0).
+ * @param category  Optional places.category filter.
  */
 export async function fetchPlacesAsDiscoverItems(
   regionId?: string,
   limit = 10,
   offset = 0,
+  category?: string,
 ): Promise<PlaceCard[] | null> {
   const sb = getSupabaseBrowser();
   if (!sb) return null;
-  const safeLimit = Math.min(Math.max(limit, 1), 20);
+  const safeLimit = Math.min(Math.max(limit, 1), 21);
   const safeOffset = Math.max(offset, 0);
 
   let query = sb
@@ -366,6 +368,7 @@ export async function fetchPlacesAsDiscoverItems(
     .range(safeOffset, safeOffset + safeLimit - 1);
 
   if (regionId) query = query.eq('region_id', regionId);
+  if (category) query = query.eq('category', category);
 
   const { data, error } = await query;
 

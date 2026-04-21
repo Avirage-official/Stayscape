@@ -31,6 +31,16 @@ import {
 } from '@/lib/data/discover-fallback';
 
 const MAX_DISCOVER_PLACES = 20;
+const CATEGORY_LABEL_TO_PLACES_CATEGORY: Record<string, string> = {
+  'Top Places': 'top_places',
+  'Dining': 'dining',
+  'Nature': 'nature',
+  'Nightlife': 'nightlife',
+  'Shopping': 'shopping',
+  'Fun Places': 'fun_places',
+  'Historical': 'historical',
+  'Local Spots': 'local_spots',
+};
 
 /* ── Categories ─────────────────────────────────────────── */
 
@@ -107,14 +117,15 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
 
         // Use discoveritems results, then supplement from places table if not enough
         const discoverItems = result ?? [];
-        let combined = discoverItems;
+        let combined: PlaceCard[] = discoverItems;
 
         if (discoverItems.length < fetchLimit) {
-          // Not enough from discoveritems — supplement from places table
+          const placesCategory = CATEGORY_LABEL_TO_PLACES_CATEGORY[categoryLabel];
           const placesResult = await fetchPlacesAsDiscoverItems(
             options?.regionId,
             fetchLimit,
             offset,
+            placesCategory,
           );
           if (placesResult && placesResult.length > 0) {
             // Merge, deduplicating by id
