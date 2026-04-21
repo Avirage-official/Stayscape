@@ -105,16 +105,31 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
           }
         };
 
-        const discoverPlaces = result && result.length > 0
-          ? result
-          : await fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset);
+        // Use discoveritems results, then supplement from places table if not enough
+        const discoverItems = result ?? [];
+        let combined = discoverItems;
 
-        if (discoverPlaces && discoverPlaces.length > 0) {
-          const nextBatch = discoverPlaces.slice(0, limit);
+        if (discoverItems.length < fetchLimit) {
+          // Not enough from discoveritems — supplement from places table
+          const placesResult = await fetchPlacesAsDiscoverItems(
+            options?.regionId,
+            fetchLimit,
+            offset,
+          );
+          if (placesResult && placesResult.length > 0) {
+            // Merge, deduplicating by id
+            const existingIds = new Set(discoverItems.map((p) => p.id));
+            const newPlaces = placesResult.filter((p) => !existingIds.has(p.id));
+            combined = [...discoverItems, ...newPlaces];
+          }
+        }
+
+        if (combined.length > 0) {
+          const nextBatch = combined.slice(0, limit);
           mergePlaces(nextBatch);
-          setHasMore(discoverPlaces.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
+          setHasMore(combined.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
         } else {
-          // Fallback: use hardcoded data for the category
+          // Final fallback: use hardcoded data for the category
           const fallbackAll = FALLBACK_PLACES_BY_CATEGORY[categoryId] ?? [];
           const fallback = fallbackAll.slice(offset, offset + limit);
           mergePlaces(fallback);
