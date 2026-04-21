@@ -98,9 +98,9 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
     setError(null);
     // Derive the places.category filter from the slug (categoryId in fallback
     // data is the slug; in DB data it is a UUID which will simply not match,
-    // producing undefined → treated the same as null = no filter).
-    const placesCategory = CATEGORY_SLUG_TO_PLACES_CATEGORY[categoryId] ?? null;
-    fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset, placesCategory ?? undefined)
+    // producing undefined → no category filter applied).
+    const placesCategory = CATEGORY_SLUG_TO_PLACES_CATEGORY[categoryId] ?? undefined;
+    fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset, placesCategory)
       .then(async (placesResult) => {
         const mergePlaces = (nextBatch: PlaceCard[]) => {
           if (append) {
