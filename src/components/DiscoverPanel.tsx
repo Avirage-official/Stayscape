@@ -28,6 +28,7 @@ import HeroPlaceCard from '@/components/discover/HeroPlaceCard';
 import UpcomingEventCard from '@/components/discover/UpcomingEventCard';
 import InsightKnowledgeCard from '@/components/discover/InsightKnowledgeCard';
 import AddToDayDialog from '@/components/discover/AddToDayDialog';
+import { useItinerary } from '@/components/ItineraryContext';
 import SuccessToast from '@/components/discover/SuccessToast';
 import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
 import {
@@ -123,6 +124,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     refetch: refetchEvents,
   } = useDiscoverEvents();
   const { curations } = useCurations(stayId);
+  const { addItem } = useItinerary();
 
   // Trigger initial data load once (using null-check pattern for eslint refs rule)
   if (dataLoadedRef.current == null) {
@@ -182,11 +184,21 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const handleConfirmAdd = useCallback((placeId: string, day: string) => {
     const place = places.find((p) => p.id === placeId) ?? addingPlace;
     if (place) {
+      const date = day && !isNaN(Date.parse(day)) ? new Date(day) : new Date();
+      addItem({
+        placeId: place.id,
+        name: place.name,
+        category: place.category,
+        image: place.image,
+        date,
+        time: '10:00',
+        durationHours: 2,
+      });
       setSuccessToast({ placeName: place.name, dayValue: day, bookingUrl: place.bookingUrl });
     }
     setAddDialogOpen(false);
     setAddingPlace(null);
-  }, [places, addingPlace]);
+  }, [places, addingPlace, addItem]);
 
   const handleDismissToast = useCallback(() => {
     setSuccessToast(null);
