@@ -4,7 +4,6 @@ export {
   getPlaceById,
   getPlaceTags,
   upsertPlace,
-  deactivateStalePlaces,
   toDiscoveryCard,
   toDiscoveryDetail,
 } from './places-repository';
@@ -28,10 +27,7 @@ export {
 } from './sync-repository';
 export {
   fetchCategories,
-  fetchItemsByCategory,
-  fetchAllItems,
   fetchLocalInsights,
-  fetchItemDetail,
   fetchPlacesAsDiscoverItems,
 } from './discover-repository';
 export {
