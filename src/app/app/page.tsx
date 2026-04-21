@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import CustomerPanel from '@/components/CustomerPanel';
@@ -49,11 +50,13 @@ export default function Home() {
     <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>
       {/* Cinematic background */}
       <div className="fixed inset-0 -z-10">
-        <img
-          src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80&auto=format&fit=crop"
-          alt=""
-          className="w-full h-full object-cover"
-        />
+        <Image
+            src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80&auto=format&fit=crop"
+            alt=""
+            fill
+            className="object-cover"
+            priority
+          />
         <div className="absolute inset-0 bg-black/55" />
       </div>
 
