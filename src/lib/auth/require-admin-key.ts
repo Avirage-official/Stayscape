@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getAdminSyncKey } from '@/lib/env';
 
 /**
@@ -14,7 +15,15 @@ export function requireAdminKey(request: NextRequest): NextResponse | null {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const provided = request.headers.get('x-admin-key');
-  if (!provided || provided !== expected) {
+  if (!provided) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const expectedBuf = Buffer.from(expected);
+  const providedBuf = Buffer.from(provided);
+  const match =
+    expectedBuf.length === providedBuf.length &&
+    timingSafeEqual(expectedBuf, providedBuf);
+  if (!match) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
