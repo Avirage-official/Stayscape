@@ -1,7 +1,7 @@
 'use client';
 
 import type mapboxgl from 'mapbox-gl';
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import {
   getMapboxToken,
   isMapboxAvailable,
@@ -52,7 +52,12 @@ interface MapPlaceholderProps {
   stayId?: string | null;
 }
 
-export default function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlaceholderProps) {
+export interface MapPlaceholderHandle {
+  flyTo: (lng: number, lat: number, placeName: string) => void;
+}
+
+const MapPlaceholder = forwardRef<MapPlaceholderHandle, MapPlaceholderProps>(
+function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlaceholderProps, ref) {
   const { region } = useRegion();
   const { addItem } = useItinerary();
   /* Keep region in a ref so initMap (stable callback) can read the latest value */
@@ -967,6 +972,23 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId 
     setSearchedPlace(null);
   }, []);
 
+  /* ─── Imperative handle: expose flyTo to parent via ref ─── */
+  useImperativeHandle(ref, () => ({
+    flyTo(lng: number, lat: number, placeName: string) {
+      handleSearchSelect({
+        id: `external-${lng}-${lat}`,
+        name: placeName,
+        fullAddress: placeName,
+        subtitle: '',
+        lat,
+        lng,
+        distanceMetres: 0,
+        distanceDisplay: '',
+        source: 'mapbox',
+      });
+    },
+  }), [handleSearchSelect]);
+
 
   /* ─── Fallback to SVG if Mapbox is not available ─── */
   if (!isMapboxAvailable()) {
@@ -1061,4 +1083,8 @@ export default function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId 
       </div>
     </div>
   );
-}
+});
+
+MapPlaceholder.displayName = 'MapPlaceholder';
+
+export default MapPlaceholder;

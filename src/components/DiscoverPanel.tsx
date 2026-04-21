@@ -311,7 +311,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     <TooltipProvider>
       <div className="flex-1 flex min-h-0 overflow-hidden discover-card-fade-in">
         {/* Left column ─ map + floating chat widget */}
-        <div className="relative hidden lg:flex lg:w-[55%] border-r border-white/10">
+        <div className="relative flex w-full h-[45vh] lg:h-auto lg:w-[55%] border-b lg:border-b-0 lg:border-r border-white/10">
           <MapPlaceholder stayId={stayId ?? null} />
 
           <div className="absolute top-6 left-6 w-[340px] max-w-[calc(100%-3rem)] bg-black/80 border border-white/15 rounded-2xl p-4 backdrop-blur-sm">
@@ -390,7 +390,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
         </div>
 
         {/* Right column */}
-        <div className="flex-1 lg:w-[45%] min-h-0 flex flex-col bg-black/70">
+        <div className="flex-1 lg:w-[45%] min-h-0 lg:min-h-full flex flex-col bg-black/70">
           <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-white/10">
             <div className="flex items-center justify-between">
               <div>
