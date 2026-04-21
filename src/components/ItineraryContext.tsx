@@ -38,7 +38,7 @@ export function useItinerary() {
   return ctx;
 }
 
-export function ItineraryProvider({ children }: { children: React.ReactNode }) {
+export function ItineraryProvider({ children, stayId }: { children: React.ReactNode; stayId?: string | null }) {
   const { user } = useAuth();
   const counterRef = useRef(0);
   const dbLoadedRef = useRef<boolean | null>(null);
@@ -84,7 +84,7 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     // Persist to Supabase in the background
-    getOrCreateItinerary(user.id)
+    getOrCreateItinerary(user.id, stayId ?? undefined)
       .then((itineraryId) => {
         if (!itineraryId) return;
         return insertItineraryItem(itineraryId, {

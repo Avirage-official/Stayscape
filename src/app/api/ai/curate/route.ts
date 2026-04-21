@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { curateStay } from '@/lib/services/ai/stay-curation';
 import { hasCurations } from '@/lib/supabase/curation-repository';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { requireAdminKey } from '@/lib/auth/require-admin-key';
 
 interface CurateBody {
   stay_id: string;
@@ -20,6 +21,9 @@ interface CurateBody {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminKey(request);
+  if (authError) return authError;
+
   const rateLimit = await applyRateLimit(request, 'admin');
   if (!rateLimit.success) {
     return NextResponse.json(
