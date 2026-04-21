@@ -5,7 +5,8 @@ import { Place, MapPlace } from '@/types';
 import ChatBubble from '@/components/assistant/ChatBubble';
 import type { ChatMessage } from '@/components/assistant/ChatBubble';
 import PlaceDetailsCard from '@/components/assistant/PlaceDetailsCard';
-import { getAssistantResponse, defaultSuggestions } from '@/components/assistant/assistant-responses';
+import { defaultSuggestions } from '@/components/assistant/assistant-responses';
+import { sendChatMessage } from '@/lib/ai/chat';
 
 /* ─── Types ─── */
 
@@ -16,14 +17,16 @@ export interface TravelAssistantPanelHandle {
 interface TravelAssistantPanelProps {
   selectedPlace: Place | MapPlace | null;
   onClearSelection: () => void;
+  stayId?: string | null;
 }
 
 /* ─── Main Component ─── */
 
 const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssistantPanelProps>(
-  function TravelAssistantPanel({ selectedPlace, onClearSelection }, ref) {
+  function TravelAssistantPanel({ selectedPlace, onClearSelection, stayId }, ref) {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const idCounterRef = useRef(0);
 
@@ -50,24 +53,28 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
     selectPlace: addPlaceMessage,
   }), [addPlaceMessage]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const messageText = text || inputValue.trim();
-    if (!messageText) return;
+    if (!messageText || isLoading) return;
 
     const userMsg: ChatMessage = {
       id: `user-${++idCounterRef.current}`,
       role: 'user',
       text: messageText,
     };
+    setMessages((prev) => [...prev, userMsg]);
+    setInputValue('');
+    setIsLoading(true);
+
+    const reply = await sendChatMessage(messageText, stayId);
 
     const assistantMsg: ChatMessage = {
       id: `assistant-${++idCounterRef.current}`,
       role: 'assistant',
-      text: getAssistantResponse(messageText),
+      text: reply,
     };
-
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    setInputValue('');
+    setMessages((prev) => [...prev, assistantMsg]);
+    setIsLoading(false);
   };
 
   const handleAddToItinerary = () => {
@@ -113,6 +120,9 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
           </div>
           <p className="text-[9px] text-white/35 mt-1 tracking-wide">
             Your personal concierge · Ask anything
+          </p>
+          <p className="text-[9px] text-white/25 mt-0.5 tracking-wide">
+            Each message starts fresh — no memory of previous turns
           </p>
         </div>
 
@@ -162,6 +172,16 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                   )}
                 </div>
               ))}
+              {isLoading && (
+                <div className="flex items-center gap-2 px-1">
+                  <div className="w-5 h-5 rounded-lg bg-[#C9A84C]/8 border border-[#C9A84C]/15 flex items-center justify-center">
+                    <span className="text-[10px] text-[#C9A84C]">✦</span>
+                  </div>
+                  <span className="text-[10px] text-white/40 animate-pulse">
+                    Thinking…
+                  </span>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -179,10 +199,12 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your stay…"
+              disabled={isLoading}
               className="text-[11px] text-white placeholder-white/30 bg-transparent focus:outline-none flex-1"
             />
             <button
               onClick={() => handleSend()}
+              disabled={isLoading}
               className="text-white/30 hover:text-[#C9A84C] transition-colors duration-200 cursor-pointer"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

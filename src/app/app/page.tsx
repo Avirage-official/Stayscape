@@ -129,6 +129,7 @@ export default function Home() {
                     <TravelAssistantPanel
                       selectedPlace={null}
                       onClearSelection={() => {}}
+                      stayId={dashboardData?.upcomingStay?.id ?? null}
                     />
                   </div>
                 </div>
