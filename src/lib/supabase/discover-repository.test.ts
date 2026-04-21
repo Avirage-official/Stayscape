@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => {
   };
 
   const from = vi.fn(() => queryBuilder);
-  const getSupabaseBrowser = vi.fn(() => ({ from }));
+  const getSupabaseBrowser = vi.fn<() => { from: typeof from } | null>(() => ({ from }));
   const gradientForCategory = vi.fn((category: string) => `gradient-${category}`);
 
   return {
