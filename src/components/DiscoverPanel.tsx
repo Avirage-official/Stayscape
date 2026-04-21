@@ -87,6 +87,7 @@ const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
 export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelProps) {
   const { region } = useRegion();
   const [activeCategory, setActiveCategory] = useState<string>('top-places');
+  const [activePlacesCategory, setActivePlacesCategory] = useState<string | null | undefined>(undefined);
   const [activePlacesTab, setActivePlacesTab] = useState<PlacesTab>('recommendations');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingPlace, setAddingPlace] = useState<PlaceCard | null>(null);
@@ -155,7 +156,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
   const handleCategoryClick = useCallback((item: CategoryItem) => {
     setActiveCategory(item.id);
-    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id, placesCategory: item.places_category });
+    setActivePlacesCategory(item.placesCategory);
+    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id, placesCategory: item.placesCategory });
   }, [refetchPlaces, region?.id]);
 
   const handleShowMorePlaces = useCallback(() => {
@@ -166,8 +168,17 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
       offset: places.length,
       append: true,
       regionId: region?.id,
+      placesCategory: activePlacesCategory,
     });
-  }, [places.length, categories, activeCategory, refetchPlaces, region?.id]);
+  }, [places.length, categories, activeCategory, refetchPlaces, region?.id, activePlacesCategory]);
+
+  const handleRetryPlaces = useCallback(() => {
+    refetchPlaces(
+      activeCategory,
+      categories.find((c) => c.id === activeCategory)?.label ?? 'Places',
+      { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id, placesCategory: activePlacesCategory },
+    );
+  }, [refetchPlaces, activeCategory, categories, region?.id, activePlacesCategory]);
 
   const handleCardClick = useCallback((place: PlaceCard) => {
     setDetailPlace(place);
@@ -663,12 +674,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     {placesError && (
                       <InlineError
                         message="Couldn't load places right now"
-                        onRetry={() =>
-                          refetchPlaces(activeCategory,
-                            categories.find((c) => c.id === activeCategory)?.label ?? 'Places',
-                            { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id }
-                          )
-                        }
+                        onRetry={handleRetryPlaces}
                       />
                     )}
                     {placesLoading && places.length === 0 && (

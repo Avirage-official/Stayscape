@@ -74,7 +74,7 @@ function toCategory(row: DbDiscoverCategory): CategoryItem {
     icon: row.iconname ?? '',
     image: row.imageurl ?? '',
     subtitle: row.subtitle,
-    places_category: row.places_category ?? null,
+    placesCategory: row.places_category ?? null,
   };
 }
 
