@@ -13,12 +13,6 @@
  *
  *   itineraryitems.status — itineraryitemstatus enum, default 'planned'
  *   itineraryitems.source — itemsource enum, default 'discover'
- *
- *   itineraryitemsnapshots — related table (1:1 with itineraryitems via
- *     UNIQUE FK). Stores a denormalized copy of discover-item data at
- *     the time the itinerary item was created. Not currently written or
- *     read by this repository — see ItineraryItemSnapshot in
- *     types/database for the schema shape.
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';
@@ -48,7 +42,7 @@ export interface DbItinerary {
 export interface DbItineraryItem {
   id: string;
   itineraryid: string;
-  discoveritemid: string | null;
+  place_id: string | null;
   scheduleddate: string;
   starttime: string | null;
   durationhours: number | null;
@@ -131,7 +125,7 @@ export async function getOrCreateItinerary(
 export async function insertItineraryItem(
   itineraryId: string,
   item: {
-    discoveritemid: string;
+    place_id: string;
     name: string;
     category: string;
     image: string;
@@ -147,7 +141,7 @@ export async function insertItineraryItem(
     .from('itineraryitems')
     .insert({
       itineraryid: itineraryId,
-      discoveritemid: item.discoveritemid,
+      place_id: item.place_id,
       name: item.name,
       category: item.category,
       image: item.image,

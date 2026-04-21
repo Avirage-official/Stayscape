@@ -34,9 +34,6 @@ CREATE TYPE IF NOT EXISTS servicetaskstatus AS ENUM ('pending', 'in_progress', '
 -- Exact enum values are property-defined and maintained in the database;
 -- they are NOT exhaustively listed here because they may vary by deployment.
 -- categorytype    — used by discovercategories.categorytype
--- itemtype        — used by discoveritems.itemtype
--- tiptype         — used by discoveritemtips.tiptype
--- linktype        — used by discoveritemlinks.linktype
 -- insighttype     — used by localinsights.insighttype
 -- servicetasktype — used by service_tasks.task_type
 
@@ -267,78 +264,9 @@ CREATE TABLE IF NOT EXISTS discovercategories (
   isactive     BOOLEAN NOT NULL DEFAULT true,
   createdat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedat    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  subtitle     VARCHAR DEFAULT ''
+  subtitle     VARCHAR DEFAULT '',
+  places_category  VARCHAR
 );
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERITEMS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS discoveritems (
-  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  propertyid                UUID REFERENCES properties(id),
-  categoryid                UUID NOT NULL REFERENCES discovercategories(id),
-  itemtype                  USER-DEFINED NOT NULL,
-  title                     VARCHAR NOT NULL,
-  shortdescription          VARCHAR NOT NULL,
-  fulldescription           TEXT,
-  locationname              VARCHAR,
-  address                   TEXT,
-  latitude                  NUMERIC,
-  longitude                 NUMERIC,
-  location                  USER-DEFINED,
-  distancekm                NUMERIC,
-  ratingvalue               NUMERIC CHECK (ratingvalue IS NULL OR ratingvalue >= 0 AND ratingvalue <= 5),
-  ratingcount               INTEGER CHECK (ratingcount IS NULL OR ratingcount >= 0),
-  recommendeddurationhours  NUMERIC CHECK (recommendeddurationhours IS NULL OR recommendeddurationhours > 0),
-  besttimetogo              VARCHAR,
-  imageurl                  TEXT,
-  thumbnailurl              TEXT,
-  websiteurl                TEXT,
-  isfeatured                BOOLEAN NOT NULL DEFAULT false,
-  isbookable                BOOLEAN NOT NULL DEFAULT true,
-  status                    contentstatus NOT NULL DEFAULT 'draft',
-  sortorder                 INTEGER NOT NULL DEFAULT 0,
-  sourceprovider            VARCHAR,
-  sourceid                  VARCHAR,
-  sourcesyncedat            TIMESTAMPTZ,
-  createdat                 TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updatedat                 TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  gradient                  TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_discoveritems_category ON discoveritems(categoryid);
-CREATE INDEX IF NOT EXISTS idx_discoveritems_status ON discoveritems(status);
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERITEMTIPS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS discoveritemtips (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  discoveritemid  UUID NOT NULL REFERENCES discoveritems(id),
-  tiptype         USER-DEFINED NOT NULL,
-  content         TEXT NOT NULL,
-  sortorder       INTEGER NOT NULL DEFAULT 0,
-  createdat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updatedat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_discoveritemtips_item ON discoveritemtips(discoveritemid);
-
--- ═══════════════════════════════════════════════════════════
--- DISCOVERITEMLINKS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS discoveritemlinks (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  discoveritemid  UUID NOT NULL REFERENCES discoveritems(id),
-  linktype        USER-DEFINED NOT NULL,
-  label           VARCHAR NOT NULL,
-  url             TEXT NOT NULL,
-  sortorder       INTEGER NOT NULL DEFAULT 0,
-  createdat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updatedat       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_discoveritemlinks_item ON discoveritemlinks(discoveritemid);
 
 -- ═══════════════════════════════════════════════════════════
 -- LOCALINSIGHTS
@@ -383,7 +311,7 @@ CREATE INDEX IF NOT EXISTS idx_itineraries_stayid ON itineraries(stayid);
 CREATE TABLE IF NOT EXISTS itineraryitems (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   itineraryid     UUID NOT NULL REFERENCES itineraries(id),
-  discoveritemid  UUID REFERENCES discoveritems(id),
+  place_id        UUID REFERENCES places(id) ON DELETE SET NULL,
   scheduleddate   DATE NOT NULL,
   starttime       TIME,
   durationhours   NUMERIC CHECK (durationhours IS NULL OR durationhours > 0),
@@ -400,21 +328,6 @@ CREATE TABLE IF NOT EXISTS itineraryitems (
 );
 
 CREATE INDEX IF NOT EXISTS idx_itineraryitems_itinerary ON itineraryitems(itineraryid);
-
--- ═══════════════════════════════════════════════════════════
--- ITINERARYITEMSNAPSHOTS
--- ═══════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS itineraryitemsnapshots (
-  id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  itineraryitemid          UUID NOT NULL UNIQUE REFERENCES itineraryitems(id),
-  title                    VARCHAR NOT NULL,
-  shortdescription         VARCHAR,
-  imageurl                 TEXT,
-  locationname             VARCHAR,
-  websiteurl               TEXT,
-  recommendeddurationhours NUMERIC,
-  createdat                TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
 -- ═══════════════════════════════════════════════════════════
 -- PLACES
@@ -449,7 +362,12 @@ CREATE TABLE IF NOT EXISTS places (
   external_id         TEXT,
   last_synced_at      TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  recommended_duration  TEXT,
+  best_time_to_go       TEXT,
+  vibes                 TEXT[],
+  best_for              TEXT[],
+  search_count          INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_places_region ON places(region_id);

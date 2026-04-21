@@ -51,7 +51,7 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
             id: row.id,
-            placeId: row.discoveritemid ?? '',
+            placeId: row.place_id ?? '',
             name: row.name ?? '',
             category: row.category ?? '',
             image: row.image ?? '',
@@ -88,7 +88,7 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
       .then((itineraryId) => {
         if (!itineraryId) return;
         return insertItineraryItem(itineraryId, {
-          discoveritemid: item.placeId,
+          place_id: item.placeId,
           name: item.name,
           category: item.category,
           image: item.image,
