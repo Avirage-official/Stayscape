@@ -214,3 +214,22 @@ export const FALLBACK_PLACE_DETAILS: Record<string, PlaceDetailExtra> = {
     bestTimeToGo: 'Morning, paired with Statue of Liberty',
   },
 };
+
+/**
+ * Maps discovercategories.slug values to places.category enum values.
+ * Used to filter the places table when a carousel category is selected.
+ * Categories with no direct mapping use null (fetch all, no filter).
+ */
+export const CATEGORY_SLUG_TO_PLACES_CATEGORY: Record<string, string | null> = {
+  'top-places': 'top_places',
+  'dining': 'dining',
+  'nature': 'nature',
+  'nightlife': 'nightlife',
+  'shopping': 'shopping',
+  'fun': 'fun_places',
+  'historical': 'historical',
+  'local': 'local_spots',
+  'family': 'family',
+  'relaxation': 'wellness',
+  'events': 'events',
+};
