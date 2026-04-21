@@ -155,7 +155,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
   const handleCategoryClick = useCallback((item: CategoryItem) => {
     setActiveCategory(item.id);
-    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id });
+    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id, placesCategory: item.places_category });
   }, [refetchPlaces, region?.id]);
 
   const handleShowMorePlaces = useCallback(() => {

@@ -42,6 +42,8 @@ interface DbDiscoverCategory {
   createdat: string;
   updatedat: string;
   subtitle: string;
+  /** Maps this UI category to a places.category value for DB filtering. */
+  places_category: string | null;
 }
 
 interface DbLocalInsight {
@@ -64,11 +66,15 @@ interface DbLocalInsight {
 
 function toCategory(row: DbDiscoverCategory): CategoryItem {
   return {
-    id: row.id,
+    // Use slug as the id so client-side lookups and CATEGORY_SLUG_TO_PLACES_CATEGORY
+    // work correctly. The schema defines slug as NOT NULL, but fall back to id
+    // defensively in case of unexpected null.
+    id: row.slug ?? row.id,
     label: row.name,
     icon: row.iconname ?? '',
     image: row.imageurl ?? '',
     subtitle: row.subtitle,
+    places_category: row.places_category ?? null,
   };
 }
 
