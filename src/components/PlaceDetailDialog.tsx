@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useItinerary } from '@/components/ItineraryContext';
 import { format } from 'date-fns';
-import { fetchItemDetail } from '@/lib/supabase/discover-repository';
-import { FALLBACK_PLACE_DETAILS, type PlaceDetailExtra } from '@/lib/data/discover-fallback';
+import { FALLBACK_PLACE_DETAILS } from '@/lib/data/discover-fallback';
 import PlaceDetailHeader from '@/components/detail/PlaceDetailHeader';
 import PlaceDetailContent from '@/components/detail/PlaceDetailContent';
 
@@ -255,33 +254,14 @@ interface PlaceDetailDialogProps {
 
 export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDetailDialogProps) {
   const [view, setView] = useState<'detail' | 'schedule'>('detail');
-  const [dbDetail, setDbDetail] = useState<PlaceDetailExtra | null>(null);
-  const fetchedForRef = useRef<string | null>(null);
 
   const handleOpenChange = useCallback((value: boolean) => {
     if (!value) {
       // Reset to detail view on close
       setTimeout(() => setView('detail'), 200);
-      setDbDetail(null);
-      fetchedForRef.current = null;
     }
     onOpenChange(value);
   }, [onOpenChange]);
-
-  // Trigger DB fetch when the detail view mounts (via onLoad of hero image area)
-  const triggerDbFetch = useCallback((placeId: string) => {
-    if (fetchedForRef.current === placeId) return;
-    fetchedForRef.current = placeId;
-    fetchItemDetail(placeId)
-      .then((result) => {
-        if (result) {
-          setDbDetail(result.detail);
-        }
-      })
-      .catch(() => {
-        // Supabase unavailable — use fallback
-      });
-  }, []);
 
   const handleScheduleConfirm = useCallback(() => {
     setTimeout(() => setView('detail'), 200);
@@ -290,16 +270,12 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
 
   if (!place) return null;
 
-  // DB-first: use Supabase detail if available, otherwise local fallback
-  const detail: PlaceDetail = dbDetail
-    ? { ...place, ...dbDetail }
-    : getPlaceDetail(place);
+  const detail: PlaceDetail = getPlaceDetail(place);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-[520px] sm:max-w-[580px] max-h-[90vh] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0 flex flex-col"
-        ref={() => { if (place) triggerDbFetch(place.id); }}
       >
 
         {view === 'detail' ? (

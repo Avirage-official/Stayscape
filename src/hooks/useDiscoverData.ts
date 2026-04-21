@@ -17,7 +17,6 @@ import type { StayCuration } from '@/types/pms';
 export type { StayCuration };
 import {
   fetchCategories,
-  fetchItemsByCategory,
   fetchLocalInsights,
   fetchPlacesAsDiscoverItems,
 } from '@/lib/supabase/discover-repository';
@@ -101,7 +100,7 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
     // producing undefined → no category filter applied).
     const placesCategory = CATEGORY_SLUG_TO_PLACES_CATEGORY[categoryId] ?? undefined;
     fetchPlacesAsDiscoverItems(options?.regionId, fetchLimit, offset, placesCategory)
-      .then(async (placesResult) => {
+      .then((placesResult) => {
         const mergePlaces = (nextBatch: PlaceCard[]) => {
           if (append) {
             setPlaces((prev) => [...prev, ...nextBatch].slice(0, MAX_DISCOVER_PLACES));
@@ -115,17 +114,6 @@ export function useDiscoverPlaces(): UseDiscoverPlacesResult {
           const nextBatch = placesResult.slice(0, limit);
           mergePlaces(nextBatch);
           setHasMore(placesResult.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
-          return;
-        }
-
-        // Silent fallback: try discoveritems when places returns nothing.
-        const discoverResult = await fetchItemsByCategory(categoryId, categoryLabel, fetchLimit, offset);
-        const discoverItems = discoverResult ?? [];
-
-        if (discoverItems.length > 0) {
-          const nextBatch = discoverItems.slice(0, limit);
-          mergePlaces(nextBatch);
-          setHasMore(discoverItems.length > limit && offset + nextBatch.length < MAX_DISCOVER_PLACES);
           return;
         }
 

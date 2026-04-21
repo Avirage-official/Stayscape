@@ -5,9 +5,8 @@
  * 1. Create a sync_run record
  * 2. Fetch places from Geoapify
  * 3. Upsert into Supabase
- * 4. Deactivate stale records
- * 5. Queue AI enrichment for new records
- * 6. Complete the sync_run
+ * 4. Queue AI enrichment for new records
+ * 5. Complete the sync_run
  *
  * Designed to support:
  * - region-based sync
@@ -19,7 +18,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import {
   upsertPlace,
-  deactivateStalePlaces,
   createSyncRun,
   completeSyncRun,
   failSyncRun,
@@ -52,7 +50,6 @@ export async function syncPlaces(
   options: PlaceSyncOptions,
 ): Promise<PlaceSyncResult> {
   const supabase = getSupabaseAdmin();
-  const syncStartedAt = new Date().toISOString();
 
   // 1. Create sync_run
   const syncRun = await createSyncRun(supabase, {
@@ -91,31 +88,18 @@ export async function syncPlaces(
       }
     }
 
-    // 4. Deactivate stale records — scoped to the synced bounding box
-    const deactivated = await deactivateStalePlaces(
-      supabase,
-      'geoapify',
-      options.region_id,
-      syncStartedAt,
-      {
-        latitude: options.latitude,
-        longitude: options.longitude,
-        radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
-      },
-    );
-
-    // 5. AI enrichment for new records
+    // 4. AI enrichment for new records
     let enrichment: { enriched: number; failed: number } | undefined;
     if (!options.skip_enrichment && newPlaceIds.length > 0) {
       enrichment = await enrichNewPlaces(supabase, newPlaceIds);
     }
 
-    // 6. Complete sync_run
+    // 5. Complete sync_run
     const syncResult = {
       records_fetched: rawPlaces.length,
       records_created: created,
       records_updated: updated,
-      records_deactivated: deactivated,
+      records_deactivated: 0,
     };
     await completeSyncRun(supabase, syncRun.id, syncResult);
 
