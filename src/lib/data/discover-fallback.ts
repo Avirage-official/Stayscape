@@ -244,15 +244,15 @@ export const FALLBACK_PLACE_DETAILS: Record<string, PlaceDetailExtra> = {
  * returned — the UI then shows whatever the DB has.
  */
 export const CATEGORY_SLUG_TO_PLACES_CATEGORY: Record<string, string | null> = {
-  'top-places': 'topplaces',
+  'top-places': 'top_places',
   'dining': 'dining',
   'nature': 'nature',
   'nightlife': 'nightlife',
   'shopping': 'shopping',
   'fun': null,        // fallback-only category; no DB equivalent
   'historical': null, // fallback-only category; no DB equivalent
-  'local': 'localspots',
-  'local-spots': 'localspots',
+  'local': 'local_spots',
+  'local-spots': 'local_spots',
   'family': null,     // fallback-only category; no DB equivalent
   'relaxation': null, // fallback-only category; no DB equivalent
   'events': null,     // fallback-only category; no DB equivalent
