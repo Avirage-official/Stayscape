@@ -147,6 +147,12 @@ export interface InternalPlace {
   external_source: ExternalSource;
   external_id: string | null;
   last_synced_at: string | null;
+  search_count?: number;
+  recommended_duration?: string | null;
+  best_time_to_go?: string | null;
+  vibes?: string[] | null;
+  best_for?: string[] | null;
+  ai_enriched_at?: string | null;
   created_at: string;
   updated_at: string;
 }

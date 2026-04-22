@@ -45,6 +45,11 @@ export function gradientForCategory(category: string): string {
   );
 }
 
+/* ── Constants ──────────────────────────────────────────────── */
+
+/** Number of days after which an enriched place is considered stale. */
+const ENRICHMENT_STALE_DAYS = 30;
+
 /* ── Read operations ─────────────────────────────────────── */
 
 export async function queryPlaces(
@@ -274,24 +279,54 @@ export function toDiscoveryDetail(
 }
 
 /**
- * Query places that have not yet been AI-enriched (no editorial_summary).
- * Used by the enrichment API endpoint to find candidates for processing.
+ * Fetch places that need AI enrichment.
+ * Priority order:
+ *   1. Never enriched (ai_enriched_at IS NULL) first
+ *   2. Within that group, most searched first
+ *      (search_count DESC)
+ *   3. Then stale (ai_enriched_at older than 30 days),
+ *      again most searched first
  */
 export async function getUnenrichedPlaces(
   supabase: SupabaseClient,
   options: { region_id?: string; limit?: number } = {},
 ): Promise<InternalPlace[]> {
-  let query = supabase
+  const limit = options.limit ?? 50;
+  const thirtyDaysAgo = new Date(
+    Date.now() - ENRICHMENT_STALE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  // Query 1: Never enriched (ai_enriched_at IS NULL), most searched first
+  let q1 = supabase
     .from('places')
     .select('*')
     .eq('is_active', true)
-    .is('editorial_summary', null)
-    .order('created_at', { ascending: true });
+    .is('ai_enriched_at', null)
+    .order('search_count', { ascending: false })
+    .limit(limit);
 
-  if (options.region_id) query = query.eq('region_id', options.region_id);
-  query = query.limit(options.limit ?? 50);
+  if (options.region_id) q1 = q1.eq('region_id', options.region_id);
 
-  const { data, error } = await query;
-  if (error) throw new Error(`getUnenrichedPlaces failed: ${error.message}`);
-  return (data ?? []) as InternalPlace[];
+  const { data: neverEnriched, error: e1 } = await q1;
+  if (e1) throw new Error(`getUnenrichedPlaces failed: ${e1.message}`);
+
+  const results = (neverEnriched ?? []) as InternalPlace[];
+  if (results.length >= limit) return results.slice(0, limit);
+
+  // Query 2: Stale (ai_enriched_at older than 30 days), most searched first
+  const remaining = limit - results.length;
+  let q2 = supabase
+    .from('places')
+    .select('*')
+    .eq('is_active', true)
+    .lt('ai_enriched_at', thirtyDaysAgo)
+    .order('search_count', { ascending: false })
+    .limit(remaining);
+
+  if (options.region_id) q2 = q2.eq('region_id', options.region_id);
+
+  const { data: stale, error: e2 } = await q2;
+  if (e2) throw new Error(`getUnenrichedPlaces failed: ${e2.message}`);
+
+  return [...results, ...((stale ?? []) as InternalPlace[])];
 }

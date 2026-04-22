@@ -37,13 +37,10 @@ interface ClaudeResponse {
 
 interface ClaudePlaceEnrichment {
   editorial_summary?: string;
-  booking_url?: string | null;
-  website?: string | null;
-  vibes?: string[];
-  best_for?: string[];
   recommended_duration?: string | null;
   best_time_to_go?: string | null;
-  indoor_outdoor?: string | null;
+  vibes?: string[];
+  best_for?: string[];
 }
 
 /* ── Provider implementation ────────────────────────────────── */
@@ -99,32 +96,35 @@ export class ClaudeProvider implements AIEnrichmentProvider {
 /* ── Prompt builders ────────────────────────────────────────── */
 
 function buildPlacePrompt(place: InternalPlace): string {
-  const lines: string[] = [
-    `Name: ${place.name}`,
-    `Category: ${place.category}`,
-    `Address: ${place.address}`,
-    `City: ${place.city}`,
-    `Country: ${place.country_code}`,
-  ];
-  if (place.description) lines.push(`Description: ${place.description}`);
-  if (place.website) lines.push(`Website: ${place.website}`);
-  if (place.phone) lines.push(`Phone: ${place.phone}`);
+  return `You are a luxury travel editor for Stayscape, a premium hospitality platform. Your job is to enrich a place record using your knowledge of this location.
 
-  return `You are a luxury travel writer for Stayscape, a premium hospitality platform. Generate enrichment data for this place.
+Research approach — use your training knowledge of this place as documented on:
+- Google Maps / Google Places (ratings, descriptions, popular times, atmosphere)
+- TripAdvisor (traveller reviews, vibes, best for, categories of visitors)
+- Yelp (especially for dining — atmosphere, crowd type)
+- Booking.com / Agoda (for attractions and hotels — editorial summaries)
+- The official website if provided (most authoritative source for tone and positioning)
+- Your own training knowledge for well-known landmarks and institutions
+
+Write as a luxury travel editor would after researching all of the above sources. Be specific to this actual place — do not write generic descriptions.
 
 Place details:
-${lines.join('\n')}
+Name: ${place.name}
+Category: ${place.category}
+Address: ${place.address}
+City: ${place.city}
+Country: ${place.country_code}
+Description: ${place.description ?? 'N/A'}
+Website: ${place.website ?? 'N/A'}
+Rating: ${place.rating ?? 'N/A'}
 
-Respond with a single JSON object — no markdown, no extra text — containing exactly these fields:
+Respond with a single JSON object only — no markdown, no extra text:
 {
-  "editorial_summary": "1-3 sentences in a premium hospitality tone describing the place and what makes it special for discerning travellers",
-  "booking_url": "a direct booking URL if applicable (e.g. OpenTable for restaurants, official booking page), or null if unknown",
-  "website": "the official website URL if you know it with high confidence, or null",
-  "vibes": ["2-5 vibe tags from: romantic, lively, intimate, family-friendly, luxury, casual, cultural, trendy, scenic, peaceful, adventurous, foodie, historic, wellness, instagrammable, late-night"],
-  "best_for": ["1-3 labels from: date night, solo traveler, family outing, group dinner, business meeting, romantic dinner, quick bite, sightseeing"],
-  "recommended_duration": "e.g. '1-2 hours' or '30 minutes'",
-  "best_time_to_go": "e.g. 'evening', 'morning', 'weekends'",
-  "indoor_outdoor": "one of: indoor, outdoor, both"
+  "editorial_summary": "2-3 sentences in a premium hospitality tone. Be specific to this place. Mention what makes it unique and worth visiting.",
+  "recommended_duration": "e.g. 1-2 hours, Half day, Full day, 30 minutes",
+  "best_time_to_go": "e.g. Evening, Morning, Weekday afternoons, Sunset, Friday and Saturday nights",
+  "vibes": ["array", "of", "3-5", "atmosphere", "words", "e.g. romantic, lively, upscale, cosy, energetic"],
+  "best_for": ["array", "of", "3-5", "visitor", "types", "e.g. date night, families, solo travellers, groups, business lunch, weekend brunch"]
 }`;
 }
 
@@ -179,22 +179,24 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     return { editorial_summary: '', tags: [] };
   }
 
+  const vibes = toStringArray(parsed.vibes);
+  const bestFor = toStringArray(parsed.best_for);
+
   const tags: EnrichmentResult['tags'] = [];
 
-  for (const vibe of toStringArray(parsed.vibes)) {
+  for (const vibe of vibes) {
     tags.push({ tag: vibe, tag_type: 'vibe' as TagType, confidence: 0.9 });
   }
-  for (const label of toStringArray(parsed.best_for)) {
+  for (const label of bestFor) {
     tags.push({ tag: label, tag_type: 'best_for' as TagType, confidence: 0.9 });
   }
 
   return {
     editorial_summary: toStringOrNull(parsed.editorial_summary) ?? '',
-    booking_url: toStringOrNull(parsed.booking_url),
-    website: toStringOrNull(parsed.website),
     recommended_duration: toStringOrNull(parsed.recommended_duration),
     best_time_to_go: toStringOrNull(parsed.best_time_to_go),
-    indoor_outdoor: toStringOrNull(parsed.indoor_outdoor),
+    vibes: vibes.length > 0 ? vibes : null,
+    best_for: bestFor.length > 0 ? bestFor : null,
     tags,
   };
 }
