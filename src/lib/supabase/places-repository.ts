@@ -45,6 +45,11 @@ export function gradientForCategory(category: string): string {
   );
 }
 
+/* ── Constants ──────────────────────────────────────────────── */
+
+/** Number of days after which an enriched place is considered stale. */
+const ENRICHMENT_STALE_DAYS = 30;
+
 /* ── Read operations ─────────────────────────────────────── */
 
 export async function queryPlaces(
@@ -288,7 +293,7 @@ export async function getUnenrichedPlaces(
 ): Promise<InternalPlace[]> {
   const limit = options.limit ?? 50;
   const thirtyDaysAgo = new Date(
-    Date.now() - 30 * 24 * 60 * 60 * 1000,
+    Date.now() - ENRICHMENT_STALE_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString();
 
   // Query 1: Never enriched (ai_enriched_at IS NULL), most searched first

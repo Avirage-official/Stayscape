@@ -114,7 +114,7 @@ Category: ${place.category}
 Address: ${place.address}
 City: ${place.city}
 Country: ${place.country_code}
-Description: ${place.description}
+Description: ${place.description ?? 'N/A'}
 Website: ${place.website ?? 'N/A'}
 Rating: ${place.rating ?? 'N/A'}
 
