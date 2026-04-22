@@ -36,6 +36,8 @@ export interface EnrichmentResult {
   recommended_duration?: string | null;
   best_time_to_go?: string | null;
   indoor_outdoor?: string | null;
+  vibes?: string[] | null;
+  best_for?: string[] | null;
   tags: Array<{
     tag: string;
     tag_type: TagType;
@@ -147,21 +149,21 @@ export async function enrichPlace(
   if (!result.editorial_summary && result.tags.length === 0) return;
 
   // Step 3 – Write AI results back to the place record
-  const placeUpdates: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (result.editorial_summary) {
-    placeUpdates.editorial_summary = result.editorial_summary;
-  }
-  if (result.booking_url) {
-    placeUpdates.booking_url = result.booking_url;
-  }
-  if (result.website && !enrichedPlace.website) {
-    placeUpdates.website = result.website;
-  }
+  const { error } = await supabase
+    .from('places')
+    .update({
+      editorial_summary: result.editorial_summary ?? null,
+      recommended_duration: result.recommended_duration ?? null,
+      best_time_to_go: result.best_time_to_go ?? null,
+      vibes: result.vibes ?? null,
+      best_for: result.best_for ?? null,
+      ai_enriched_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', place.id);
 
-  if (Object.keys(placeUpdates).length > 1) {
-    await supabase.from('places').update(placeUpdates).eq('id', place.id);
+  if (error) {
+    throw new Error(`enrichPlace update failed: ${error.message}`);
   }
 
   // Step 4 – Upsert AI-generated tags
