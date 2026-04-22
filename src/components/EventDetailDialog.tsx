@@ -18,8 +18,10 @@ import { format } from 'date-fns';
 import type { EventCard } from '@/hooks/useDiscoverData';
 
 /* ─── Stay date range (mirrors PlaceDetailDialog) ─── */
-const STAY_CHECK_IN = new Date(2025, 11, 14);
-const STAY_CHECK_OUT = new Date(2025, 11, 19);
+const STAY_CHECK_IN = new Date();
+const STAY_CHECK_OUT = new Date(
+  Date.now() + 30 * 24 * 60 * 60 * 1000
+);
 
 const TIME_OPTIONS = [
   '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',

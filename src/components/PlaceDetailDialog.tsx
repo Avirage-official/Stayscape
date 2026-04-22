@@ -60,8 +60,10 @@ function getPlaceDetail(place: { id: string; name: string; category: string; des
 }
 
 /* ─── Stay date range ─── */
-const STAY_CHECK_IN = new Date(2025, 11, 14); // Dec 14
-const STAY_CHECK_OUT = new Date(2025, 11, 19); // Dec 19
+const STAY_CHECK_IN = new Date();
+const STAY_CHECK_OUT = new Date(
+  Date.now() + 30 * 24 * 60 * 60 * 1000
+);
 
 /* ─── Time options ─── */
 const TIME_OPTIONS = [

@@ -108,12 +108,6 @@ export type PlaceCategory =
   | 'wellness'
   | 'family'
   | 'events'
-  | 'localspots'
-  | 'topplaces'
-  /**
-   * Backward-compatibility for legacy persisted rows and unmigrated producers.
-   * Remove once all data and integrations are normalized to the new values.
-   */
   | 'local_spots'
   | 'fun_places'
   | 'top_places';
