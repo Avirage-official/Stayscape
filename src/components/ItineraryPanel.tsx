@@ -18,8 +18,10 @@ import ItineraryEmptyState from '@/components/itinerary/ItineraryEmptyState';
 import ItineraryDayGroup from '@/components/itinerary/ItineraryDayGroup';
 
 /* ─── Stay date range ─── */
-const STAY_CHECK_IN = new Date(2025, 11, 14); // Dec 14
-const STAY_CHECK_OUT = new Date(2025, 11, 19); // Dec 19
+const STAY_CHECK_IN = new Date();
+const STAY_CHECK_OUT = new Date(
+  Date.now() + 30 * 24 * 60 * 60 * 1000
+);
 
 /* ─── Stay days array ─── */
 function generateStayDays(): Date[] {
