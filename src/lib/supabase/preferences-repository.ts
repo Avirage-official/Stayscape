@@ -92,7 +92,7 @@ export async function upsertStayPreference(
   }
 
   if (newest) {
-    let updateErr: unknown;
+    let updateError: unknown;
 
     try {
       const { error } = await supabase
@@ -109,10 +109,10 @@ export async function upsertStayPreference(
         throw new Error(error.message);
       }
     } catch (err) {
-      updateErr = err;
+      updateError = err;
     }
 
-    if (updateErr === undefined) {
+    if (updateError === undefined) {
       await purgeDuplicates(newest);
       return newest;
     }
@@ -122,7 +122,7 @@ export async function upsertStayPreference(
     // may temporarily be stale.
     console.warn(
       '[preferences] update failed, falling back to insert+delete',
-      { stayId, preferenceType, error: updateErr instanceof Error ? updateErr.message : updateErr },
+      { stayId, preferenceType, error: updateError instanceof Error ? updateError.message : updateError },
     );
     const { data: fallbackCreated, error: insertErr } = await supabase
       .from('guest_preferences')

@@ -122,7 +122,6 @@ describe('POST /api/customer/stays/[stayId]/onboarding', () => {
     });
 
     const response = await POST(request as never, { params: Promise.resolve({ stayId: 'stay-1' }) });
-    await Promise.resolve();
     expect(response.status).toBe(200);
     expect(mocks.waitUntil).toHaveBeenCalledTimes(1);
     expect(mocks.curateStay).toHaveBeenCalledWith('stay-1');
