@@ -393,6 +393,8 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
       {/* ── Tab bar ── */}
       <div
         className="sticky top-14 z-20 flex items-center px-5 sm:px-8 h-[42px] border-b gap-6"
+        role="tablist"
+        aria-label="Stay sections"
         style={{
           background: 'rgba(10,10,10,0.85)',
           backdropFilter: 'blur(20px)',
@@ -405,6 +407,10 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`tabpanel-${tab}`}
+            id={`tab-${tab}`}
             className={`h-full flex items-center text-[11px] tracking-[0.14em] uppercase font-medium border-b-2 transition-colors duration-200 cursor-pointer ${
               activeTab === tab
                 ? 'text-[var(--gold)] border-[var(--gold)]'
@@ -418,7 +424,12 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
 
       {/* ── Overview tab: Two-column layout ── */}
       {activeTab === 'overview' && (
-      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem-42px)]">
+      <div
+        role="tabpanel"
+        id="tabpanel-overview"
+        aria-labelledby="tab-overview"
+        className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem-42px)]"
+      >
 
         {/* ══════════════════════
             LEFT COLUMN
@@ -921,14 +932,24 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
 
       {/* ── Discover tab ── */}
       {activeTab === 'discover' && (
-        <div className="h-[calc(100vh-3.5rem-42px)] overflow-hidden">
+        <div
+          role="tabpanel"
+          id="tabpanel-discover"
+          aria-labelledby="tab-discover"
+          className="flex h-[calc(100vh-3.5rem-42px)] min-h-0 flex-col overflow-hidden"
+        >
           <DiscoverPanel stayId={stay.id} />
         </div>
       )}
 
       {/* ── Itinerary tab ── */}
       {activeTab === 'itinerary' && (
-        <div className="h-[calc(100vh-3.5rem-42px)] overflow-hidden">
+        <div
+          role="tabpanel"
+          id="tabpanel-itinerary"
+          aria-labelledby="tab-itinerary"
+          className="flex flex-col min-h-0 h-[calc(100vh-3.5rem-42px)] overflow-hidden"
+        >
           <ItineraryPanel />
         </div>
       )}

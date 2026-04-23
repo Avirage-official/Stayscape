@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     getStayById: vi.fn(),
     upsertStayPreference: vi.fn(),
     curateStay: vi.fn(),
+    waitUntil: vi.fn((promise: Promise<unknown>) => promise),
     getSupabaseAdmin: vi.fn(() => ({ from })),
     from,
     update,
@@ -31,6 +32,9 @@ vi.mock('@/lib/supabase/preferences-repository', () => ({
 vi.mock('@/lib/services/ai/stay-curation', () => ({
   curateStay: mocks.curateStay,
 }));
+vi.mock('@vercel/functions', () => ({
+  waitUntil: mocks.waitUntil,
+}));
 vi.mock('@/lib/supabase/client', () => ({
   getSupabaseAdmin: mocks.getSupabaseAdmin,
 }));
@@ -43,6 +47,7 @@ describe('POST /api/customer/stays/[stayId]/onboarding', () => {
     mocks.getStayById.mockReset();
     mocks.upsertStayPreference.mockReset();
     mocks.curateStay.mockReset();
+    mocks.waitUntil.mockClear();
     mocks.from.mockClear();
     mocks.update.mockClear();
     mocks.eqFirst.mockClear();
@@ -117,7 +122,9 @@ describe('POST /api/customer/stays/[stayId]/onboarding', () => {
     });
 
     const response = await POST(request as never, { params: Promise.resolve({ stayId: 'stay-1' }) });
+    await Promise.resolve();
     expect(response.status).toBe(200);
+    expect(mocks.waitUntil).toHaveBeenCalledTimes(1);
     expect(mocks.curateStay).toHaveBeenCalledWith('stay-1');
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({
