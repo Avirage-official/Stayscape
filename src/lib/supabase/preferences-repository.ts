@@ -92,7 +92,7 @@ export async function upsertStayPreference(
   }
 
   if (newest) {
-    let updateErr: unknown = null;
+    let updateErr: unknown;
 
     try {
       const { error } = await supabase
@@ -112,7 +112,7 @@ export async function upsertStayPreference(
       updateErr = err;
     }
 
-    if (!updateErr) {
+    if (updateErr === undefined) {
       await purgeDuplicates(newest);
       return newest;
     }
