@@ -936,7 +936,7 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
           role="tabpanel"
           id="tabpanel-discover"
           aria-labelledby="tab-discover"
-          className="flex h-[calc(100vh-3.5rem-42px)] min-h-0 flex-col overflow-hidden"
+          className="flex flex-col min-h-0 h-[calc(100vh-3.5rem-42px)] overflow-hidden"
         >
           <DiscoverPanel stayId={stay.id} />
         </div>
