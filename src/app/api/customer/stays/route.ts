@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { getCustomerProfile } from '@/lib/supabase/customer-repository';
-import { curateStay } from '@/lib/services/ai/stay-curation';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { PmsBookingPayload } from '@/types/pms';
 
@@ -10,8 +9,8 @@ import type { PmsBookingPayload } from '@/types/pms';
  *
  * Creates a stay from manual entry form data.
  * Reuses the same processWebhookBooking pipeline (user upsert, property
- * upsert, region matching, stay creation) so manual entries get full
- * AI curation just like PMS-sourced bookings.
+ * upsert, region matching, stay creation) so manual entries follow the
+ * same PMS pipeline before guest onboarding.
  *
  * Accepts: { user_id, country, city, hotel_name, check_in, check_out,
  *            guests?, trip_type?, room_type?, booking_reference?, notes?,
@@ -102,29 +101,12 @@ export async function POST(request: NextRequest) {
     // Run the same pipeline as a PMS webhook
     const result = await processWebhookBooking(payload, body.user_id);
 
-    // Fire curation asynchronously if region was found
-    if (result.region_id && !result.stay_existed) {
-      void curateStay(result.stay_id).then(
-        (curation) => {
-          console.log(
-            '[customer/stays] Curation completed for stay:',
-            result.stay_id,
-            curation.curations_created,
-            'curations created',
-          );
-        },
-        (err: unknown) => {
-          console.error('[customer/stays] Curation failed for stay:', result.stay_id, err);
-        },
-      );
-    }
-
     return NextResponse.json(
       {
         data: {
           ...result,
           message: 'Stay created successfully',
-          curation_triggered: !!result.region_id,
+          curation_triggered: false,
         },
       },
       { status: 201, headers: rateLimit.headers },

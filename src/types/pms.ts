@@ -135,11 +135,15 @@ export type PreferenceType =
   | 'room_service'
   | 'spa'
   | 'excursion'
-  | 'general';
+  | 'general'
+  | 'interests'
+  | 'pace'
+  | 'food_preferences';
 
 /** A guest preference captured from the concierge/map. */
 export interface GuestPreference {
   id: string;
+  user_id?: string | null;
   stay_id: string;
   preference_type: PreferenceType;
   /** Structured preference data. */
@@ -148,6 +152,7 @@ export interface GuestPreference {
   synced_to_pms: boolean;
   synced_at: string | null;
   created_at: string;
+  updated_at?: string | null;
 }
 
 /** Payload sent back to the PMS callback URL. */

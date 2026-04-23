@@ -9,14 +9,13 @@
  * - Looks up the demo booking payload for the given booking_id
  * - Fills in the authenticated user's email and name from the DB
  * - Calls processWebhookBooking() directly (bypasses X-PMS-API-Key requirement)
- * - Fires curateStay() asynchronously (fire-and-forget, same as the real webhook)
+ * - Defers curation until guest onboarding is completed in the stay flow
  * - Returns { stay_id, property_id, booking_reference, curation_triggered }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { getCustomerProfile } from '@/lib/supabase/customer-repository';
-import { curateStay } from '@/lib/services/ai/stay-curation';
 import { getDemoBookingPayload } from '@/lib/data/demo-bookings';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
@@ -118,23 +117,6 @@ export async function POST(request: NextRequest) {
     // Run the real webhook pipeline
     const result = await processWebhookBooking(payload, body.user_id);
 
-    // Fire curation asynchronously (same pattern as /api/pms/webhook)
-    if (result.region_id && !result.stay_existed) {
-      void curateStay(result.stay_id).then(
-        (curation) => {
-          console.log(
-            '[demo/activate] Curation completed for stay:',
-            result.stay_id,
-            curation.curations_created,
-            'curations created',
-          );
-        },
-        (err: unknown) => {
-          console.error('[demo/activate] Curation failed for stay:', result.stay_id, err);
-        },
-      );
-    }
-
     const isDuplicate = !!result.stay_existed;
     const status = isDuplicate ? 200 : 201;
     const message = isDuplicate
@@ -146,7 +128,7 @@ export async function POST(request: NextRequest) {
         data: {
           ...result,
           message,
-          curation_triggered: !!result.region_id && !isDuplicate,
+          curation_triggered: false,
           redirect_stay_id: result.stay_id,
         },
       },

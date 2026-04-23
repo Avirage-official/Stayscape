@@ -43,6 +43,13 @@ export interface CustomerStay {
   status: StayStatus;
   room_type: string | null;
   guests: number | null;
+  trip_type?: string | null;
+  stay_confirmed_by_guest?: boolean | null;
+  stay_confirmation_status?: string | null;
+  onboarding_completed?: boolean | null;
+  onboarding_completed_at?: string | null;
+  curation_status?: string | null;
+  curated_at?: string | null;
   property?: {
     id: string;
     name: string;

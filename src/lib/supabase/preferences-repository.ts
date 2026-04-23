@@ -45,6 +45,81 @@ export async function savePreference(
 }
 
 /**
+ * Upsert a single preference row for a stay + preference_type.
+ * Keeps one canonical row per preference type for onboarding flows.
+ */
+export async function upsertStayPreference(
+  stayId: string,
+  userId: string | null,
+  preferenceType: PreferenceType,
+  preferenceData: Record<string, unknown>,
+): Promise<string> {
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  const { data: existingRows } = await supabase
+    .from('guest_preferences')
+    .select('id')
+    .eq('stay_id', stayId)
+    .eq('preference_type', preferenceType)
+    .order('created_at', { ascending: false });
+
+  const newest = (existingRows?.[0]?.id as string | undefined) ?? null;
+
+  if (newest) {
+    const { error } = await supabase
+      .from('guest_preferences')
+      .update({
+        user_id: userId,
+        preference_data: preferenceData,
+        synced_to_pms: false,
+        synced_at: null,
+        updated_at: now,
+      })
+      .eq('id', newest);
+
+    if (error) {
+      throw new Error(`Failed to update preference: ${error.message}`);
+    }
+
+    const duplicateIds = (existingRows ?? [])
+      .slice(1)
+      .map((row) => row.id as string)
+      .filter(Boolean);
+
+    if (duplicateIds.length > 0) {
+      await supabase
+        .from('guest_preferences')
+        .delete()
+        .in('id', duplicateIds);
+    }
+
+    return newest;
+  }
+
+  const { data: created, error } = await supabase
+    .from('guest_preferences')
+    .insert({
+      user_id: userId,
+      stay_id: stayId,
+      preference_type: preferenceType,
+      preference_data: preferenceData,
+      synced_to_pms: false,
+      synced_at: null,
+      created_at: now,
+      updated_at: now,
+    })
+    .select('id')
+    .single();
+
+  if (error || !created) {
+    throw new Error(`Failed to upsert preference: ${error?.message ?? 'Unknown error'}`);
+  }
+
+  return created.id as string;
+}
+
+/**
  * Get all preferences for a stay.
  */
 export async function getPreferencesForStay(
