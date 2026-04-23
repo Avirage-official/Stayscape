@@ -161,7 +161,6 @@ CREATE INDEX IF NOT EXISTS idx_stay_curations_stay ON stay_curations(stay_id);
 -- ═══════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS guest_preferences (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id           UUID REFERENCES users(id),
   stay_id           UUID REFERENCES stays(id),
   preference_type   TEXT NOT NULL,
   preference_data   JSONB NOT NULL,

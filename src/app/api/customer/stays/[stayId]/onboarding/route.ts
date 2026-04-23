@@ -133,7 +133,6 @@ export async function POST(
 
       const preferenceId = await upsertStayPreference(
         stayId,
-        stay.user_id,
         preferenceType,
         canonicalPreferenceData,
       );
@@ -180,7 +179,7 @@ export async function POST(
           }
 
           // Save ONE combined preference row.
-          await upsertStayPreference(stayId, stay.user_id, 'stay_onboarding', {
+          await upsertStayPreference(stayId, 'stay_onboarding', {
             interests: canonicalInterests,
             pace: canonicalPace,
             food_preferences: canonicalFood,
