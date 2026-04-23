@@ -322,7 +322,6 @@ function CurrentBookingContent({ userId }: { userId: string }) {
         onOpenChange={setAddStayOpen}
         userId={userId}
         onActivated={refetch}
-        existingBookingRefs={allStays.map((s) => s.booking_reference).filter((ref): ref is string => Boolean(ref))}
       />
     </>
   );

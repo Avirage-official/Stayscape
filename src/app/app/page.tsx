@@ -13,7 +13,8 @@ import ItineraryTimeline from '@/components/concierge/ItineraryTimeline';
 import QuickActions from '@/components/concierge/QuickActions';
 import InsightsStrip from '@/components/concierge/InsightsStrip';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { useRegion } from '@/lib/context/region-context';
+import { RegionProvider, useRegion } from '@/lib/context/region-context';
+import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
 
@@ -22,21 +23,25 @@ type MobileView = 'guest' | 'assistant';
 
 export default function Home() {
   const router = useRouter();
-  const { region } = useRegion();
+  const { region: globalRegion } = useRegion();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
   const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
-  /* Redirect to region selection if no region chosen */
+  // Derive region from the selected stay's property — this takes precedence over localStorage
+  const selectedStay = dashboardData?.upcomingStay ?? null;
+  const stayRegion = selectedStay ? getStaySelectedRegion(selectedStay) : null;
+
+  /* Redirect to region selection only when neither the stay nor global region is available */
   useEffect(() => {
-    if (region === null) {
+    if (stayRegion === null && globalRegion === null) {
       router.replace('/select-region');
     }
-  }, [region, router]);
+  }, [stayRegion, globalRegion, router]);
 
   /* Fetch dashboard / stay data when user is available */
-  useState(() => {
+  useEffect(() => {
     if (!user?.id) return;
     fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -44,9 +49,9 @@ export default function Home() {
         if (data) setDashboardData(data);
       })
       .catch(() => {});
-  });
+  }, [user?.id]);
 
-  return (
+  const pageContent = (
     <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>
       {/* Cinematic background */}
       <div className="fixed inset-0 -z-10">
@@ -158,4 +163,12 @@ export default function Home() {
       </div>
     </ItineraryProvider>
   );
+
+  // When the selected stay has a region, wrap the page in a scoped RegionProvider
+  // so Discover, map and curation use the stay's region instead of the global localStorage value.
+  return stayRegion ? (
+    <RegionProvider initialRegion={stayRegion}>
+      {pageContent}
+    </RegionProvider>
+  ) : pageContent;
 }
