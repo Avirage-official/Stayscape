@@ -207,41 +207,60 @@ export async function POST(
         if (error) throw new Error(error.message);
       }
 
-      try {
-        const result = await curateStay(stayId);
-        const curatedAt = new Date().toISOString();
-        const { error } = await supabase
-          .from('stays')
-          .update({
-            curation_status: 'completed',
-            curated_at: curatedAt,
-          })
-          .eq('id', stayId)
-          .eq('userid', stay.user_id);
+      // Fire curation as fire-and-forget — respond to the client immediately
+      // so the serverless function is not blocked by the long-running Claude calls.
+      curateStay(stayId).then(
+        (result) => {
+          const curatedAt = new Date().toISOString();
+          supabase
+            .from('stays')
+            .update({ curation_status: 'completed', curated_at: curatedAt })
+            .eq('id', stayId)
+            .eq('userid', stay.user_id)
+            .then(
+              ({ error }) => {
+                if (error) {
+                  console.error('[onboarding] Failed to mark curation as completed', error.message);
+                } else {
+                  console.log(
+                    '[onboarding] Curation completed for stay:',
+                    stayId,
+                    result.curations_created,
+                    'curations created',
+                  );
+                }
+              },
+              (err: unknown) => {
+                console.error('[onboarding] Unexpected error marking curation completed', err);
+              },
+            );
+        },
+        (err: unknown) => {
+          console.error('[onboarding] Curation failed for stay:', stayId, err);
+          supabase
+            .from('stays')
+            .update({ curation_status: 'failed' })
+            .eq('id', stayId)
+            .eq('userid', stay.user_id)
+            .then(
+              ({ error }) => {
+                if (error) {
+                  console.error('[onboarding] Failed to mark curation as failed', error.message);
+                }
+              },
+              (dbErr: unknown) => {
+                console.error('[onboarding] Unexpected error marking curation failed', dbErr);
+              },
+            );
+        },
+      );
 
-        if (error) throw new Error(error.message);
-
-        return NextResponse.json({
-          data: {
-            stay_id: stayId,
-            curation_status: 'completed',
-            curations_created: result.curations_created,
-            curated_at: curatedAt,
-          },
-        }, { headers: rateLimit.headers });
-      } catch (error) {
-        const { error: statusError } = await supabase
-          .from('stays')
-          .update({ curation_status: 'failed' })
-          .eq('id', stayId)
-          .eq('userid', stay.user_id);
-
-        if (statusError) {
-          console.error('[onboarding] Failed to mark curation as failed', statusError.message);
-        }
-
-        throw error;
-      }
+      return NextResponse.json({
+        data: {
+          stay_id: stayId,
+          curation_status: 'in_progress',
+        },
+      }, { headers: rateLimit.headers });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400, headers: rateLimit.headers });

@@ -65,25 +65,11 @@ export async function upsertStayPreference(
 
   const newest = (existingRows?.[0]?.id as string | undefined) ?? null;
 
-  if (newest) {
-    const { error } = await supabase
-      .from('guest_preferences')
-      .update({
-        preference_data: preferenceData,
-        synced_to_pms: false,
-        synced_at: null,
-        updated_at: now,
-      })
-      .eq('id', newest);
-
-    if (error) {
-      throw new Error(`Failed to update preference: ${error.message}`);
-    }
-
+  /** Remove any extra duplicate rows, keeping only the row with `keepId`. */
+  async function purgeDuplicates(keepId: string): Promise<void> {
     const duplicateIds = (existingRows ?? [])
-      .slice(1)
       .map((row) => row.id as string)
-      .filter(Boolean);
+      .filter((id) => id && id !== keepId);
 
     if (duplicateIds.length > 0) {
       console.warn(
@@ -95,8 +81,65 @@ export async function upsertStayPreference(
         .delete()
         .in('id', duplicateIds);
     }
+  }
 
-    return newest;
+  if (newest) {
+    try {
+      const { error } = await supabase
+        .from('guest_preferences')
+        .update({
+          preference_data: preferenceData,
+          synced_to_pms: false,
+          synced_at: null,
+          updated_at: now,
+        })
+        .eq('id', newest);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      await purgeDuplicates(newest);
+      return newest;
+    } catch (updateErr) {
+      // Fallback: DELETE the existing row and INSERT a fresh one.
+      // This handles Supabase schema cache lag where the update column list
+      // may temporarily be stale.
+      console.warn(
+        '[preferences] update failed, falling back to delete+insert',
+        { stayId, preferenceType, error: updateErr instanceof Error ? updateErr.message : updateErr },
+      );
+      const { error: deleteErr } = await supabase
+        .from('guest_preferences')
+        .delete()
+        .eq('id', newest);
+
+      if (deleteErr) {
+        throw new Error(`Failed to delete preference for upsert fallback: ${deleteErr.message}`);
+      }
+
+      const { data: fallbackCreated, error: insertErr } = await supabase
+        .from('guest_preferences')
+        .insert({
+          stay_id: stayId,
+          preference_type: preferenceType,
+          preference_data: preferenceData,
+          synced_to_pms: false,
+          synced_at: null,
+          created_at: now,
+          updated_at: now,
+        })
+        .select('id')
+        .single();
+
+      if (insertErr || !fallbackCreated) {
+        throw new Error(`Failed to re-insert preference: ${insertErr?.message ?? 'Unknown error'}`);
+      }
+
+      // Clean up any remaining duplicates (excluding the newly inserted row).
+      await purgeDuplicates(fallbackCreated.id as string);
+      return fallbackCreated.id as string;
+    }
   }
 
   const { data: created, error } = await supabase

@@ -10,6 +10,8 @@ import MapPlaceholder from '@/components/MapPlaceholder';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import { RegionProvider } from '@/lib/context/region-context';
 import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
+import DiscoverPanel from '@/components/DiscoverPanel';
+import ItineraryPanel from '@/components/ItineraryPanel';
 
 /* ═══════════════════════════════════════════════════════════════
    Helpers
@@ -204,6 +206,9 @@ export interface StayDetailViewProps {
 export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
   const prefersReducedMotion = useReducedMotion();
 
+  /* ─ Tab state ─ */
+  const [activeTab, setActiveTab] = useState<'overview' | 'discover' | 'itinerary'>('overview');
+
   /* ─ Preferences state ─ */
   const [selected, setSelected] = useState<Record<string, Set<string>>>(() => {
     const init: Record<string, Set<string>> = {};
@@ -334,6 +339,8 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
         };
 
   return (
+    <RegionProvider initialRegion={stayRegion ?? undefined}>
+      <ItineraryProvider stayId={stay.id}>
     <div
       className="min-h-screen"
       style={{ background: 'var(--background)' }}
@@ -383,13 +390,40 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
         </span>
       </div>
 
-      {/* ── Two-column layout ── */}
-      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem)]">
+      {/* ── Tab bar ── */}
+      <div
+        className="sticky top-14 z-20 flex items-center px-5 sm:px-8 h-[42px] border-b gap-6"
+        style={{
+          background: 'rgba(10,10,10,0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderColor: 'rgba(255,255,255,0.06)',
+        }}
+      >
+        {(['overview', 'discover', 'itinerary'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`h-full flex items-center text-[11px] tracking-[0.14em] uppercase font-medium border-b-2 transition-colors duration-200 cursor-pointer ${
+              activeTab === tab
+                ? 'text-[var(--gold)] border-[var(--gold)]'
+                : 'text-white/45 border-transparent hover:text-white/75'
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Overview tab: Two-column layout ── */}
+      {activeTab === 'overview' && (
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem-42px)]">
 
         {/* ══════════════════════
             LEFT COLUMN
             ══════════════════════ */}
-        <div className="lg:w-[58%] lg:overflow-y-auto lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] flex-shrink-0">
+        <div className="lg:w-[58%] lg:overflow-y-auto lg:sticky lg:top-[calc(3.5rem+42px)] lg:h-[calc(100vh-3.5rem-42px)] flex-shrink-0">
 
           {/* Hero image */}
           <motion.div
@@ -502,11 +536,7 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
             </div>
 
             <div className="relative h-[260px] sm:h-[320px] overflow-hidden rounded-b-2xl">
-              <RegionProvider initialRegion={stayRegion ?? undefined}>
-                <ItineraryProvider>
-                  <MapPlaceholder stayId={stay.id} />
-                </ItineraryProvider>
-              </RegionProvider>
+              <MapPlaceholder stayId={stay.id} />
             </div>
           </motion.div>
         </div>
@@ -887,6 +917,23 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
           </div>
         </div>
       </div>
+      )}
+
+      {/* ── Discover tab ── */}
+      {activeTab === 'discover' && (
+        <div className="h-[calc(100vh-3.5rem-42px)] overflow-hidden">
+          <DiscoverPanel stayId={stay.id} />
+        </div>
+      )}
+
+      {/* ── Itinerary tab ── */}
+      {activeTab === 'itinerary' && (
+        <div className="h-[calc(100vh-3.5rem-42px)] overflow-hidden">
+          <ItineraryPanel />
+        </div>
+      )}
     </div>
+      </ItineraryProvider>
+    </RegionProvider>
   );
 }
