@@ -88,6 +88,10 @@ export async function upsertStayPreference(
       .filter(Boolean);
 
     if (duplicateIds.length > 0) {
+      console.warn(
+        '[preferences] Cleaning duplicate stay preference rows',
+        { stayId, preferenceType, removed_count: duplicateIds.length },
+      );
       await supabase
         .from('guest_preferences')
         .delete()

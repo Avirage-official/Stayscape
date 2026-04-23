@@ -142,17 +142,33 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     setError(null);
     setCurationFailed(false);
     try {
-      await sendAction({
-        action: 'set_preference',
-        preference_type: 'food_preferences',
-        preference_data: { values: foodPreferences },
-      });
       await sendAction({ action });
       setStep('complete');
       onCompleted();
     } catch (submitError) {
       setCurationFailed(true);
       setError(submitError instanceof Error ? submitError.message : 'Unable to start curation');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRetryCuration() {
+    await completeOnboarding('retry_curation');
+  }
+
+  async function handleSaveFoodPreferences() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await sendAction({
+        action: 'set_preference',
+        preference_type: 'food_preferences',
+        preference_data: { values: foodPreferences },
+      });
+      await completeOnboarding('complete_onboarding');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Unable to save food preferences');
     } finally {
       setIsSubmitting(false);
     }
@@ -172,7 +188,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
         <div className="mb-6">
           <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--gold)]/70">Stay onboarding</p>
-          <div className="mt-3 h-1.5 w-full rounded-full bg-white/10" role="progressbar" aria-valuemin={1} aria-valuemax={TOTAL_STEPS} aria-valuenow={progressStep}>
+          <div className="mt-3 h-1.5 w-full rounded-full bg-white/10" role="progressbar" aria-label="Onboarding progress" aria-valuemin={1} aria-valuemax={TOTAL_STEPS} aria-valuenow={progressStep}>
             <motion.div
               className="h-full rounded-full bg-[var(--gold)]"
               animate={{ width: `${(progressStep / TOTAL_STEPS) * 100}%` }}
@@ -306,7 +322,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     );
                   })}
                 </div>
-                <button type="button" onClick={() => void completeOnboarding('complete_onboarding')} disabled={isSubmitting} className="h-11 rounded-xl bg-[var(--gold)] px-5 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50">
+                <button type="button" onClick={() => void handleSaveFoodPreferences()} disabled={isSubmitting} className="h-11 rounded-xl bg-[var(--gold)] px-5 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50">
                   Perfect — curate my stay
                 </button>
               </div>
@@ -322,7 +338,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
             {curationFailed ? (
               <div className="mt-6 rounded-2xl border border-red-300/30 bg-red-500/10 p-4">
                 <p className="text-sm text-red-100">We couldn&apos;t finish curation just yet.</p>
-                <button type="button" onClick={() => void completeOnboarding('retry_curation')} disabled={isSubmitting} className="mt-3 h-10 rounded-lg border border-red-200/50 px-4 text-xs font-semibold text-red-100 transition hover:bg-red-200/10 disabled:opacity-50">
+                <button type="button" onClick={() => void handleRetryCuration()} disabled={isSubmitting} className="mt-3 h-10 rounded-lg border border-red-200/50 px-4 text-xs font-semibold text-red-100 transition hover:bg-red-200/10 disabled:opacity-50">
                   Retry curation
                 </button>
               </div>

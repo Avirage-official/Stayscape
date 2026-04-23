@@ -18,6 +18,13 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
 const REGION_PLACE_CONTEXT_LIMIT = 40;
+const INTEREST_MATCH_SCORE = 5;
+const FOOD_PREFERENCE_MATCH_SCORE = 4;
+const FAMILY_TRIP_BONUS_SCORE = 6;
+const BUSINESS_TRIP_BONUS_SCORE = 4;
+const RELAXED_PACE_BONUS_SCORE = 4;
+const PACKED_PACE_BONUS_SCORE = 2;
+const RELAXED_PACE_SEARCH_TERMS = ['wellness', 'relax'] as const;
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -185,30 +192,38 @@ function scorePlace(
   let score = place.rating ?? 0;
   const category = place.category.toLowerCase();
   const description = `${place.name} ${place.description ?? ''} ${place.editorial_summary ?? ''}`.toLowerCase();
+  const normalizedInterests = preferences.interests.map((interest) => ({
+    raw: interest,
+    normalized: interest.replaceAll('_', ' '),
+  }));
+  const normalizedFoodTerms = preferences.food_preferences.map((foodPreference) => foodPreference.replaceAll('_', ' '));
 
-  for (const interest of preferences.interests) {
-    if (category.includes(interest) || description.includes(interest.replace('_', ' '))) {
-      score += 5;
+  for (const interest of normalizedInterests) {
+    if (category.includes(interest.raw) || description.includes(interest.normalized)) {
+      score += INTEREST_MATCH_SCORE;
     }
   }
 
-  for (const foodPreference of preferences.food_preferences) {
-    if (description.includes(foodPreference.replace('_', ' '))) {
-      score += 4;
+  for (const normalizedFoodTerm of normalizedFoodTerms) {
+    if (description.includes(normalizedFoodTerm)) {
+      score += FOOD_PREFERENCE_MATCH_SCORE;
     }
   }
 
   if (tripType === 'family' && (category.includes('family') || description.includes('family'))) {
-    score += 6;
+    score += FAMILY_TRIP_BONUS_SCORE;
   }
   if (tripType === 'business' && description.includes('business')) {
-    score += 4;
+    score += BUSINESS_TRIP_BONUS_SCORE;
   }
-  if (preferences.pace === 'relaxed' && (category.includes('wellness') || description.includes('relax'))) {
-    score += 4;
+  if (
+    preferences.pace === 'relaxed'
+    && RELAXED_PACE_SEARCH_TERMS.some((keyword) => category.includes(keyword) || description.includes(keyword))
+  ) {
+    score += RELAXED_PACE_BONUS_SCORE;
   }
   if (preferences.pace === 'packed') {
-    score += 2;
+    score += PACKED_PACE_BONUS_SCORE;
   }
 
   return score;
