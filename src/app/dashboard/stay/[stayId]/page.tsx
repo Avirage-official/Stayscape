@@ -7,6 +7,7 @@ import type { CustomerStay } from '@/types/customer';
 
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import StayDetailView from '@/components/guest-lounge/StayDetailView';
+import StayOnboardingFlow from '@/components/guest-lounge/StayOnboardingFlow';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -36,6 +37,7 @@ function StayDetailContent({
   const router = useRouter();
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [stay, setStay] = useState<CustomerStay | null>(null);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
   /* Fetch the single stay on mount using useState lazy initializer —
      avoids react-hooks/set-state-in-effect lint errors (matches codebase pattern). */
@@ -66,6 +68,16 @@ function StayDetailContent({
           </button>
         </div>
       </div>
+    );
+  }
+
+  if (!stay.onboarding_completed && !onboardingCompleted) {
+    return (
+      <StayOnboardingFlow
+        stay={stay}
+        userId={userId}
+        onCompleted={() => setOnboardingCompleted(true)}
+      />
     );
   }
 

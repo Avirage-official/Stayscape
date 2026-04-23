@@ -91,6 +91,12 @@ export interface DbStay {
   /** Active booking reference column (TEXT). Used by all runtime code. */
   booking_reference: string | null;
   trip_type: string | null;
+  stay_confirmed_by_guest: boolean | null;
+  stay_confirmation_status: string | null;
+  onboarding_completed: boolean | null;
+  onboarding_completed_at: string | null;
+  curation_status: string | null;
+  curated_at: string | null;
   notes: string | null;
   pms_callback_url: string | null;
 }

@@ -11,12 +11,20 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { upsertCuration } from '@/lib/supabase/curation-repository';
+import { getPreferencesForStay } from '@/lib/supabase/preferences-repository';
 import type { CurationType, CurationResult, CuratedItem } from '@/types/pms';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
 const REGION_PLACE_CONTEXT_LIMIT = 40;
+const INTEREST_MATCH_SCORE = 5;
+const FOOD_PREFERENCE_MATCH_SCORE = 4;
+const FAMILY_TRIP_BONUS_SCORE = 6;
+const BUSINESS_TRIP_BONUS_SCORE = 4;
+const RELAXED_PACE_BONUS_SCORE = 4;
+const PACKED_PACE_BONUS_SCORE = 2;
+const RELAXED_PACE_SEARCH_TERMS = ['wellness', 'relax'] as const;
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -42,6 +50,12 @@ interface CurationContent {
   summary: string;
   items: CuratedItem[];
   gap_categories?: string[];
+}
+
+interface OnboardingPreferences {
+  interests: string[];
+  pace: string | null;
+  food_preferences: string[];
 }
 
 interface ExistingRegionPlace {
@@ -74,13 +88,23 @@ export async function curateStay(
     'recommended_places',
     'regional_activities',
   ];
-  const existingPlaces = await getExistingRegionPlaces(context.region_id);
+  const onboardingPreferences = await getOnboardingPreferences(stayId);
+  const existingPlaces = await getExistingRegionPlaces(
+    context.region_id,
+    onboardingPreferences,
+    context.trip_type,
+  );
 
   const createdTypes: CurationType[] = [];
 
   for (const type of curationTypes) {
     try {
-      const content = await generateCuration(context, type, existingPlaces);
+      const content = await generateCuration(
+        context,
+        type,
+        existingPlaces,
+        onboardingPreferences,
+      );
       if (content) {
         await upsertCuration(stayId, type, content);
         createdTypes.push(type);
@@ -137,7 +161,79 @@ async function getStayContext(stayId: string): Promise<StayContext | null> {
   };
 }
 
-async function getExistingRegionPlaces(regionId: string | null): Promise<ExistingRegionPlace[]> {
+async function getOnboardingPreferences(stayId: string): Promise<OnboardingPreferences> {
+  const preferences = await getPreferencesForStay(stayId);
+  const preferenceMap = new Map(
+    preferences.map((preference) => [preference.preference_type, preference.preference_data]),
+  );
+
+  const interests = Array.isArray(preferenceMap.get('interests')?.values)
+    ? (preferenceMap.get('interests')?.values as string[])
+    : [];
+  const pace = typeof preferenceMap.get('pace')?.value === 'string'
+    ? (preferenceMap.get('pace')?.value as string)
+    : null;
+  const foodPreferences = Array.isArray(preferenceMap.get('food_preferences')?.values)
+    ? (preferenceMap.get('food_preferences')?.values as string[])
+    : [];
+
+  return {
+    interests: interests.filter((value) => typeof value === 'string'),
+    pace,
+    food_preferences: foodPreferences.filter((value) => typeof value === 'string'),
+  };
+}
+
+function scorePlace(
+  place: ExistingRegionPlace,
+  preferences: OnboardingPreferences,
+  tripType: string | null,
+): number {
+  let score = place.rating ?? 0;
+  const category = place.category.toLowerCase();
+  const description = `${place.name} ${place.description ?? ''} ${place.editorial_summary ?? ''}`.toLowerCase();
+  const normalizedInterests = preferences.interests.map((interest) => ({
+    raw: interest,
+    normalized: interest.replaceAll('_', ' '),
+  }));
+  const normalizedFoodTerms = preferences.food_preferences.map((foodPreference) => foodPreference.replaceAll('_', ' '));
+
+  for (const interest of normalizedInterests) {
+    if (category.includes(interest.raw) || description.includes(interest.normalized)) {
+      score += INTEREST_MATCH_SCORE;
+    }
+  }
+
+  for (const normalizedFoodTerm of normalizedFoodTerms) {
+    if (description.includes(normalizedFoodTerm)) {
+      score += FOOD_PREFERENCE_MATCH_SCORE;
+    }
+  }
+
+  if (tripType === 'family' && (category.includes('family') || description.includes('family'))) {
+    score += FAMILY_TRIP_BONUS_SCORE;
+  }
+  if (tripType === 'business' && description.includes('business')) {
+    score += BUSINESS_TRIP_BONUS_SCORE;
+  }
+  if (
+    preferences.pace === 'relaxed'
+    && RELAXED_PACE_SEARCH_TERMS.some((keyword) => category.includes(keyword) || description.includes(keyword))
+  ) {
+    score += RELAXED_PACE_BONUS_SCORE;
+  }
+  if (preferences.pace === 'packed') {
+    score += PACKED_PACE_BONUS_SCORE;
+  }
+
+  return score;
+}
+
+async function getExistingRegionPlaces(
+  regionId: string | null,
+  preferences: OnboardingPreferences,
+  tripType: string | null,
+): Promise<ExistingRegionPlace[]> {
   if (!regionId) return [];
 
   const supabase = getSupabaseAdmin();
@@ -150,7 +246,11 @@ async function getExistingRegionPlaces(regionId: string | null): Promise<Existin
     .limit(REGION_PLACE_CONTEXT_LIMIT);
 
   if (error || !data) return [];
-  return data as ExistingRegionPlace[];
+
+  return (data as ExistingRegionPlace[])
+    .map((place) => ({ place, score: scorePlace(place, preferences, tripType) }))
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.place);
 }
 
 /* ── AI curation generators ─────────────────────────────────── */
@@ -159,6 +259,7 @@ async function generateCuration(
   context: StayContext,
   type: CurationType,
   existingPlaces: ExistingRegionPlace[],
+  preferences: OnboardingPreferences,
 ): Promise<CurationContent | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -166,7 +267,7 @@ async function generateCuration(
     return generateFallbackCuration(context, type);
   }
 
-  const prompt = buildCurationPrompt(context, type, existingPlaces);
+  const prompt = buildCurationPrompt(context, type, existingPlaces, preferences);
   const raw = await callClaude(apiKey, prompt);
   return parseCurationResponse(raw);
 }
@@ -175,6 +276,7 @@ function buildCurationPrompt(
   context: StayContext,
   type: CurationType,
   existingPlaces: ExistingRegionPlace[],
+  preferences: OnboardingPreferences,
 ): string {
   const stayDays = Math.max(
     1,
@@ -205,6 +307,10 @@ function buildCurationPrompt(
   const baseContext = `You are the AI concierge for Stayscape, a premium hospitality platform.
 A guest is staying at ${locationInfo} for ${stayDays} nights (${context.check_in} to ${context.check_out}).
 ${guestInfo ? `Guest details: ${guestInfo}` : ''}
+Guest onboarding preferences:
+- interests: ${preferences.interests.join(', ') || 'not specified'}
+- pace: ${preferences.pace ?? 'not specified'}
+- food_preferences: ${preferences.food_preferences.join(', ') || 'not specified'}
 
 Existing places from our database for this region (use these first whenever possible and reference their exact ids):
 ${JSON.stringify(existingPlaces, null, 2)}

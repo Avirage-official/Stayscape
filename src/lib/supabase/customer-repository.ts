@@ -38,10 +38,11 @@ async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | 
  *
  * Intentionally omits some schema columns for the consumer view:
  *   - stays.bookingreference  (legacy VARCHAR — app uses booking_reference TEXT)
- *   - stays.trip_type, stays.notes, stays.pms_callback_url (PMS-internal)
+ *   - stays.notes, stays.pms_callback_url (PMS-internal)
  *   - properties.slug, properties.createdat, properties.updatedat (not displayed)
  */
-const STAY_SELECT = `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount,
+const STAY_SELECT = `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount, trip_type,
+       stay_confirmed_by_guest, stay_confirmation_status, onboarding_completed, onboarding_completed_at, curation_status, curated_at,
        properties:propertyid ( id, name, image_url, address, city, country, latitude, longitude, region_id, timezone,
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`;
 
@@ -59,6 +60,13 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
     status: (row.status as StayStatus) ?? 'upcoming',
     room_type: (row.roomlabel as string) ?? null,
     guests: (row.guestcount as number) ?? null,
+    trip_type: (row.trip_type as string) ?? null,
+    stay_confirmed_by_guest: (row.stay_confirmed_by_guest as boolean) ?? null,
+    stay_confirmation_status: (row.stay_confirmation_status as string) ?? null,
+    onboarding_completed: (row.onboarding_completed as boolean) ?? null,
+    onboarding_completed_at: (row.onboarding_completed_at as string) ?? null,
+    curation_status: (row.curation_status as string) ?? null,
+    curated_at: (row.curated_at as string) ?? null,
     property: propertyRaw
       ? {
           id: propertyRaw.id as string,

@@ -129,6 +129,12 @@ CREATE TABLE IF NOT EXISTS stays (
   updatedat         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   booking_reference TEXT,                 -- active booking reference column
   trip_type         TEXT,
+  stay_confirmed_by_guest BOOLEAN,
+  stay_confirmation_status TEXT,
+  onboarding_completed BOOLEAN DEFAULT false,
+  onboarding_completed_at TIMESTAMPTZ,
+  curation_status   TEXT DEFAULT 'pending',
+  curated_at        TIMESTAMPTZ,
   notes             TEXT,
   pms_callback_url  TEXT
 );
@@ -155,12 +161,14 @@ CREATE INDEX IF NOT EXISTS idx_stay_curations_stay ON stay_curations(stay_id);
 -- ═══════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS guest_preferences (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID REFERENCES users(id),
   stay_id           UUID REFERENCES stays(id),
   preference_type   TEXT NOT NULL,
   preference_data   JSONB NOT NULL,
   synced_to_pms     BOOLEAN DEFAULT false,
   synced_at         TIMESTAMPTZ,
-  created_at        TIMESTAMPTZ DEFAULT now()
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_guest_preferences_stay ON guest_preferences(stay_id);

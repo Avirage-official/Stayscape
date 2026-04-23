@@ -195,6 +195,12 @@ export async function createStayFromBooking(
     checkoutdate: booking.check_out,
     status: booking.status ?? 'confirmed',
     booking_reference: booking.booking_reference,
+    stay_confirmed_by_guest: null,
+    stay_confirmation_status: 'pending',
+    onboarding_completed: false,
+    onboarding_completed_at: null,
+    curation_status: 'pending',
+    curated_at: null,
   };
   if (booking.room_type) insertData.roomlabel = booking.room_type;
   if (booking.guests != null) insertData.guestcount = booking.guests;

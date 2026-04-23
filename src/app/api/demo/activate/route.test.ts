@@ -22,7 +22,6 @@ const mocks = vi.hoisted(() => {
   const getCustomerProfile = vi.fn();
   const getDemoBookingPayload = vi.fn();
   const processWebhookBooking = vi.fn();
-  const curateStay = vi.fn();
 
   return {
     usersMaybeSingle,
@@ -36,7 +35,6 @@ const mocks = vi.hoisted(() => {
     getCustomerProfile,
     getDemoBookingPayload,
     processWebhookBooking,
-    curateStay,
   };
 });
 
@@ -55,9 +53,6 @@ vi.mock('@/lib/data/demo-bookings', () => ({
 vi.mock('@/lib/supabase/pms-repository', () => ({
   processWebhookBooking: mocks.processWebhookBooking,
 }));
-vi.mock('@/lib/services/ai/stay-curation', () => ({
-  curateStay: mocks.curateStay,
-}));
 
 import { POST } from './route';
 
@@ -74,7 +69,6 @@ describe('POST /api/demo/activate', () => {
     mocks.getCustomerProfile.mockReset();
     mocks.getDemoBookingPayload.mockReset();
     mocks.processWebhookBooking.mockReset();
-    mocks.curateStay.mockReset();
 
     mocks.applyRateLimit.mockResolvedValue({ success: true, headers: {} });
     mocks.getCustomerProfile.mockResolvedValue({
@@ -104,7 +98,6 @@ describe('POST /api/demo/activate', () => {
       region_id: null,
       curation_triggered: false,
     });
-    mocks.curateStay.mockResolvedValue({ curations_created: 1 });
     mocks.usersInsert.mockResolvedValue({ error: null });
     mocks.usersMaybeSingle.mockResolvedValue({ data: null });
     mocks.getUserById.mockResolvedValue({
@@ -207,6 +200,6 @@ describe('POST /api/demo/activate', () => {
 
     expect(response.status).toBe(200);
     expect((body as { data?: { redirect_stay_id?: string } }).data?.redirect_stay_id).toBe('stay-existing');
-    expect(mocks.curateStay).not.toHaveBeenCalled();
+    expect((body as { data?: { curation_triggered?: boolean } }).data?.curation_triggered).toBe(false);
   });
 });

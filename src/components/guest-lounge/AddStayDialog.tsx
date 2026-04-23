@@ -145,7 +145,7 @@ function DemoActivationPanel({
             Setting up your stay…
           </p>
           <p className="text-white/40 text-[13px]">
-            Running the PMS webhook and curating your stay with AI
+            Pulling your stay details so we can start your personalised onboarding
           </p>
         </div>
         <div className="flex gap-1.5">
@@ -190,7 +190,7 @@ function DemoActivationPanel({
             Stay activated!
           </p>
           <p className="text-white/40 text-[13px]">
-            Loading your curated experience…
+            Opening your stay so we can personalise your trip…
           </p>
         </div>
       </div>
