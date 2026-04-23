@@ -145,7 +145,6 @@ export type PreferenceType =
 /** A guest preference captured from the concierge/map. */
 export interface GuestPreference {
   id: string;
-  user_id?: string | null;
   stay_id: string;
   preference_type: PreferenceType;
   /** Structured preference data. */

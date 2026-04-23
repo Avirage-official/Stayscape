@@ -104,7 +104,6 @@ describe('POST /api/customer/stays/[stayId]/onboarding', () => {
     expect(response.status).toBe(200);
     expect(mocks.upsertStayPreference).toHaveBeenCalledWith(
       'stay-1',
-      'user-1',
       'food_preferences',
       { values: ['fine_dining', 'cafes'] },
     );

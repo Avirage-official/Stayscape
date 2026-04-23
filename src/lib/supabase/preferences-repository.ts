@@ -50,7 +50,6 @@ export async function savePreference(
  */
 export async function upsertStayPreference(
   stayId: string,
-  userId: string | null,
   preferenceType: PreferenceType,
   preferenceData: Record<string, unknown>,
 ): Promise<string> {
@@ -70,7 +69,6 @@ export async function upsertStayPreference(
     const { error } = await supabase
       .from('guest_preferences')
       .update({
-        user_id: userId,
         preference_data: preferenceData,
         synced_to_pms: false,
         synced_at: null,
@@ -104,7 +102,6 @@ export async function upsertStayPreference(
   const { data: created, error } = await supabase
     .from('guest_preferences')
     .insert({
-      user_id: userId,
       stay_id: stayId,
       preference_type: preferenceType,
       preference_data: preferenceData,
