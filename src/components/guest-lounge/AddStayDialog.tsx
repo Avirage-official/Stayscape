@@ -44,21 +44,11 @@ export default function AddStayDialog({
 
   // Form fields
   const [bookingRef, setBookingRef] = useState('');
-  const [hotelName, setHotelName] = useState('');
-  const [city, setCity] = useState('');
-  const [country, setCountry] = useState('');
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
 
   const reset = useCallback(() => {
     setState('idle');
     setErrorMsg('');
     setBookingRef('');
-    setHotelName('');
-    setCity('');
-    setCountry('');
-    setCheckIn('');
-    setCheckOut('');
   }, []);
 
   const handleClose = useCallback(() => {
@@ -75,17 +65,12 @@ export default function AddStayDialog({
       setErrorMsg('');
 
       try {
-        const res = await fetch('/api/customer/stays', {
+        const res = await fetch('/api/customer/stays/activate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            booking_reference: bookingRef.trim(),
             user_id: userId,
-            booking_reference: bookingRef.trim() || undefined,
-            hotel_name: hotelName.trim(),
-            city: city.trim(),
-            country: country.trim(),
-            check_in: checkIn,
-            check_out: checkOut,
           }),
         });
 
@@ -109,7 +94,7 @@ export default function AddStayDialog({
         setState('error');
       }
     },
-    [userId, bookingRef, hotelName, city, country, checkIn, checkOut, onOpenChange, onActivated, reset, router],
+    [userId, bookingRef, onOpenChange, onActivated, reset, router],
   );
 
   const overlayMotion = prefersReducedMotion
@@ -166,10 +151,10 @@ export default function AddStayDialog({
                   >
                     <div>
                       <Dialog.Title className="font-serif text-xl text-white/90">
-                        Add Your Stay
+                        Find Your Stay
                       </Dialog.Title>
                       <Dialog.Description className="text-[12px] text-white/50 mt-1">
-                        Enter your reservation details to add it to your stays
+                        Enter your booking reference to access your stay
                       </Dialog.Description>
                     </div>
 
@@ -256,81 +241,7 @@ export default function AddStayDialog({
                         <form onSubmit={handleSubmit} className="space-y-4">
                           <div>
                             <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-                              Hotel Name <span className="text-[var(--gold)]/60">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={hotelName}
-                              onChange={(e) => setHotelName(e.target.value)}
-                              className={inputClassName}
-                              placeholder="e.g. The Ritz-Carlton"
-                              autoComplete="off"
-                              spellCheck={false}
-                              required
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-                                City <span className="text-[var(--gold)]/60">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={city}
-                                onChange={(e) => setCity(e.target.value)}
-                                className={inputClassName}
-                                placeholder="e.g. London"
-                                autoComplete="off"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-                                Country <span className="text-[var(--gold)]/60">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={country}
-                                onChange={(e) => setCountry(e.target.value)}
-                                className={inputClassName}
-                                placeholder="e.g. United Kingdom"
-                                autoComplete="off"
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-                                Check-in <span className="text-[var(--gold)]/60">*</span>
-                              </label>
-                              <input
-                                type="date"
-                                value={checkIn}
-                                onChange={(e) => setCheckIn(e.target.value)}
-                                className={inputClassName}
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-                                Check-out <span className="text-[var(--gold)]/60">*</span>
-                              </label>
-                              <input
-                                type="date"
-                                value={checkOut}
-                                onChange={(e) => setCheckOut(e.target.value)}
-                                className={inputClassName}
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-medium text-white/55 uppercase tracking-[0.14em] mb-2">
-                              Booking Reference <span className="text-white/30">(optional)</span>
+                              Booking Reference <span className="text-[var(--gold)]/60">*</span>
                             </label>
                             <input
                               type="text"
@@ -340,22 +251,16 @@ export default function AddStayDialog({
                               placeholder="e.g. RES-123456"
                               autoComplete="off"
                               spellCheck={false}
+                              required
                             />
                           </div>
 
                           <button
                             type="submit"
-                            disabled={
-                              !hotelName.trim() ||
-                              !city.trim() ||
-                              !country.trim() ||
-                              !checkIn ||
-                              !checkOut ||
-                              !userId
-                            }
+                            disabled={!bookingRef.trim() || !userId}
                             className="w-full h-11 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
                           >
-                            Add Stay
+                            Find Stay
                           </button>
                         </form>
                       </>

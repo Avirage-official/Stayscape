@@ -15,6 +15,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   { label: 'Regions', href: '/admin/regions' },
   { label: 'Places', href: '/admin/places' },
   { label: 'Stays', href: '/admin/stays' },
+  { label: 'Simulate Booking', href: '/admin/simulate-booking' },
   { label: 'Sync Runs', href: '/admin/sync-runs' },
 ];
 
