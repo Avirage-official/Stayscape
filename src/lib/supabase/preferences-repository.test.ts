@@ -112,6 +112,10 @@ describe('upsertStayPreference', () => {
     expect(
       mocks.insertSingle.mock.invocationCallOrder[0],
     ).toBeLessThan(mocks.deleteEq.mock.invocationCallOrder[0]);
+    expect(mocks.deleteIn).toHaveBeenCalled();
+    expect(
+      mocks.insertSingle.mock.invocationCallOrder[0],
+    ).toBeLessThan(mocks.deleteIn.mock.invocationCallOrder[0]);
     expect(errorSpy).toHaveBeenCalledWith(
       '[preferences] Failed to delete old preference row after re-insert',
       expect.objectContaining({
