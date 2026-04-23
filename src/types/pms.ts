@@ -138,7 +138,9 @@ export type PreferenceType =
   | 'general'
   | 'interests'
   | 'pace'
-  | 'food_preferences';
+  | 'food_preferences'
+  /** Single combined row written by the stay onboarding flow. */
+  | 'stay_onboarding';
 
 /** A guest preference captured from the concierge/map. */
 export interface GuestPreference {
