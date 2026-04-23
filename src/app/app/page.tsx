@@ -41,7 +41,7 @@ export default function Home() {
   }, [stayRegion, globalRegion, router]);
 
   /* Fetch dashboard / stay data when user is available */
-  useState(() => {
+  useEffect(() => {
     if (!user?.id) return;
     fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -49,7 +49,7 @@ export default function Home() {
         if (data) setDashboardData(data);
       })
       .catch(() => {});
-  });
+  }, [user?.id]);
 
   const pageContent = (
     <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>

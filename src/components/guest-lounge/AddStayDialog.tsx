@@ -26,7 +26,6 @@ interface AddStayDialogProps {
   userId?: string;
   /** Called after a successful activation so the parent can refetch. */
   onActivated?: () => void;
-  existingBookingRefs?: string[];
 }
 
 const inputClassName =

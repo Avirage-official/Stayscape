@@ -387,7 +387,6 @@ function GuestArrivalContent({
         onOpenChange={setAddStayOpen}
         userId={userId}
         onActivated={refetch}
-        existingBookingRefs={[...currentStays, ...upcomingStays].map((s) => s.booking_reference).filter((ref): ref is string => Boolean(ref))}
       />
 
     </>
