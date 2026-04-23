@@ -163,6 +163,22 @@ async function getStayContext(stayId: string): Promise<StayContext | null> {
 
 async function getOnboardingPreferences(stayId: string): Promise<OnboardingPreferences> {
   const preferences = await getPreferencesForStay(stayId);
+
+  // Prefer the single combined stay_onboarding row (new format).
+  const onboardingRow = preferences.find((p) => p.preference_type === 'stay_onboarding');
+  if (onboardingRow) {
+    const data = onboardingRow.preference_data as Record<string, unknown>;
+    const interests = Array.isArray(data.interests)
+      ? (data.interests as string[]).filter((v) => typeof v === 'string')
+      : [];
+    const pace = typeof data.pace === 'string' ? data.pace : null;
+    const foodPreferences = Array.isArray(data.food_preferences)
+      ? (data.food_preferences as string[]).filter((v) => typeof v === 'string')
+      : [];
+    return { interests, pace, food_preferences: foodPreferences };
+  }
+
+  // Legacy fallback: 3 separate rows (interests, pace, food_preferences).
   const preferenceMap = new Map(
     preferences.map((preference) => [preference.preference_type, preference.preference_data]),
   );

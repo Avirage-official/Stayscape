@@ -32,7 +32,14 @@ type OnboardingAction =
   | { action: 'confirm_stay'; confirmed: boolean }
   | { action: 'set_trip_type'; trip_type: string }
   | { action: 'set_preference'; preference_type: PreferenceType; preference_data: Record<string, unknown> }
-  | { action: 'complete_onboarding' }
+  | {
+      action: 'complete_onboarding';
+      /** Optional — when provided, saved as a single stay_onboarding preference row. */
+      trip_type?: string;
+      interests?: unknown;
+      pace?: unknown;
+      food_preferences?: unknown;
+    }
   | { action: 'retry_curation' };
 
 function toCanonicalStringArray(value: unknown): string[] {
@@ -140,6 +147,39 @@ export async function POST(
       const markOnboardingComplete = body.action === 'complete_onboarding';
 
       if (markOnboardingComplete) {
+        // If the payload includes onboarding answers, save them as a single
+        // stay_onboarding preference row before marking the stay complete.
+        if (body.action === 'complete_onboarding' && (body.trip_type ?? body.interests ?? body.pace ?? body.food_preferences) !== undefined) {
+          const rawTripType = typeof body.trip_type === 'string' ? body.trip_type.trim().toLowerCase() : null;
+          const canonicalTripType = rawTripType && TRIP_TYPES.has(rawTripType) ? rawTripType : null;
+
+          const rawInterests = toCanonicalStringArray(body.interests);
+          const canonicalInterests = Array.from(new Set(rawInterests.filter((v) => INTEREST_VALUES.has(v)))).slice(0, 3);
+
+          const rawPace = typeof body.pace === 'string' ? body.pace.trim().toLowerCase() : null;
+          const canonicalPace = rawPace && PACE_VALUES.has(rawPace) ? rawPace : null;
+
+          const rawFood = toCanonicalStringArray(body.food_preferences);
+          const canonicalFood = Array.from(new Set(rawFood.filter((v) => FOOD_VALUES.has(v)))).slice(0, 3);
+
+          // Persist trip_type directly on the stay if provided.
+          if (canonicalTripType) {
+            const { error: tripTypeError } = await supabase
+              .from('stays')
+              .update({ trip_type: canonicalTripType })
+              .eq('id', stayId)
+              .eq('userid', stay.user_id);
+            if (tripTypeError) throw new Error(tripTypeError.message);
+          }
+
+          // Save ONE combined preference row.
+          await upsertStayPreference(stayId, stay.user_id, 'stay_onboarding', {
+            interests: canonicalInterests,
+            pace: canonicalPace,
+            food_preferences: canonicalFood,
+          });
+        }
+
         const { error } = await supabase
           .from('stays')
           .update({
