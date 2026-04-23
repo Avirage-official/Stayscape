@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { CustomerStay } from '@/types/customer';
 
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
 const TRIP_TYPES = ['solo', 'couple', 'family', 'friends', 'business', 'celebration'] as const;
 const INTERESTS = ['food', 'sightseeing', 'shopping', 'nightlife', 'nature', 'wellness', 'culture', 'family_activities'] as const;
 const PACE_OPTIONS = ['relaxed', 'balanced', 'packed'] as const;
@@ -191,7 +193,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
         initial: { opacity: 0, y: 14 },
         animate: { opacity: 1, y: 0 },
         exit: { opacity: 0, y: -10 },
-        transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const },
+        transition: { duration: 0.3, ease: EASE_OUT_EXPO },
       };
 
   /* ── Helper: max-N chip toggle ──────────────────────────────── */
@@ -344,7 +346,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                   <motion.div
                     initial={prefersReducedMotion ? {} : { scale: 0.85, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
+                    transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
                     className="mx-auto w-14 h-14 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 flex items-center justify-center text-2xl"
                   >
                     ✦
@@ -563,7 +565,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                   <motion.div
                     initial={prefersReducedMotion ? {} : { scale: 0.7, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
+                    transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
                     className="mx-auto w-16 h-16 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/15 flex items-center justify-center text-2xl"
                   >
                     ✦

@@ -149,7 +149,14 @@ export async function POST(
       if (markOnboardingComplete) {
         // If the payload includes onboarding answers, save them as a single
         // stay_onboarding preference row before marking the stay complete.
-        if (body.action === 'complete_onboarding' && (body.trip_type ?? body.interests ?? body.pace ?? body.food_preferences) !== undefined) {
+        const hasPreferencePayload =
+          body.action === 'complete_onboarding' &&
+          (body.trip_type !== undefined ||
+            body.interests !== undefined ||
+            body.pace !== undefined ||
+            body.food_preferences !== undefined);
+
+        if (hasPreferencePayload) {
           const rawTripType = typeof body.trip_type === 'string' ? body.trip_type.trim().toLowerCase() : null;
           const canonicalTripType = rawTripType && TRIP_TYPES.has(rawTripType) ? rawTripType : null;
 
