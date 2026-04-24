@@ -89,9 +89,13 @@ export default function SimulateBookingPage() {
   };
 
   const handleCopyRef = async (ref: string) => {
-    await navigator.clipboard.writeText(ref);
-    setMbsCopied(true);
-    setTimeout(() => setMbsCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(ref);
+      setMbsCopied(true);
+      setTimeout(() => setMbsCopied(false), 2000);
+    } catch {
+      // clipboard unavailable — silently ignore
+    }
   };
 
   return (
