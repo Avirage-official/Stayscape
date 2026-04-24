@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { curateStay } from '@/lib/services/ai/stay-curation';
+import { createRegionForProperty, seedPlacesForRegion } from '@/lib/services/ai/region-creation';
 import type { PmsBookingPayload } from '@/types/pms';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
@@ -90,8 +91,44 @@ export async function POST(request: NextRequest) {
 
     // Trigger AI curation asynchronously (fire-and-forget), unless region data is already fresh
     let curationTriggered = false;
+    let regionCreated = false;
     let curationSkippedReason: 'region_data_fresh' | null = null;
-    if (result.region_id) {
+
+    if (result.region_id === null && result.property_id) {
+      // No matching region — create one via AI, seed places, then curate
+      regionCreated = true;
+      curationTriggered = true;
+      console.log(
+        '[pms webhook] No region — creating region + seeding places for property:',
+        result.property_id,
+      );
+      const city = body.property.city ?? null;
+      const country = body.property.country ?? null;
+      const stayId = result.stay_id;
+      (async () => {
+        try {
+          const newRegionId = await createRegionForProperty(result.property_id);
+          if (newRegionId && city && country) {
+            await seedPlacesForRegion(newRegionId, city, country);
+          }
+          await curateStay(stayId).then(
+            (curation) => {
+              console.log(
+                'Curation completed for stay:',
+                stayId,
+                curation.curations_created,
+                'curations created',
+              );
+            },
+            (err) => {
+              console.error('Curation failed for stay:', stayId, err);
+            },
+          );
+        } catch (err) {
+          console.error('[pms webhook] Region creation / seeding failed:', err);
+        }
+      })();
+    } else if (result.region_id) {
       const isFresh = await regionHasFreshData(result.region_id);
       if (isFresh) {
         curationSkippedReason = 'region_data_fresh';
@@ -125,6 +162,7 @@ export async function POST(request: NextRequest) {
           ...result,
           message: 'Booking processed successfully',
           curation_triggered: curationTriggered,
+          region_created: regionCreated,
           ...(curationSkippedReason
             ? { curation_skipped_reason: curationSkippedReason }
             : {}),
