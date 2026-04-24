@@ -10,6 +10,27 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 
+/* ── Haversine helpers ───────────────────────────────────────── */
+
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -116,6 +137,65 @@ export async function createRegionForProperty(
     return null;
   }
 
+  // ── Check for an existing region before calling Claude ────────
+
+  const { data: existingRegions } = await supabase
+    .from('regions')
+    .select('id, name, slug, latitude, longitude, radius_km')
+    .eq('is_active', true);
+
+  if (existingRegions && existingRegions.length > 0) {
+    let matchedRegionId: string | null = null;
+    let matchedRegionName: string | null = null;
+
+    // Proximity check (takes priority over name match)
+    if (latitude !== null && longitude !== null) {
+      let closestDistance = Infinity;
+      for (const region of existingRegions) {
+        const regLat = region.latitude as number | null;
+        const regLon = region.longitude as number | null;
+        const regRadius = region.radius_km as number | null;
+        if (regLat === null || regLon === null || regRadius === null) continue;
+        const dist = haversineDistance(latitude, longitude, regLat, regLon);
+        if (dist <= regRadius && dist < closestDistance) {
+          closestDistance = dist;
+          matchedRegionId = region.id as string;
+          matchedRegionName = region.name as string;
+        }
+      }
+    }
+
+    // Name match (only when proximity check found nothing)
+    // Use word-boundary checks to avoid false positives (e.g. "paris" in "comparison")
+    if (!matchedRegionId) {
+      const cityLower = city.toLowerCase();
+      const escapedCity = cityLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const cityInName = new RegExp(`\\b${escapedCity}\\b`);
+      for (const region of existingRegions) {
+        const regionNameLower = (region.name as string).toLowerCase();
+        const escapedRegion = regionNameLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const nameInCity = new RegExp(`\\b${escapedRegion}\\b`);
+        if (cityInName.test(regionNameLower) || nameInCity.test(cityLower)) {
+          matchedRegionId = region.id as string;
+          matchedRegionName = region.name as string;
+          break;
+        }
+      }
+    }
+
+    if (matchedRegionId) {
+      await supabase
+        .from('properties')
+        .update({ region_id: matchedRegionId })
+        .eq('id', propertyId);
+      console.log(
+        `[region-creation] Found existing region "${matchedRegionName}" for city ${city} — linking property ${propertyId} instead of creating new`,
+      );
+      return matchedRegionId;
+    }
+  }
+
+  // Step 3 — No existing region found; ask Claude to define a new one
   // Ask Claude to define the region
   const prompt = `You are a travel data expert. Given this hotel property, define a logical travel region covering the city and surrounding area a tourist would explore.
 Return ONLY a JSON object, no markdown:
