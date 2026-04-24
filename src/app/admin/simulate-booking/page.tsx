@@ -14,6 +14,7 @@ type SubmitState = 'idle' | 'loading' | 'success' | 'error';
 interface SuccessResult {
   stay_id?: string;
   booking_reference?: string;
+  guest_email?: string;
   [key: string]: unknown;
 }
 
@@ -174,7 +175,7 @@ export default function SimulateBookingPage() {
 
         {mbsState === 'success' && mbsResult && (
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-            <p className="text-[13px] font-medium text-emerald-300">Webhook fired successfully</p>
+            <p className="text-[13px] font-medium text-emerald-300">Booking pre-registered</p>
             <div className="flex items-center gap-2">
               <p className="text-[12px] text-white/60">
                 Booking Reference:{' '}
@@ -188,14 +189,13 @@ export default function SimulateBookingPage() {
                 {mbsCopied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            {mbsResult.stay_id && (
-              <p className="text-[12px] text-white/60">
-                Stay ID: <span className="text-white/85 font-mono">{mbsResult.stay_id}</span>
-              </p>
-            )}
+            <p className="text-[12px] text-white/60">
+              Guest Email:{' '}
+              <span className="text-white/85 font-mono">{mbsResult.guest_email ?? 'ben.test@stayscape-demo.com'}</span>
+            </p>
             <p className="text-[11px] text-white/35">
-              Go to the guest app, tap Add Stay, and enter this booking reference to begin
-              onboarding.
+              Sign in to the guest app with this email and enter the booking reference under Add
+              Stay.
             </p>
           </div>
         )}

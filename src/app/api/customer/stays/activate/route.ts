@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { getCustomerProfile } from '@/lib/supabase/customer-repository';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { curateStay } from '@/lib/services/ai/stay-curation';
 
 /**
  * POST /api/customer/stays/activate
  *
- * Looks up an existing stay by booking reference and links it to the
- * logged-in user if their email matches the guest email on the booking.
+ * Called when the guest enters their booking reference in the app.
+ * Looks up the pre-registered stay by booking reference, verifies the
+ * guest_email matches the logged-in user, links the stay to that user,
+ * then triggers AI curation (fire-and-forget).
  *
  * Accepts: { booking_reference, user_id }
  * Returns: { data: { stay_id, redirect_stay_id } }
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const bookingRef = body.booking_reference.trim();
 
-    // Get the logged-in user's profile to verify their email
+    // Step 1 — Get the logged-in user's profile
     const profile = await getCustomerProfile(body.user_id);
     if (!profile) {
       return NextResponse.json(
@@ -47,10 +51,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // Look up the stay by booking reference, joining user info for email check
+    // Step 2 — Look up stay by booking reference
     const { data: stay, error: stayError } = await supabase
       .from('stays')
-      .select('id, userid, users:userid(email)')
+      .select('id, userid, guest_email')
       .eq('booking_reference', bookingRef)
       .maybeSingle();
 
@@ -69,18 +73,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stayRow = stay as { id: string; userid: string | null; users: { email?: string | null } | null };
-    const guestEmail = stayRow.users?.email ?? null;
+    const stayRow = stay as { id: string; userid: string | null; guest_email: string | null };
 
-    // Verify the booking's guest email matches the logged-in user's email
-    if (!guestEmail || guestEmail.toLowerCase() !== profile.email.toLowerCase()) {
+    // Step 3 — Verify guest_email matches the logged-in user's email
+    if (!stayRow.guest_email || stayRow.guest_email.toLowerCase() !== profile.email.toLowerCase()) {
       return NextResponse.json(
         { error: 'This booking reference does not match your account' },
         { status: 403, headers: rateLimit.headers },
       );
     }
 
-    // Link the stay to this user if not already linked
+    // Step 4 — Link stay to this user
     if (stayRow.userid !== profile.id) {
       const { error: updateError } = await supabase
         .from('stays')
@@ -96,6 +99,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Step 5 — Trigger curation (fire-and-forget)
+    waitUntil(
+      curateStay(stayRow.id).then(
+        (result) => console.log('[activate] Curation completed:', result.curations_created),
+        (err) => console.error('[activate] Curation failed:', err),
+      ),
+    );
+
+    // Step 6 — Return
     return NextResponse.json(
       {
         data: {
