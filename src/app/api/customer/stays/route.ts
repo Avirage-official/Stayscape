@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { getCustomerProfile } from '@/lib/supabase/customer-repository';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { getSupabaseAdmin } from '@/lib/supabase/client';
 import type { PmsBookingPayload } from '@/types/pms';
 
 /**
@@ -98,15 +99,34 @@ export async function POST(request: NextRequest) {
       notes: body.notes ?? undefined,
     };
 
-    // Run the same pipeline as a PMS webhook
-    const result = await processWebhookBooking(payload, body.user_id);
+    // Run the same pipeline as a PMS webhook (1 arg — user_id is linked below)
+    const result = await processWebhookBooking(payload);
+
+    // Link the stay to the logged-in user immediately (they are already authenticated)
+    if (!result.stay_existed) {
+      const supabase = getSupabaseAdmin();
+      const { error: linkError } = await supabase
+        .from('stays')
+        .update({ userid: body.user_id })
+        .eq('id', result.stay_id);
+
+      if (linkError) {
+        console.error('[customer/stays] Failed to link stay to user:', linkError.message);
+        return NextResponse.json(
+          { error: 'Failed to create stay' },
+          { status: 500, headers: rateLimit.headers },
+        );
+      }
+    }
 
     return NextResponse.json(
       {
         data: {
-          ...result,
+          stay_id: result.stay_id,
+          property_id: result.property_id,
+          booking_reference: result.booking_reference,
+          region_id: result.region_id,
           message: 'Stay created successfully',
-          curation_triggered: false,
         },
       },
       { status: 201, headers: rateLimit.headers },
