@@ -1,30 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const mocks = vi.hoisted(() => {
-  const signInWithPassword = vi.fn();
-  const getSupabaseAdmin = vi.fn(() => ({
-    auth: { signInWithPassword },
-  }));
-
-  return {
-    signInWithPassword,
-    getSupabaseAdmin,
-  };
-});
-
-vi.mock('@/lib/supabase/client', () => ({
-  getSupabaseAdmin: mocks.getSupabaseAdmin,
-}));
+import { describe, expect, it } from 'vitest';
 
 import { POST } from './route';
 
 describe('POST /api/auth/login', () => {
-  beforeEach(() => {
-    mocks.signInWithPassword.mockReset();
-    mocks.getSupabaseAdmin.mockClear();
-  });
-
-  it('returns staff demo user without calling Supabase Auth', async () => {
+  it('returns staff demo user for valid staff credentials', async () => {
     const request = new Request('http://localhost/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -42,15 +21,9 @@ describe('POST /api/auth/login', () => {
       id: 'staff-demo-001',
       email: 'staff@stayscape-demo.com',
     });
-    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
   });
 
-  it('falls through to Supabase Auth for non-staff credentials', async () => {
-    mocks.signInWithPassword.mockResolvedValue({
-      data: { user: { id: 'user-123', email: 'guest@example.com' } },
-      error: null,
-    });
-
+  it('returns 401 for non-staff credentials (guests authenticate via browser SDK)', async () => {
     const request = new Request('http://localhost/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,14 +36,23 @@ describe('POST /api/auth/login', () => {
     const response = await POST(request as never);
     const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
-      email: 'guest@example.com',
-      password: 'Guest1234!',
+    expect(response.status).toBe(401);
+    expect((body as { error: string }).error).toBe('Invalid credentials');
+  });
+
+  it('returns 400 when email or password is missing', async () => {
+    const request = new Request('http://localhost/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'staff@stayscape-demo.com' }),
     });
-    expect((body as { user: { id: string; email: string } }).user).toEqual({
-      id: 'user-123',
-      email: 'guest@example.com',
-    });
+
+    const response = await POST(request as never);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect((body as { error: string }).error).toBe(
+      'Email and password are required',
+    );
   });
 });

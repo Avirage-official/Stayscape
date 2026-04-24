@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
-import { getSupabaseAdmin } from '@/lib/supabase/client';
 
 // Hardcoded staff demo credentials — replace with DB-backed auth in Phase 2
 const STAFF_DEMO_CREDENTIALS = [
@@ -21,12 +20,12 @@ function safeEquals(left: string, right: string): boolean {
 /**
  * POST /api/auth/login
  *
- * Lightweight login endpoint that authenticates against Supabase Auth
- * using the admin client, then returns the user id + email.
+ * Staff-only login endpoint. Validates against hardcoded demo credentials
+ * and returns the user id + email.
  *
- * This is intentionally thin — no cookies, no session tokens.
- * The frontend stores the user info in sessionStorage.
- * Replace with proper Supabase Auth (cookie-based) when ready.
+ * Guest accounts authenticate directly in the browser via the Supabase
+ * client SDK (supabase.auth.signInWithPassword) so that auth.uid() is
+ * available for RLS policies without routing through this endpoint.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check staff demo credentials first (no Supabase Auth needed yet)
+    // Only staff demo credentials are accepted here.
     const staffMatch = STAFF_DEMO_CREDENTIALS.find(
       (c) => safeEquals(c.email, email) && safeEquals(c.password, password),
     );
@@ -50,27 +49,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fall through to Supabase Auth for guest accounts
-    const supabase = getSupabaseAdmin();
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error || !data.user) {
-      return NextResponse.json(
-        { error: error?.message ?? 'Invalid credentials' },
-        { status: 401 },
-      );
-    }
-
-    return NextResponse.json({
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-      },
-    });
+    return NextResponse.json(
+      { error: 'Invalid credentials' },
+      { status: 401 },
+    );
   } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
