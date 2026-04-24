@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { curateStay } from '@/lib/services/ai/stay-curation';
 import { createRegionForProperty, seedPlacesForRegion } from '@/lib/services/ai/region-creation';
@@ -89,7 +90,6 @@ export async function POST(request: NextRequest) {
     // Process the webhook
     const result = await processWebhookBooking(body);
 
-    // Trigger AI curation asynchronously (fire-and-forget), unless region data is already fresh
     let curationTriggered = false;
     let regionCreated = false;
     let curationSkippedReason: 'region_data_fresh' | null = null;
@@ -98,36 +98,35 @@ export async function POST(request: NextRequest) {
       // No matching region — create one via AI, seed places, then curate
       regionCreated = true;
       curationTriggered = true;
-      console.log(
-        '[pms webhook] No region — creating region + seeding places for property:',
-        result.property_id,
-      );
       const city = body.property.city ?? null;
       const country = body.property.country ?? null;
       const stayId = result.stay_id;
-      (async () => {
-        try {
-          const newRegionId = await createRegionForProperty(result.property_id);
-          if (newRegionId && city && country) {
-            await seedPlacesForRegion(newRegionId, city, country);
+      const propertyId = result.property_id;
+
+      console.log(
+        '[pms webhook] No region — creating region + seeding places for property:',
+        propertyId,
+      );
+
+      waitUntil(
+        (async () => {
+          try {
+            const newRegionId = await createRegionForProperty(propertyId);
+            if (newRegionId && city && country) {
+              await seedPlacesForRegion(newRegionId, city, country);
+            }
+            const curation = await curateStay(stayId);
+            console.log(
+              '[pms webhook] Curation completed for stay:',
+              stayId,
+              curation.curations_created,
+              'curations created',
+            );
+          } catch (err) {
+            console.error('[pms webhook] Region creation / seeding / curation failed:', err);
           }
-          await curateStay(stayId).then(
-            (curation) => {
-              console.log(
-                'Curation completed for stay:',
-                stayId,
-                curation.curations_created,
-                'curations created',
-              );
-            },
-            (err) => {
-              console.error('Curation failed for stay:', stayId, err);
-            },
-          );
-        } catch (err) {
-          console.error('[pms webhook] Region creation / seeding failed:', err);
-        }
-      })();
+        })(),
+      );
     } else if (result.region_id) {
       const isFresh = await regionHasFreshData(result.region_id);
       if (isFresh) {
@@ -140,18 +139,20 @@ export async function POST(request: NextRequest) {
         );
       } else {
         curationTriggered = true;
-        curateStay(result.stay_id).then(
-          (curation) => {
-            console.log(
-              'Curation completed for stay:',
-              result.stay_id,
-              curation.curations_created,
-              'curations created',
-            );
-          },
-          (err) => {
-            console.error('Curation failed for stay:', result.stay_id, err);
-          },
+        waitUntil(
+          curateStay(result.stay_id).then(
+            (curation) => {
+              console.log(
+                '[pms webhook] Curation completed for stay:',
+                result.stay_id,
+                curation.curations_created,
+                'curations created',
+              );
+            },
+            (err) => {
+              console.error('[pms webhook] Curation failed for stay:', result.stay_id, err);
+            },
+          ),
         );
       }
     }
