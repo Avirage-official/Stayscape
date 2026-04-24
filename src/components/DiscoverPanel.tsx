@@ -284,7 +284,12 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     setAssistantInput('');
     setIsAssistantLoading(true);
 
-    const reply = await sendChatMessage(messageText, stayId);
+    const reply = await sendChatMessage(
+      messageText,
+      stayId,
+      assistantMessages.map((m) => ({ role: m.role, text: m.text })),
+      'discovery',
+    );
 
     const assistantMessageId = `discover-assistant-${assistantIdRef.current + 1}`;
     assistantIdRef.current += 1;
