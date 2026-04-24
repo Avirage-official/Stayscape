@@ -58,12 +58,11 @@ export interface PmsBookingPayload {
 
 /** Result of processing a PMS webhook. */
 export interface PmsWebhookResult {
-  user_id: string;
+  guest_email: string;
   property_id: string;
   stay_id: string;
   booking_reference: string;
   region_id: string | null;
-  curation_triggered: boolean;
   /** True when an existing stay was reused instead of creating a new one. */
   stay_existed?: boolean;
   /** Why a duplicate/existing stay was matched. */

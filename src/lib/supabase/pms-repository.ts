@@ -2,7 +2,6 @@
  * PMS Repository
  *
  * Supabase data-access layer for PMS webhook processing:
- * - Upsert guest user by email
  * - Upsert property by PMS property ID
  * - Create stay from booking
  * - Link property to region by location
@@ -11,46 +10,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { fetchAndUpdatePropertyImage } from '@/lib/services/property-image';
 import type { PmsBookingPayload, PmsWebhookResult } from '@/types/pms';
-
-/**
- * Upsert a guest user by email.
- * If the user already exists, returns their ID without modifying.
- * If new, creates the user record.
- */
-export async function upsertGuestUser(
-  guest: PmsBookingPayload['guest'],
-  authUserId?: string,
-): Promise<string> {
-  const supabase = getSupabaseAdmin();
-
-  // Check if user already exists by email
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', guest.email)
-    .maybeSingle();
-
-  if (existing) return existing.id as string;
-
-  // Create new user with provided auth ID when available
-  const { data: created, error } = await supabase
-    .from('users')
-    .insert({
-      id: authUserId ?? crypto.randomUUID(),
-      email: guest.email,
-      firstname: guest.first_name,
-      lastname: guest.last_name,
-      phone: guest.phone ?? null,
-    })
-    .select('id')
-    .single();
-
-  if (error || !created) {
-    throw new Error(`Failed to create guest user: ${error?.message ?? 'Unknown error'}`);
-  }
-
-  return created.id as string;
-}
 
 /**
  * Upsert a property by PMS property ID.
@@ -142,15 +101,18 @@ export async function findRegionForProperty(
 /**
  * Create a stay record from a PMS booking.
  * Checks for duplicate booking references to prevent double-processing.
+ * userid is intentionally omitted here — it will be set later when the
+ * guest activates the stay via booking reference (stays.userid allows NULL
+ * after the schema migration applied in Supabase directly).
  */
 export async function createStayFromBooking(
-  userId: string,
+  guestEmail: string,
   propertyId: string,
   booking: PmsBookingPayload,
 ): Promise<{
   id: string;
   existed: boolean;
-  duplicateReason: 'booking_reference' | 'property_period' | null;
+  duplicateReason: 'booking_reference' | null;
 }> {
   const supabase = getSupabaseAdmin();
 
@@ -169,27 +131,8 @@ export async function createStayFromBooking(
     };
   }
 
-  // Fallback duplicate check for the same user/property/period.
-  // This only runs when booking_reference did not match an existing stay.
-  const { data: existingByPeriod } = await supabase
-    .from('stays')
-    .select('id')
-    .eq('userid', userId)
-    .eq('propertyid', propertyId)
-    .eq('checkindate', booking.check_in)
-    .eq('checkoutdate', booking.check_out)
-    .maybeSingle();
-
-  if (existingByPeriod) {
-    return {
-      id: existingByPeriod.id as string,
-      existed: true,
-      duplicateReason: 'property_period',
-    };
-  }
-
   const insertData: Record<string, unknown> = {
-    userid: userId,
+    guest_email: guestEmail,
     propertyid: propertyId,
     checkindate: booking.check_in,
     checkoutdate: booking.check_out,
@@ -227,19 +170,17 @@ export async function createStayFromBooking(
 
 /**
  * Process a full PMS webhook booking payload.
- * Orchestrates user creation, property upsert, region matching, and stay creation.
+ * Orchestrates property upsert, region matching, and stay creation.
+ * Guest user is NOT created here — stays.userid is set later when the
+ * guest activates the booking via booking reference.
  */
 export async function processWebhookBooking(
   payload: PmsBookingPayload,
-  authUserId?: string,
 ): Promise<PmsWebhookResult> {
-  // Step 1: Upsert guest user
-  const userId = await upsertGuestUser(payload.guest, authUserId);
-
-  // Step 2: Upsert property
+  // Step 1: Upsert property
   const { id: propertyId, isNew: isNewProperty } = await upsertProperty(payload.property);
 
-  // Step 3: Find matching region for the property
+  // Step 2: Find matching region for the property
   let regionId: string | null = null;
   if (payload.property.latitude != null && payload.property.longitude != null) {
     regionId = await findRegionForProperty(
@@ -257,10 +198,10 @@ export async function processWebhookBooking(
     }
   }
 
-  // Step 4: Create stay
-  const stayResult = await createStayFromBooking(userId, propertyId, payload);
+  // Step 3: Create stay — guest_email stored for later activation
+  const stayResult = await createStayFromBooking(payload.guest.email, propertyId, payload);
 
-  // Step 5: Auto-fetch property image if newly created and no image provided (fire-and-forget)
+  // Step 4: Auto-fetch property image if newly created and no image provided (fire-and-forget)
   if (isNewProperty && !payload.property.image_url) {
     fetchAndUpdatePropertyImage(
       propertyId,
@@ -275,12 +216,11 @@ export async function processWebhookBooking(
   }
 
   return {
-    user_id: userId,
+    guest_email: payload.guest.email,
     property_id: propertyId,
     stay_id: stayResult.id,
     booking_reference: payload.booking_reference,
     region_id: regionId,
-    curation_triggered: false,
     stay_existed: stayResult.existed,
     duplicate_reason: stayResult.duplicateReason,
   };

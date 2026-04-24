@@ -1,44 +1,19 @@
 /**
  * POST /api/pms/webhook
  *
- * Receives booking confirmations from hotel PMS systems.
- * Creates/upserts the guest user, property, and stay, then
- * triggers AI curation to pre-generate curated content.
+ * Called by the admin simulate page to pre-register a booking.
+ * Creates/upserts the property and stay shell (no guest user created).
+ * Curation is triggered later from the activate route when the guest links
+ * their account.
  *
  * Authentication: API key via X-PMS-API-Key header.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { waitUntil } from '@vercel/functions';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
-import { curateStay } from '@/lib/services/ai/stay-curation';
 import { createRegionForProperty, seedPlacesForRegion } from '@/lib/services/ai/region-creation';
 import type { PmsBookingPayload } from '@/types/pms';
 import { applyRateLimit } from '@/lib/rate-limit';
-import { getSupabaseAdmin } from '@/lib/supabase/client';
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-async function regionHasFreshData(regionId: string): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
-  const cutoff = new Date(Date.now() - ONE_DAY_MS).toISOString();
-  const { data, error } = await supabase
-    .from('places')
-    .select('id')
-    .eq('region_id', regionId)
-    .eq('is_active', true)
-    .gte('last_synced_at', cutoff)
-    .limit(1);
-
-  if (error) {
-    console.warn(
-      '[pms webhook] Failed to check region freshness, proceeding with curation.',
-      error.message,
-    );
-    return false;
-  }
-  return (data?.length ?? 0) > 0;
-}
 
 export async function POST(request: NextRequest) {
   const rateLimit = await applyRateLimit(request, 'admin');
@@ -87,20 +62,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process the webhook
+    // Process the webhook — pre-registers the booking without creating a guest user
     const result = await processWebhookBooking(body);
 
-    let curationTriggered = false;
-    let regionCreated = false;
-    let curationSkippedReason: 'region_data_fresh' | null = null;
-
+    // If no region was matched, create one synchronously (admin action, not time-sensitive)
     if (result.region_id === null && result.property_id) {
-      // No matching region — create one via AI, seed places, then curate
-      regionCreated = true;
-      curationTriggered = true;
       const city = body.property.city ?? null;
       const country = body.property.country ?? null;
-      const stayId = result.stay_id;
       const propertyId = result.property_id;
 
       console.log(
@@ -108,65 +76,26 @@ export async function POST(request: NextRequest) {
         propertyId,
       );
 
-      waitUntil(
-        (async () => {
-          try {
-            const newRegionId = await createRegionForProperty(propertyId);
-            if (newRegionId && city && country) {
-              await seedPlacesForRegion(newRegionId, city, country);
-            }
-            const curation = await curateStay(stayId);
-            console.log(
-              '[pms webhook] Curation completed for stay:',
-              stayId,
-              curation.curations_created,
-              'curations created',
-            );
-          } catch (err) {
-            console.error('[pms webhook] Region creation / seeding / curation failed:', err);
-          }
-        })(),
-      );
-    } else if (result.region_id) {
-      const isFresh = await regionHasFreshData(result.region_id);
-      if (isFresh) {
-        curationSkippedReason = 'region_data_fresh';
-        console.log(
-          '[pms webhook] Skipping curation for stay:',
-          result.stay_id,
-          'reason:',
-          curationSkippedReason,
-        );
-      } else {
-        curationTriggered = true;
-        waitUntil(
-          curateStay(result.stay_id).then(
-            (curation) => {
-              console.log(
-                '[pms webhook] Curation completed for stay:',
-                result.stay_id,
-                curation.curations_created,
-                'curations created',
-              );
-            },
-            (err) => {
-              console.error('[pms webhook] Curation failed for stay:', result.stay_id, err);
-            },
-          ),
-        );
+      try {
+        const newRegionId = await createRegionForProperty(propertyId);
+        if (newRegionId && city && country) {
+          await seedPlacesForRegion(newRegionId, city, country);
+        }
+        result.region_id = newRegionId;
+      } catch (err) {
+        console.error('[pms webhook] Region creation / seeding failed:', err);
       }
     }
 
     return NextResponse.json(
       {
         data: {
-          ...result,
-          message: 'Booking processed successfully',
-          curation_triggered: curationTriggered,
-          region_created: regionCreated,
-          ...(curationSkippedReason
-            ? { curation_skipped_reason: curationSkippedReason }
-            : {}),
+          booking_reference: result.booking_reference,
+          guest_email: result.guest_email,
+          property_id: result.property_id,
+          stay_id: result.stay_id,
+          region_id: result.region_id,
+          message: 'Booking pre-registered successfully',
         },
       },
       { status: 201, headers: rateLimit.headers },
