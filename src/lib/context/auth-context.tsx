@@ -42,37 +42,36 @@ const STAFF_EMAILS = ['staff@stayscape-demo.com'];
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialise synchronously from sessionStorage so staff users (who use the
+  // API-route path and never get a Supabase session) are never stuck in the
+  // loading state for longer than necessary, and so the synchronous read never
+  // needs to happen inside an effect (which would violate react-hooks/set-state-in-effect).
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      return stored ? (JSON.parse(stored) as AuthUser) : null;
+    } catch {
+      return null;
+    }
+  });
+  // isLoading is true only when we're waiting for an async Supabase session
+  // check. If Supabase is not configured we can resolve immediately.
+  const [isLoading, setIsLoading] = useState(() => getSupabaseBrowser() !== null);
 
-  // On mount, rehydrate from an existing Supabase session or sessionStorage (staff).
+  // On mount, attempt to rehydrate from an existing Supabase browser session.
+  // If a real session is found it overrides the sessionStorage value (guest users).
+  // The async .then() callback is the only place setState is called in this effect.
   useEffect(() => {
     const supabase = getSupabaseBrowser();
-    if (supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          setUser({ id: session.user.id, email: session.user.email ?? '' });
-        } else {
-          // No Supabase session — fall back to sessionStorage for staff.
-          try {
-            const stored = sessionStorage.getItem(STORAGE_KEY);
-            if (stored) setUser(JSON.parse(stored) as AuthUser);
-          } catch {
-            // ignore
-          }
-        }
-        setIsLoading(false);
-      });
-    } else {
-      // Supabase not configured — fall back to sessionStorage.
-      try {
-        const stored = sessionStorage.getItem(STORAGE_KEY);
-        if (stored) setUser(JSON.parse(stored) as AuthUser);
-      } catch {
-        // ignore
+    if (!supabase) return; // isLoading already false; sessionStorage initializer ran.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email ?? '' });
       }
+      // No Supabase session — keep whatever sessionStorage gave us (staff).
       setIsLoading(false);
-    }
+    });
   }, []);
 
   const login = useCallback(
