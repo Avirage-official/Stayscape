@@ -51,9 +51,9 @@ export default function SimulateBookingPage() {
         body: JSON.stringify({
           booking_reference: bookingReference,
           guest: {
-            email: 'guest@stayscape-demo.com',
-            first_name: 'Alex',
-            last_name: 'Chen',
+            email: 'ben.test@stayscape-demo.com',
+            first_name: 'Ben',
+            last_name: 'Demo',
             phone: '+65 9123 4567',
           },
           property: {
