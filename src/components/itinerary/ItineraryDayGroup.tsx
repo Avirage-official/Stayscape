@@ -25,8 +25,8 @@ export default function ItineraryDayGroup({
 
   return (
     <div className="discover-card-fade-in">
-      {/* Day header */}
-      <div className="flex items-center gap-2.5 mb-3">
+      {/* Day header — sticky on mobile */}
+      <div className="sticky top-0 z-10 flex items-center gap-2.5 mb-3 bg-black/80 backdrop-blur-sm -mx-5 sm:-mx-8 px-5 sm:px-8 py-2 -mt-2 rounded-t-lg">
         <div className="w-8 h-8 rounded-lg bg-[var(--discover-gold-8)] border border-[var(--discover-gold-15)] flex items-center justify-center">
           <span className="text-[12px] font-bold text-[var(--discover-gold)]">{format(date, 'd')}</span>
         </div>

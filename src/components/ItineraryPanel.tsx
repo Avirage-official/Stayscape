@@ -414,7 +414,7 @@ export default function ItineraryPanel() {
 
           {/* Timeline content */}
           <ScrollArea className="flex-1">
-            <div className="px-5 sm:px-8 py-6 space-y-6">
+            <div className="px-5 sm:px-8 py-6 space-y-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
               {visibleGroups.length > 0 ? (
                 visibleGroups.map((group) => {
                   const groupTotal = group.items.reduce((s, i) => s + i.durationHours, 0);

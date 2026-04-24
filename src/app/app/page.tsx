@@ -140,13 +140,13 @@ export default function Home() {
 
         {/* Mobile sub-nav */}
         {activeTab === 'concierge' && (
-          <div className="lg:hidden flex items-center justify-around h-[40px] bg-black/50 border-b border-white/10 flex-shrink-0">
+          <div className="lg:hidden flex items-center justify-around h-[48px] bg-black/50 border-b border-white/10 flex-shrink-0">
             {(['guest', 'assistant'] as const).map((view) => (
               <button
                 key={view}
                 type="button"
                 onClick={() => setMobileView(view)}
-                className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[10px] font-medium tracking-wide transition-colors duration-200 cursor-pointer uppercase ${
+                className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[11px] font-medium tracking-wide transition-colors duration-200 cursor-pointer uppercase ${
                   mobileView === view ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/70'
                 }`}
               >
@@ -194,7 +194,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="border-t border-white/10 bg-black/60">
+                <div className="border-t border-white/10 bg-black/60 pb-[env(safe-area-inset-bottom)]">
                   <InsightsStrip />
                 </div>
               </div>
