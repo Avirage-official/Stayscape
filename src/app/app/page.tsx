@@ -61,7 +61,7 @@ export default function Home() {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       return;
     }
-    let cancelled = false;
+    let canceled = false;
     const poll = () => {
       fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -70,14 +70,14 @@ export default function Home() {
         })
         .catch(() => {})
         .finally(() => {
-          if (!cancelled) {
+          if (!canceled) {
             pollTimerRef.current = setTimeout(poll, 5000);
           }
         });
     };
     pollTimerRef.current = setTimeout(poll, 5000);
     return () => {
-      cancelled = true;
+      canceled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [awaitingRegion, user?.id]);
@@ -96,7 +96,7 @@ export default function Home() {
           {city ? `Setting up your ${city} experience…` : 'Setting up your experience…'}
         </h2>
         <p className="text-white/60 text-sm leading-relaxed">
-          We&apos;re personalising your destination — this only takes a moment
+          We&apos;re personalizing your destination — this only takes a moment
         </p>
       </div>
     </div>

@@ -105,13 +105,11 @@ export async function createRegionForProperty(
     return null;
   }
 
-  const { name, city, country, latitude, longitude } = property as {
-    name: string;
-    city: string | null;
-    country: string | null;
-    latitude: number | null;
-    longitude: number | null;
-  };
+  const name = property.name as string;
+  const city = property.city as string | null;
+  const country = property.country as string | null;
+  const latitude = property.latitude as number | null;
+  const longitude = property.longitude as number | null;
 
   if (!city || !country) {
     console.warn('[region-creation] Property missing city/country — cannot create region:', propertyId);
@@ -151,11 +149,12 @@ Property: ${name}, ${city}, ${country}${latitude != null ? `, lat: ${latitude}` 
     return null;
   }
 
-  // Ensure slug uniqueness — append -2, -3, … if needed
+  // Ensure slug uniqueness — append -2, -3, … if needed (max 10 attempts)
   const baseSlug = suggestion.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
   let slug = baseSlug;
   let attempt = 1;
-  while (true) {
+  const MAX_SLUG_ATTEMPTS = 10;
+  while (attempt <= MAX_SLUG_ATTEMPTS) {
     const { data: existing } = await supabase
       .from('regions')
       .select('id')
@@ -164,6 +163,10 @@ Property: ${name}, ${city}, ${country}${latitude != null ? `, lat: ${latitude}` 
     if (!existing) break;
     attempt += 1;
     slug = `${baseSlug}-${attempt}`;
+  }
+  if (attempt > MAX_SLUG_ATTEMPTS) {
+    console.error('[region-creation] Could not find a unique slug after', MAX_SLUG_ATTEMPTS, 'attempts for base:', baseSlug);
+    return null;
   }
 
   // Insert the new region
