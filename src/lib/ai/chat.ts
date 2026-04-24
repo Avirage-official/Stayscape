@@ -8,11 +8,13 @@
 export async function sendChatMessage(
   message: string,
   stayId?: string | null,
+  history?: Array<{ role: 'user' | 'assistant'; text: string }>,
+  mode?: 'discovery' | 'itinerary',
 ): Promise<string> {
   const res = await fetch('/api/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, stayId: stayId ?? null }),
+    body: JSON.stringify({ message, stayId: stayId ?? null, history, mode }),
   });
   if (!res.ok) {
     return "I'm having trouble responding right now. Please try again.";
