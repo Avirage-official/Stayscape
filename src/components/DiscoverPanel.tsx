@@ -340,7 +340,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     <TooltipProvider>
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden discover-card-fade-in">
         {/* Mobile sub-tabs — pill style, hidden on lg+ */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-9 bg-black/50 border-b border-white/10">
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11 bg-black/50 border-b border-white/10">
           {(['explore', 'map'] as const).map((tab) => (
             <button
               key={tab}
@@ -377,7 +377,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               lg:bg-black/80 lg:p-4
               lg:rounded-2xl lg:border
             ">
-            <h3 className="font-serif text-[16px] lg:text-[18px] text-white/90 mb-1">
+            <h3 className="font-serif text-[18px] text-white/90 mb-1">
               {guestName ? `Welcome, ${guestName}` : 'Discover Concierge'}
             </h3>
             <p className="text-[11px] text-white/55 mb-3">
