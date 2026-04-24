@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { CATEGORY_FILTERS, FILTER_PANEL_TOP, MARKER_COLOR_GREEN } from './map-constants';
+import { CATEGORY_FILTERS, MARKER_COLOR_GREEN } from './map-constants';
 import { getCategoryColor } from './map-utils';
 
 interface MapCategoryFilterProps {
@@ -31,7 +31,7 @@ export default function MapCategoryFilter({
   }, [filterOpen, onFilterOpenChange]);
 
   return (
-    <div ref={filterPanelRef} className="absolute left-3 z-20" style={{ top: FILTER_PANEL_TOP }}>
+    <div ref={filterPanelRef} className="absolute z-20 top-3 right-3 lg:left-3 lg:right-auto lg:top-[33%]">
       {/* Toggle button */}
       <button
         type="button"

@@ -15,7 +15,7 @@ export default function ItineraryItemCard({
   const durationLabel = item.durationHours === 0.5 ? '30m' : `${item.durationHours}h`;
 
   return (
-    <div className="flex items-start gap-3.5 py-3.5 discover-card-fade-in group">
+    <div className="flex items-start gap-3.5 py-3.5 min-h-[44px] discover-card-fade-in group">
       {/* Time column */}
       <div className="flex-shrink-0 w-[52px] text-right pt-0.5">
         <p className="text-[13px] font-semibold text-[var(--discover-title)] tabular-nums">{item.time}</p>

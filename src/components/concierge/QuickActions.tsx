@@ -66,7 +66,7 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
   };
 
   const actionBase =
-    'w-full rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-3 text-left text-[12px] text-white/85 transition-colors hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-50';
+    'w-full rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-3 text-left text-[12px] text-white/85 transition-colors hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]';
   const noteToggleButton =
     'w-full text-left text-[12px] text-white/85 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50';
 

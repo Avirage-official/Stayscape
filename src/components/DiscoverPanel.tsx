@@ -97,6 +97,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [detailPlace, setDetailPlace] = useState<PlaceCard | null>(null);
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
   const [detailEvent, setDetailEvent] = useState<EventCard | null>(null);
+  const [mobileDiscoverTab, setMobileDiscoverTab] = useState<'explore' | 'map'>('explore');
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
   const [isAssistantLoading, setIsAssistantLoading] = useState(false);
@@ -337,12 +338,45 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
   return (
     <TooltipProvider>
-      <div className="flex-1 flex min-h-0 overflow-hidden discover-card-fade-in">
-        {/* Left column ─ map + floating chat widget */}
-        <div className="relative flex w-full h-[45vh] lg:h-auto lg:w-[55%] border-b lg:border-b-0 lg:border-r border-white/10">
-          <MapPlaceholder stayId={stayId ?? null} />
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden discover-card-fade-in">
+        {/* Mobile sub-tabs — pill style, hidden on lg+ */}
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11 bg-black/50 border-b border-white/10">
+          {(['explore', 'map'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setMobileDiscoverTab(tab)}
+              className={`h-6 px-3.5 rounded-full text-[10px] font-medium uppercase tracking-[0.12em] transition-all duration-200 cursor-pointer border ${
+                mobileDiscoverTab === tab
+                  ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40'
+                  : 'bg-transparent text-white/50 border-white/15 hover:text-white/75 hover:border-white/25'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
 
-          <div className="absolute top-6 left-6 w-[340px] max-w-[calc(100%-3rem)] bg-black/80 border border-white/15 rounded-2xl p-4 backdrop-blur-sm">
+        {/* Content row — side-by-side on lg+, single-column on mobile */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Left column ─ map + chat widget */}
+          <div className={`relative min-h-0 lg:h-auto lg:w-[55%] lg:flex-none lg:border-r border-white/10 ${
+            mobileDiscoverTab === 'map' ? 'flex flex-1' : 'hidden lg:flex'
+          }`}>
+            <MapPlaceholder stayId={stayId ?? null} />
+
+          <div className="
+              absolute z-20
+              bottom-0 left-0 right-0
+              bg-black/85 backdrop-blur-sm
+              px-3 py-3
+              border-t border-x border-white/15
+              rounded-t-2xl
+              lg:bottom-auto lg:top-6 lg:left-6 lg:right-auto
+              lg:w-[340px] lg:max-w-[calc(100%-3rem)]
+              lg:bg-black/80 lg:p-4
+              lg:rounded-2xl lg:border
+            ">
             <h3 className="font-serif text-[18px] text-white/90 mb-1">
               {guestName ? `Welcome, ${guestName}` : 'Discover Concierge'}
             </h3>
@@ -363,7 +397,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               ))}
             </div>
 
-            <div className="space-y-1.5 max-h-[130px] overflow-y-auto scrollbar-hide mb-3 pr-1">
+            <div className="space-y-1.5 max-h-[40vh] lg:max-h-[130px] overflow-y-auto scrollbar-hide mb-3 pr-1">
               {assistantMessages.length === 0 ? (
                 <p className="text-[10px] text-white/45">Try: “Best restaurants nearby?”</p>
               ) : (
@@ -407,7 +441,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                 type="button"
                 onClick={() => void sendAssistantMessage()}
                 disabled={isAssistantLoading}
-                className="text-white/40 hover:text-[#C9A84C] transition-colors cursor-pointer"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-white/40 hover:text-[#C9A84C] transition-colors cursor-pointer"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m5 12 14-7-4 7 4 7z" />
@@ -415,10 +449,12 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               </button>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Right column */}
-        <div className="flex-1 lg:w-[45%] min-h-0 lg:min-h-full flex flex-col bg-black/70">
+          {/* Right column */}
+          <div className={`flex-1 lg:w-[45%] min-h-0 flex flex-col bg-black/70 ${
+            mobileDiscoverTab === 'explore' ? 'flex' : 'hidden lg:flex'
+          }`}>
           <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-white/10">
             <div className="flex items-center justify-between">
               <div>
@@ -763,6 +799,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
 
               <div className="h-4" />
             </div>
+          </div>
           </div>
         </div>
 
