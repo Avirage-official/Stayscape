@@ -233,10 +233,15 @@ export async function POST(request: NextRequest) {
   try {
     systemPrompt = await buildSystemPrompt(stayId, mode);
   } catch {
+    // Fallback respects the requested mode
     systemPrompt =
-      'You are a personal trip planning assistant for Stayscape. You help ' +
-      'guests organise their days, suggest what to do and when, and refine ' +
-      'their itinerary. Be practical and warm.';
+      mode === 'discovery'
+        ? 'You are a warm, knowledgeable luxury travel concierge for Stayscape. ' +
+          'You help guests discover places, plan activities, and make the most of their stay. ' +
+          'Be concise, specific, and helpful.'
+        : 'You are a personal trip planning assistant for Stayscape. You help ' +
+          'guests organise their days, suggest what to do and when, and refine ' +
+          'their itinerary. Be practical and warm.';
   }
 
   // Cap history at last 10 exchanges (20 messages)
@@ -309,7 +314,16 @@ export async function POST(request: NextRequest) {
 
           let items: MemoryItem[];
           try {
-            items = JSON.parse(extractText) as MemoryItem[];
+            const parsed = JSON.parse(extractText) as unknown;
+            if (!Array.isArray(parsed)) return;
+            // Validate each item conforms to MemoryItem schema
+            items = parsed.filter(
+              (item): item is MemoryItem =>
+                typeof item === 'object' &&
+                item !== null &&
+                typeof (item as Record<string, unknown>).type === 'string' &&
+                typeof (item as Record<string, unknown>).content === 'string',
+            );
           } catch {
             return;
           }
