@@ -28,14 +28,18 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
   const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [regionSetupFailed, setRegionSetupFailed] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollAttemptsRef = useRef(0);
+  const prevAwaitingRegionRef = useRef(false);
+  const MAX_REGION_POLL_ATTEMPTS = 10;
 
   // Derive region from the selected stay's property — this takes precedence over localStorage
   const selectedStay = dashboardData?.upcomingStay ?? null;
   const stayRegion = selectedStay ? getStaySelectedRegion(selectedStay) : null;
 
   // Whether we are waiting for a region to be created in the background
-  const awaitingRegion = selectedStay !== null && stayRegion === null;
+  const awaitingRegion = selectedStay !== null && stayRegion === null && !regionSetupFailed;
 
   /* Redirect to region selection only when no stay exists AND no global region */
   useEffect(() => {
@@ -61,8 +65,19 @@ export default function Home() {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       return;
     }
+    // Reset attempt counter only when awaitingRegion transitions false → true
+    if (!prevAwaitingRegionRef.current) {
+      pollAttemptsRef.current = 0;
+    }
+    prevAwaitingRegionRef.current = true;
     let canceled = false;
     const poll = () => {
+      pollAttemptsRef.current += 1;
+      if (pollAttemptsRef.current >= MAX_REGION_POLL_ATTEMPTS) {
+        if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+        setRegionSetupFailed(true);
+        return;
+      }
       fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data: DashboardData | null) => {
@@ -79,12 +94,36 @@ export default function Home() {
     return () => {
       canceled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      prevAwaitingRegionRef.current = false;
     };
   }, [awaitingRegion, user?.id]);
 
   /* Loading overlay — shown while region is being created */
   const city = selectedStay?.property?.city ?? null;
-  const loadingOverlay = awaitingRegion ? (
+  const loadingOverlay = regionSetupFailed ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="rounded-2xl bg-black/80 border border-white/10 px-10 py-10 flex flex-col items-center gap-4 max-w-sm w-full mx-4 text-center shadow-2xl">
+        <span
+          className="inline-block w-12 h-12 rounded-full"
+          style={{ backgroundColor: '#C9A84C', opacity: 0.85 }}
+        />
+        <h2 className="text-white text-lg font-semibold tracking-wide">
+          We&apos;re still setting up your destination.
+        </h2>
+        <p className="text-white/60 text-sm leading-relaxed">
+          You can explore the app while we finish in the background.
+        </p>
+        <button
+          type="button"
+          onClick={() => setRegionSetupFailed(false)}
+          className="mt-2 px-6 py-2 rounded-full text-sm font-medium tracking-wide text-black cursor-pointer"
+          style={{ backgroundColor: '#C9A84C' }}
+        >
+          Continue anyway
+        </button>
+      </div>
+    </div>
+  ) : awaitingRegion ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="rounded-2xl bg-black/80 border border-white/10 px-10 py-10 flex flex-col items-center gap-4 max-w-sm w-full mx-4 text-center shadow-2xl">
         {/* Gold pulse ring */}
