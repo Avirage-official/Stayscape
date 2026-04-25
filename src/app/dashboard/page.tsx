@@ -232,7 +232,7 @@ function GuestArrivalContent({
               /* ── Exactly 1 active stay, no history: show the concierge prompt ── */
               <>
                 <div className="h-full flex flex-col items-center justify-center pb-28 sm:pb-32">
-                  <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} />
+                  <ConciergePrompt firstName={firstName} hotelName={stay?.property?.name} stayId={stay?.id ?? null} />
                 </div>
                 {stay && (
                   <button
@@ -353,7 +353,7 @@ function GuestArrivalContent({
                   {/* ConciergePrompt — always the hero element */}
                   {stay && (
                     <div className="flex-1 flex flex-col items-center justify-center pb-16 min-h-[280px]">
-                      <ConciergePrompt firstName={firstName} hotelName={stay.property?.name} />
+                      <ConciergePrompt firstName={firstName} hotelName={stay.property?.name} stayId={stay.id ?? null} />
                     </div>
                   )}
                 </div>

@@ -15,7 +15,7 @@ import { getPreferencesForStay } from '@/lib/supabase/preferences-repository';
 import type { CurationType, CurationResult, CuratedItem } from '@/types/pms';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
+const ANTHROPIC_MODEL = 'claude-sonnet-4-5';
 const ANTHROPIC_VERSION = '2023-06-01';
 const REGION_PLACE_CONTEXT_LIMIT = 40;
 const INTEREST_MATCH_SCORE = 5;
