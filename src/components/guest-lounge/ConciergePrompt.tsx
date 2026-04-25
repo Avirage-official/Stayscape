@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { sendChatMessage } from '@/lib/ai/chat';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -14,17 +15,21 @@ const QUICK_SUGGESTIONS = [
 interface ConciergePromptProps {
   firstName: string;
   hotelName?: string | null;
+  stayId?: string | null;
 }
 
 /**
  * ConciergePrompt — the centered AI concierge input area.
  * Soft glass surface, generous width, refined placeholder.
  */
-export default function ConciergePrompt({ firstName, hotelName }: ConciergePromptProps) {
+export default function ConciergePrompt({ firstName, hotelName, stayId }: ConciergePromptProps) {
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [reply, setReply] = useState('');
+  const [history, setHistory] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
 
   const [greeting] = useState(() => {
     const hour = new Date().getHours();
@@ -42,14 +47,38 @@ export default function ConciergePrompt({ firstName, hotelName }: ConciergePromp
           transition: { duration: 0.9, ease: REVEAL_EASE, delay },
         };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
-    // Future: send to concierge API
+    const trimmed = query.trim();
+    if (!trimmed || isLoading) return;
+
+    setIsLoading(true);
+    setReply('');
     setQuery('');
+
+    const updatedHistory: Array<{ role: 'user' | 'assistant'; text: string }> = [
+      ...history,
+      { role: 'user', text: trimmed },
+    ];
+
+    const response = await sendChatMessage(
+      trimmed,
+      stayId ?? null,
+      history,
+      'discovery',
+    );
+
+    const newHistory: Array<{ role: 'user' | 'assistant'; text: string }> = [
+      ...updatedHistory,
+      { role: 'assistant', text: response },
+    ];
+
+    setHistory(newHistory);
+    setReply(response);
+    setIsLoading(false);
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = async (suggestion: string) => {
     setQuery(suggestion);
     inputRef.current?.focus();
   };
@@ -162,6 +191,28 @@ export default function ConciergePrompt({ firstName, hotelName }: ConciergePromp
           </button>
         ))}
       </motion.div>
+
+      {/* AI response bubble */}
+      {(isLoading || reply) && (
+        <motion.div
+          className="w-full max-w-[640px] mt-5 sm:mt-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: REVEAL_EASE }}
+        >
+          <div className="rounded-2xl bg-white/[0.09] border border-white/[0.12] backdrop-blur-xl px-6 py-4 text-left">
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:300ms]" />
+              </div>
+            ) : (
+              <p className="text-[14px] sm:text-[15px] text-white/80 leading-relaxed whitespace-pre-wrap">{reply}</p>
+            )}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
