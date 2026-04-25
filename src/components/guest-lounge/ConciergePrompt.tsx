@@ -61,24 +61,27 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
       { role: 'user', text: trimmed },
     ];
 
-    const response = await sendChatMessage(
-      trimmed,
-      stayId ?? null,
-      history,
-      'discovery',
-    );
+    try {
+      const response = await sendChatMessage(
+        trimmed,
+        stayId ?? null,
+        history,
+        'discovery',
+      );
 
-    const newHistory: Array<{ role: 'user' | 'assistant'; text: string }> = [
-      ...updatedHistory,
-      { role: 'assistant', text: response },
-    ];
+      const newHistory: Array<{ role: 'user' | 'assistant'; text: string }> = [
+        ...updatedHistory,
+        { role: 'assistant', text: response },
+      ];
 
-    setHistory(newHistory);
-    setReply(response);
-    setIsLoading(false);
+      setHistory(newHistory);
+      setReply(response);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSuggestionClick = async (suggestion: string) => {
+  const handleSuggestionClick = (suggestion: string) => {
     setQuery(suggestion);
     inputRef.current?.focus();
   };
