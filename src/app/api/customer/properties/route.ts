@@ -31,14 +31,22 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    const properties = (data ?? []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      name: row.name as string,
-      city: row.city as string,
-      country: row.country as string,
-      image_url: (row.image_url ?? null) as string | null,
-      booking_url: (row.booking_url ?? null) as string | null,
-    }));
+    const properties = (data ?? [])
+      .filter(
+        (row: Record<string, unknown>) =>
+          typeof row.id === 'string' &&
+          typeof row.name === 'string' &&
+          typeof row.city === 'string' &&
+          typeof row.country === 'string',
+      )
+      .map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        name: row.name as string,
+        city: row.city as string,
+        country: row.country as string,
+        image_url: typeof row.image_url === 'string' ? row.image_url : null,
+        booking_url: typeof row.booking_url === 'string' ? row.booking_url : null,
+      }));
 
     return NextResponse.json({ properties }, { headers: rateLimit.headers });
   } catch (err) {

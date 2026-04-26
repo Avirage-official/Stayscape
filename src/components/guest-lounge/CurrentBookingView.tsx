@@ -349,7 +349,11 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
       .select('id, name, slug, country_code')
       .eq('is_active', true)
       .order('name')
-      .then(({ data }: { data: RegionData[] | null; error: unknown }) => {
+      .then(({ data, error }: { data: RegionData[] | null; error: unknown }) => {
+        if (error) {
+          console.error('[NoBookingState] Failed to fetch regions:', error);
+          return;
+        }
         if (data) setRegions(data as RegionData[]);
       });
   }, []);
@@ -381,14 +385,17 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
     : hotels;
 
   /* ── Country flag helper ── */
-  const countryFlag = (code: string) =>
-    code
+  const countryFlag = (code: string): string => {
+    const letters = code
       .toUpperCase()
-      .slice(0, 2)
+      .replace(/[^A-Z]/g, '')
+      .slice(0, 2);
+    if (letters.length !== 2) return '';
+    return letters
       .split('')
-      .filter((c) => c >= 'A' && c <= 'Z')
       .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
       .join('');
+  };
 
   /* ── Animation helpers ── */
   const sectionReveal = (delay: number) =>
