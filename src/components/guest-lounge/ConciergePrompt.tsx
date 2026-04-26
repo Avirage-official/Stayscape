@@ -19,8 +19,7 @@ interface ConciergePromptProps {
 }
 
 /**
- * ConciergePrompt — the centered AI concierge input area.
- * Soft glass surface, generous width, refined placeholder.
+ * ConciergePrompt — Warm Modern AI concierge input area.
  */
 export default function ConciergePrompt({ firstName, hotelName, stayId }: ConciergePromptProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -31,20 +30,13 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
   const [reply, setReply] = useState('');
   const [history, setHistory] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
 
-  const [greeting] = useState(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    return 'evening';
-  });
-
   const fadeIn = (delay: number) =>
     prefersReducedMotion
       ? {}
       : {
           initial: { opacity: 0, y: 14 },
           animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.9, ease: REVEAL_EASE, delay },
+          transition: { duration: 0.7, ease: REVEAL_EASE, delay },
         };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,43 +79,33 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
   };
 
   return (
-    <div className="flex flex-col items-center justify-center text-center px-6 sm:px-8">
-      {/* Greeting headline */}
-      <motion.h1
-        className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white leading-[1.1] mb-3"
-        style={{ letterSpacing: '-0.01em' }}
-        {...fadeIn(0.5)}
-      >
-        Good {greeting}, {firstName}.
-      </motion.h1>
-
-      {/* Sub-line */}
+    <div className="flex flex-col w-full">
+      {/* Sub-line / context */}
       <motion.p
-        className="text-[15px] sm:text-[16px] text-white/60 mb-10 sm:mb-12 max-w-md"
-        {...fadeIn(0.7)}
+        className="text-[14px] mb-4"
+        style={{ color: 'var(--text-secondary)' }}
+        {...fadeIn(0.05)}
       >
         {hotelName
-          ? `How can I help with your stay at ${hotelName}?`
-          : 'Your concierge is ready'}
+          ? `How can I help with your stay at ${hotelName}, ${firstName}?`
+          : `Your concierge is ready, ${firstName}.`}
       </motion.p>
 
-      {/* Prompt surface — glass / translucent */}
+      {/* Prompt surface — warm card */}
       <motion.form
         onSubmit={handleSubmit}
-        className="w-full max-w-[640px]"
-        {...fadeIn(0.9)}
+        className="w-full"
+        {...fadeIn(0.15)}
       >
         <div
-          className={`
-            relative flex items-center rounded-2xl
-            transition-all duration-500
-            ${
-              isFocused
-                ? 'bg-white/[0.12] border-white/20 shadow-[0_8px_40px_rgba(0,0,0,0.3)]'
-                : 'bg-white/[0.07] border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.2)]'
-            }
-            border backdrop-blur-xl
-          `}
+          className="relative flex items-center rounded-2xl px-5 py-4 transition-all duration-300"
+          style={{
+            background: 'var(--surface)',
+            border: `1px solid ${isFocused ? 'var(--gold)' : 'var(--border)'}`,
+            boxShadow: isFocused
+              ? '0 0 0 3px var(--input-focus-ring), var(--card-shadow)'
+              : 'var(--card-shadow)',
+          }}
         >
           <input
             ref={inputRef}
@@ -133,28 +115,31 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Ask your concierge anything…"
-            className="
-              flex-1 bg-transparent text-[15px] sm:text-[16px] text-white/90
-              placeholder:text-white/30 px-6 sm:px-7 py-4 sm:py-5
-              focus:outline-none
-            "
+            className="flex-1 bg-transparent text-[15px] focus:outline-none border-none"
+            style={
+              {
+                color: 'var(--text-primary)',
+                '--tw-placeholder-opacity': '1',
+              } as React.CSSProperties
+            }
             autoComplete="off"
           />
 
-          {/* Submit affordance */}
           <button
             type="submit"
-            className={`
-              flex-shrink-0 mr-3 sm:mr-4 w-9 h-9 sm:w-10 sm:h-10 rounded-xl
-              flex items-center justify-center
-              transition-all duration-300 cursor-pointer
-              ${
-                query.trim()
-                  ? 'bg-white/15 text-white hover:bg-white/25'
-                  : 'bg-white/5 text-white/20'
-              }
-            `}
+            className="flex-shrink-0 ml-3 w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed"
+            style={{
+              background: query.trim() ? 'var(--gold)' : 'var(--surface-raised)',
+              color: query.trim() ? '#FFFFFF' : 'var(--text-faint)',
+            }}
+            onMouseEnter={(e) => {
+              if (query.trim()) e.currentTarget.style.background = 'var(--gold-soft)';
+            }}
+            onMouseLeave={(e) => {
+              if (query.trim()) e.currentTarget.style.background = 'var(--gold)';
+            }}
             aria-label="Send message"
+            disabled={!query.trim() || isLoading}
           >
             <svg
               width="16"
@@ -174,21 +159,26 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
       </motion.form>
 
       {/* Quick suggestions */}
-      <motion.div
-        className="flex flex-wrap justify-center gap-2 mt-5 sm:mt-6"
-        {...fadeIn(1.1)}
-      >
+      <motion.div className="flex flex-wrap gap-2 mt-4" {...fadeIn(0.25)}>
         {QUICK_SUGGESTIONS.map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => handleSuggestionClick(s)}
-            className="
-              px-4 py-2 rounded-full text-[12px] sm:text-[13px] text-white/55
-              bg-white/[0.07] border border-white/[0.10]
-              hover:bg-white/[0.12] hover:text-white/70 hover:border-white/15
-              transition-all duration-300 cursor-pointer
-            "
+            className="px-4 py-2 rounded-full text-[12px] sm:text-[13px] transition-all duration-300 cursor-pointer"
+            style={{
+              background: 'var(--surface-raised)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-secondary)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--gold)';
+              e.currentTarget.style.color = 'var(--gold)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
           >
             {s}
           </button>
@@ -198,20 +188,42 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
       {/* AI response bubble */}
       {(isLoading || reply) && (
         <motion.div
-          className="w-full max-w-[640px] mt-5 sm:mt-6"
+          className="w-full mt-5"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: REVEAL_EASE }}
         >
-          <div className="rounded-2xl bg-white/[0.09] border border-white/[0.12] backdrop-blur-xl px-6 py-4 text-left">
+          <div
+            className="rounded-2xl px-6 py-4"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--card-shadow)',
+              color: 'var(--text-primary)',
+            }}
+          >
             {isLoading ? (
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:300ms]" />
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0ms]"
+                  style={{ background: 'var(--gold)' }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:150ms]"
+                  style={{ background: 'var(--gold)' }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:300ms]"
+                  style={{ background: 'var(--gold)' }}
+                />
               </div>
             ) : (
-              <p className="text-[14px] sm:text-[15px] text-white/80 leading-relaxed whitespace-pre-wrap">{reply}</p>
+              <p
+                className="text-[14px] sm:text-[15px] leading-relaxed whitespace-pre-wrap"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {reply}
+              </p>
             )}
           </div>
         </motion.div>
