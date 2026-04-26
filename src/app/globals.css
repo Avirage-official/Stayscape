@@ -374,6 +374,28 @@ body {
   animation: cardEntrance 0.22s ease-out both;
 }
 
+/* Aurora hero gradient shift — NoBookingState hero */
+@keyframes auroraShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Region pill hover (non-selected) */
+.region-pill-btn:not([data-selected="true"]):hover {
+  border-color: var(--gold) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 2px 8px rgba(193,127,58,0.12) !important;
+}
+
+/* Booking reference discovery input focus */
+.discovery-ref-input:focus {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(193,127,58,0.12) !important;
+  background: white !important;
+  outline: none;
+}
+
 /* ── Dashboard — layered background & soft motion ────────── */
 @keyframes dashboardDrift {
   0%   { transform: translate(0, 0) scale(1); }
