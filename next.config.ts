@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
       },
       {
+        protocol: "https",
+        hostname: "images.pexels.com",
+      },
+      {
         // Google Places photo URLs redirect to this CDN
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
