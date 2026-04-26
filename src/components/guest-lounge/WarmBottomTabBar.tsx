@@ -106,23 +106,23 @@ function WarmBottomTabBarInner() {
         }}
         aria-label="Primary"
       >
-        <AnimatePresence mode="wait">
-          <div className="flex items-stretch h-[64px]">
-            {TABS.map((tab) => {
-              const isActive = tab.match(pathname, search);
+        <div className="flex items-stretch h-[64px]">
+          {TABS.map((tab) => {
+            const isActive = tab.match(pathname, search);
 
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  className="flex-1 flex flex-col items-center justify-center gap-1
-                    transition-colors duration-200 cursor-pointer relative"
-                  style={{
-                    color: isActive ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                  }}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  {/* Active indicator dot above icon */}
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className="flex-1 flex flex-col items-center justify-center gap-1
+                  transition-colors duration-200 cursor-pointer relative"
+                style={{
+                  color: isActive ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                }}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {/* Active indicator dot above icon */}
+                <AnimatePresence>
                   {isActive && (
                     <motion.div
                       layoutId="tab-indicator"
@@ -132,22 +132,22 @@ function WarmBottomTabBarInner() {
                       transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                     />
                   )}
+                </AnimatePresence>
 
-                  {tab.icon(isActive)}
+                {tab.icon(isActive)}
 
-                  <span
-                    className="text-[10px] font-medium tracking-wide"
-                    style={{
-                      color: isActive ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                    }}
-                  >
-                    {tab.label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </AnimatePresence>
+                <span
+                  className="text-[10px] font-medium tracking-wide"
+                  style={{
+                    color: isActive ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                  }}
+                >
+                  {tab.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </>
   );

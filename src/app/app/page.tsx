@@ -30,7 +30,8 @@ function HomeInner() {
   const { region: globalRegion } = useRegion();
   const { user } = useAuth();
 
-  // Default tab: when ?tab=map is set we open the concierge layout (which renders the map).
+  // URL ?tab=map opens the concierge layout (which renders the map panel);
+  // any other value (or unset) defaults to the discover tab.
   const initialTab: ActiveTab =
     searchParams?.get('tab') === 'map' ? 'concierge' : 'discover';
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);

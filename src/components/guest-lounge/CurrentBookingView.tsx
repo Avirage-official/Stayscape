@@ -319,7 +319,7 @@ function HotelCard({ hotel }: { hotel: HotelData }) {
             target="_blank"
             rel="noopener noreferrer"
             className="block text-[11px] mt-2 transition-colors"
-            style={{ color: '#E8C9A8' }}
+            style={{ color: 'var(--gold-muted)' }}
             onClick={(e: { stopPropagation(): void }) => e.stopPropagation()}
           >
             Book now →
@@ -501,11 +501,16 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
         </p>
 
         {hotelsLoading ? (
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide px-5 sm:px-8 pb-4">
+          <div
+            className="flex gap-4 overflow-x-auto scrollbar-hide px-5 sm:px-8 pb-4"
+            role="status"
+            aria-label="Loading hotels"
+          >
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
                 className="w-[220px] sm:w-[240px] flex-shrink-0 h-[300px] rounded-2xl skeleton-warm"
+                aria-hidden="true"
               />
             ))}
           </div>

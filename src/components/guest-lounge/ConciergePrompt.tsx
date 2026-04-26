@@ -138,7 +138,10 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
             onMouseLeave={(e) => {
               if (query.trim()) e.currentTarget.style.background = 'var(--gold)';
             }}
-            aria-label="Send message"
+            aria-label={
+              query.trim() ? 'Send message' : 'Send message (enter text first)'
+            }
+            aria-disabled={!query.trim() || isLoading}
             disabled={!query.trim() || isLoading}
           >
             <svg
