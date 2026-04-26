@@ -453,52 +453,134 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
 
   return (
     <div
-      className="px-6 sm:px-10"
-      style={{ background: 'var(--background)', paddingBottom: '120px' }}
+      style={{
+        minHeight: '100vh',
+        background: 'var(--background)',
+        overflowX: 'hidden',
+      }}
     >
-      {/* ═══ 1. GREETING + SEARCH ═══ */}
-      <motion.div style={{ paddingTop: '32px' }} {...sectionAnim(0)}>
-        <p
-          style={{
-            fontFamily: 'DM Sans, sans-serif',
-            fontSize: '15px',
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
-            marginBottom: '8px',
-          }}
-        >
-          {greeting}
-        </p>
-
-        <h1
-          style={{
-            fontFamily: 'Playfair Display, serif',
-            fontStyle: 'italic',
-            fontWeight: 700,
-            fontSize: 'clamp(36px, 8vw, 56px)',
-            lineHeight: 1.05,
-            color: 'var(--text-primary)',
-            marginBottom: '20px',
-          }}
-        >
-          Where to next?
-        </h1>
-
+      {/* ═══ BLOCK 1 — IMMERSIVE HERO ═══ */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: 'clamp(420px, 60vh, 620px)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Aurora animated gradient background */}
         <div
-          className="flex items-center"
           style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(135deg, #C17F3A 0%, #E8C9A8 20%, #FAF8F5 40%, #D4956A 60%, #C17F3A 80%, #F5EBD8 100%)',
+            backgroundSize: '400% 400%',
+            animation: 'auroraShift 12s ease infinite',
+          }}
+        />
+
+        {/* Frosted bottom panel */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '32px 32px 40px',
+            background:
+              'linear-gradient(to top, rgba(250,248,245,1) 0%, rgba(250,248,245,0.95) 40%, rgba(250,248,245,0) 100%)',
+          }}
+          className="sm:!p-[48px_48px_56px]"
+        >
+          <motion.p
+            style={{
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.28em',
+              color: 'var(--gold)',
+              textTransform: 'uppercase',
+              marginBottom: '12px',
+            }}
+            {...(prefersReducedMotion
+              ? {}
+              : {
+                  initial: { opacity: 0, y: 8 } as const,
+                  animate: { opacity: 1, y: 0 } as const,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.22, 1, 0.36, 1] as const,
+                    delay: 0.1,
+                  },
+                })}
+          >
+            YOUR NEXT STAY AWAITS
+          </motion.p>
+          <motion.h1
+            style={{
+              fontFamily: 'Playfair Display, serif',
+              fontStyle: 'italic',
+              fontWeight: 700,
+              fontSize: 'clamp(44px, 7vw, 72px)',
+              lineHeight: 0.98,
+              letterSpacing: '-0.02em',
+              color: 'var(--text-primary)',
+              marginBottom: 0,
+            }}
+            {...(prefersReducedMotion
+              ? {}
+              : {
+                  initial: { opacity: 0, y: 12 } as const,
+                  animate: { opacity: 1, y: 0 } as const,
+                  transition: {
+                    duration: 0.6,
+                    ease: [0.22, 1, 0.36, 1] as const,
+                    delay: 0.18,
+                  },
+                })}
+          >
+            Where to next?
+          </motion.h1>
+        </div>
+      </div>
+
+      {/* ═══ BLOCK 2 — FLOATING SEARCH BAR ═══ */}
+      <motion.div
+        className="px-6 sm:px-10"
+        style={{
+          marginTop: '-28px',
+          position: 'relative',
+          zIndex: 20,
+        }}
+        {...(prefersReducedMotion
+          ? {}
+          : {
+              initial: { opacity: 0, y: 16, scale: 0.97 } as const,
+              animate: { opacity: 1, y: 0, scale: 1 } as const,
+              transition: {
+                duration: 0.5,
+                ease: [0.22, 1, 0.36, 1] as const,
+                delay: 0.28,
+              },
+            })}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
             width: '100%',
-            maxWidth: '520px',
-            height: '54px',
-            borderRadius: '27px',
+            maxWidth: '600px',
+            height: '60px',
+            borderRadius: '30px',
             background: 'white',
             boxShadow: searchFocused
-              ? '0 2px 20px rgba(193,127,58,0.15)'
-              : '0 2px 16px rgba(28,26,23,0.10)',
-            border: `1px solid ${searchFocused ? 'var(--gold)' : 'var(--border)'}`,
-            padding: '0 20px',
-            gap: '12px',
-            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+              ? '0 8px 40px rgba(193,127,58,0.28), 0 2px 8px rgba(28,26,23,0.10)'
+              : '0 4px 24px rgba(193,127,58,0.18), 0 1px 4px rgba(28,26,23,0.08)',
+            border: `1.5px solid ${searchFocused ? 'var(--gold)' : 'rgba(193,127,58,0.2)'}`,
+            padding: '0 24px',
+            gap: '14px',
+            transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
           }}
         >
           <svg
@@ -506,8 +588,8 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
             height="18"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="var(--text-muted)"
-            strokeWidth="1.5"
+            stroke="var(--gold)"
+            strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
             style={{ flexShrink: 0 }}
@@ -530,290 +612,352 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              fontSize: '15px',
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: '16px',
+              fontWeight: 400,
               color: 'var(--text-primary)',
             }}
           />
-        </div>
-      </motion.div>
-
-      {/* ═══ 2. MOOD IMAGES ═══ */}
-      <motion.div
-        className="-mx-6 sm:-mx-10 scrollbar-hide"
-        style={{ marginTop: '32px', overflowX: 'auto' }}
-        {...sectionAnim(0.08)}
-      >
-        <div
-          className="pl-6 sm:pl-10 pr-6 sm:pr-10"
-          style={{ display: 'flex', gap: '10px', width: 'max-content' }}
-        >
-          {[
-            { src: IMG.moodPool, alt: 'Pool' },
-            { src: IMG.moodRooftop, alt: 'Rooftop' },
-            { src: IMG.moodFriends, alt: 'Friends' },
-            { src: IMG.moodGolden, alt: 'Golden' },
-          ].map((item) => (
-            <div
-              key={item.alt}
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
               style={{
-                width: '120px',
-                height: '160px',
-                borderRadius: '14px',
-                overflow: 'hidden',
-                position: 'relative',
+                width: '24px',
+                height: '24px',
+                borderRadius: '999px',
+                background: 'var(--surface-raised)',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 flexShrink: 0,
+                padding: 0,
+                fontSize: '12px',
               }}
             >
-              <Image
-                src={item.src}
-                alt={item.alt}
-                fill
-                className="object-cover"
-                sizes="120px"
-                loading="lazy"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = MOOD_IMAGE_FALLBACK;
-                }}
-              />
-            </div>
-          ))}
+              ✕
+            </button>
+          )}
         </div>
       </motion.div>
 
-      {/* ═══ 3. PARTNER HOTELS ═══ */}
-      <motion.div style={{ marginTop: '36px' }} {...sectionAnim(0.14)}>
+      {/* ═══ BLOCK 3 — PARTNER HOTELS GRID ═══ */}
+      <motion.div
+        className="px-6 sm:px-10"
+        style={{ marginTop: '40px' }}
+        {...sectionAnim(0.14)}
+      >
+        {/* Header row */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '14px',
+            alignItems: 'baseline',
+            marginBottom: '16px',
           }}
         >
           <p
             style={{
-              fontSize: '11px',
               fontFamily: 'DM Sans, sans-serif',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.18em',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.22em',
               color: 'var(--gold)',
+              textTransform: 'uppercase',
             }}
           >
-            STAYS WE LOVE
+            PARTNER HOTELS
           </p>
-          {filteredHotels.length > 0 && (
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              {filteredHotels.length} hotels
+          {!hotelsLoading && filteredHotels.length > 0 && (
+            <p
+              style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: '12px',
+                color: 'var(--text-muted)',
+              }}
+            >
+              {filteredHotels.length} properties
             </p>
           )}
         </div>
 
+        {/* Hotel grid */}
         {hotelsLoading ? (
           <div
-            className="-mx-6 sm:-mx-10 scrollbar-hide"
-            style={{ overflowX: 'auto', padding: '4px 0 8px' }}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+            style={{ gap: '12px' }}
             role="status"
             aria-label="Loading hotels"
           >
-            <div
-              className="pl-6 sm:pl-10 pr-6 sm:pr-10"
-              style={{ display: 'flex', gap: '12px', width: 'max-content' }}
-            >
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="skeleton-warm"
-                  style={{
-                    width: '160px',
-                    height: '220px',
-                    borderRadius: '16px',
-                    flexShrink: 0,
-                  }}
-                  aria-hidden="true"
-                />
-              ))}
-            </div>
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`skeleton-warm${i === 0 ? ' col-span-2' : ''}`}
+                style={{
+                  borderRadius: '16px',
+                  paddingTop: i === 0 ? '65%' : '120%',
+                }}
+                aria-hidden="true"
+              />
+            ))}
           </div>
         ) : filteredHotels.length === 0 ? (
-          <p
+          <div
             style={{
-              padding: '24px 0',
+              gridColumn: 'span 2',
+              padding: '48px 0',
               textAlign: 'center',
-              fontSize: '13px',
-              color: 'var(--text-muted)',
             }}
           >
-            No hotels found in that destination yet.
-          </p>
-        ) : (
-          <motion.div
-            className="-mx-6 sm:-mx-10 scrollbar-hide"
-            style={{ overflowX: 'auto', padding: '4px 0 8px' }}
-            variants={newCardStripVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <div
-              className="pl-6 sm:pl-10 pr-6 sm:pr-10"
-              style={{ display: 'flex', gap: '12px', width: 'max-content' }}
+            <p
+              style={{
+                fontSize: '15px',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+              }}
             >
-              {filteredHotels.map((hotel: HotelData) => (
+              Not there yet
+            </p>
+            <p
+              style={{
+                fontSize: '13px',
+                color: 'var(--text-muted)',
+                marginTop: '6px',
+              }}
+            >
+              We&apos;re growing our hotel network fast.
+            </p>
+          </div>
+        ) : (
+          <div
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+            style={{ gap: '12px' }}
+          >
+            {filteredHotels.map((hotel: HotelData, index: number) => {
+              const isFeatured = index === 0;
+              return (
                 <motion.div
                   key={hotel.id}
-                  variants={newCardItemVariants}
+                  className={isFeatured ? 'col-span-2' : ''}
                   style={{
-                    width: '160px',
-                    height: '220px',
+                    position: 'relative',
                     borderRadius: '16px',
                     overflow: 'hidden',
-                    position: 'relative',
-                    flexShrink: 0,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(28,26,23,0.12)',
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    background: 'var(--surface)',
+                    paddingTop: isFeatured ? '65%' : '120%',
+                    transition:
+                      'box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
+                  initial={
+                    prefersReducedMotion
+                      ? {}
+                      : { opacity: 0, y: 20, scale: 0.97 }
+                  }
+                  animate={
+                    prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }
+                  }
+                  transition={
+                    prefersReducedMotion
+                      ? {}
+                      : {
+                          duration: 0.45,
+                          ease: [0.22, 1, 0.36, 1] as const,
+                          delay: index * 0.06,
+                        }
+                  }
                   whileHover={{
-                    y: -3,
-                    boxShadow: '0 10px 32px rgba(28,26,23,0.20)',
+                    boxShadow: '0 12px 40px rgba(28,26,23,0.22)',
                   }}
                 >
-                  {hotel.image_url ? (
-                    <Image
-                      src={hotel.image_url}
-                      alt={hotel.name}
-                      fill
-                      className="object-cover"
-                      sizes="160px"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = MOOD_IMAGE_FALLBACK;
-                      }}
-                    />
-                  ) : (
+                  {/* Inner absolute container */}
+                  <div style={{ position: 'absolute', inset: 0 }}>
+                    {hotel.image_url ? (
+                      <motion.div
+                        style={{ position: 'absolute', inset: 0 }}
+                        whileHover={{ scale: 1.04 }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                      >
+                        <Image
+                          src={hotel.image_url}
+                          alt={hotel.name}
+                          fill
+                          className="object-cover"
+                          sizes={
+                            isFeatured
+                              ? '(max-width: 640px) 100vw, 66vw'
+                              : '(max-width: 640px) 50vw, 33vw'
+                          }
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              UNSPLASH_FALLBACK;
+                          }}
+                        />
+                      </motion.div>
+                    ) : (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background:
+                            'linear-gradient(145deg, #EDE8E1, #D8CFC4)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'Playfair Display, serif',
+                            fontSize: '28px',
+                            color: 'var(--gold)',
+                            opacity: 0.4,
+                          }}
+                        >
+                          {hotel.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    {/* Gradient overlay */}
                     <div
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        background: 'linear-gradient(135deg, #EDE8E1, #D8CFC4)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'linear-gradient(to top, rgba(10,8,6,0.90) 0%, rgba(10,8,6,0.4) 45%, transparent 100%)',
+                      }}
+                    />
+                    {/* Card content */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: '14px',
                       }}
                     >
-                      <span
+                      <p
                         style={{
                           fontFamily: 'Playfair Display, serif',
-                          fontSize: '28px',
-                          color: 'var(--gold)',
-                          opacity: 0.5,
+                          fontSize: '15px',
+                          fontWeight: 500,
+                          lineHeight: 1.25,
+                          color: 'white',
                         }}
                       >
-                        {hotel.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background:
-                        'linear-gradient(to top, rgba(10,8,5,0.88) 0%, rgba(10,8,5,0.3) 50%, transparent 100%)',
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      padding: '12px',
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontFamily: 'Playfair Display, serif',
-                        fontSize: '15px',
-                        fontWeight: 500,
-                        lineHeight: 1.3,
-                        color: 'white',
-                      }}
-                    >
-                      {hotel.name}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: '10px',
-                        fontFamily: 'DM Sans, sans-serif',
-                        fontWeight: 500,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.12em',
-                        color: 'rgba(255,255,255,0.6)',
-                        marginTop: '3px',
-                      }}
-                    >
-                      {hotel.city}
-                    </p>
-                    {hotel.booking_url && (
-                      <a
-                        href={hotel.booking_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        {hotel.name}
+                      </p>
+                      <p
                         style={{
-                          display: 'block',
-                          fontSize: '11px',
-                          color: 'var(--gold-muted)',
-                          marginTop: '6px',
+                          fontSize: '10px',
+                          fontFamily: 'DM Sans, sans-serif',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.12em',
+                          color: 'rgba(255,255,255,0.55)',
+                          marginTop: '3px',
                         }}
-                        onClick={(e: { stopPropagation(): void }) =>
-                          e.stopPropagation()
-                        }
                       >
-                        Book →
-                      </a>
-                    )}
+                        {hotel.city}
+                      </p>
+                      {hotel.booking_url && (
+                        <a
+                          href={hotel.booking_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'block',
+                            fontSize: '11px',
+                            color: '#D4956A',
+                            marginTop: '6px',
+                          }}
+                          onClick={(e: { stopPropagation(): void }) =>
+                            e.stopPropagation()
+                          }
+                        >
+                          Book →
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-          </motion.div>
+              );
+            })}
+          </div>
         )}
       </motion.div>
 
-      {/* ═══ 4. HAVE A BOOKING? ═══ */}
-      <motion.div style={{ marginTop: '48px' }} {...sectionAnim(0.20)}>
+      {/* ═══ BLOCK 4 — BOOKING REFERENCE ═══ */}
+      <motion.div
+        className="px-6 sm:px-10"
+        style={{ marginTop: '48px' }}
+        {...sectionAnim(0.2)}
+      >
         <div
           style={{
-            background: 'white',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: '0 2px 16px rgba(28,26,23,0.08)',
-            border: '1px solid var(--border)',
+            background: 'rgba(255,255,255,0.7)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(193,127,58,0.15)',
+            borderRadius: '24px',
+            padding: '28px',
+            boxShadow: '0 4px 24px rgba(193,127,58,0.08)',
           }}
         >
-          <p
+          {/* Top row */}
+          <div
             style={{
-              fontSize: '11px',
-              fontFamily: 'DM Sans, sans-serif',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.18em',
-              color: 'var(--gold)',
-              marginBottom: '8px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
-            HAVE A BOOKING?
-          </p>
+            <p
+              style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.22em',
+                color: 'var(--gold)',
+                textTransform: 'uppercase',
+              }}
+            >
+              HAVE A BOOKING?
+            </p>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="rgba(193,127,58,0.6)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+            </svg>
+          </div>
+
+          {/* Description */}
           <p
             style={{
+              fontFamily: 'DM Sans, sans-serif',
               fontSize: '14px',
               color: 'var(--text-secondary)',
               lineHeight: 1.6,
-              marginBottom: '20px',
+              margin: '10px 0 20px',
             }}
           >
-            Enter your hotel booking reference to unlock your personal concierge
-            experience.
+            Enter your hotel booking reference to unlock your personal AI
+            concierge experience.
           </p>
+
+          {/* Reference input */}
           <input
             type="text"
             placeholder="e.g. MBS-A1B2C3D4"
@@ -822,72 +966,101 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               setBookingRef(e.target.value)
             }
             aria-label="Enter booking reference number"
-            className="reference-glow"
+            className="reference-glow discovery-ref-input"
             style={{
               display: 'block',
               width: '100%',
-              height: '50px',
-              borderRadius: '12px',
-              background: 'var(--surface-raised)',
+              height: '52px',
+              borderRadius: '14px',
+              background: 'white',
               border: '1.5px solid var(--border)',
-              padding: '0 16px',
+              padding: '0 18px',
+              fontFamily: 'DM Sans, sans-serif',
               fontSize: '15px',
               color: 'var(--text-primary)',
               outline: 'none',
               marginBottom: '12px',
               boxSizing: 'border-box',
+              transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
           />
-          <button
+
+          {/* CTA button */}
+          <motion.button
             type="button"
             onClick={onAddStay}
             disabled={!bookingRef.trim()}
-            aria-label="Activate Stay"
+            aria-label={
+              bookingRef.trim()
+                ? 'Unlock My Stay'
+                : 'Enter a reference to continue'
+            }
             style={{
               display: 'block',
               width: '100%',
-              height: '50px',
-              borderRadius: '12px',
+              height: '52px',
+              borderRadius: '14px',
+              fontFamily: 'DM Sans, sans-serif',
               fontSize: '15px',
               fontWeight: 600,
-              transition: 'all 0.2s ease',
-              cursor: bookingRef.trim() ? 'pointer' : 'not-allowed',
-              border: 'none',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              cursor: bookingRef.trim() ? 'pointer' : 'default',
               ...(bookingRef.trim()
-                ? { background: 'var(--gold)', color: 'white' }
+                ? {
+                    background:
+                      'linear-gradient(135deg, #C17F3A 0%, #D4956A 100%)',
+                    color: 'white',
+                    border: 'none',
+                    boxShadow: '0 4px 16px rgba(193,127,58,0.35)',
+                  }
                 : {
                     background: 'var(--surface-raised)',
                     color: 'var(--text-faint)',
+                    border: '1.5px solid var(--border)',
+                    boxShadow: 'none',
                   }),
             }}
+            whileHover={
+              bookingRef.trim()
+                ? {
+                    y: -1,
+                    boxShadow: '0 8px 28px rgba(193,127,58,0.45)',
+                  }
+                : {}
+            }
           >
-            {bookingRef.trim() ? 'Activate Stay →' : 'Activate Stay'}
-          </button>
+            {bookingRef.trim() ? 'Unlock My Stay →' : 'Enter a reference to continue'}
+          </motion.button>
         </div>
       </motion.div>
 
-      {/* ═══ 5. EXPLORE BY DESTINATION ═══ */}
-      <motion.div style={{ marginTop: '40px' }} {...sectionAnim(0.26)}>
+      {/* ═══ BLOCK 5 — EXPLORE DESTINATIONS ═══ */}
+      <motion.div
+        className="px-6 sm:px-10"
+        style={{ marginTop: '40px', paddingBottom: '120px' }}
+        {...sectionAnim(0.26)}
+      >
         <p
           style={{
-            fontSize: '11px',
             fontFamily: 'DM Sans, sans-serif',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.18em',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.22em',
             color: 'var(--gold)',
+            textTransform: 'uppercase',
           }}
         >
-          EXPLORE BY DESTINATION
+          EXPLORE DESTINATIONS
         </p>
         <p
           style={{
+            fontFamily: 'DM Sans, sans-serif',
             fontSize: '14px',
             color: 'var(--text-secondary)',
             margin: '8px 0 16px',
           }}
         >
-          Browse places across our partner destinations.
+          Discover places across our partner cities.
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -897,32 +1070,36 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               <button
                 key={region.id}
                 type="button"
+                data-selected={String(isSelected)}
+                className="region-pill-btn"
                 onClick={() =>
                   setSelectedRegion(isSelected ? null : region.id)
                 }
                 style={{
-                  height: '36px',
-                  padding: '0 14px',
+                  height: '38px',
+                  padding: '0 16px',
                   borderRadius: '999px',
-                  fontSize: '13px',
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontWeight: isSelected ? 600 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.18s ease',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  background: isSelected ? 'rgba(193,127,58,0.08)' : 'white',
-                  border: `1px solid ${isSelected ? 'var(--gold)' : 'var(--border)'}`,
+                  gap: '8px',
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: isSelected ? 600 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
+                  outline: 'none',
+                  background: isSelected
+                    ? 'rgba(193,127,58,0.10)'
+                    : 'white',
+                  border: `1.5px solid ${isSelected ? 'var(--gold)' : 'var(--border)'}`,
                   color: isSelected ? 'var(--gold)' : 'var(--text-secondary)',
                   boxShadow: isSelected
-                    ? 'none'
+                    ? '0 2px 12px rgba(193,127,58,0.18)'
                     : '0 1px 4px rgba(28,26,23,0.06)',
-                  outline: 'none',
                 }}
               >
                 {region.country_code ? (
-                  <span style={{ fontSize: '14px' }}>
+                  <span style={{ fontSize: '15px', flexShrink: 0 }}>
                     {countryFlag(region.country_code)}
                   </span>
                 ) : null}
@@ -933,18 +1110,19 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
         </div>
 
         {selectedRegion && regionPlaces.length > 0 && (
-          <div style={{ marginTop: '16px' }}>
+          <div style={{ marginTop: '18px' }}>
             <p
               style={{
+                fontFamily: 'DM Sans, sans-serif',
                 fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
                 marginBottom: '10px',
               }}
             >
-              Places in{' '}
-              {regions.find((r: RegionData) => r.id === selectedRegion)?.name ??
-                ''}
+              {regions.find((r: RegionData) => r.id === selectedRegion)
+                ?.name ?? ''}{' '}
+              highlights
             </p>
             <div
               className="scrollbar-hide"
@@ -954,9 +1132,9 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                 <div
                   key={place.id}
                   style={{
-                    height: '34px',
-                    padding: '0 12px',
-                    borderRadius: '8px',
+                    height: '36px',
+                    padding: '0 14px',
+                    borderRadius: '10px',
                     background: 'white',
                     border: '1px solid var(--border)',
                     fontSize: '13px',
@@ -965,6 +1143,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                     boxShadow: '0 1px 4px rgba(28,26,23,0.06)',
                     display: 'inline-flex',
                     alignItems: 'center',
+                    gap: '8px',
                     flexShrink: 0,
                   }}
                 >
@@ -974,7 +1153,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                       style={{
                         fontSize: '10px',
                         color: 'var(--text-muted)',
-                        marginLeft: '6px',
+                        textTransform: 'capitalize',
                       }}
                     >
                       {place.category}
