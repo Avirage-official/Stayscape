@@ -9,7 +9,21 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
 
-const HERO_FALLBACK =
+const IMG = {
+  hero01: '/images/brand/hero-01.jpg',
+  hero02: '/images/brand/hero-02.jpg',
+  hero03: '/images/brand/hero-03.jpg',
+  moodPool: '/images/brand/mood-pool.jpg',
+  moodRooftop: '/images/brand/mood-rooftop.jpg',
+  moodFriends: '/images/brand/mood-friends.jpg',
+  moodGolden: '/images/brand/mood-golden.jpg',
+  moodMorning: '/images/brand/mood-morning.jpg',
+  moodMarket: '/images/brand/mood-market.jpg',
+  emptyStays: '/images/ui/empty-stays.jpg',
+  emptyDiscover: '/images/ui/empty-discover.jpg',
+} as const;
+
+const UNSPLASH_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
 /* ─── Helpers ─── */
@@ -69,7 +83,7 @@ function BookedState({
           transition: { duration: 0.7, ease: REVEAL_EASE, delay },
         };
 
-  const heroSrc = stay.property?.image_url || HERO_FALLBACK;
+  const heroSrc = stay.property?.image_url || IMG.hero01;
 
   return (
     <div className="px-5 sm:px-8 pt-6">
@@ -101,6 +115,7 @@ function BookedState({
           className="object-cover"
           sizes="(max-width: 640px) 100vw, 720px"
           priority
+          onError={(e) => { (e.target as HTMLImageElement).src = UNSPLASH_FALLBACK; }}
         />
         <div
           className="absolute inset-0 pointer-events-none"
@@ -426,19 +441,60 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
 
   return (
     <div style={{ background: 'var(--background)' }}>
-      {/* ═══ A) TOP SECTION — greeting + destination search ═══ */}
-      <div className="pt-6 pb-8 px-5 sm:px-8">
+      {/* ═══ A) TOP HERO ═══ */}
+      {/* Full-bleed image hero strip */}
+      <div className="relative w-full h-[260px] sm:h-[320px] overflow-hidden">
+        <Image
+          src={IMG.hero01}
+          alt="Discover your next stay"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+          onError={(e) => { (e.target as HTMLImageElement).src = UNSPLASH_FALLBACK; }}
+        />
+        {/* Warm gradient overlay — light at top, heavier at bottom */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'linear-gradient(to bottom, transparent 40%, rgba(22,18,13,0.75) 100%)',
+          }}
+        />
+        {/* Top-left logo mark */}
+        <div className="absolute top-4 left-5 sm:left-8 z-10">
+          <span
+            className="font-serif text-white text-[13px] font-medium uppercase opacity-90"
+            style={{ letterSpacing: '0.2em' }}
+          >
+            Stayscape
+          </span>
+        </div>
+      </div>
+
+      {/* Text content section */}
+      <div className="px-5 sm:px-8 pt-0 pb-6">
         <motion.p
-          className="text-[10px] uppercase mb-3 font-medium"
-          style={{ color: 'var(--gold)', letterSpacing: '0.25em' }}
+          className="text-[11px] uppercase font-semibold"
+          style={{
+            color: 'var(--gold)',
+            letterSpacing: '0.22em',
+            marginTop: '-8px',
+            marginBottom: '10px',
+          }}
           {...sectionReveal(0)}
         >
           YOUR NEXT JOURNEY
         </motion.p>
 
         <motion.h1
-          className="font-serif text-[32px] sm:text-[38px] leading-tight mb-6"
-          style={{ color: 'var(--text-primary)' }}
+          className="font-serif font-bold italic leading-[1.04]"
+          style={{
+            fontSize: 'clamp(42px, 8vw, 64px)',
+            letterSpacing: '-0.02em',
+            color: 'var(--text-primary)',
+            marginBottom: '20px',
+          }}
           {...sectionReveal(0.1)}
         >
           Where to next?
@@ -448,30 +504,30 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
           layoutId="search-container"
           layout
           className="transition-[max-width] duration-300 ease-out"
-          style={{ maxWidth: searchFocused ? 480 : 380 }}
+          style={{ maxWidth: '560px' }}
           {...sectionReveal(0.22)}
         >
           <div
-            className="flex items-center gap-3 rounded-2xl px-5 py-3.5 transition-all duration-300"
+            className="flex items-center h-[52px] rounded-[14px] transition-all duration-300"
             style={{
-              background: 'var(--input-bg)',
-              border: `1px solid ${searchFocused ? 'var(--gold)' : 'var(--input-border)'}`,
+              background: 'var(--surface)',
+              border: `1.5px solid ${searchFocused ? 'var(--gold)' : 'var(--border)'}`,
               boxShadow: searchFocused
-                ? 'var(--input-focus, 0 0 0 3px rgba(193,127,58,0.15))'
-                : 'var(--card-shadow)',
+                ? '0 0 0 3px rgba(193,127,58,0.12)'
+                : 'none',
+              padding: '0 18px',
             }}
           >
             <svg
-              width="16"
-              height="16"
+              width="17"
+              height="17"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              style={{ color: 'var(--text-muted)' }}
-              className="flex-shrink-0"
+              style={{ color: 'var(--text-muted)', marginRight: '10px', flexShrink: 0 }}
             >
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -484,11 +540,34 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
               aria-label="Search hotel destinations"
-              className="flex-1 bg-transparent text-[15px] outline-none"
-              style={{ color: 'var(--text-primary)' }}
+              className="flex-1 bg-transparent outline-none"
+              style={{ fontSize: '15px', color: 'var(--text-primary)' }}
             />
           </div>
         </motion.div>
+      </div>
+
+      {/* ═══ MOOD IMAGE STRIP (NEW — above hotel cards) ═══ */}
+      <div className="mt-8 flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+        {[
+          { src: IMG.moodPool, alt: 'Pool' },
+          { src: IMG.moodRooftop, alt: 'Rooftop' },
+          { src: IMG.moodFriends, alt: 'Friends' },
+        ].map((item) => (
+          <div
+            key={item.alt}
+            className="flex-shrink-0 relative w-[156px] h-[208px] rounded-2xl overflow-hidden"
+          >
+            <Image
+              src={item.src}
+              alt={item.alt}
+              fill
+              className="object-cover"
+              sizes="156px"
+              loading="lazy"
+            />
+          </div>
+        ))}
       </div>
 
       {/* ═══ B) HOTEL CARDS SECTION ═══ */}
