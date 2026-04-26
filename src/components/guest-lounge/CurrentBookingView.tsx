@@ -417,275 +417,478 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
       .join('');
   };
 
-  const sectionReveal = (delay: number) =>
+  const sectionAnim = (delay: number) =>
     prefersReducedMotion
       ? {}
       : {
-          initial: { opacity: 0, y: 28 } as const,
+          initial: { opacity: 0, y: 16 } as const,
           animate: { opacity: 1, y: 0 } as const,
           transition: {
-            duration: 0.85,
-            ease: [0.16, 1, 0.3, 1] as const,
+            duration: 0.4,
+            ease: [0.22, 1, 0.36, 1] as const,
             delay,
           },
         };
 
-  const scrollRevealProps = prefersReducedMotion
-    ? {}
-    : {
-        initial: { opacity: 0, y: 20 },
-        whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true, margin: '-60px' },
-        transition: { duration: 0.6 },
-      };
+  const newCardStripVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.06 } },
+  };
+
+  const newCardItemVariants = {
+    hidden: { opacity: 0, x: 24 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const },
+    },
+  };
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div style={{ background: 'var(--background)' }}>
-      {/* ═══ A) TOP HERO ═══ */}
-      {/* Full-bleed image hero strip */}
-      <div className="relative w-full h-[260px] sm:h-[320px] overflow-hidden">
-        <Image
-          src={IMG.hero01}
-          alt="Discover your next stay"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-          onError={(e) => { (e.target as HTMLImageElement).src = UNSPLASH_FALLBACK; }}
-        />
-        {/* Warm gradient overlay — light at top, heavier at bottom */}
-        <div
-          className="absolute inset-0 pointer-events-none"
+    <div
+      className="px-6 sm:px-10"
+      style={{ background: 'var(--background)', paddingBottom: '120px' }}
+    >
+      {/* ═══ 1. GREETING + SEARCH ═══ */}
+      <motion.div style={{ paddingTop: '32px' }} {...sectionAnim(0)}>
+        <p
           style={{
-            background:
-              'linear-gradient(to bottom, transparent 40%, rgba(22,18,13,0.75) 100%)',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '15px',
+            fontWeight: 500,
+            color: 'var(--text-secondary)',
+            marginBottom: '8px',
           }}
-        />
-        {/* Top-left logo mark */}
-        <div className="absolute top-4 left-5 sm:left-8 z-10">
-          <span
-            className="font-serif text-white text-[13px] font-medium uppercase opacity-90"
-            style={{ letterSpacing: '0.2em' }}
-          >
-            Stayscape
-          </span>
-        </div>
-      </div>
-
-      {/* Text content section */}
-      <div className="px-5 sm:px-8 pt-0 pb-6">
-        <motion.p
-          className="text-[11px] uppercase font-semibold"
-          style={{
-            color: 'var(--gold)',
-            letterSpacing: '0.22em',
-            marginTop: '-8px',
-            marginBottom: '10px',
-          }}
-          {...sectionReveal(0)}
         >
-          YOUR NEXT JOURNEY
-        </motion.p>
+          {greeting}
+        </p>
 
-        <motion.h1
-          className="font-serif font-bold italic leading-[1.04]"
+        <h1
           style={{
-            fontSize: 'clamp(42px, 8vw, 64px)',
-            letterSpacing: '-0.02em',
+            fontFamily: 'Playfair Display, serif',
+            fontStyle: 'italic',
+            fontWeight: 700,
+            fontSize: 'clamp(36px, 8vw, 56px)',
+            lineHeight: 1.05,
             color: 'var(--text-primary)',
             marginBottom: '20px',
           }}
-          {...sectionReveal(0.1)}
         >
           Where to next?
-        </motion.h1>
+        </h1>
 
-        <motion.div
-          layoutId="search-container"
-          layout
-          className="transition-[max-width] duration-300 ease-out"
-          style={{ maxWidth: '560px' }}
-          {...sectionReveal(0.22)}
+        <div
+          className="flex items-center"
+          style={{
+            width: '100%',
+            maxWidth: '520px',
+            height: '54px',
+            borderRadius: '27px',
+            background: 'white',
+            boxShadow: searchFocused
+              ? '0 2px 20px rgba(193,127,58,0.15)'
+              : '0 2px 16px rgba(28,26,23,0.10)',
+            border: `1px solid ${searchFocused ? 'var(--gold)' : 'var(--border)'}`,
+            padding: '0 20px',
+            gap: '12px',
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          }}
         >
-          <div
-            className="flex items-center h-[52px] rounded-[14px] transition-all duration-300"
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--text-muted)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ flexShrink: 0 }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search a destination…"
+            value={searchQuery}
+            onChange={(e: { target: { value: string } }) =>
+              setSearchQuery(e.target.value)
+            }
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            aria-label="Search hotel destinations"
             style={{
-              background: 'var(--surface)',
-              border: `1.5px solid ${searchFocused ? 'var(--gold)' : 'var(--border)'}`,
-              boxShadow: searchFocused
-                ? '0 0 0 3px rgba(193,127,58,0.12)'
-                : 'none',
-              padding: '0 18px',
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              fontSize: '15px',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
+      </motion.div>
+
+      {/* ═══ 2. MOOD IMAGES ═══ */}
+      <motion.div
+        className="-mx-6 sm:-mx-10 scrollbar-hide"
+        style={{ marginTop: '32px', overflowX: 'auto' }}
+        {...sectionAnim(0.08)}
+      >
+        <div
+          className="pl-6 sm:pl-10 pr-6 sm:pr-10"
+          style={{ display: 'flex', gap: '10px', width: 'max-content' }}
+        >
+          {[
+            { src: IMG.moodPool, alt: 'Pool' },
+            { src: IMG.moodRooftop, alt: 'Rooftop' },
+            { src: IMG.moodFriends, alt: 'Friends' },
+            { src: IMG.moodGolden, alt: 'Golden' },
+          ].map((item) => (
+            <div
+              key={item.alt}
+              style={{
+                width: '120px',
+                height: '160px',
+                borderRadius: '14px',
+                overflow: 'hidden',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              <Image
+                src={item.src}
+                alt={item.alt}
+                fill
+                className="object-cover"
+                sizes="120px"
+                loading="lazy"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1520250497591-112753be183e?w=400&q=80';
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ═══ 3. PARTNER HOTELS ═══ */}
+      <motion.div style={{ marginTop: '36px' }} {...sectionAnim(0.14)}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '14px',
+          }}
+        >
+          <p
+            style={{
+              fontSize: '11px',
+              fontFamily: 'DM Sans, sans-serif',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.18em',
+              color: 'var(--gold)',
             }}
           >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: 'var(--text-muted)', marginRight: '10px', flexShrink: 0 }}
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search a destination…"
-              value={searchQuery}
-              onChange={(e: { target: { value: string } }) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              aria-label="Search hotel destinations"
-              className="flex-1 bg-transparent outline-none"
-              style={{ fontSize: '15px', color: 'var(--text-primary)' }}
-            />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ═══ MOOD IMAGE STRIP (NEW — above hotel cards) ═══ */}
-      <div className="mt-8 flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-        {[
-          { src: IMG.moodPool, alt: 'Pool' },
-          { src: IMG.moodRooftop, alt: 'Rooftop' },
-          { src: IMG.moodFriends, alt: 'Friends' },
-        ].map((item) => (
-          <div
-            key={item.alt}
-            className="flex-shrink-0 relative w-[156px] h-[208px] rounded-2xl overflow-hidden"
-          >
-            <Image
-              src={item.src}
-              alt={item.alt}
-              fill
-              className="object-cover"
-              sizes="156px"
-              loading="lazy"
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* ═══ B) HOTEL CARDS SECTION ═══ */}
-      <motion.div {...scrollRevealProps}>
-        <p
-          className="text-[10px] uppercase px-5 sm:px-8 mb-4 font-medium"
-          style={{ color: 'var(--gold)', letterSpacing: '0.25em' }}
-        >
-          PARTNER HOTELS
-        </p>
+            STAYS WE LOVE
+          </p>
+          {filteredHotels.length > 0 && (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              {filteredHotels.length} hotels
+            </p>
+          )}
+        </div>
 
         {hotelsLoading ? (
           <div
-            className="flex gap-4 overflow-x-auto scrollbar-hide px-5 sm:px-8 pb-4"
+            className="-mx-6 sm:-mx-10 scrollbar-hide"
+            style={{ overflowX: 'auto', padding: '4px 0 8px' }}
             role="status"
             aria-label="Loading hotels"
           >
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-[220px] sm:w-[240px] flex-shrink-0 h-[300px] rounded-2xl skeleton-warm"
-                aria-hidden="true"
-              />
-            ))}
+            <div
+              className="pl-6 sm:pl-10 pr-6 sm:pr-10"
+              style={{ display: 'flex', gap: '12px', width: 'max-content' }}
+            >
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="skeleton-warm"
+                  style={{
+                    width: '160px',
+                    height: '220px',
+                    borderRadius: '16px',
+                    flexShrink: 0,
+                  }}
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
           </div>
         ) : filteredHotels.length === 0 ? (
           <p
-            className="text-[13px] text-center py-8 px-6"
-            style={{ color: 'var(--text-muted)' }}
+            style={{
+              padding: '24px 0',
+              textAlign: 'center',
+              fontSize: '13px',
+              color: 'var(--text-muted)',
+            }}
           >
-            No partner hotels found in that destination yet.
-            <br />
-            We&apos;re expanding — check back soon.
+            No hotels found in that destination yet.
           </p>
         ) : (
           <motion.div
-            className="flex gap-4 overflow-x-auto scrollbar-hide px-5 sm:px-8 pb-4"
-            variants={cardStripVariants}
+            className="-mx-6 sm:-mx-10 scrollbar-hide"
+            style={{ overflowX: 'auto', padding: '4px 0 8px' }}
+            variants={newCardStripVariants}
             initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
+            animate="visible"
           >
-            {filteredHotels.map((hotel: HotelData) => (
-              <HotelCard key={hotel.id} hotel={hotel} />
-            ))}
+            <div
+              className="pl-6 sm:pl-10 pr-6 sm:pr-10"
+              style={{ display: 'flex', gap: '12px', width: 'max-content' }}
+            >
+              {filteredHotels.map((hotel: HotelData) => (
+                <motion.div
+                  key={hotel.id}
+                  variants={newCardItemVariants}
+                  style={{
+                    width: '160px',
+                    height: '220px',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    flexShrink: 0,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(28,26,23,0.12)',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  }}
+                  whileHover={{
+                    y: -3,
+                    boxShadow: '0 10px 32px rgba(28,26,23,0.20)',
+                  }}
+                >
+                  {hotel.image_url ? (
+                    <Image
+                      src={hotel.image_url}
+                      alt={hotel.name}
+                      fill
+                      className="object-cover"
+                      sizes="160px"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1520250497591-112753be183e?w=400&q=80';
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(135deg, #EDE8E1, #D8CFC4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: 'Playfair Display, serif',
+                          fontSize: '28px',
+                          color: 'var(--gold)',
+                          opacity: 0.5,
+                        }}
+                      >
+                        {hotel.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background:
+                        'linear-gradient(to top, rgba(10,8,5,0.88) 0%, rgba(10,8,5,0.3) 50%, transparent 100%)',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: '12px',
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontFamily: 'Playfair Display, serif',
+                        fontSize: '15px',
+                        fontWeight: 500,
+                        lineHeight: 1.3,
+                        color: 'white',
+                      }}
+                    >
+                      {hotel.name}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: '10px',
+                        fontFamily: 'DM Sans, sans-serif',
+                        fontWeight: 500,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.12em',
+                        color: 'rgba(255,255,255,0.6)',
+                        marginTop: '3px',
+                      }}
+                    >
+                      {hotel.city}
+                    </p>
+                    {hotel.booking_url && (
+                      <a
+                        href={hotel.booking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          fontSize: '11px',
+                          color: '#D4956A',
+                          marginTop: '6px',
+                        }}
+                        onClick={(e: { stopPropagation(): void }) =>
+                          e.stopPropagation()
+                        }
+                      >
+                        Book →
+                      </a>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
         )}
       </motion.div>
 
-      {/* ═══ C) BOOKING REFERENCE SECTION ═══ */}
-      <motion.div className="px-5 sm:px-8 py-10" {...scrollRevealProps}>
-        <p
-          className="text-[10px] uppercase mb-2 font-medium"
-          style={{ color: 'var(--gold)', letterSpacing: '0.25em' }}
+      {/* ═══ 4. HAVE A BOOKING? ═══ */}
+      <motion.div style={{ marginTop: '48px' }} {...sectionAnim(0.20)}>
+        <div
+          style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '24px',
+            boxShadow: '0 2px 16px rgba(28,26,23,0.08)',
+            border: '1px solid var(--border)',
+          }}
         >
-          HAVE A BOOKING?
-        </p>
-        <p
-          className="text-[14px] max-w-sm leading-relaxed mt-2 mb-6"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          Enter your hotel booking reference to unlock your personal concierge
-          experience.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
-          <div className="reference-glow flex-1 rounded-xl">
-            <input
-              type="text"
-              placeholder="e.g. MBS-A1B2C3D4"
-              value={bookingRef}
-              onChange={(e: { target: { value: string } }) => setBookingRef(e.target.value)}
-              aria-label="Enter booking reference number"
-              className="w-full rounded-xl px-5 py-3.5 text-[14px] outline-none transition-colors duration-300"
-              style={{
-                background: 'var(--input-bg)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--input-border)',
-              }}
-            />
-          </div>
-
+          <p
+            style={{
+              fontSize: '11px',
+              fontFamily: 'DM Sans, sans-serif',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.18em',
+              color: 'var(--gold)',
+              marginBottom: '8px',
+            }}
+          >
+            HAVE A BOOKING?
+          </p>
+          <p
+            style={{
+              fontSize: '14px',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.6,
+              marginBottom: '20px',
+            }}
+          >
+            Enter your hotel booking reference to unlock your personal concierge
+            experience.
+          </p>
+          <input
+            type="text"
+            placeholder="e.g. MBS-A1B2C3D4"
+            value={bookingRef}
+            onChange={(e: { target: { value: string } }) =>
+              setBookingRef(e.target.value)
+            }
+            aria-label="Enter booking reference number"
+            className="reference-glow"
+            style={{
+              display: 'block',
+              width: '100%',
+              height: '50px',
+              borderRadius: '12px',
+              background: 'var(--surface-raised)',
+              border: '1.5px solid var(--border)',
+              padding: '0 16px',
+              fontSize: '15px',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              marginBottom: '12px',
+              boxSizing: 'border-box',
+            }}
+          />
           <button
             type="button"
             onClick={onAddStay}
             disabled={!bookingRef.trim()}
-            className="px-6 py-3.5 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out cursor-pointer disabled:cursor-not-allowed"
-            style={
-              bookingRef.trim()
-                ? { background: 'var(--gold)', color: '#FFFFFF' }
+            style={{
+              display: 'block',
+              width: '100%',
+              height: '50px',
+              borderRadius: '12px',
+              fontSize: '15px',
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+              cursor: bookingRef.trim() ? 'pointer' : 'not-allowed',
+              border: 'none',
+              ...(bookingRef.trim()
+                ? { background: 'var(--gold)', color: 'white' }
                 : {
                     background: 'var(--surface-raised)',
                     color: 'var(--text-faint)',
-                  }
-            }
+                  }),
+            }}
           >
-            Activate Stay
+            {bookingRef.trim() ? 'Activate Stay →' : 'Activate Stay'}
           </button>
         </div>
       </motion.div>
 
-      {/* ═══ D) REGION EXPLORE SECTION ═══ */}
-      <motion.div className="px-5 sm:px-8 pb-12" {...scrollRevealProps}>
+      {/* ═══ 5. EXPLORE BY DESTINATION ═══ */}
+      <motion.div style={{ marginTop: '40px' }} {...sectionAnim(0.26)}>
         <p
-          className="text-[10px] uppercase mb-2 font-medium"
-          style={{ color: 'var(--gold)', letterSpacing: '0.25em' }}
+          style={{
+            fontSize: '11px',
+            fontFamily: 'DM Sans, sans-serif',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.18em',
+            color: 'var(--gold)',
+          }}
         >
           EXPLORE BY DESTINATION
         </p>
         <p
-          className="text-[13px] mb-5"
-          style={{ color: 'var(--text-secondary)' }}
+          style={{
+            fontSize: '14px',
+            color: 'var(--text-secondary)',
+            margin: '8px 0 16px',
+          }}
         >
-          Browse places, restaurants, and experiences across our partner
-          destinations.
+          Browse places across our partner destinations.
         </p>
 
-        <div className="flex flex-wrap gap-2">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {regions.map((region: RegionData) => {
             const isSelected = selectedRegion === region.id;
             return (
@@ -695,18 +898,32 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                 onClick={() =>
                   setSelectedRegion(isSelected ? null : region.id)
                 }
-                className="px-4 py-2 rounded-full text-[12px] outline-none cursor-pointer"
                 style={{
-                  background: isSelected
-                    ? 'var(--gold-subtle)'
-                    : 'var(--surface-raised)',
+                  height: '36px',
+                  padding: '0 14px',
+                  borderRadius: '999px',
+                  fontSize: '13px',
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontWeight: isSelected ? 600 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: isSelected ? 'rgba(193,127,58,0.08)' : 'white',
                   border: `1px solid ${isSelected ? 'var(--gold)' : 'var(--border)'}`,
                   color: isSelected ? 'var(--gold)' : 'var(--text-secondary)',
-                  transition:
-                    'background 250ms ease, border-color 250ms ease, color 250ms ease',
+                  boxShadow: isSelected
+                    ? 'none'
+                    : '0 1px 4px rgba(28,26,23,0.06)',
+                  outline: 'none',
                 }}
               >
-                {region.country_code ? `${countryFlag(region.country_code)} ` : ''}
+                {region.country_code ? (
+                  <span style={{ fontSize: '14px' }}>
+                    {countryFlag(region.country_code)}
+                  </span>
+                ) : null}
                 {region.name}
               </button>
             );
@@ -714,50 +931,57 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
         </div>
 
         {selectedRegion && regionPlaces.length > 0 && (
-          <motion.div
-            className="mt-5 flex gap-3 overflow-x-auto scrollbar-hide pb-2"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.6 }}
-          >
-            {regionPlaces.map((place: PlaceChip) => (
-              <div
-                key={place.id}
-                className="flex-shrink-0 rounded-xl px-4 py-3"
-                style={{
-                  background: 'var(--card-bg)',
-                  border: '1px solid var(--card-border)',
-                  boxShadow: 'var(--card-shadow)',
-                }}
-              >
-                <p
-                  className="text-[13px] whitespace-nowrap"
-                  style={{ color: 'var(--text-primary)' }}
+          <div style={{ marginTop: '16px' }}>
+            <p
+              style={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--text-secondary)',
+                marginBottom: '10px',
+              }}
+            >
+              Places in{' '}
+              {regions.find((r: RegionData) => r.id === selectedRegion)?.name ??
+                ''}
+            </p>
+            <div
+              className="scrollbar-hide"
+              style={{ overflowX: 'auto', display: 'flex', gap: '8px' }}
+            >
+              {regionPlaces.map((place: PlaceChip) => (
+                <div
+                  key={place.id}
+                  style={{
+                    height: '34px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    background: 'white',
+                    border: '1px solid var(--border)',
+                    fontSize: '13px',
+                    color: 'var(--text-primary)',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 1px 4px rgba(28,26,23,0.06)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                  }}
                 >
                   {place.name}
-                </p>
-                {place.category && (
-                  <p
-                    className="text-[11px] mt-0.5 uppercase tracking-[0.1em]"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    {place.category}
-                  </p>
-                )}
-              </div>
-            ))}
-
-            <div className="flex-shrink-0 flex items-center px-2">
-              <Link
-                href="/select-region"
-                className="text-[12px] transition-colors whitespace-nowrap"
-                style={{ color: 'var(--gold)' }}
-              >
-                Explore all →
-              </Link>
+                  {place.category && (
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        color: 'var(--text-muted)',
+                        marginLeft: '6px',
+                      }}
+                    >
+                      {place.category}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
-          </motion.div>
+          </div>
         )}
       </motion.div>
     </div>
