@@ -514,7 +514,6 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
             viewport={{ once: true, margin: '-60px' }}
           >
             {filteredHotels.map((hotel: HotelData) => (
-              // @ts-expect-error - `key` is a React intrinsic attribute not reflected in component props
               <HotelCard key={hotel.id} hotel={hotel} />
             ))}
           </motion.div>
