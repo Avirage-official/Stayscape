@@ -268,6 +268,7 @@ function HotelCard({ hotel }: { hotel: HotelData }) {
             src={hotel.image_url}
             alt={hotel.name}
             fill
+            loading="lazy"
             className="object-cover"
             sizes="(max-width: 640px) 220px, 240px"
           />
@@ -301,7 +302,7 @@ function HotelCard({ hotel }: { hotel: HotelData }) {
             target="_blank"
             rel="noopener noreferrer"
             className="block text-[11px] text-[#C9A84C]/70 mt-2 hover:text-[#C9A84C] transition-colors"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: { stopPropagation(): void }) => e.stopPropagation()}
           >
             Book now →
           </a>
@@ -324,7 +325,6 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [regionPlaces, setRegionPlaces] = useState<PlaceChip[]>([]);
   const [bookingRef, setBookingRef] = useState('');
-  const [isSubmitting] = useState(false);
 
   /* ── Fetch hotels on mount ── */
   useEffect(() => {
@@ -334,7 +334,10 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
         setHotels(json.properties ?? []);
         setHotelsLoading(false);
       })
-      .catch(() => setHotelsLoading(false));
+      .catch((err: unknown) => {
+        console.error('[NoBookingState] Failed to fetch hotels:', err);
+        setHotelsLoading(false);
+      });
   }, []);
 
   /* ── Fetch regions on mount (Supabase browser client) ── */
@@ -346,7 +349,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
       .select('id, name, slug, country_code')
       .eq('is_active', true)
       .order('name')
-      .then(({ data }) => {
+      .then(({ data }: { data: RegionData[] | null; error: unknown }) => {
         if (data) setRegions(data as RegionData[]);
       });
   }, []);
@@ -362,13 +365,16 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
       .then((json: { data?: PlaceChip[] }) => {
         setRegionPlaces(json.data ?? []);
       })
-      .catch(() => setRegionPlaces([]));
+      .catch((err: unknown) => {
+        console.error('[NoBookingState] Failed to fetch region places:', err);
+        setRegionPlaces([]);
+      });
   }, [selectedRegion]);
 
   /* ── Filtered hotels ── */
   const filteredHotels = searchQuery
     ? hotels.filter(
-        (h) =>
+        (h: HotelData) =>
           h.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           h.country?.toLowerCase().includes(searchQuery.toLowerCase()),
       )
@@ -380,6 +386,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
       .toUpperCase()
       .slice(0, 2)
       .split('')
+      .filter((c) => c >= 'A' && c <= 'Z')
       .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
       .join('');
 
@@ -459,9 +466,10 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               type="text"
               placeholder="Search a destination…"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: { target: { value: string } }) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
+              aria-label="Search hotel destinations"
               className="flex-1 bg-transparent text-[15px] text-white/80 placeholder:text-white/30 outline-none"
             />
           </div>
@@ -498,7 +506,8 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
           >
-            {filteredHotels.map((hotel) => (
+            {filteredHotels.map((hotel: HotelData) => (
+              // @ts-expect-error - `key` is a React intrinsic attribute not reflected in component props
               <HotelCard key={hotel.id} hotel={hotel} />
             ))}
           </motion.div>
@@ -525,7 +534,8 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               type="text"
               placeholder="e.g. MBS-A1B2C3D4"
               value={bookingRef}
-              onChange={(e) => setBookingRef(e.target.value)}
+              onChange={(e: { target: { value: string } }) => setBookingRef(e.target.value)}
+              aria-label="Enter booking reference number"
               className="w-full rounded-xl bg-white/[0.07] border border-white/10 px-5 py-3.5 text-[14px] text-white/80 placeholder:text-white/25 outline-none focus:border-[#C9A84C]/40 transition-colors duration-300"
             />
           </div>
@@ -534,10 +544,10 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
           <button
             type="button"
             onClick={onAddStay}
-            disabled={!bookingRef.trim() || isSubmitting}
+            disabled={!bookingRef.trim()}
             className="px-6 py-3.5 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out cursor-pointer disabled:cursor-not-allowed"
             style={
-              bookingRef.trim() && !isSubmitting
+              bookingRef.trim()
                 ? { background: '#C9A84C', color: '#000' }
                 : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.25)' }
             }
@@ -562,7 +572,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
 
         {/* Region pills */}
         <div className="flex flex-wrap gap-2">
-          {regions.map((region) => {
+          {regions.map((region: RegionData) => {
             const isSelected = selectedRegion === region.id;
             return (
               <button
@@ -599,7 +609,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.6 }}
           >
-            {regionPlaces.map((place) => (
+            {regionPlaces.map((place: PlaceChip) => (
               <div
                 key={place.id}
                 className="flex-shrink-0 rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-3"
