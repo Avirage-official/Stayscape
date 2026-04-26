@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const router = useRouter();
@@ -22,12 +21,12 @@ export default function Header() {
 
       {/* Centre wordmark */}
       <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-        <span className="font-serif text-[18px] text-[#C9A84C] tracking-[0.06em]">Stayscape</span>
+        <span className="font-serif text-[18px] text-[#C17F3A] tracking-[0.06em]">Stayscape</span>
         <span className="text-[9px] text-white/35 tracking-[0.22em] uppercase mt-0.5">Concierge</span>
       </div>
 
-      {/* Right */}
-      <ThemeToggle />
+      {/* Right — spacer to keep wordmark centered */}
+      <span aria-hidden="true" className="w-[14px]" />
     </header>
   );
 }

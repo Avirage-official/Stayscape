@@ -4,122 +4,149 @@
 @config "../../tailwind.config.ts";
 
 :root,
-[data-theme="dark"] {
-  --background: #0A0A0A;
-  --foreground: #F5F5F0;
-  --gold: #C9A84C;
-  --gold-soft: #B89B3E;
-  --charcoal: #131313;
-  --charcoal-light: #1A1A1A;
-  --surface: #151515;
-  --surface-raised: #1C1C1C;
-  --border: #222222;
-  --border-subtle: #1C1C1C;
-  --header-bg: #0C0C0C;
-  --header-border: #181818;
-  --panel-bg: #0F0F0F;
-  --card-bg: #141414;
-  --card-border: #1C1C1C;
-  --input-bg: #141414;
-  --text-primary: #E8E6E1;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
-  --text-faint: #4B5563;
-  --text-dim: #374151;
+[data-theme="light"] {
+  /* Core */
+  --background: #FAF8F5;
+  --foreground: #1C1A17;
+  --gold: #C17F3A;
+  --gold-soft: #D4956A;
+  --gold-muted: #E8C9A8;
+  --gold-subtle: rgba(193,127,58,0.10);
 
-  /* Dashboard / post-login brighter variants */
-  --dashboard-bg: #111114;
-  --dashboard-card-bg: #1A1A1E;
-  --dashboard-card-border: #27272C;
-  --dashboard-surface-raised: #222226;
-  --dashboard-header-bg: #131316;
-  --dashboard-header-border: #1E1E22;
-  --dashboard-text-primary: #F0EEE9;
-  --dashboard-text-secondary: #B0B5BF;
-  --dashboard-text-muted: #8890A0;
-  --dashboard-text-faint: #626A7A;
-  --dashboard-text-dim: #4A5060;
-  --dashboard-border-subtle: #232328;
-  --dashboard-input-bg: #1A1A1E;
-  --map-bg: #0A0E13;
-  --map-label-bg: #111519;
-  --map-zoom-bg: #111519;
-  --map-zoom-border: #1C2230;
-  --tab-hover: #161616;
-  --discover-bg: #0E0F14;
-  --discover-surface: #171922;
-  --discover-card: #1D2030;
-  --discover-border: #2A2E42;
-  --discover-gold: #C8A85A;
-  --discover-title: #E8E6E1;
-  --discover-body: #8B8D98;
-  --discover-gold-5: rgba(200, 168, 90, 0.05);
-  --discover-gold-8: rgba(200, 168, 90, 0.08);
-  --discover-gold-12: rgba(200, 168, 90, 0.12);
-  --discover-gold-15: rgba(200, 168, 90, 0.15);
-  --discover-gold-20: rgba(200, 168, 90, 0.2);
-  --discover-gold-25: rgba(200, 168, 90, 0.25);
-  --discover-bg-overlay: rgba(14, 15, 20, 0.9);
-  --discover-active-card: #242638;
+  /* Surfaces */
+  --surface: #FFFFFF;
+  --surface-raised: #F5F2EE;
+  --charcoal: #F0EBE3;
+  --charcoal-light: #F7F4F0;
+
+  /* Borders */
+  --border: #EDE8E1;
+  --border-subtle: #F2EEE8;
+
+  /* Header */
+  --header-bg: #FFFFFF;
+  --header-border: #EDE8E1;
+
+  /* Panels & Cards */
+  --panel-bg: #FAF8F5;
+  --card-bg: #FFFFFF;
+  --card-border: #EDE8E1;
+  --card-shadow: 0 2px 12px rgba(28,26,23,0.08);
+  --card-shadow-hover: 0 8px 32px rgba(28,26,23,0.14);
+
+  /* Inputs */
+  --input-bg: #FFFFFF;
+  --input-border: #EDE8E1;
+  --input-focus-ring: rgba(193,127,58,0.15);
+
+  /* Text */
+  --text-primary: #1C1A17;
+  --text-secondary: #6B6158;
+  --text-muted: #9E9389;
+  --text-faint: #C4BBB2;
+  --text-dim: #D8D2CB;
+
+  /* Dashboard (same as core in light mode) */
+  --dashboard-bg: #FAF8F5;
+  --dashboard-card-bg: #FFFFFF;
+  --dashboard-card-border: #EDE8E1;
+  --dashboard-surface-raised: #F5F2EE;
+  --dashboard-header-bg: #FFFFFF;
+  --dashboard-header-border: #EDE8E1;
+  --dashboard-text-primary: #1C1A17;
+  --dashboard-text-secondary: #6B6158;
+  --dashboard-text-muted: #9E9389;
+  --dashboard-text-faint: #C4BBB2;
+  --dashboard-text-dim: #D8D2CB;
+  --dashboard-border-subtle: #F2EEE8;
+  --dashboard-input-bg: #FFFFFF;
+
+  /* Map (always dark) */
+  --map-bg: #0F0E0C;
+  --map-label-bg: #1A1714;
+  --map-zoom-bg: #1A1714;
+  --map-zoom-border: #2A2520;
+
+  /* Discover (always dark) */
+  --discover-bg: #0F0E0C;
+  --discover-surface: #1A1714;
+  --discover-card: #221E18;
+  --discover-border: #2E2820;
+  --discover-gold: #C17F3A;
+  --discover-title: #F0EBE3;
+  --discover-body: #9E9389;
+  --discover-gold-5: rgba(193,127,58,0.05);
+  --discover-gold-8: rgba(193,127,58,0.08);
+  --discover-gold-12: rgba(193,127,58,0.12);
+  --discover-gold-15: rgba(193,127,58,0.15);
+  --discover-gold-20: rgba(193,127,58,0.20);
+  --discover-gold-25: rgba(193,127,58,0.25);
+  --discover-bg-overlay: rgba(15,14,12,0.90);
+  --discover-active-card: #2A2418;
+
+  /* Status */
+  --success: #4A7C59;
+  --error: #C14A3A;
+
+  /* Tab bar */
+  --tab-bg: #FFFFFF;
+  --tab-border: #EDE8E1;
+  --tab-active: #C17F3A;
+  --tab-inactive: #9E9389;
+  --tab-hover: #F5F2EE;
 }
 
-[data-theme="light"] {
-  --background: #F8F7F4;
-  --foreground: #1A1A1A;
-  --gold: #B8941F;
-  --gold-soft: #A68518;
-  --charcoal: #F0EDE6;
-  --charcoal-light: #E8E4DC;
+/* Dark mode — ONLY used for map and discover sections */
+[data-theme="dark"] {
+  --background: #FAF8F5;
+  --foreground: #1C1A17;
+  --gold: #C17F3A;
+  --gold-soft: #D4956A;
+  --gold-muted: #E8C9A8;
   --surface: #FFFFFF;
-  --surface-raised: #F5F3EE;
-  --border: #E0DCD3;
-  --border-subtle: #EAE7E0;
-  --header-bg: #FAFAF8;
-  --header-border: #E8E5DC;
-  --panel-bg: #F7F6F3;
+  --surface-raised: #F5F2EE;
+  --border: #EDE8E1;
+  --border-subtle: #F2EEE8;
+  --header-bg: #FFFFFF;
+  --header-border: #EDE8E1;
+  --panel-bg: #FAF8F5;
   --card-bg: #FFFFFF;
-  --card-border: #E8E5DC;
+  --card-border: #EDE8E1;
   --input-bg: #FFFFFF;
-  --text-primary: #1A1A1A;
-  --text-secondary: #555555;
-  --text-muted: #777777;
-  --text-faint: #999999;
-  --text-dim: #BBBBBB;
-
-  /* Dashboard / post-login brighter variants — light theme */
-  --dashboard-bg: #FDFCFA;
+  --text-primary: #1C1A17;
+  --text-secondary: #6B6158;
+  --text-muted: #9E9389;
+  --text-faint: #C4BBB2;
+  --text-dim: #D8D2CB;
+  --dashboard-bg: #FAF8F5;
   --dashboard-card-bg: #FFFFFF;
-  --dashboard-card-border: #E0DCD3;
-  --dashboard-surface-raised: #F5F3EE;
-  --dashboard-header-bg: #FAFAF8;
-  --dashboard-header-border: #E8E5DC;
-  --dashboard-text-primary: #111111;
-  --dashboard-text-secondary: #444444;
-  --dashboard-text-muted: #666666;
-  --dashboard-text-faint: #888888;
-  --dashboard-text-dim: #AAAAAA;
-  --dashboard-border-subtle: #E4E0D8;
+  --dashboard-card-border: #EDE8E1;
+  --dashboard-surface-raised: #F5F2EE;
+  --dashboard-header-bg: #FFFFFF;
+  --dashboard-header-border: #EDE8E1;
+  --dashboard-text-primary: #1C1A17;
+  --dashboard-text-secondary: #6B6158;
+  --dashboard-text-muted: #9E9389;
+  --dashboard-text-faint: #C4BBB2;
+  --dashboard-text-dim: #D8D2CB;
+  --dashboard-border-subtle: #F2EEE8;
   --dashboard-input-bg: #FFFFFF;
-  --map-bg: #0A0E13;
-  --map-label-bg: #111519;
-  --map-zoom-bg: #111519;
-  --map-zoom-border: #1C2230;
-  --tab-hover: #F0EDE6;
-  --discover-bg: #F5F4F1;
-  --discover-surface: #FFFFFF;
-  --discover-card: #FFFFFF;
-  --discover-border: #E0DDD5;
-  --discover-gold: #B08D20;
-  --discover-title: #1A1A1A;
-  --discover-body: #666666;
-  --discover-gold-5: rgba(176, 141, 32, 0.06);
-  --discover-gold-8: rgba(176, 141, 32, 0.08);
-  --discover-gold-12: rgba(176, 141, 32, 0.12);
-  --discover-gold-15: rgba(176, 141, 32, 0.15);
-  --discover-gold-20: rgba(176, 141, 32, 0.2);
-  --discover-gold-25: rgba(176, 141, 32, 0.25);
-  --discover-bg-overlay: rgba(245, 244, 241, 0.9);
-  --discover-active-card: #F0EDE4;
+  --map-bg: #0F0E0C;
+  --map-label-bg: #1A1714;
+  --map-zoom-bg: #1A1714;
+  --map-zoom-border: #2A2520;
+  --discover-bg: #0F0E0C;
+  --discover-surface: #1A1714;
+  --discover-card: #221E18;
+  --discover-border: #2E2820;
+  --discover-gold: #C17F3A;
+  --discover-title: #F0EBE3;
+  --discover-body: #9E9389;
+  --tab-bg: #FFFFFF;
+  --tab-border: #EDE8E1;
+  --tab-active: #C17F3A;
+  --tab-inactive: #9E9389;
+  --tab-hover: #F5F2EE;
 }
 
 body {
@@ -210,14 +237,36 @@ body {
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.3s; }
 
+/* Warm shimmer skeleton */
+@keyframes warmShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton-warm {
+  background: linear-gradient(
+    90deg,
+    #F5F2EE 25%,
+    #EDE8E1 50%,
+    #F5F2EE 75%
+  );
+  background-size: 200% 100%;
+  animation: warmShimmer 1.8s ease-in-out infinite;
+}
+
 /* Booking reference input attention glow */
 @keyframes referenceGlow {
-  0%   { box-shadow: 0 0 0 0   rgba(201,168,76,0); }
-  40%  { box-shadow: 0 0 0 8px rgba(201,168,76,0.18); }
-  100% { box-shadow: 0 0 0 0   rgba(201,168,76,0); }
+  0%   { box-shadow: 0 0 0 0   rgba(193,127,58,0); }
+  40%  { box-shadow: 0 0 0 8px rgba(193,127,58,0.18); }
+  100% { box-shadow: 0 0 0 0   rgba(193,127,58,0); }
 }
 .reference-glow {
   animation: referenceGlow 1.2s ease-out 2.5s both;
+}
+
+/* Tab indicator slide-in */
+@keyframes tabIndicator {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
 }
 
 /* Gold check pulse for preference update confirmation */

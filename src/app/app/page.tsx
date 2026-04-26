@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import CustomerPanel from '@/components/CustomerPanel';
 import TravelAssistantPanel from '@/components/TravelAssistantPanel';
@@ -17,15 +17,24 @@ import { RegionProvider, useRegion } from '@/lib/context/region-context';
 import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
+import WarmBottomTabBar from '@/components/guest-lounge/WarmBottomTabBar';
 
 type ActiveTab = 'concierge' | 'discover' | 'itinerary';
 type MobileView = 'guest' | 'assistant';
 
-export default function Home() {
+const ACCENT_GOLD = '#C17F3A';
+
+function HomeInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { region: globalRegion } = useRegion();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<ActiveTab>('concierge');
+
+  // URL ?tab=map opens the concierge layout (which renders the map panel);
+  // any other value (or unset) defaults to the discover tab.
+  const initialTab: ActiveTab =
+    searchParams?.get('tab') === 'map' ? 'concierge' : 'discover';
+  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [regionSetupFailed, setRegionSetupFailed] = useState(false);
@@ -34,21 +43,16 @@ export default function Home() {
   const prevAwaitingRegionRef = useRef(false);
   const MAX_REGION_POLL_ATTEMPTS = 10;
 
-  // Derive region from the selected stay's property — this takes precedence over localStorage
   const selectedStay = dashboardData?.upcomingStay ?? null;
   const stayRegion = selectedStay ? getStaySelectedRegion(selectedStay) : null;
-
-  // Whether we are waiting for a region to be created in the background
   const awaitingRegion = selectedStay !== null && stayRegion === null && !regionSetupFailed;
 
-  /* Redirect to region selection only when no stay exists AND no global region */
   useEffect(() => {
     if (selectedStay === null && stayRegion === null && globalRegion === null) {
       router.replace('/select-region');
     }
   }, [selectedStay, stayRegion, globalRegion, router]);
 
-  /* Fetch dashboard / stay data when user is available */
   useEffect(() => {
     if (!user?.id) return;
     fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
@@ -59,13 +63,11 @@ export default function Home() {
       .catch(() => {});
   }, [user?.id]);
 
-  /* Poll every 5 s while waiting for region creation to complete */
   useEffect(() => {
     if (!awaitingRegion || !user?.id) {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       return;
     }
-    // Reset attempt counter only when awaitingRegion transitions false → true
     if (!prevAwaitingRegionRef.current) {
       pollAttemptsRef.current = 0;
     }
@@ -98,14 +100,13 @@ export default function Home() {
     };
   }, [awaitingRegion, user?.id]);
 
-  /* Loading overlay — shown while region is being created */
   const city = selectedStay?.property?.city ?? null;
   const loadingOverlay = regionSetupFailed ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="rounded-2xl bg-black/80 border border-white/10 px-10 py-10 flex flex-col items-center gap-4 max-w-sm w-full mx-4 text-center shadow-2xl">
         <span
           className="inline-block w-12 h-12 rounded-full"
-          style={{ backgroundColor: '#C9A84C', opacity: 0.85 }}
+          style={{ backgroundColor: ACCENT_GOLD, opacity: 0.85 }}
         />
         <h2 className="text-white text-lg font-semibold tracking-wide">
           We&apos;re still setting up your destination.
@@ -116,8 +117,8 @@ export default function Home() {
         <button
           type="button"
           onClick={() => setRegionSetupFailed(false)}
-          className="mt-2 px-6 py-2 rounded-full text-sm font-medium tracking-wide text-black cursor-pointer"
-          style={{ backgroundColor: '#C9A84C' }}
+          className="mt-2 px-6 py-2 rounded-full text-sm font-medium tracking-wide text-white cursor-pointer"
+          style={{ backgroundColor: ACCENT_GOLD }}
         >
           Continue anyway
         </button>
@@ -126,10 +127,9 @@ export default function Home() {
   ) : awaitingRegion ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="rounded-2xl bg-black/80 border border-white/10 px-10 py-10 flex flex-col items-center gap-4 max-w-sm w-full mx-4 text-center shadow-2xl">
-        {/* Gold pulse ring */}
         <span
           className="inline-block w-12 h-12 rounded-full animate-pulse"
-          style={{ backgroundColor: '#C9A84C', opacity: 0.85 }}
+          style={{ backgroundColor: ACCENT_GOLD, opacity: 0.85 }}
         />
         <h2 className="text-white text-lg font-semibold tracking-wide">
           {city ? `Setting up your ${city} experience…` : 'Setting up your experience…'}
@@ -144,54 +144,76 @@ export default function Home() {
   const pageContent = (
     <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>
       {loadingOverlay}
-      {/* Cinematic background */}
+      {/* Cinematic background — discover/map keeps dark aesthetic */}
       <div className="fixed inset-0 -z-10">
         <Image
-            src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80&auto=format&fit=crop"
-            alt=""
-            fill
-            className="object-cover"
-            priority
-          />
-        <div className="absolute inset-0 bg-black/55" />
+          src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&q=80&auto=format&fit=crop"
+          alt=""
+          fill
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0" style={{ background: 'rgba(15,14,12,0.65)' }} />
       </div>
 
-      <div className="relative flex flex-col h-screen overflow-hidden">
+      <div
+        className="relative flex flex-col h-screen overflow-hidden"
+        data-theme="dark"
+      >
         <Header />
 
         {/* Tab bar */}
-        <div className="flex items-center px-5 sm:px-8 h-[42px] bg-black/50 border-b border-white/10 flex-shrink-0 gap-6">
-          {(['concierge', 'discover', 'itinerary'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`h-full flex items-center text-[11px] tracking-[0.14em] uppercase font-medium border-b-2 transition-colors duration-200 cursor-pointer ${
-                activeTab === tab
-                  ? 'text-[#C9A84C] border-[#C9A84C]'
-                  : 'text-white/45 border-transparent hover:text-white/75'
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div
+          className="flex items-center px-5 sm:px-8 h-[42px] border-b flex-shrink-0 gap-6"
+          style={{
+            background: 'rgba(15,14,12,0.50)',
+            borderColor: 'rgba(255,255,255,0.10)',
+          }}
+        >
+          {(['concierge', 'discover', 'itinerary'] as const).map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className="h-full flex items-center text-[11px] tracking-[0.14em] uppercase font-medium border-b-2 transition-colors duration-200 cursor-pointer"
+                style={{
+                  color: isActive ? ACCENT_GOLD : 'rgba(255,255,255,0.45)',
+                  borderColor: isActive ? ACCENT_GOLD : 'transparent',
+                }}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            );
+          })}
         </div>
 
         {/* Mobile sub-nav */}
         {activeTab === 'concierge' && (
-          <div className="lg:hidden flex items-center justify-around h-[48px] bg-black/50 border-b border-white/10 flex-shrink-0">
-            {(['guest', 'assistant'] as const).map((view) => (
-              <button
-                key={view}
-                type="button"
-                onClick={() => setMobileView(view)}
-                className={`flex items-center justify-center gap-1.5 flex-1 h-full text-[11px] font-medium tracking-wide transition-colors duration-200 cursor-pointer uppercase ${
-                  mobileView === view ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/70'
-                }`}
-              >
-                {view.charAt(0).toUpperCase() + view.slice(1)}
-              </button>
-            ))}
+          <div
+            className="lg:hidden flex items-center justify-around h-[48px] border-b flex-shrink-0"
+            style={{
+              background: 'rgba(15,14,12,0.50)',
+              borderColor: 'rgba(255,255,255,0.10)',
+            }}
+          >
+            {(['guest', 'assistant'] as const).map((view) => {
+              const isActive = mobileView === view;
+              return (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setMobileView(view)}
+                  className="flex items-center justify-center gap-1.5 flex-1 h-full text-[11px] font-medium tracking-wide transition-colors duration-200 cursor-pointer uppercase"
+                  style={{
+                    color: isActive ? ACCENT_GOLD : 'rgba(255,255,255,0.40)',
+                  }}
+                >
+                  {view.charAt(0).toUpperCase() + view.slice(1)}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -201,7 +223,6 @@ export default function Home() {
             <ErrorBoundary fallbackTitle="Map & Concierge">
               <div className="flex flex-1 flex-col overflow-hidden">
                 <div className="flex flex-1 overflow-hidden">
-                  {/* Left — Guest panel */}
                   <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[38%] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
                     <CustomerPanel
                       stayId={dashboardData?.upcomingStay?.id}
@@ -214,7 +235,6 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* Center — Timeline + quick actions */}
                   <div className="hidden lg:flex lg:w-[24%] flex-col overflow-y-auto scrollbar-hide border-r border-white/10 bg-black/70 p-4 gap-4">
                     <ItineraryTimeline />
                     <QuickActions
@@ -223,7 +243,6 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* Right — AI Assistant */}
                   <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 flex-col overflow-hidden bg-black/70`}>
                     <TravelAssistantPanel
                       selectedPlace={null}
@@ -251,15 +270,24 @@ export default function Home() {
             </ErrorBoundary>
           )}
         </main>
+
+        {/* Warm bottom tab bar — consistent across the whole app */}
+        <WarmBottomTabBar />
       </div>
     </ItineraryProvider>
   );
 
-  // When the selected stay has a region, wrap the page in a scoped RegionProvider
-  // so Discover, map and curation use the stay's region instead of the global localStorage value.
   return stayRegion ? (
-    <RegionProvider initialRegion={stayRegion}>
-      {pageContent}
-    </RegionProvider>
-  ) : pageContent;
+    <RegionProvider initialRegion={stayRegion}>{pageContent}</RegionProvider>
+  ) : (
+    pageContent
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
+  );
 }

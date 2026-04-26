@@ -10,7 +10,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
 });
 
@@ -19,12 +19,9 @@ export function useTheme() {
 }
 
 function getInitialTheme(): Theme {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('stayscape-theme');
-    if (stored === 'light' || stored === 'dark') return stored;
-    if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
-  }
-  return 'dark';
+  // Always default to light. The dark scheme is reserved for the map/discover
+  // surfaces which set data-theme="dark" locally on their own containers.
+  return 'light';
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
