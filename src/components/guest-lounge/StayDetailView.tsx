@@ -333,7 +333,9 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
           setHotelAmenities(data.context.amenities);
         }
       })
-      .catch(() => null);
+      .catch((err) => {
+        console.error('[StayDetailView] Failed to load hotel amenities:', err);
+      });
   }, [stay.property?.id]);
 
   /* ─ Derived values ─ */

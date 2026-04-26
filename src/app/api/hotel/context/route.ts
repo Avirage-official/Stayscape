@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const propertyId = searchParams.get('propertyId');
 
-  if (!propertyId || typeof propertyId !== 'string') {
+  if (!propertyId) {
     return NextResponse.json(
       { error: 'Missing required query parameter: propertyId' },
       { status: 400 },

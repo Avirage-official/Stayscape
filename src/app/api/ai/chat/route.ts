@@ -158,7 +158,7 @@ async function buildSystemPrompt(
 
   // Layer 4a — Hotel knowledge (amenities + policies)
   try {
-    const propertyId = (stay.properties as { id?: string } | null)?.id ?? null;
+    const propertyId = stay.properties?.id ?? null;
     if (propertyId) {
       const hotelCtx = await getHotelContext(supabase, propertyId);
 
