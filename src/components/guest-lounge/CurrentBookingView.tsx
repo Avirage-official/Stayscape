@@ -361,7 +361,6 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
   /* ── Fetch region places when selection changes ── */
   useEffect(() => {
     if (!selectedRegion) {
-      setRegionPlaces([]);
       return;
     }
     fetch(`/api/places?region_id=${encodeURIComponent(selectedRegion)}&limit=8`)
@@ -688,86 +687,7 @@ function ConciergeActionPill({
   );
 }
 
-/** Grounded section — translucent panel for lower content areas. */
-function GroundedSection({
-  label,
-  description,
-  children,
-  fadeIn,
-  delay,
-}: {
-  label: string;
-  description: string;
-  children: React.ReactNode;
-  fadeIn: (d: number) => Record<string, unknown>;
-  delay: number;
-}) {
-  return (
-    <motion.section
-      className="mb-12 sm:mb-16 rounded-2xl px-6 sm:px-8 py-7 sm:py-9"
-      style={{
-        background: 'rgba(0,0,0,0.30)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        border: '1px solid rgba(255,255,255,0.05)',
-      }}
-      {...fadeIn(delay)}
-    >
-      <p className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-semibold mb-3">
-        {label}
-      </p>
-      <p className="text-[14px] sm:text-[15px] text-white/55 mb-6 max-w-lg leading-relaxed">
-        {description}
-      </p>
-      <div className="flex flex-wrap gap-3">
-        {children}
-      </div>
-    </motion.section>
-  );
-}
 
-/** Editorial external link — refined translucent pill with premium feel. */
-function EditorialLink({
-  label,
-  href,
-}: {
-  label: string;
-  href: string;
-}) {
-  const isExternal = href.startsWith('http');
-  const Tag = isExternal ? 'a' : Link;
-  const externalProps = isExternal
-    ? { target: '_blank' as const, rel: 'noopener noreferrer' }
-    : {};
-
-  return (
-    <Tag
-      href={href}
-      {...externalProps}
-      className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.08] border border-white/[0.12] text-[13px] text-white/60 font-medium backdrop-blur-sm hover:bg-white/[0.14] hover:text-white/85 hover:border-white/20 focus-visible:ring-1 focus-visible:ring-white/25 focus-visible:outline-none transition-all duration-300"
-      style={{ textDecoration: 'none' }}
-    >
-      {label}
-      {isExternal && (
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="opacity-50 group-hover:opacity-80 transition-opacity duration-300"
-        >
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-          <polyline points="15 3 21 3 21 9" />
-          <line x1="10" y1="14" x2="21" y2="3" />
-        </svg>
-      )}
-    </Tag>
-  );
-}
 
 /* ─── Icons ─── */
 
@@ -810,51 +730,6 @@ function CalendarIcon() {
   );
 }
 
-function VisaIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-    </svg>
-  );
-}
-
-function WeatherIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-    </svg>
-  );
-}
-
-function TransportIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="14" rx="2" />
-      <path d="M3 17h18" />
-      <path d="M8 21h8" />
-      <path d="M12 17v4" />
-    </svg>
-  );
-}
-
-function CurrencyIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="6" x2="12" y2="18" />
-      <path d="M9 10c0-1.1.9-2 2-2h2a2 2 0 010 4h-2a2 2 0 000 4h2a2 2 0 002-2" />
-    </svg>
-  );
-}
 
 /* ─── Main Export ─── */
 
