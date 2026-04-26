@@ -26,6 +26,9 @@ const IMG = {
 const UNSPLASH_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
+const MOOD_IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1520250497591-112753be183e?w=400&q=80';
+
 /* ─── Helpers ─── */
 
 function formatShortDate(iso: string): string {
@@ -569,8 +572,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                 sizes="120px"
                 loading="lazy"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1520250497591-112753be183e?w=400&q=80';
+                  (e.target as HTMLImageElement).src = MOOD_IMAGE_FALLBACK;
                 }}
               />
             </div>
@@ -684,8 +686,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                       className="object-cover"
                       sizes="160px"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1520250497591-112753be183e?w=400&q=80';
+                        (e.target as HTMLImageElement).src = MOOD_IMAGE_FALLBACK;
                       }}
                     />
                   ) : (
@@ -760,7 +761,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                         style={{
                           display: 'block',
                           fontSize: '11px',
-                          color: '#D4956A',
+                          color: 'var(--gold-muted)',
                           marginTop: '6px',
                         }}
                         onClick={(e: { stopPropagation(): void }) =>
@@ -841,6 +842,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
             type="button"
             onClick={onAddStay}
             disabled={!bookingRef.trim()}
+            aria-label="Activate Stay"
             style={{
               display: 'block',
               width: '100%',
