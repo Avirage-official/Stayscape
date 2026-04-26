@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData, CustomerStay } from '@/types/customer';
 
+import CurrentBookingView from '@/components/guest-lounge/CurrentBookingView';
 import PostLoginHero from '@/components/guest-lounge/PostLoginHero';
 import HeroTopNav from '@/components/guest-lounge/HeroTopNav';
 import ConciergePrompt from '@/components/guest-lounge/ConciergePrompt';
@@ -211,23 +212,8 @@ function GuestArrivalContent({
         {loadState === 'ready' && data && (
           <>
             {activeStays.length === 0 && pastStays.length === 0 ? (
-              /* ── No stay yet: show a clean empty state ── */
-              <div className="h-full flex flex-col items-center justify-center gap-6 px-6">
-                <div className="text-center space-y-3 max-w-sm">
-                  <p className="font-serif text-2xl text-white/80">Welcome, {firstName}.</p>
-                  <p className="text-[14px] text-white/50 leading-relaxed">
-                    Your stay will appear here automatically once your hotel confirms your
-                    reservation. You can also add it manually.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAddStayOpen(true)}
-                  className="px-8 py-3 rounded-2xl bg-[var(--gold)] text-black text-[13px] font-semibold tracking-wide hover:bg-[var(--gold-soft)] transition-all duration-300 cursor-pointer shadow-[0_4px_24px_rgba(201,168,76,0.25)]"
-                >
-                  Add your stay
-                </button>
-              </div>
+              /* ── No stay yet: show discovery experience ── */
+              <CurrentBookingView stay={null} onAddStay={() => setAddStayOpen(true)} />
             ) : activeStays.length === 1 && pastStays.length === 0 ? (
               /* ── Exactly 1 active stay, no history: show the concierge prompt ── */
               <>

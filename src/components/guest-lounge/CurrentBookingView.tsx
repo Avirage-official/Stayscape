@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { CustomerStay } from '@/types/customer';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -197,215 +199,447 @@ function BookedState({
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   NO-BOOKING STATE — pre-stay concierge scene.
-   Cinematic background, editorial content zones, not card grids.
+   NO-BOOKING STATE — rich discovery experience.
+   Hotel partners, destination search, booking reference, region pills.
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Types ── */
+type HotelData = {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  image_url: string | null;
+  booking_url: string | null;
+};
+
+type RegionData = {
+  id: string;
+  name: string;
+  slug: string;
+  country_code: string;
+};
+
+type PlaceChip = {
+  id: string;
+  name: string;
+  category: string | null;
+};
+
+/* ── Animation constants ── */
+const CARD_EASE = [0.25, 0.46, 0.45, 0.94] as const;
+
+/* ── Card strip variants (entrance stagger) ── */
+const cardStripVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const cardItemVariants = {
+  hidden: { opacity: 0, x: 40 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.6, ease: CARD_EASE },
+  },
+};
+
+/* ── Hotel card sub-component ── */
+function HotelCard({ hotel }: { hotel: HotelData }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <motion.div
+      variants={cardItemVariants}
+      className="w-[220px] sm:w-[240px] flex-shrink-0 h-[300px] sm:h-[320px] rounded-2xl overflow-hidden relative cursor-pointer"
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+    >
+      {/* Full-bleed image with parallax */}
+      <motion.div
+        className="absolute inset-0"
+        animate={{ y: hovered ? -4 : 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+      >
+        {hotel.image_url ? (
+          <Image
+            src={hotel.image_url}
+            alt={hotel.name}
+            fill
+            loading="lazy"
+            className="object-cover"
+            sizes="(max-width: 640px) 220px, 240px"
+          />
+        ) : (
+          <div
+            className="w-full h-full"
+            style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)' }}
+          />
+        )}
+      </motion.div>
+
+      {/* Dark gradient overlay */}
+      <div
+        className="absolute inset-0 z-10"
+        style={{
+          background:
+            'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)',
+        }}
+      />
+
+      {/* Content pinned to bottom */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 p-4">
+        <p className="font-serif text-[18px] text-white leading-snug">{hotel.name}</p>
+        <p className="text-[11px] text-white/50 uppercase tracking-[0.12em] mt-1">
+          {hotel.city}
+          {hotel.country ? `, ${hotel.country}` : ''}
+        </p>
+        {hotel.booking_url && (
+          <a
+            href={hotel.booking_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-[11px] text-[#C9A84C]/70 mt-2 hover:text-[#C9A84C] transition-colors"
+            onClick={(e: { stopPropagation(): void }) => e.stopPropagation()}
+          >
+            Book now →
+          </a>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ── Main NoBookingState ── */
 function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
   const prefersReducedMotion = useReducedMotion();
 
-  const fadeIn = (delay: number) =>
+  /* ── State ── */
+  const [hotels, setHotels] = useState<HotelData[]>([]);
+  const [hotelsLoading, setHotelsLoading] = useState(true);
+  const [regions, setRegions] = useState<RegionData[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [regionPlaces, setRegionPlaces] = useState<PlaceChip[]>([]);
+  const [bookingRef, setBookingRef] = useState('');
+
+  /* ── Fetch hotels on mount ── */
+  useEffect(() => {
+    fetch('/api/customer/properties')
+      .then((res) => res.json())
+      .then((json: { properties?: HotelData[] }) => {
+        setHotels(json.properties ?? []);
+        setHotelsLoading(false);
+      })
+      .catch((err: unknown) => {
+        console.error('[NoBookingState] Failed to fetch hotels:', err);
+        setHotelsLoading(false);
+      });
+  }, []);
+
+  /* ── Fetch regions on mount (Supabase browser client) ── */
+  useEffect(() => {
+    const supabase = getSupabaseBrowser();
+    if (!supabase) return;
+    supabase
+      .from('regions')
+      .select('id, name, slug, country_code')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data, error }: { data: RegionData[] | null; error: unknown }) => {
+        if (error) {
+          console.error('[NoBookingState] Failed to fetch regions:', error);
+          return;
+        }
+        if (data) setRegions(data as RegionData[]);
+      });
+  }, []);
+
+  /* ── Fetch region places when selection changes ── */
+  useEffect(() => {
+    if (!selectedRegion) {
+      return;
+    }
+    fetch(`/api/places?region_id=${encodeURIComponent(selectedRegion)}&limit=8`)
+      .then((res) => res.json())
+      .then((json: { data?: PlaceChip[] }) => {
+        setRegionPlaces(json.data ?? []);
+      })
+      .catch((err: unknown) => {
+        console.error('[NoBookingState] Failed to fetch region places:', err);
+        setRegionPlaces([]);
+      });
+  }, [selectedRegion]);
+
+  /* ── Filtered hotels ── */
+  const filteredHotels = searchQuery
+    ? hotels.filter(
+        (h: HotelData) =>
+          h.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          h.country?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : hotels;
+
+  /* ── Country flag helper ── */
+  const countryFlag = (code: string): string => {
+    const letters = code
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
+      .slice(0, 2);
+    if (letters.length !== 2) return '';
+    return letters
+      .split('')
+      .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+      .join('');
+  };
+
+  /* ── Animation helpers ── */
+  const sectionReveal = (delay: number) =>
     prefersReducedMotion
       ? {}
       : {
-          initial: { opacity: 0, y: 14 } as const,
+          initial: { opacity: 0, y: 28 } as const,
           animate: { opacity: 1, y: 0 } as const,
-          transition: { duration: 0.9, ease: REVEAL_EASE, delay },
+          transition: {
+            duration: 0.85,
+            ease: [0.16, 1, 0.3, 1] as const,
+            delay,
+          },
         };
 
+  const scrollRevealProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 20 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, margin: '-60px' },
+        transition: { duration: 0.6 },
+      };
+
   return (
-    <div className="h-full flex flex-col items-center overflow-y-auto scrollbar-hide">
-      {/* ── Hero section — centered concierge invitation ── */}
-      <div className="flex-shrink-0 flex flex-col items-center justify-center text-center px-6 sm:px-10 pt-28 sm:pt-32 pb-14 sm:pb-20 min-h-[60vh]">
+    <div className="h-full overflow-y-auto scrollbar-hide">
+
+      {/* ═══ A) TOP SECTION — greeting + destination search ═══ */}
+      <div className="pt-24 sm:pt-28 pb-10 px-6 sm:px-10">
         <motion.p
-          className="text-[11px] text-[var(--gold)]/70 uppercase tracking-[0.25em] font-medium mb-6"
-          {...fadeIn(0.5)}
+          className="text-[10px] text-[#C9A84C] uppercase tracking-[0.25em] mb-4"
+          {...sectionReveal(0)}
         >
-          Your next journey
+          YOUR NEXT JOURNEY
         </motion.p>
 
         <motion.h1
-          className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white text-center leading-[1.1] mb-4"
-          style={{ letterSpacing: '-0.01em' }}
-          {...fadeIn(0.65)}
+          className="font-serif text-[38px] sm:text-[46px] text-white leading-tight mb-8"
+          {...sectionReveal(0.1)}
         >
-          Begin your stay
+          Where to next?
         </motion.h1>
 
-        <motion.p
-          className="text-[15px] sm:text-[16px] text-white/50 text-center max-w-md mb-10 sm:mb-14 leading-relaxed"
-          {...fadeIn(0.8)}
+        {/* Search input */}
+        <motion.div
+          layoutId="search-container"
+          layout
+          className="mx-auto transition-[max-width] duration-300 ease-out"
+          style={{ maxWidth: searchFocused ? 480 : 380 }}
+          {...sectionReveal(0.22)}
         >
-          Add your upcoming hotel stay to unlock your personal concierge
-          and a tailored guest experience.
-        </motion.p>
-
-        <motion.button
-          type="button"
-          onClick={onAddStay}
-          className="inline-flex items-center gap-2.5 h-[3.25rem] px-10 rounded-2xl bg-white/[0.10] border border-white/[0.12] text-white text-[14px] font-medium tracking-wide backdrop-blur-sm hover:bg-white/[0.16] hover:border-white/20 transition-all duration-400 cursor-pointer"
-          {...fadeIn(0.95)}
-        >
-          <PlusIcon />
-          Add Your Stay
-        </motion.button>
+          <div
+            className="flex items-center gap-3 rounded-2xl px-5 py-3.5 border transition-all duration-300"
+            style={{
+              background: searchFocused ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.07)',
+              borderColor: searchFocused ? 'rgba(201,168,76,0.40)' : 'rgba(255,255,255,0.10)',
+            }}
+          >
+            {/* Search icon */}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-white/35 flex-shrink-0"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search a destination…"
+              value={searchQuery}
+              onChange={(e: { target: { value: string } }) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              aria-label="Search hotel destinations"
+              className="flex-1 bg-transparent text-[15px] text-white/80 placeholder:text-white/30 outline-none"
+            />
+          </div>
+        </motion.div>
       </div>
 
-      {/* ── Pathway zones — grounded, editorial, not card-grid ── */}
-      <div className="w-full max-w-3xl px-6 sm:px-10 pb-16 sm:pb-24 space-y-0">
-        {/* Subtle divider */}
-        <motion.div
-          className="flex justify-center mb-14 sm:mb-20"
-          {...fadeIn(1.1)}
-        >
-          <div className="h-px w-16 bg-white/15" />
-        </motion.div>
+      {/* ═══ B) HOTEL CARDS SECTION ═══ */}
+      <motion.div {...scrollRevealProps}>
+        <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.25em] px-6 sm:px-10 mb-5">
+          PARTNER HOTELS
+        </p>
 
-        {/* ── Start Your Stay — explainer ── */}
-        <motion.section
-          className="mb-12 sm:mb-16 rounded-2xl px-6 sm:px-8 py-7 sm:py-9"
-          style={{
-            background: 'rgba(0,0,0,0.35)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-          {...fadeIn(1.15)}
-        >
-          <p className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-semibold mb-3">
-            Start your stay
+        {hotelsLoading ? (
+          /* Skeleton cards */
+          <div className="flex gap-4 overflow-x-auto scrollbar-hide px-6 sm:px-10 pb-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-[220px] sm:w-[240px] flex-shrink-0 h-[300px] rounded-2xl bg-white/[0.04] animate-pulse"
+              />
+            ))}
+          </div>
+        ) : filteredHotels.length === 0 ? (
+          <p className="text-[13px] text-white/35 text-center py-8 px-6">
+            No partner hotels found in that destination yet.
+            <br />
+            We&apos;re expanding — check back soon.
           </p>
-          <p className="text-[14px] sm:text-[15px] text-white/60 mb-5 max-w-lg leading-relaxed">
-            Adding a stay unlocks a personalised concierge layer — room details, local
-            recommendations, nearby events, and a curated map experience tailored to
-            your destination.
-          </p>
+        ) : (
+          <motion.div
+            className="flex gap-4 overflow-x-auto scrollbar-hide px-6 sm:px-10 pb-4"
+            variants={cardStripVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
+          >
+            {filteredHotels.map((hotel: HotelData) => (
+              <HotelCard key={hotel.id} hotel={hotel} />
+            ))}
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* ═══ C) BOOKING REFERENCE SECTION ═══ */}
+      <motion.div
+        className="px-6 sm:px-10 py-10"
+        {...scrollRevealProps}
+      >
+        <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.25em] mb-2">
+          HAVE A BOOKING?
+        </p>
+        <p className="text-[14px] text-white/45 max-w-sm leading-relaxed mt-2 mb-6">
+          Enter your hotel booking reference to unlock
+          your personal concierge experience.
+        </p>
+
+        <div className="flex gap-3 max-w-lg">
+          {/* Input with glow */}
+          <div className="reference-glow flex-1 rounded-xl">
+            <input
+              type="text"
+              placeholder="e.g. MBS-A1B2C3D4"
+              value={bookingRef}
+              onChange={(e: { target: { value: string } }) => setBookingRef(e.target.value)}
+              aria-label="Enter booking reference number"
+              className="w-full rounded-xl bg-white/[0.07] border border-white/10 px-5 py-3.5 text-[14px] text-white/80 placeholder:text-white/25 outline-none focus:border-[#C9A84C]/40 transition-colors duration-300"
+            />
+          </div>
+
+          {/* Activate button */}
           <button
             type="button"
             onClick={onAddStay}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/[0.10] border border-white/[0.14] text-[13px] text-white/70 font-medium tracking-wide backdrop-blur-sm hover:bg-white/[0.18] hover:border-white/24 hover:text-white/90 transition-all duration-300 cursor-pointer"
+            disabled={!bookingRef.trim()}
+            className="px-6 py-3.5 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out cursor-pointer disabled:cursor-not-allowed"
+            style={
+              bookingRef.trim()
+                ? { background: '#C9A84C', color: '#000' }
+                : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.25)' }
+            }
           >
-            <PlusIcon />
-            Add a booking
+            Activate Stay
           </button>
-        </motion.section>
+        </div>
+      </motion.div>
 
-        {/* ── Book a Hotel ── */}
-        <GroundedSection
-          label="Book a hotel"
-          description="Browse trusted platforms to find and reserve your perfect stay."
-          fadeIn={fadeIn}
-          delay={1.25}
-        >
-          <EditorialLink label="Booking.com" href="https://www.booking.com" />
-          <EditorialLink label="Hotels.com" href="https://www.hotels.com" />
-          <EditorialLink label="Agoda" href="https://www.agoda.com" />
-        </GroundedSection>
+      {/* ═══ D) REGION EXPLORE SECTION ═══ */}
+      <motion.div
+        className="px-6 sm:px-10 pb-16"
+        {...scrollRevealProps}
+      >
+        <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.25em] mb-2">
+          EXPLORE BY DESTINATION
+        </p>
+        <p className="text-[13px] text-white/40 mb-5">
+          Browse places, restaurants, and experiences
+          across our partner destinations.
+        </p>
 
-        {/* ── Check Flights ── */}
-        <GroundedSection
-          label="Check flights"
-          description="Compare fares and plan your route with leading flight search tools."
-          fadeIn={fadeIn}
-          delay={1.4}
-        >
-          <EditorialLink label="Google Flights" href="https://www.google.com/travel/flights" />
-          <EditorialLink label="Skyscanner" href="https://www.skyscanner.com" />
-          <EditorialLink label="Kayak" href="https://www.kayak.com/flights" />
-        </GroundedSection>
+        {/* Region pills */}
+        <div className="flex flex-wrap gap-2">
+          {regions.map((region: RegionData) => {
+            const isSelected = selectedRegion === region.id;
+            return (
+              <button
+                key={region.id}
+                type="button"
+                onClick={() =>
+                  setSelectedRegion(isSelected ? null : region.id)
+                }
+                className="px-4 py-2 rounded-full text-[12px] border outline-none cursor-pointer"
+                style={{
+                  background: isSelected
+                    ? 'rgba(201,168,76,0.10)'
+                    : 'rgba(255,255,255,0.05)',
+                  borderColor: isSelected
+                    ? 'rgba(201,168,76,0.30)'
+                    : 'rgba(255,255,255,0.08)',
+                  color: isSelected ? '#C9A84C' : 'rgba(255,255,255,0.50)',
+                  transition: 'background 250ms ease, border-color 250ms ease, color 250ms ease',
+                }}
+              >
+                {region.country_code ? `${countryFlag(region.country_code)} ` : ''}
+                {region.name}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* ── Prepare Your Trip ── */}
-        <GroundedSection
-          label="Prepare your trip"
-          description="Organise your itinerary, stay informed, and get ready to travel."
-          fadeIn={fadeIn}
-          delay={1.55}
-        >
-          <EditorialLink label="TripIt" href="https://www.tripit.com" />
-          <EditorialLink label="Rome2Rio" href="https://www.rome2rio.com" />
-          <EditorialLink label="Travel Off Path" href="https://www.traveloffpath.com" />
-        </GroundedSection>
+        {/* Region places strip */}
+        {selectedRegion && regionPlaces.length > 0 && (
+          <motion.div
+            className="mt-5 flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.6 }}
+          >
+            {regionPlaces.map((place: PlaceChip) => (
+              <div
+                key={place.id}
+                className="flex-shrink-0 rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-3"
+              >
+                <p className="text-[13px] text-white/65 whitespace-nowrap">{place.name}</p>
+                {place.category && (
+                  <p className="text-[11px] text-white/30 mt-0.5 uppercase tracking-[0.1em]">
+                    {place.category}
+                  </p>
+                )}
+              </div>
+            ))}
 
-        {/* ── Destination Updates ── */}
-        <GroundedSection
-          label="Destination updates"
-          description="Stay informed with local news, travel advisories, and seasonal highlights for your next destination."
-          fadeIn={fadeIn}
-          delay={1.7}
-        >
-          <EditorialLink label="Travel Off Path" href="https://www.traveloffpath.com" />
-          <EditorialLink label="The Points Guy" href="https://thepointsguy.com" />
-          <EditorialLink label="Lonely Planet" href="https://www.lonelyplanet.com" />
-        </GroundedSection>
-
-        {/* ── Travel Essentials ── */}
-        <motion.section
-          className="mb-12 sm:mb-16 rounded-2xl px-6 sm:px-8 py-7 sm:py-9"
-          style={{
-            background: 'rgba(0,0,0,0.30)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            border: '1px solid rgba(255,255,255,0.05)',
-          }}
-          {...fadeIn(1.85)}
-        >
-          <p className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-semibold mb-3">
-            Travel essentials
-          </p>
-          <p className="text-[14px] sm:text-[15px] text-white/55 mb-5 max-w-lg leading-relaxed">
-            Visa requirements, weather forecasts, local transport, and currency
-            information — all available once you add your destination stay.
-          </p>
-          <div className="flex flex-wrap gap-3 text-[12px] text-white/35 tracking-wide">
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.04]">
-              <VisaIcon /> Visa info
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.04]">
-              <WeatherIcon /> Weather
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.04]">
-              <TransportIcon /> Transport
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.04]">
-              <CurrencyIcon /> Currency
-            </span>
-          </div>
-        </motion.section>
-
-        {/* ── Itinerary Pathway ── */}
-        <motion.section
-          className="mb-10 sm:mb-14 rounded-2xl px-6 sm:px-8 py-7 sm:py-9"
-          style={{
-            background: 'rgba(0,0,0,0.30)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            border: '1px solid rgba(255,255,255,0.05)',
-          }}
-          {...fadeIn(2.0)}
-        >
-          <p className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-semibold mb-3">
-            Plan your itinerary
-          </p>
-          <p className="text-[14px] sm:text-[15px] text-white/55 mb-5 max-w-lg leading-relaxed">
-            Build a day-by-day trip plan, save places, and keep everything
-            organised for a seamless journey from arrival to departure.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <EditorialLink label="Open Planner" href="/app" />
-            <EditorialLink label="Wanderlog" href="https://wanderlog.com" />
-          </div>
-        </motion.section>
-
-        {/* Bottom whisper */}
-        <motion.div
-          className="flex justify-center pt-8 pb-6"
-          {...fadeIn(2.15)}
-        >
-          <p className="text-[12px] text-white/25 tracking-[0.14em]">
-            Your private guest experience
-          </p>
-        </motion.div>
-      </div>
+            {/* Explore all link */}
+            <div className="flex-shrink-0 flex items-center px-2">
+              <Link
+                href="/select-region"
+                className="text-[12px] text-[#C9A84C]/60 hover:text-[#C9A84C] transition-colors whitespace-nowrap"
+              >
+                Explore all →
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
     </div>
   );
 }
@@ -453,86 +687,7 @@ function ConciergeActionPill({
   );
 }
 
-/** Grounded section — translucent panel for lower content areas. */
-function GroundedSection({
-  label,
-  description,
-  children,
-  fadeIn,
-  delay,
-}: {
-  label: string;
-  description: string;
-  children: React.ReactNode;
-  fadeIn: (d: number) => Record<string, unknown>;
-  delay: number;
-}) {
-  return (
-    <motion.section
-      className="mb-12 sm:mb-16 rounded-2xl px-6 sm:px-8 py-7 sm:py-9"
-      style={{
-        background: 'rgba(0,0,0,0.30)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        border: '1px solid rgba(255,255,255,0.05)',
-      }}
-      {...fadeIn(delay)}
-    >
-      <p className="text-[11px] text-white/50 uppercase tracking-[0.22em] font-semibold mb-3">
-        {label}
-      </p>
-      <p className="text-[14px] sm:text-[15px] text-white/55 mb-6 max-w-lg leading-relaxed">
-        {description}
-      </p>
-      <div className="flex flex-wrap gap-3">
-        {children}
-      </div>
-    </motion.section>
-  );
-}
 
-/** Editorial external link — refined translucent pill with premium feel. */
-function EditorialLink({
-  label,
-  href,
-}: {
-  label: string;
-  href: string;
-}) {
-  const isExternal = href.startsWith('http');
-  const Tag = isExternal ? 'a' : Link;
-  const externalProps = isExternal
-    ? { target: '_blank' as const, rel: 'noopener noreferrer' }
-    : {};
-
-  return (
-    <Tag
-      href={href}
-      {...externalProps}
-      className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.08] border border-white/[0.12] text-[13px] text-white/60 font-medium backdrop-blur-sm hover:bg-white/[0.14] hover:text-white/85 hover:border-white/20 focus-visible:ring-1 focus-visible:ring-white/25 focus-visible:outline-none transition-all duration-300"
-      style={{ textDecoration: 'none' }}
-    >
-      {label}
-      {isExternal && (
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="opacity-50 group-hover:opacity-80 transition-opacity duration-300"
-        >
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-          <polyline points="15 3 21 3 21 9" />
-          <line x1="10" y1="14" x2="21" y2="3" />
-        </svg>
-      )}
-    </Tag>
-  );
-}
 
 /* ─── Icons ─── */
 
@@ -575,51 +730,6 @@ function CalendarIcon() {
   );
 }
 
-function VisaIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-    </svg>
-  );
-}
-
-function WeatherIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-    </svg>
-  );
-}
-
-function TransportIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="14" rx="2" />
-      <path d="M3 17h18" />
-      <path d="M8 21h8" />
-      <path d="M12 17v4" />
-    </svg>
-  );
-}
-
-function CurrencyIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="6" x2="12" y2="18" />
-      <path d="M9 10c0-1.1.9-2 2-2h2a2 2 0 010 4h-2a2 2 0 000 4h2a2 2 0 002-2" />
-    </svg>
-  );
-}
 
 /* ─── Main Export ─── */
 

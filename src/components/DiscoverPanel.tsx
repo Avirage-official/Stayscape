@@ -101,7 +101,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
   const [isAssistantLoading, setIsAssistantLoading] = useState(false);
-  const [unknownPlace, setUnknownPlace] = useState<{
+  const [unknownPlace, _setUnknownPlace] = useState<{
     name: string; address: string; lat: number; lng: number;
   } | null>(null);
   const [addUnknownPlaceOpen, setAddUnknownPlaceOpen] = useState(false);
@@ -303,7 +303,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
       [...prev, assistantMessage].slice(-MAX_ASSISTANT_MESSAGES)
     );
     setIsAssistantLoading(false);
-  }, [assistantInput, isAssistantLoading, stayId]);
+  }, [assistantInput, assistantMessages, isAssistantLoading, stayId]);
 
   const placeNameChips = useMemo(
     () => places.slice(0, 4).map((place) => place.name),

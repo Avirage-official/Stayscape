@@ -210,6 +210,16 @@ body {
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.3s; }
 
+/* Booking reference input attention glow */
+@keyframes referenceGlow {
+  0%   { box-shadow: 0 0 0 0   rgba(201,168,76,0); }
+  40%  { box-shadow: 0 0 0 8px rgba(201,168,76,0.18); }
+  100% { box-shadow: 0 0 0 0   rgba(201,168,76,0); }
+}
+.reference-glow {
+  animation: referenceGlow 1.2s ease-out 2.5s both;
+}
+
 /* Gold check pulse for preference update confirmation */
 @keyframes goldCheckPulse {
   0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.25); }

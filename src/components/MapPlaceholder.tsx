@@ -185,7 +185,7 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
   }, [filterOpen]);
 
   /* ─── Stable getter for map instance — avoids ref access during render ─── */
-  const getMap = useCallback(() => mapInstanceRef.current, []);
+  const _getMap = useCallback(() => mapInstanceRef.current, []);
 
   /* ─── Sonar ping: expanding ring at a map coordinate ─── */
   const showSonarPing = useCallback((lng: number, lat: number, color: string = ANIMATION_GREEN) => {
