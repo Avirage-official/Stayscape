@@ -787,7 +787,11 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
                           alt={hotel.name}
                           fill
                           className="object-cover"
-                          sizes="(max-width: 640px) 50vw, 33vw"
+                          sizes={
+                            isFeatured
+                              ? '(max-width: 640px) 100vw, 66vw'
+                              : '(max-width: 640px) 50vw, 33vw'
+                          }
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
                               UNSPLASH_FALLBACK;
@@ -984,7 +988,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
           {/* CTA button */}
           <motion.button
             type="button"
-            onClick={bookingRef.trim() ? onAddStay : undefined}
+            onClick={onAddStay}
             disabled={!bookingRef.trim()}
             aria-label={
               bookingRef.trim()
@@ -1001,7 +1005,6 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
               fontWeight: 600,
               transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               cursor: bookingRef.trim() ? 'pointer' : 'default',
-              pointerEvents: bookingRef.trim() ? 'auto' : 'none',
               ...(bookingRef.trim()
                 ? {
                     background:
