@@ -107,6 +107,15 @@ const defaultSelected: Record<string, Set<string>> = {
    Amenities data
    ═══════════════════════════════════════════════════════════════ */
 
+interface HotelAmenity {
+  id: string;
+  category: string;
+  name: string;
+  description: string | null;
+  availability_hours: string | null;
+  location_hint: string | null;
+}
+
 const amenityCategories = [
   {
     label: 'Bathroom',
@@ -310,6 +319,22 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
 
   /* ─ Amenities carousel state ─ */
   const [activeAmenityIdx, setActiveAmenityIdx] = useState(0);
+
+  /* ─ Hotel amenities (live data) ─ */
+  const [hotelAmenities, setHotelAmenities] = useState<HotelAmenity[]>([]);
+
+  useEffect(() => {
+    const propertyId = stay.property?.id ?? null;
+    if (!propertyId) return;
+    fetch(`/api/hotel/context?propertyId=${encodeURIComponent(propertyId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { context?: { amenities?: HotelAmenity[] } } | null) => {
+        if (data?.context?.amenities?.length) {
+          setHotelAmenities(data.context.amenities);
+        }
+      })
+      .catch(() => null);
+  }, [stay.property?.id]);
 
   /* ─ Derived values ─ */
   const nights = nightsBetween(stay.check_in, stay.check_out);
@@ -850,77 +875,170 @@ export default function StayDetailView({ stay, onBack }: StayDetailViewProps) {
             <motion.div {...fadeIn(0.4)}>
               <SectionHeading>Amenities</SectionHeading>
 
-              {/* Horizontal scroll amenity cards */}
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-                {amenityCategories.map((cat, i) => (
-                  <button
-                    key={cat.label}
-                    type="button"
-                    onClick={() => setActiveAmenityIdx(i)}
-                    className="flex-shrink-0 w-[150px] rounded-xl p-4 text-left transition-all duration-300 cursor-pointer"
-                    style={{
-                      background:
-                        activeAmenityIdx === i
-                          ? 'rgba(201,168,76,0.07)'
-                          : 'rgba(255,255,255,0.03)',
-                      border:
-                        activeAmenityIdx === i
-                          ? '1px solid rgba(201,168,76,0.22)'
-                          : '1px solid rgba(255,255,255,0.07)',
-                    }}
-                  >
-                    <div className="text-xl mb-2">{cat.icon}</div>
-                    <p
-                      className={`text-[12px] font-medium mb-2 ${
-                        activeAmenityIdx === i ? 'text-[var(--gold)]' : 'text-white/60'
-                      }`}
-                    >
-                      {cat.label}
-                    </p>
-                    <p className="text-[10px] text-white/30 leading-relaxed line-clamp-2">
-                      {cat.items.slice(0, 2).join(' · ')}
-                    </p>
-                  </button>
-                ))}
-              </div>
+              {hotelAmenities.length > 0 ? (() => {
+                /* Dynamic amenities grouped by category */
+                const groups: Record<string, HotelAmenity[]> = {};
+                for (const a of hotelAmenities) {
+                  const cat = a.category ?? 'Other';
+                  if (!groups[cat]) groups[cat] = [];
+                  groups[cat].push(a);
+                }
+                const groupKeys = Object.keys(groups);
+                const activeCategory = groupKeys[activeAmenityIdx] ?? groupKeys[0];
 
-              {/* Amenity item list */}
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {amenityCategories[activeAmenityIdx].items.map((item) => (
-                  <span
-                    key={item}
-                    className="px-2.5 py-1 rounded-[5px] text-[11px] text-white/50"
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                    }}
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
+                return (
+                  <>
+                    {/* Horizontal scroll category cards */}
+                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+                      {groupKeys.map((cat, i) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setActiveAmenityIdx(i)}
+                          className="flex-shrink-0 w-[150px] rounded-xl p-4 text-left transition-all duration-300 cursor-pointer"
+                          style={{
+                            background:
+                              activeAmenityIdx === i
+                                ? 'rgba(201,168,76,0.07)'
+                                : 'rgba(255,255,255,0.03)',
+                            border:
+                              activeAmenityIdx === i
+                                ? '1px solid rgba(201,168,76,0.22)'
+                                : '1px solid rgba(255,255,255,0.07)',
+                          }}
+                        >
+                          <p
+                            className={`text-[12px] font-medium mb-2 ${
+                              activeAmenityIdx === i ? 'text-[var(--gold)]' : 'text-white/60'
+                            }`}
+                          >
+                            {cat}
+                          </p>
+                          <p className="text-[10px] text-white/30 leading-relaxed line-clamp-2">
+                            {(groups[cat] ?? []).slice(0, 2).map((a) => a.name).join(' · ')}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
 
-              {/* Dot indicators */}
-              <div className="flex items-center justify-center gap-1.5 mt-4">
-                {amenityCategories.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setActiveAmenityIdx(i)}
-                    className="cursor-pointer transition-all duration-200"
-                    style={{
-                      width: activeAmenityIdx === i ? 18 : 6,
-                      height: 6,
-                      borderRadius: 3,
-                      background:
-                        activeAmenityIdx === i
-                          ? 'rgba(201,168,76,0.7)'
-                          : 'rgba(255,255,255,0.15)',
-                    }}
-                    aria-label={`Amenity category ${i + 1}`}
-                  />
-                ))}
-              </div>
+                    {/* Amenity item list */}
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {(groups[activeCategory] ?? []).map((item) => (
+                        <span
+                          key={item.id}
+                          className="px-2.5 py-1 rounded-[5px] text-[11px] text-white/50"
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                          }}
+                        >
+                          {item.name}
+                          {item.availability_hours && (
+                            <span className="text-white/30"> · {item.availability_hours}</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Dot indicators */}
+                    <div className="flex items-center justify-center gap-1.5 mt-4">
+                      {groupKeys.map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setActiveAmenityIdx(i)}
+                          className="cursor-pointer transition-all duration-200"
+                          style={{
+                            width: activeAmenityIdx === i ? 18 : 6,
+                            height: 6,
+                            borderRadius: 3,
+                            background:
+                              activeAmenityIdx === i
+                                ? 'rgba(201,168,76,0.7)'
+                                : 'rgba(255,255,255,0.15)',
+                          }}
+                          aria-label={`Amenity category ${i + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                );
+              })() : (
+                <>
+                  {/* Fallback: hardcoded amenityCategories */}
+                  {/* Horizontal scroll amenity cards */}
+                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+                    {amenityCategories.map((cat, i) => (
+                      <button
+                        key={cat.label}
+                        type="button"
+                        onClick={() => setActiveAmenityIdx(i)}
+                        className="flex-shrink-0 w-[150px] rounded-xl p-4 text-left transition-all duration-300 cursor-pointer"
+                        style={{
+                          background:
+                            activeAmenityIdx === i
+                              ? 'rgba(201,168,76,0.07)'
+                              : 'rgba(255,255,255,0.03)',
+                          border:
+                            activeAmenityIdx === i
+                              ? '1px solid rgba(201,168,76,0.22)'
+                              : '1px solid rgba(255,255,255,0.07)',
+                        }}
+                      >
+                        <div className="text-xl mb-2">{cat.icon}</div>
+                        <p
+                          className={`text-[12px] font-medium mb-2 ${
+                            activeAmenityIdx === i ? 'text-[var(--gold)]' : 'text-white/60'
+                          }`}
+                        >
+                          {cat.label}
+                        </p>
+                        <p className="text-[10px] text-white/30 leading-relaxed line-clamp-2">
+                          {cat.items.slice(0, 2).join(' · ')}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Amenity item list */}
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {amenityCategories[activeAmenityIdx].items.map((item) => (
+                      <span
+                        key={item}
+                        className="px-2.5 py-1 rounded-[5px] text-[11px] text-white/50"
+                        style={{
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.07)',
+                        }}
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Dot indicators */}
+                  <div className="flex items-center justify-center gap-1.5 mt-4">
+                    {amenityCategories.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setActiveAmenityIdx(i)}
+                        className="cursor-pointer transition-all duration-200"
+                        style={{
+                          width: activeAmenityIdx === i ? 18 : 6,
+                          height: 6,
+                          borderRadius: 3,
+                          background:
+                            activeAmenityIdx === i
+                              ? 'rgba(201,168,76,0.7)'
+                              : 'rgba(255,255,255,0.15)',
+                        }}
+                        aria-label={`Amenity category ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </motion.div>
 
             {/* Bottom spacing */}

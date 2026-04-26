@@ -19,6 +19,7 @@ import {
   getPastStayMemories,
 } from '@/lib/supabase/ai-memory-repository';
 import type { MemoryItem } from '@/lib/supabase/ai-memory-repository';
+import { getHotelContext } from '@/lib/supabase/hotel-repository';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-5';
@@ -38,6 +39,7 @@ interface StayRow {
   trip_type: string | null;
   notes: string | null;
   properties: {
+    id: string;
     name: string;
     address: string | null;
     city: string | null;
@@ -92,7 +94,7 @@ async function buildSystemPrompt(
   const { data: stay } = await supabase
     .from('stays')
     .select(
-      'id, userid, checkindate, checkoutdate, guestcount, trip_type, notes, properties:propertyid (name, address, city, country, region_id, regions:region_id (name))',
+      'id, userid, checkindate, checkoutdate, guestcount, trip_type, notes, properties:propertyid (id, name, address, city, country, region_id, regions:region_id (name))',
     )
     .eq('id', stayId)
     .single<StayRow>();
@@ -152,6 +154,44 @@ async function buildSystemPrompt(
         ' (use these when relevant, reference them by name):\n' +
         JSON.stringify(places, null, 2);
     }
+  }
+
+  // Layer 4a — Hotel knowledge (amenities + policies)
+  try {
+    const propertyId = (stay.properties as { id?: string } | null)?.id ?? null;
+    if (propertyId) {
+      const hotelCtx = await getHotelContext(supabase, propertyId);
+
+      if (hotelCtx?.policies) {
+        const p = hotelCtx.policies;
+        const policyLines: string[] = ['\n\nHotel Policies:'];
+        if (p.checkin_time) policyLines.push(`- Check-in time: ${p.checkin_time}`);
+        if (p.checkout_time) policyLines.push(`- Check-out time: ${p.checkout_time}`);
+        if (p.wifi_name) {
+          policyLines.push(
+            `- WiFi: ${p.wifi_name}${p.wifi_password ? ` / Password: ${p.wifi_password}` : ''}`,
+          );
+        }
+        if (p.cancellation_policy) policyLines.push(`- Cancellation: ${p.cancellation_policy}`);
+        if (p.pet_policy) policyLines.push(`- Pets: ${p.pet_policy}`);
+        if (p.smoking_policy) policyLines.push(`- Smoking: ${p.smoking_policy}`);
+        if (policyLines.length > 1) systemPrompt += policyLines.join('\n');
+      }
+
+      if (hotelCtx?.amenities && hotelCtx.amenities.length > 0) {
+        const amenityLines = hotelCtx.amenities.map((a) => {
+          let line = `- ${a.name} (${a.category})`;
+          if (a.availability_hours) line += `: ${a.availability_hours}`;
+          if (a.location_hint) line += ` — ${a.location_hint}`;
+          if (a.description) line += `. ${a.description}`;
+          return line;
+        });
+        systemPrompt += '\n\nHotel Amenities:\n' + amenityLines.join('\n');
+      }
+    }
+  } catch (hotelErr) {
+    console.error('[ai/chat] Failed to load hotel context:', hotelErr);
+    // Never fail — continue without hotel context
   }
 
   // Layer 5 — Memory context
