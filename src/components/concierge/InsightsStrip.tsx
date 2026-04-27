@@ -18,7 +18,7 @@ export default function InsightsStrip() {
   return (
     <section className="px-4 sm:px-5 py-4 border-t border-white/[0.07] overflow-visible">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[#C9A84C] text-[14px]">✦</span>
+        <span className="text-[#C17F3A] text-[14px]">✦</span>
         <h3
           className="text-[15px] font-medium text-white/95"
           style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
@@ -74,8 +74,8 @@ export default function InsightsStrip() {
                     className={cn(
                       'text-[9px] font-medium px-1.5 py-0.5 rounded-md transition-colors duration-300 truncate max-w-[90px] flex-shrink-0',
                       expanded
-                        ? 'bg-[rgba(201,169,110,0.1)] text-[#c9a96e]'
-                        : 'bg-white/[0.06] text-[#8a8580] group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c9a96e]',
+                        ? 'bg-[rgba(201,169,110,0.1)] text-[#c17f3a]'
+                        : 'bg-white/[0.06] text-[#8a8580] group-hover:bg-[rgba(201,169,110,0.1)] group-hover:text-[#c17f3a]',
                     )}
                   >
                     {insight.subtitle}

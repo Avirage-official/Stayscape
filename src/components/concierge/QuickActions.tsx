@@ -66,13 +66,13 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
   };
 
   const actionBase =
-    'w-full rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-3 text-left text-[12px] text-white/85 transition-colors hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]';
+    'w-full rounded-xl border border-[#EDE8E1] bg-[#F5F2EE] px-3.5 py-3 text-left text-[12px] text-[#1C1A17] transition-colors hover:bg-[#EDE8E1] hover:border-[#C17F3A]/40 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]';
   const noteToggleButton =
-    'w-full text-left text-[12px] text-white/85 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50';
+    'w-full text-left text-[12px] text-[#1C1A17] transition-colors hover:text-[#C17F3A] disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
-      <h3 className="text-[14px] font-serif text-white/90 mb-3">Quick Actions</h3>
+    <section className="rounded-2xl border border-[#EDE8E1] bg-white p-4">
+      <h3 className="text-[14px] font-serif italic text-[#1C1A17] mb-3">Quick Actions</h3>
       <div className="space-y-2.5">
         <button
           type="button"
@@ -83,7 +83,7 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
           Request Housekeeping
         </button>
 
-        <div className="rounded-xl border border-white/10 bg-black/30 p-2.5">
+        <div className="rounded-xl border border-[#EDE8E1] bg-[#F5F2EE] p-2.5">
           <button
             type="button"
             onClick={() => setShowNoteInput((v) => !v)}
@@ -99,13 +99,13 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 placeholder="Share your request..."
-                className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#C9A84C]/50"
+                className="w-full resize-none rounded-lg border border-[#EDE8E1] bg-white px-3 py-2 text-[12px] text-[#1C1A17] placeholder:text-[#9E9389] focus:outline-none focus:border-[#C17F3A]/40 focus:ring-1 focus:ring-[#C17F3A]/20"
               />
               <button
                 type="button"
                 onClick={handleSaveNote}
                 disabled={!note.trim() || isSaving}
-                className="rounded-lg border border-white/10 bg-white/[0.08] px-3 py-1.5 text-[11px] text-white/90 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-[#C17F3A]/40 bg-[#C17F3A]/10 px-3 py-1.5 text-[11px] text-[#C17F3A] hover:bg-[#C17F3A]/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Save Note
               </button>
@@ -121,7 +121,7 @@ export default function QuickActions({ stayId, onContactAI }: QuickActionsProps)
           Contact Concierge
         </button>
       </div>
-      {status && <p className="mt-2.5 text-[10px] text-white/55">{status}</p>}
+      {status && <p className="mt-2.5 text-[10px] text-[#6B6158]">{status}</p>}
     </section>
   );
 }
