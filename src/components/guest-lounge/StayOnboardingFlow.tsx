@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { CustomerStay } from '@/types/customer';
 
@@ -214,19 +213,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
 
   return (
     <div className="relative min-h-[100dvh] text-white overflow-x-hidden">
-      {/* Cinematic background */}
-      <div className="fixed inset-0 -z-10">
-        <Image
-          src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1920&q=80&auto=format&fit=crop"
-          alt=""
-          fill
-          className="object-cover"
-          priority
-        />
-        {/* Layered overlay: dark gradient from bottom, solid top, warm middle */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/55 to-black/85" />
-        <div className="absolute inset-0 bg-[#0a0a0f]/40" />
-      </div>
+      <div className="fixed inset-0 -z-10 bg-[#0F0E0C]" />
 
       {/* Full-height flex container: centers card vertically on desktop,
           natural scroll on mobile */}

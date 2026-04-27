@@ -415,3 +415,19 @@ body {
 .dashboard-bg-glow {
   animation: dashboardGlow 8s ease-in-out infinite;
 }
+
+@keyframes appSpin {
+  to { transform: rotate(360deg); }
+}
+
+.app-spin {
+  animation: appSpin 0.8s linear infinite;
+}
+
+.app-discover-link {
+  transition: opacity 0.15s;
+}
+
+.app-discover-link:hover {
+  opacity: 0.75;
+}
