@@ -103,7 +103,7 @@ function PlaceRowCard({
           flexShrink: 0,
           borderRadius: 10,
           overflow: 'hidden',
-          background: 'rgba(255,255,255,0.05)',
+          background: 'rgba(255,255,255,0.04)',
           position: 'relative',
         }}
       >
@@ -467,7 +467,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     <TooltipProvider>
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Mobile sub-tabs — pill style, hidden on lg+ */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11 bg-black/50 border-b border-white/10">
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11 border-b border-white/10" style={{ background: '#0F0E0C' }}>
           {(['explore', 'map'] as const).map((tab) => (
             <button
               key={tab}
