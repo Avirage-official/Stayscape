@@ -26,9 +26,14 @@ function HomeInner() {
   const { user } = useAuth();
 
   // URL ?tab=map opens the concierge layout (which renders the map panel);
+  // ?tab=itinerary opens the itinerary tab;
   // any other value (or unset) defaults to the discover tab.
   const initialTab: ActiveTab =
-    searchParams?.get('tab') === 'map' ? 'concierge' : 'discover';
+    searchParams?.get('tab') === 'map'
+      ? 'concierge'
+      : searchParams?.get('tab') === 'itinerary'
+        ? 'itinerary'
+        : 'discover';
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -209,67 +214,12 @@ function HomeInner() {
 
   const pageContent = (
     <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>
-      {loadingOverlay}
-      <div className="fixed inset-0 -z-10 bg-[#0F0E0C]" />
-
       <div
         className="relative flex flex-col h-screen overflow-hidden"
         data-theme="dark"
       >
-        {/* Tab bar */}
-        <div
-          className="flex items-center px-5 sm:px-8 h-[42px] border-b flex-shrink-0 gap-6"
-          style={{
-            background: '#0F0E0C',
-            borderColor: 'rgba(255,255,255,0.10)',
-          }}
-        >
-          {(['concierge', 'discover', 'itinerary'] as const).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className="h-full flex items-center text-[11px] tracking-[0.14em] uppercase font-medium border-b-2 transition-colors duration-200 cursor-pointer"
-                style={{
-                  color: isActive ? '#C17F3A' : 'rgba(255,255,255,0.45)',
-                  borderColor: isActive ? '#C17F3A' : 'transparent',
-                }}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Mobile sub-nav */}
-        {activeTab === 'concierge' && (
-          <div
-            className="lg:hidden flex items-center justify-around h-[48px] border-b flex-shrink-0"
-            style={{
-              background: '#0F0E0C',
-              borderColor: 'rgba(255,255,255,0.10)',
-            }}
-          >
-            {(['guest', 'assistant'] as const).map((view) => {
-              const isActive = mobileView === view;
-              return (
-                <button
-                  key={view}
-                  type="button"
-                  onClick={() => setMobileView(view)}
-                  className="flex items-center justify-center gap-1.5 flex-1 h-full text-[11px] font-medium tracking-wide transition-colors duration-200 cursor-pointer uppercase"
-                  style={{
-                    color: isActive ? '#C17F3A' : 'rgba(255,255,255,0.40)',
-                  }}
-                >
-                  {view.charAt(0).toUpperCase() + view.slice(1)}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {loadingOverlay}
+        <div className="fixed inset-0 -z-10 bg-[#0F0E0C]" />
 
         {/* Main layout */}
         <main className="flex flex-1 overflow-hidden">

@@ -40,7 +40,7 @@ const TABS: TabDef[] = [
   {
     label: 'Discover',
     href: '/app',
-    match: (p, s) => p.startsWith('/app') && s.get('tab') !== 'map',
+    match: (p, s) => p.startsWith('/app') && s.get('tab') !== 'map' && s.get('tab') !== 'itinerary',
     icon: (active) => (
       <svg {...ICON_PROPS(active)}>
         <circle cx="11" cy="11" r="8" />
