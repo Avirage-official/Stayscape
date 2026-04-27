@@ -40,7 +40,7 @@ const TABS: TabDef[] = [
   {
     label: 'Concierge',
     href: '/app',
-    match: (p, s) => p.startsWith('/app') && s.get('tab') !== 'map' && s.get('tab') !== 'itinerary',
+    match: (p, s) => p.startsWith('/app') && !s.get('tab'),
     icon: (active) => (
       <svg {...ICON_PROPS(active)}>
         <circle cx="11" cy="11" r="8" />
@@ -50,8 +50,8 @@ const TABS: TabDef[] = [
   },
   {
     label: 'Discover',
-    href: '/app?tab=map',
-    match: (p, s) => p.startsWith('/app') && s.get('tab') === 'map',
+    href: '/app?tab=discover',
+    match: (p, s) => p.startsWith('/app') && s.get('tab') === 'discover',
     icon: (active) => (
       <svg {...ICON_PROPS(active)}>
         <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />

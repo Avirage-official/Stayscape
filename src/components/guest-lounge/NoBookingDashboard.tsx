@@ -42,7 +42,7 @@ const UNSPLASH_FALLBACK =
 const NAV_ITEMS = [
   { label: 'Home',      href: '/dashboard',         icon: 'home',     active: true  },
   { label: 'Concierge', href: '/app',               icon: 'compass',  active: false },
-  { label: 'Discover',  href: '/app?tab=map',       icon: 'map',      active: false },
+  { label: 'Discover',  href: '/app?tab=discover',   icon: 'map',      active: false },
   { label: 'Itinerary', href: '/app?tab=itinerary', icon: 'calendar', active: false },
   { label: 'Profile',   href: '/dashboard/profile', icon: 'user',     active: false },
 ] as const;
@@ -447,7 +447,7 @@ export default function NoBookingDashboard({
 
   const MiniMapWidget = (
     <motion.div
-      onClick={() => router.push('/app?tab=map')}
+      onClick={() => router.push('/app?tab=discover')}
       onMouseEnter={() => setMapHovered(true)}
       onMouseLeave={() => setMapHovered(false)}
       style={{
