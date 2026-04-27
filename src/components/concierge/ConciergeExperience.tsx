@@ -137,8 +137,7 @@ function DotIndicator({
 }) {
   return (
     <div
-      className="flex items-center justify-center gap-2 py-3 flex-shrink-0"
-      style={{ background: 'var(--background)' }}
+      className="flex items-center justify-center gap-2"
     >
       {Array.from({ length: total }).map((_, i) => (
         <motion.button
@@ -157,6 +156,7 @@ function DotIndicator({
             padding: 0,
             cursor: 'pointer',
             flexShrink: 0,
+            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))',
           }}
         />
       ))}
@@ -1046,7 +1046,7 @@ export default function ConciergeExperience({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-full overflow-hidden"
+      className="relative flex flex-col w-full h-full overflow-hidden"
       style={{ background: 'var(--background)' }}
     >
       {/* Worlds strip */}
@@ -1127,8 +1127,10 @@ export default function ConciergeExperience({
         </motion.div>
       </div>
 
-      {/* Dot navigation */}
-      <DotIndicator total={WORLD_COUNT} active={currentWorld} onDotClick={goToWorld} />
+      {/* Dot navigation — absolutely positioned inside wrapper */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+        <DotIndicator total={WORLD_COUNT} active={currentWorld} onDotClick={goToWorld} />
+      </div>
     </div>
   );
 }
