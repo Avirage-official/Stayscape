@@ -115,6 +115,7 @@ export default function ItineraryExperience({
 
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [promptFocused, setPromptFocused] = useState(false);
 
   /* Stay days */
   const stayDays = useMemo(() => generateStayDays(checkIn, checkOut), [checkIn, checkOut]);
@@ -457,7 +458,7 @@ export default function ItineraryExperience({
               fontSize: 13,
               color: '#1C1A17',
               background: '#fff',
-              border: '1px solid #EDE8E1',
+              border: `1px solid ${promptFocused ? 'rgba(193,127,58,0.5)' : '#EDE8E1'}`,
               borderRadius: 8,
               padding: '12px',
               resize: 'vertical',
@@ -466,8 +467,8 @@ export default function ItineraryExperience({
               boxSizing: 'border-box',
               lineHeight: 1.6,
             }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(193,127,58,0.5)'; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = '#EDE8E1'; }}
+            onFocus={() => setPromptFocused(true)}
+            onBlur={() => setPromptFocused(false)}
           />
 
           <button
@@ -580,6 +581,7 @@ function ItemCard({
   onRemove: (id: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [removeHovered, setRemoveHovered] = useState(false);
 
   return (
     <div
@@ -692,15 +694,15 @@ function ItemCard({
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: '#C0B8B1',
+          color: removeHovered ? '#ef4444' : '#C0B8B1',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           transition: 'color 200ms',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = '#C0B8B1'; }}
+        onMouseEnter={() => setRemoveHovered(true)}
+        onMouseLeave={() => setRemoveHovered(false)}
         aria-label={`Remove ${item.name}`}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
