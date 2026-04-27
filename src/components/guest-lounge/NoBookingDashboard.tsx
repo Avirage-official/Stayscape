@@ -655,14 +655,14 @@ export default function NoBookingDashboard({
       <section
         className="h-[55vh] lg:h-[65vh]"
         style={{ position: 'relative', overflow: 'hidden', flexShrink: 0 }}
-        aria-label="Hero"
+        aria-label="Featured destination slideshow"
       >
         {/* Crossfade background images */}
         {HERO_IMAGES.map((src, i) => (
           <Image
             key={src}
             src={src}
-            alt=""
+            alt={`Destination hero image ${i + 1}`}
             fill
             priority={i === 0}
             sizes="100vw"
@@ -670,7 +670,7 @@ export default function NoBookingDashboard({
               objectFit: 'cover',
               objectPosition: 'center',
               opacity: i === heroIndex ? 1 : 0,
-              transition: 'opacity 1.2s ease',
+              transition: prefersReducedMotion ? 'none' : 'opacity 1.2s ease',
             }}
           />
         ))}
