@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import CustomerPanel from '@/components/CustomerPanel';
-import TravelAssistantPanel from '@/components/TravelAssistantPanel';
 import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
@@ -23,6 +22,215 @@ type ActiveTab = 'concierge' | 'discover' | 'itinerary';
 type MobileView = 'guest' | 'assistant';
 
 const ACCENT_GOLD = '#C17F3A';
+
+/* ─── Stay Summary Panel (concierge tab right column) ─── */
+
+function StaySummaryPanel({
+  dashboardData,
+  onGoToDiscover,
+}: {
+  dashboardData: DashboardData | null;
+  onGoToDiscover: () => void;
+}) {
+  const stay = dashboardData?.upcomingStay ?? null;
+  const profile = dashboardData?.profile ?? null;
+
+  const regionName =
+    stay?.property?.region?.name ??
+    stay?.property?.city ??
+    null;
+
+  const checkIn = stay?.check_in ?? null;
+  const checkOut = stay?.check_out ?? null;
+  const nights =
+    checkIn && checkOut
+      ? Math.max(
+          1,
+          Math.round(
+            (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : null;
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(new Date(dateStr));
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Status badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            borderRadius: 999,
+            fontSize: 10,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            background: 'rgba(193,127,58,0.12)',
+            border: '1px solid rgba(193,127,58,0.25)',
+            color: ACCENT_GOLD,
+          }}
+        >
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: 999,
+              background: ACCENT_GOLD,
+              display: 'inline-block',
+            }}
+          />
+          {stay?.status ?? 'Upcoming'}
+        </span>
+      </div>
+
+      {/* Hotel name */}
+      {stay?.property?.name && (
+        <h2
+          style={{
+            fontFamily: '"Playfair Display", serif',
+            fontSize: 18,
+            fontStyle: 'italic',
+            color: 'rgba(255,255,255,0.90)',
+            margin: 0,
+            lineHeight: 1.3,
+          }}
+        >
+          {stay.property.name}
+        </h2>
+      )}
+
+      {/* Guest name */}
+      {profile?.full_name && (
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.50)', margin: 0 }}>
+          {profile.full_name}
+        </p>
+      )}
+
+      {/* Divider */}
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
+
+      {/* Check-in / Check-out */}
+      {(checkIn || checkOut) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {checkIn && (
+            <div>
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: 4,
+                }}
+              >
+                Check-in
+              </p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.80)' }}>
+                {formatDate(checkIn)}
+              </p>
+            </div>
+          )}
+          {checkOut && (
+            <div>
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: 4,
+                }}
+              >
+                Check-out
+              </p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.80)' }}>
+                {formatDate(checkOut)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Nights count */}
+      {nights !== null && (
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.50)', margin: 0 }}>
+          {nights} {nights === 1 ? 'night' : 'nights'}
+        </p>
+      )}
+
+      {/* Room type + guest count */}
+      {(stay?.room_type || stay?.guests) && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {stay?.room_type && (
+            <span
+              style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.60)',
+                padding: '3px 10px',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}
+            >
+              {stay.room_type}
+            </span>
+          )}
+          {stay?.guests && (
+            <span
+              style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.60)',
+                padding: '3px 10px',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}
+            >
+              {stay.guests} {stay.guests === 1 ? 'guest' : 'guests'}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Quick link to Discover */}
+      {regionName && (
+        <button
+          type="button"
+          onClick={onGoToDiscover}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            fontSize: 13,
+            color: ACCENT_GOLD,
+            cursor: 'pointer',
+            textAlign: 'left',
+            marginTop: 4,
+          }}
+        >
+          Explore {regionName} →
+        </button>
+      )}
+    </div>
+  );
+}
 
 function HomeInner() {
   const router = useRouter();
@@ -243,11 +451,16 @@ function HomeInner() {
                     />
                   </div>
 
-                  <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 flex-col overflow-hidden bg-black/70`}>
-                    <TravelAssistantPanel
-                      selectedPlace={null}
-                      onClearSelection={() => {}}
-                      stayId={dashboardData?.upcomingStay?.id ?? null}
+                  <div className={`${mobileView === 'assistant' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 flex-col overflow-y-auto scrollbar-hide`}
+                    style={{
+                      background: 'rgba(15,14,12,0.70)',
+                      borderLeft: '1px solid rgba(255,255,255,0.07)',
+                      padding: 20,
+                    }}
+                  >
+                    <StaySummaryPanel
+                      dashboardData={dashboardData}
+                      onGoToDiscover={() => setActiveTab('discover')}
                     />
                   </div>
                 </div>

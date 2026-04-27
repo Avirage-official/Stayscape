@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tooltip,
   TooltipContent,
@@ -23,23 +25,13 @@ import {
   type PlaceCard,
 } from '@/lib/data/discover-fallback';
 import { useRegion } from '@/lib/context/region-context';
-import CategoryCarouselCard from '@/components/discover/CategoryCarouselCard';
-import HeroPlaceCard from '@/components/discover/HeroPlaceCard';
-import UpcomingEventCard from '@/components/discover/UpcomingEventCard';
-import InsightKnowledgeCard from '@/components/discover/InsightKnowledgeCard';
 import AddToDayDialog from '@/components/discover/AddToDayDialog';
 import AddUnknownPlaceDialog from '@/components/discover/AddUnknownPlaceDialog';
 import { useItinerary } from '@/components/ItineraryContext';
 import SuccessToast from '@/components/discover/SuccessToast';
 import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
-import {
-  PopularGuestCard,
-  RegionalActivityCard,
-  curatedItemToPlaceCard,
-} from '@/components/discover/CuratedItemCard';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import { sendChatMessage } from '@/lib/ai/chat';
-import type { CuratedItem } from '@/types/pms';
 
 /* ─── Inline error component ─── */
 
@@ -70,6 +62,179 @@ function InlineError({
   );
 }
 
+/* ─── Place row card (compact, left-panel style) ─── */
+
+function PlaceRowCard({
+  place,
+  idx,
+  onClick,
+}: {
+  place: PlaceCard;
+  idx: number;
+  onClick: () => void;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      style={{
+        padding: '12px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        display: 'flex',
+        gap: 12,
+        alignItems: 'flex-start',
+        cursor: 'pointer',
+        transition: 'background 0.15s ease',
+      }}
+      whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+    >
+      {/* Thumbnail */}
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          flexShrink: 0,
+          borderRadius: 10,
+          overflow: 'hidden',
+          background: 'rgba(255,255,255,0.05)',
+          position: 'relative',
+        }}
+      >
+        {place.image && !imgError ? (
+          <Image
+            src={place.image}
+            alt={place.name}
+            fill
+            sizes="64px"
+            style={{ objectFit: 'cover' }}
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 20,
+              color: 'rgba(255,255,255,0.20)',
+            }}
+          >
+            {place.category.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.90)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            marginBottom: 3,
+          }}
+        >
+          {place.name}
+        </p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+          <span style={{ textTransform: 'capitalize' }}>{place.category}</span>
+          {place.rating > 0 && (
+            <>
+              <span>·</span>
+              <span style={{ color: 'rgba(193,127,58,0.70)' }}>★ {place.rating.toFixed(1)}</span>
+            </>
+          )}
+        </div>
+        {place.description && (
+          <p
+            style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.30)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              marginTop: 4,
+            }}
+          >
+            {place.description}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Category pill ─── */
+
+function CategoryPill({
+  cat,
+  active,
+  onClick,
+}: {
+  cat: CategoryItem;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  const style: import('react').CSSProperties = {
+    height: 30,
+    padding: '0 14px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+    cursor: 'pointer',
+    flexShrink: 0,
+    transition: 'all 0.18s ease',
+    display: 'flex',
+    alignItems: 'center',
+    ...(active
+      ? {
+          background: 'rgba(193,127,58,0.15)',
+          border: '1px solid rgba(193,127,58,0.40)',
+          color: 'var(--gold)',
+        }
+      : hovered
+        ? {
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            color: 'rgba(255,255,255,0.70)',
+          }
+        : {
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            color: 'rgba(255,255,255,0.45)',
+          }),
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={style}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {cat.icon && <span style={{ fontSize: 12, marginRight: 6 }}>{cat.icon}</span>}
+      {cat.label}
+    </button>
+  );
+}
+
 /* ─── Main DiscoverPanel component ─── */
 
 interface DiscoverPanelProps {
@@ -77,9 +242,8 @@ interface DiscoverPanelProps {
   guestName?: string;
 }
 
-type PlacesTab = 'recommendations' | 'places' | 'images' | 'sources';
 const MAX_ASSISTANT_MESSAGES = 8;
-const MAX_VISIBLE_SOURCES = 8;
+const MAX_VISIBLE_CHAT_MESSAGES = 3;
 const PLACES_PAGE_SIZE = 10;
 const MAX_DISCOVER_PLACES = 20;
 const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
@@ -88,7 +252,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const { region } = useRegion();
   const [activeCategory, setActiveCategory] = useState<string>('top-places');
   const [activePlacesCategory, setActivePlacesCategory] = useState<string | null | undefined>(undefined);
-  const [activePlacesTab, setActivePlacesTab] = useState<PlacesTab>('recommendations');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingPlace, setAddingPlace] = useState<PlaceCard | null>(null);
   const [successToast, setSuccessToast] = useState<{ placeName: string; dayValue: string; bookingUrl: string } | null>(null);
@@ -96,7 +259,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailPlace, setDetailPlace] = useState<PlaceCard | null>(null);
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
-  const [detailEvent, setDetailEvent] = useState<EventCard | null>(null);
+  const [detailEvent, _setDetailEvent] = useState<EventCard | null>(null);
   const [mobileDiscoverTab, setMobileDiscoverTab] = useState<'explore' | 'map'>('explore');
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
@@ -105,6 +268,11 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     name: string; address: string; lat: number; lng: number;
   } | null>(null);
   const [addUnknownPlaceOpen, setAddUnknownPlaceOpen] = useState(false);
+  // New UI states
+  const [chatExpanded, setChatExpanded] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const dataLoadedRef = useRef<boolean | null>(null);
@@ -124,13 +292,13 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     error: placesError,
     refetch: refetchPlaces,
   } = useDiscoverPlaces();
-  const { insights, refetch: refetchInsights } = useLocalInsights();
+  const { insights: _insights, refetch: refetchInsights } = useLocalInsights();
   const {
-    events,
-    error: eventsError,
+    events: _events,
+    error: _eventsError,
     refetch: refetchEvents,
   } = useDiscoverEvents();
-  const { curations } = useCurations(stayId);
+  const { curations: _curations } = useCurations(stayId);
   const { addItem } = useItinerary();
 
   // Trigger initial data load once (using null-check pattern for eslint refs rule)
@@ -185,18 +353,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     setDetailPlace(place);
     setDetailDialogOpen(true);
   }, []);
-
-  const handleAddClick = useCallback((placeId: string) => {
-    const place = places.find((p) => p.id === placeId) ?? null;
-    setAddingPlace(place);
-    setAddDialogOpen(true);
-  }, [places]);
-
-  const handleAddCuratedItem = useCallback((item: CuratedItem, idx: number) => {
-    const matchedPlace = item.place_id ? places.find((place) => place.id === item.place_id) : null;
-    setAddingPlace(matchedPlace ?? curatedItemToPlaceCard(item, idx));
-    setAddDialogOpen(true);
-  }, [places]);
 
   const handleConfirmAdd = useCallback((placeId: string, day: string) => {
     const place = places.find((p) => p.id === placeId) ?? addingPlace;
@@ -261,11 +417,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     void fetchSyncStatus();
   }, [region?.id]);
 
-  const handleEventCardClick = useCallback((event: EventCard) => {
-    setDetailEvent(event);
-    setEventDetailOpen(true);
-  }, []);
-
   const sendAssistantMessage = useCallback(async (text?: string) => {
     const messageText = (text ?? assistantInput).trim();
     if (!messageText || isAssistantLoading) return;
@@ -305,45 +456,16 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     setIsAssistantLoading(false);
   }, [assistantInput, assistantMessages, isAssistantLoading, stayId]);
 
-  const placeNameChips = useMemo(
-    () => places.slice(0, 4).map((place) => place.name),
-    [places],
-  );
-
-  const getSafeBackgroundImage = useCallback((imageUrl: string | undefined) => {
-    if (!imageUrl) return 'none';
-    try {
-      const parsed = new URL(imageUrl.trim());
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'none';
-      if (/[\\()"'\n\r]/.test(parsed.href)) return 'none';
-      return `url("${parsed.href}")`;
-    } catch {
-      return 'none';
+  // Scroll chat messages to bottom when new messages arrive
+  useEffect(() => {
+    if (chatExpanded && chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
-  }, []);
-
-  const getSourceLabel = useCallback((sourceUrl: string | undefined) => {
-    if (!sourceUrl) return 'Local source unavailable';
-    try {
-      return new URL(sourceUrl).host;
-    } catch {
-      return sourceUrl;
-    }
-  }, []);
-
-  const scrollCarousel = useCallback((direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const scrollAmount = 280;
-      carouselRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  }, []);
+  }, [assistantMessages, chatExpanded]);
 
   return (
     <TooltipProvider>
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden discover-card-fade-in">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Mobile sub-tabs — pill style, hidden on lg+ */}
         <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11 bg-black/50 border-b border-white/10">
           {(['explore', 'map'] as const).map((tab) => (
@@ -362,449 +484,532 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
           ))}
         </div>
 
-        {/* Content row — side-by-side on lg+, single-column on mobile */}
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* Left column ─ map + chat widget */}
-          <div className={`relative min-h-0 lg:h-auto lg:w-[55%] lg:flex-none lg:border-r border-white/10 ${
-            mobileDiscoverTab === 'map' ? 'flex flex-1' : 'hidden lg:flex'
-          }`}>
-            <MapPlaceholder stayId={stayId ?? null} />
-
-          <div className="
-              absolute z-20
-              bottom-0 left-0 right-0
-              bg-black/85 backdrop-blur-sm
-              px-3 py-3
-              border-t border-x border-white/15
-              rounded-t-2xl
-              lg:bottom-auto lg:top-6 lg:left-6 lg:right-auto
-              lg:w-[340px] lg:max-w-[calc(100%-3rem)]
-              lg:bg-black/80 lg:p-4
-              lg:rounded-2xl lg:border
-            ">
-            <h3 className="font-serif text-[18px] text-white/90 mb-1">
-              {guestName ? `Welcome, ${guestName}` : 'Discover Concierge'}
-            </h3>
-            <p className="text-[11px] text-white/55 mb-3">
-              Ask about places on the map or tap a place chip.
-            </p>
-
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {placeNameChips.map((placeName) => (
-                <button
-                  key={placeName}
-                  type="button"
-                  onClick={() => void sendAssistantMessage(`Tell me about ${placeName}`)}
-                  className="text-[10px] text-white/70 bg-white/10 border border-white/15 rounded-full px-2.5 py-1 hover:bg-white/15 transition-colors cursor-pointer"
+        {/* Content: panel left + map right */}
+        <div
+          className="flex-1 flex overflow-hidden"
+          style={{ background: 'var(--discover-bg)' }}
+        >
+          {/* ───── LEFT PANEL ───── */}
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className={`flex-col h-full ${
+              mobileDiscoverTab === 'explore' ? 'flex' : 'hidden'
+            } lg:flex`}
+            style={{
+              width: 340,
+              flexShrink: 0,
+              background: '#0F0E0C',
+              borderRight: '1px solid rgba(255,255,255,0.07)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* A. HEADER */}
+            <div
+              style={{
+                height: 56,
+                flexShrink: 0,
+                padding: '0 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: '1px solid rgba(255,255,255,0.07)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span
+                  style={{
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: 15,
+                    fontStyle: 'italic',
+                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.85)',
+                    lineHeight: 1.2,
+                  }}
                 >
-                  {placeName}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-1.5 max-h-[40vh] lg:max-h-[130px] overflow-y-auto scrollbar-hide mb-3 pr-1">
-              {assistantMessages.length === 0 ? (
-                <p className="text-[10px] text-white/45">Try: “Best restaurants nearby?”</p>
-              ) : (
-                assistantMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`text-[10px] leading-relaxed rounded-lg px-2.5 py-1.5 ${
-                      message.role === 'user' ? 'bg-white/10 text-white/85' : 'bg-[#C9A84C]/12 text-white/75'
-                    }`}
-                  >
-                    {message.text}
-                  </div>
-                ))
-              )}
-              {isAssistantLoading && (
-                <div className="flex items-center gap-1.5 px-1 py-1">
-                  <span className="text-[10px] text-[#C9A84C] animate-pulse">✶</span>
-                  <span className="text-[9px] text-white/40 animate-pulse">
-                    Thinking…
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 bg-white/8 border border-white/12 rounded-xl px-3 py-2 focus-within:border-[#C9A84C]/30">
-              <input
-                type="text"
-                value={assistantInput}
-                onChange={(e) => setAssistantInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendAssistantMessage();
-                  }
-                }}
-                placeholder="Ask the assistant..."
-                aria-label="Ask discover assistant"
-                className="text-[11px] text-white placeholder-white/35 bg-transparent focus:outline-none flex-1"
-              />
-              <button
-                type="button"
-                onClick={() => void sendAssistantMessage()}
-                disabled={isAssistantLoading}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-white/40 hover:text-[#C9A84C] transition-colors cursor-pointer"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m5 12 14-7-4 7 4 7z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          </div>
-
-          {/* Right column */}
-          <div className={`flex-1 lg:w-[45%] min-h-0 flex flex-col bg-black/70 ${
-            mobileDiscoverTab === 'explore' ? 'flex' : 'hidden lg:flex'
-          }`}>
-          <div className="px-5 sm:px-8 pt-6 pb-4 flex-shrink-0 border-b border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2.5 mb-1">
-                  <span className="text-[16px] text-[var(--gold)]">✦</span>
-                  <h2 className="text-[18px] sm:text-[20px] font-serif tracking-tight text-white/90">
-                    Discover
-                  </h2>
-                </div>
-                <p className="text-[13px] text-white/60 ml-[30px]">
-                  Curated places and local insights{region?.name ? ` for your ${region.name} stay` : ''}
-                </p>
+                  {region?.name ?? (guestName ? `${guestName}'s Stay` : 'Your Stay')}
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.2em',
+                    color: 'var(--gold)',
+                    marginTop: 2,
+                  }}
+                >
+                  Discover
+                </span>
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="
-                      w-8 h-8 rounded-lg flex items-center justify-center
-                      border border-white/10
-                      bg-white/[0.07]
-                      text-white/60
-                      hover:bg-white/[0.12]
-                      hover:text-white/90
-                      transition-all duration-200 cursor-pointer
-                    "
+                    onClick={() => { setSearchOpen((v) => !v); setSearchQuery(''); }}
+                    style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 4 }}
+                    aria-label="Toggle search"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <circle cx="11" cy="11" r="8" />
                       <path d="m21 21-4.35-4.35" />
                     </svg>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Search places</p>
-                </TooltipContent>
+                <TooltipContent><p>Search places</p></TooltipContent>
               </Tooltip>
             </div>
-          </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="px-5 sm:px-8 py-6 space-y-8">
-              {/* ── Categories carousel ── */}
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                    Browse Categories
-                  </h3>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => scrollCarousel('left')}
-                      className="
-                        w-7 h-7 rounded-lg flex items-center justify-center
-                        border border-white/10
-                        bg-white/[0.07]
-                        text-white/60
-                        hover:bg-white/[0.12]
-                        hover:text-white/90
-                        transition-all duration-200 cursor-pointer
-                      "
-                      aria-label="Scroll categories left"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => scrollCarousel('right')}
-                      className="
-                        w-7 h-7 rounded-lg flex items-center justify-center
-                        border border-white/10
-                        bg-white/[0.07]
-                        text-white/60
-                        hover:bg-white/[0.12]
-                        hover:text-white/90
-                        transition-all duration-200 cursor-pointer
-                      "
-                      aria-label="Scroll categories right"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  ref={carouselRef}
-                  className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
-                  style={{ WebkitOverflowScrolling: 'touch' }}
+            {/* Search input (slides down when searchOpen) */}
+            <AnimatePresence>
+              {searchOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 44, opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  style={{
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    borderBottom: '1px solid rgba(255,255,255,0.07)',
+                    padding: '0 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
                 >
-                  {categoriesError && (
-                    <InlineError message="Couldn't load categories" onRetry={refetchCategories} />
-                  )}
-                  {categories.map((cat) => (
-                    <div key={cat.id} className="snap-start">
-                      <CategoryCarouselCard
-                        item={cat}
-                        active={activeCategory === cat.id}
-                        onClick={() => handleCategoryClick(cat)}
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search places…"
+                    autoFocus
+                    style={{
+                      flex: 1,
+                      height: 32,
+                      borderRadius: 8,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      padding: '0 12px',
+                      fontSize: 13,
+                      color: 'rgba(255,255,255,0.80)',
+                      outline: 'none',
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* B. CATEGORIES STRIP */}
+            <div
+              style={{
+                flexShrink: 0,
+                padding: '14px 20px 12px',
+                borderBottom: '1px solid rgba(255,255,255,0.07)',
+              }}
+            >
+              {categoriesError && (
+                <InlineError message="Couldn't load categories" onRetry={refetchCategories} />
+              )}
+              <div
+                ref={carouselRef}
+                className="scrollbar-hide"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: 8,
+                  overflowX: 'auto',
+                }}
+              >
+                {categories.map((cat) => (
+                  <CategoryPill
+                    key={cat.id}
+                    cat={cat}
+                    active={activeCategory === cat.id}
+                    onClick={() => handleCategoryClick(cat)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* C. PLACES LIST */}
+            <div
+              className="scrollbar-hide"
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: 0,
+              }}
+            >
+              {/* Count line */}
+              <div
+                style={{
+                  padding: '14px 20px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.14em',
+                    color: 'rgba(255,255,255,0.40)',
+                  }}
+                >
+                  {categories.find((c) => c.id === activeCategory)?.label ?? 'Places'}
+                </span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+                  {places.length} {places.length === 1 ? 'place' : 'places'}
+                </span>
+              </div>
+
+              {/* Error */}
+              {placesError && (
+                <div style={{ padding: '0 20px 10px' }}>
+                  <InlineError
+                    message="Couldn't load places right now"
+                    onRetry={handleRetryPlaces}
+                  />
+                </div>
+              )}
+
+              {/* Loading skeleton */}
+              {placesLoading && places.length === 0 && (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '12px 20px',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <div
+                        className="animate-pulse"
+                        style={{
+                          width: 64,
+                          height: 64,
+                          flexShrink: 0,
+                          borderRadius: 10,
+                          background: 'rgba(255,255,255,0.04)',
+                        }}
                       />
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="animate-pulse" style={{ height: 14, borderRadius: 4, background: 'rgba(255,255,255,0.04)', width: '70%' }} />
+                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: 'rgba(255,255,255,0.04)', width: '50%' }} />
+                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: 'rgba(255,255,255,0.04)', width: '85%' }} />
+                      </div>
                     </div>
                   ))}
-                </div>
-              </section>
+                </>
+              )}
 
-              {/* ── Places section with tabs ── */}
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                    {categories.find((c) => c.id === activeCategory)?.label ?? 'Places'}
-                  </h3>
-                  <span className="text-[11px] text-white/50">
-                    {places.length} {places.length === 1 ? 'place' : 'places'}
+              {/* Place cards */}
+              {(searchQuery.trim()
+                ? places.filter((p) =>
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                : places
+              ).map((place, idx) => (
+                <PlaceRowCard
+                  key={place.id}
+                  place={place}
+                  idx={idx}
+                  onClick={() => handleCardClick(place)}
+                />
+              ))}
+
+              {/* Show more */}
+              {hasMorePlaces && places.length < MAX_DISCOVER_PLACES && (
+                <button
+                  type="button"
+                  onClick={handleShowMorePlaces}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '14px 20px',
+                    textAlign: 'center',
+                    fontSize: 11,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    color: 'rgba(255,255,255,0.30)',
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: 'none',
+                    transition: 'color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.30)'; }}
+                >
+                  Load more places
+                </button>
+              )}
+            </div>
+
+            {/* D. AI CHAT SECTION */}
+            <motion.div
+              layout
+              transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+              style={{
+                flexShrink: 0,
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                background: 'rgba(10,8,6,0.60)',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {/* Chat header row */}
+              <div
+                style={{
+                  height: 40,
+                  padding: '0 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 999,
+                      background: 'var(--gold)',
+                      marginRight: 8,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.14em',
+                      color: 'rgba(255,255,255,0.45)',
+                    }}
+                  >
+                    AI Concierge
                   </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setChatExpanded((v) => !v)}
+                  style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}
+                  aria-label={chatExpanded ? 'Collapse chat' : 'Expand chat'}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.40)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      transform: chatExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                  {(['recommendations', 'places', 'images', 'sources'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setActivePlacesTab(tab)}
-                      className={`text-[10px] uppercase tracking-[0.12em] px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap ${
-                        activePlacesTab === tab
-                          ? 'text-[#C9A84C] border-[#C9A84C]/60 bg-[#C9A84C]/10'
-                          : 'text-white/60 border-white/15 hover:text-white/85'
-                      }`}
+              {/* Messages area (expanded only) */}
+              <AnimatePresence>
+                {chatExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 160, opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden', flexShrink: 0 }}
+                  >
+                    <div
+                      ref={chatMessagesRef}
+                      className="scrollbar-hide"
+                      style={{
+                        height: 160,
+                        overflowY: 'auto',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
                     >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                {activePlacesTab === 'recommendations' && (
-                  <div className="space-y-6">
-                    {curations.recommended_places && curations.recommended_places.content.items.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                              Popular with Guests
-                            </h3>
-                            <p className="text-[11px] text-white/40 mt-0.5">
-                              Loved by previous guests
-                            </p>
-                          </div>
-                          <span className="text-[11px] text-[var(--gold)] flex items-center gap-1">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)">
-                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                            </svg>
-                            Highly recommended
-                          </span>
+                      {assistantMessages.length === 0 && (
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', alignSelf: 'center', marginTop: 'auto' }}>
+                          Ask about this area...
+                        </p>
+                      )}
+                      {assistantMessages.slice(-MAX_VISIBLE_CHAT_MESSAGES).map((message) => (
+                        <div
+                          key={message.id}
+                          style={{
+                            ...(message.role === 'user'
+                              ? {
+                                  alignSelf: 'flex-end',
+                                  maxWidth: '75%',
+                                  background: 'rgba(193,127,58,0.15)',
+                                  border: '1px solid rgba(193,127,58,0.20)',
+                                  borderRadius: '12px 12px 2px 12px',
+                                }
+                              : {
+                                  alignSelf: 'flex-start',
+                                  maxWidth: '85%',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  border: '1px solid rgba(255,255,255,0.08)',
+                                  borderRadius: '2px 12px 12px 12px',
+                                }),
+                            padding: '8px 12px',
+                            fontSize: 13,
+                            color: message.role === 'user' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.70)',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {message.text}
                         </div>
-
-                        <div className="space-y-4">
-                          {curations.recommended_places.content.items.map((item, idx) => (
-                            <PopularGuestCard
-                              key={`popular-${idx}`}
-                              item={item}
-                              idx={idx}
-                              onAdd={(curatedItem) => handleAddCuratedItem(curatedItem, idx)}
+                      ))}
+                      {isAssistantLoading && (
+                        <div
+                          style={{
+                            alignSelf: 'flex-start',
+                            display: 'flex',
+                            gap: 4,
+                            padding: '10px 12px',
+                          }}
+                        >
+                          {[0, 1, 2].map((i) => (
+                            <div
+                              key={i}
+                              className="animate-bounce"
+                              style={{
+                                width: 5,
+                                height: 5,
+                                borderRadius: 999,
+                                background: 'rgba(255,255,255,0.25)',
+                                animationDelay: `${i * 0.15}s`,
+                              }}
                             />
                           ))}
                         </div>
-                      </section>
-                    )}
-
-                    {eventsError && (
-                      <section>
-                        <InlineError
-                          message="Couldn't load events right now"
-                          onRetry={() => region?.id && refetchEvents(region.id)}
-                        />
-                      </section>
-                    )}
-                    {events.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                            Upcoming Events
-                          </h3>
-                          <span className="text-[11px] text-white/50">
-                            {events.length} {events.length === 1 ? 'event' : 'events'}
-                          </span>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory">
-                          {events.map((event) => (
-                            <div key={event.id} className="snap-start">
-                              <UpcomingEventCard
-                                event={event}
-                                onClick={() => handleEventCardClick(event)}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-
-                    {curations.regional_activities && curations.regional_activities.content.items.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                              {region?.name ? `Discover ${region.name}` : 'Discover the Region'}
-                            </h3>
-                            <p className="text-[11px] text-white/40 mt-0.5">
-                              {curations.regional_activities.content.summary}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x discover-slide-in">
-                          {curations.regional_activities.content.items.map((item, idx) => (
-                            <div key={`regional-${idx}`} className="snap-start">
-                              <RegionalActivityCard
-                                item={item}
-                                idx={idx}
-                                onAdd={(curatedItem) => handleAddCuratedItem(curatedItem, idx)}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-
-                    <section>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                          Local Insights
-                        </h3>
-                        <span className="text-[11px] text-white/50">{region?.name ?? 'Local'}</span>
-                      </div>
-
-                      <div
-                        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x"
-                        style={{ WebkitOverflowScrolling: 'touch' }}
-                      >
-                        {insights.map((insight) => (
-                          <div key={insight.id} className="snap-start flex-shrink-0">
-                            <InsightKnowledgeCard insight={insight} />
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                )}
-
-                {activePlacesTab === 'places' && (
-                  <div className="space-y-4">
-                    {placesError && (
-                      <InlineError
-                        message="Couldn't load places right now"
-                        onRetry={handleRetryPlaces}
-                      />
-                    )}
-                    {placesLoading && places.length === 0 && (
-                      <div className="space-y-3">
-                        {[1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="h-24 rounded-2xl bg-white/[0.04] border border-white/8 animate-pulse"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {places.map((place, idx) => (
-                      <HeroPlaceCard
-                        key={place.id}
-                        place={place}
-                        onAdd={handleAddClick}
-                        onClick={() => handleCardClick(place)}
-                        isFirst={idx === 0}
-                        idx={idx}
-                      />
-                    ))}
-
-                    {(places.length > PLACES_PAGE_SIZE || hasMorePlaces) && (
-                      <p className="text-[11px] text-white/45 text-center">
-                        Showing {Math.min(places.length, MAX_DISCOVER_PLACES)}
-                        {hasMorePlaces ? ` (max ${MAX_DISCOVER_PLACES})` : ''}
-                      </p>
-                    )}
-
-                    {hasMorePlaces && places.length < MAX_DISCOVER_PLACES && (
-                      <div className="pt-1 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={handleShowMorePlaces}
-                          className="
-                            text-[11px] uppercase tracking-[0.12em] px-4 py-2 rounded-lg border
-                            border-white/20 bg-black/40 text-white/75
-                            hover:text-[#C9A84C] hover:border-[#C9A84C]/60 hover:bg-[#C9A84C]/10
-                            transition-colors cursor-pointer
-                          "
-                        >
-                          Show more
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activePlacesTab === 'images' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {places.map((place) => (
-                      <button
-                        key={`${place.id}-image`}
-                        type="button"
-                        onClick={() => handleCardClick(place)}
-                        className="relative rounded-xl overflow-hidden border border-white/10 hover:border-[#C9A84C]/40 transition-colors text-left cursor-pointer"
-                      >
-                        <div
-                          className="w-full h-28 bg-cover bg-center"
-                          style={{ backgroundImage: getSafeBackgroundImage(place.image) }}
-                          aria-label={`Image of ${place.name}`}
-                          role="img"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-                        <span className="absolute bottom-2 left-2 text-[10px] text-white/85">{place.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {activePlacesTab === 'sources' && (
-                  <div className="space-y-2">
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] text-white/65">
-                      Sources are collected from curated recommendations and local discovery feeds.
+                      )}
                     </div>
-                    {places.slice(0, MAX_VISIBLE_SOURCES).map((place) => (
-                      <div key={`${place.id}-source`} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                        <p className="text-[11px] text-white/85">{place.name}</p>
-                        <p className="text-[10px] text-white/50 mt-0.5">{getSourceLabel(place.bookingUrl)}</p>
-                      </div>
-                    ))}
-                  </div>
+                  </motion.div>
                 )}
-              </section>
+              </AnimatePresence>
 
-              <div className="h-4" />
-            </div>
-          </div>
+              {/* Input row */}
+              <div
+                style={{
+                  height: 48,
+                  padding: '0 16px',
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <input
+                  type="text"
+                  value={assistantInput}
+                  onChange={(e) => setAssistantInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendAssistantMessage();
+                    }
+                  }}
+                  onFocus={() => setChatExpanded(true)}
+                  placeholder="Ask about this area..."
+                  aria-label="Ask discover assistant"
+                  style={{
+                    flex: 1,
+                    height: 34,
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    padding: '0 12px',
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.80)',
+                    outline: 'none',
+                    transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
+                  }}
+                  onFocusCapture={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor = 'rgba(193,127,58,0.40)';
+                    (e.target as HTMLInputElement).style.background = 'rgba(255,255,255,0.08)';
+                    (e.target as HTMLInputElement).style.boxShadow = '0 0 0 2px rgba(193,127,58,0.10)';
+                  }}
+                  onBlurCapture={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.10)';
+                    (e.target as HTMLInputElement).style.background = 'rgba(255,255,255,0.06)';
+                    (e.target as HTMLInputElement).style.boxShadow = 'none';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void sendAssistantMessage()}
+                  disabled={isAssistantLoading}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    background: 'rgba(193,127,58,0.15)',
+                    border: '1px solid rgba(193,127,58,0.30)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.25)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.15)'; }}
+                  aria-label="Send message"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--gold)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* ───── MAP AREA ───── */}
+          <div
+            className={`relative overflow-hidden ${
+              mobileDiscoverTab === 'map' ? 'flex flex-1' : 'hidden lg:flex'
+            } lg:flex-1`}
+            style={{ height: '100%' }}
+          >
+            <MapPlaceholder stayId={stayId ?? null} />
           </div>
         </div>
 
