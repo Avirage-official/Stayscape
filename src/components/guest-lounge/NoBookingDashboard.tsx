@@ -5,7 +5,14 @@ import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Cormorant_Garamond } from 'next/font/google';
 import type { HotelData, RegionData, PlaceChip } from './CurrentBookingView';
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '600'],
+  display: 'swap',
+});
 
 /* ─── Types ─── */
 
@@ -36,6 +43,12 @@ export interface NoBookingDashboardProps {
 const EASE = [0.22, 1, 0.36, 1] as const;
 const UNSPLASH_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
+
+const HERO_IMAGES = [
+  '/images/brand/hero-01.jpg',
+  '/images/brand/hero-02.jpg',
+  '/images/brand/hero-03.jpg',
+] as const;
 
 /* ─── Nav items config ─── */
 
@@ -159,6 +172,7 @@ export default function NoBookingDashboard({
   const [searchFocused, setSearchFocused] = useState(false);
   const [featuredPlaces, setFeaturedPlaces] = useState<FeaturedPlace[]>([]);
   const [mapHovered, setMapHovered] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   const hour = new Date().getHours();
   const greeting =
@@ -188,6 +202,15 @@ export default function NoBookingDashboard({
         setFeaturedPlaces([]);
       });
   }, [regions]);
+
+  /* Hero slideshow */
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const id = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [prefersReducedMotion]);
 
   const anim = (delay: number) =>
     prefersReducedMotion
@@ -566,21 +589,6 @@ export default function NoBookingDashboard({
         }}
         {...anim(0)}
       >
-        {/* Wordmark — hidden on mobile */}
-        <span
-          className="hidden lg:block"
-          style={{
-            fontFamily: 'Playfair Display, serif',
-            fontSize: '20px',
-            fontWeight: 600,
-            color: 'var(--gold)',
-            letterSpacing: '-0.01em',
-            flexShrink: 0,
-          }}
-        >
-          Stayscape
-        </span>
-
         {/* Search pill — centred */}
         <div
           style={{
@@ -642,6 +650,67 @@ export default function NoBookingDashboard({
           {todayLabel}
         </span>
       </motion.div>
+
+      {/* ═══ HERO SECTION ═══ */}
+      <section
+        className="h-[55vh] lg:h-[65vh]"
+        style={{ position: 'relative', overflow: 'hidden', flexShrink: 0 }}
+        aria-label="Featured destination slideshow"
+      >
+        {/* Crossfade background images */}
+        {HERO_IMAGES.map((src, i) => (
+          <Image
+            key={src}
+            src={src}
+            alt={`Destination hero image ${i + 1}`}
+            fill
+            priority={i === 0}
+            sizes="100vw"
+            style={{
+              objectFit: 'cover',
+              objectPosition: 'center',
+              opacity: i === heroIndex ? 1 : 0,
+              transition: prefersReducedMotion ? 'none' : 'opacity 1.2s ease',
+            }}
+          />
+        ))}
+
+        {/* Dark gradient overlay for text legibility */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(to top, rgba(10,8,6,0.70) 0%, rgba(10,8,6,0.25) 55%, rgba(10,8,6,0.10) 100%)',
+          }}
+        />
+
+        {/* Headline */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'flex-end',
+            padding: 'clamp(24px, 5vw, 56px)',
+          }}
+        >
+          <h1
+            className={cormorant.className}
+            style={{
+              fontSize: 'clamp(2.8rem, 5vw, 5rem)',
+              fontWeight: 300,
+              fontStyle: 'normal',
+              letterSpacing: '0.02em',
+              lineHeight: 1.1,
+              color: 'white',
+              maxWidth: '680px',
+            }}
+          >
+            Your city. Yours to explore.
+          </h1>
+        </div>
+      </section>
 
       {/* ═══ CONTENT AREA ═══ */}
       <div
@@ -779,34 +848,6 @@ export default function NoBookingDashboard({
           }}
           className="lg:!p-[32px]"
         >
-          {/* SECTION A — Headline */}
-          <motion.div {...anim(0.06)}>
-            <p
-              className="block lg:hidden"
-              style={{
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: '13px',
-                color: 'var(--text-muted)',
-                marginBottom: '4px',
-              }}
-            >
-              {greeting}
-            </p>
-            <h1
-              style={{
-                fontFamily: 'Playfair Display, serif',
-                fontStyle: 'italic',
-                fontWeight: 700,
-                fontSize: 'clamp(32px, 5vw, 48px)',
-                lineHeight: 1.1,
-                letterSpacing: '-0.02em',
-                color: 'var(--text-primary)',
-              }}
-            >
-              Where to next?
-            </h1>
-          </motion.div>
-
           {/* SECTION B — Partner Hotels */}
           <motion.div {...anim(0.12)}>
             {/* Header row */}
