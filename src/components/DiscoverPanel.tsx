@@ -30,12 +30,8 @@ import AddUnknownPlaceDialog from '@/components/discover/AddUnknownPlaceDialog';
 import { useItinerary } from '@/components/ItineraryContext';
 import SuccessToast from '@/components/discover/SuccessToast';
 import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
-import {
-  curatedItemToPlaceCard,
-} from '@/components/discover/CuratedItemCard';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import { sendChatMessage } from '@/lib/ai/chat';
-import type { CuratedItem } from '@/types/pms';
 
 /* ─── Inline error component ─── */
 
@@ -246,9 +242,8 @@ interface DiscoverPanelProps {
   guestName?: string;
 }
 
-type PlacesTab = 'recommendations' | 'places' | 'images' | 'sources';
 const MAX_ASSISTANT_MESSAGES = 8;
-const MAX_VISIBLE_SOURCES = 8;
+const MAX_VISIBLE_CHAT_MESSAGES = 3;
 const PLACES_PAGE_SIZE = 10;
 const MAX_DISCOVER_PLACES = 20;
 const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
@@ -257,8 +252,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const { region } = useRegion();
   const [activeCategory, setActiveCategory] = useState<string>('top-places');
   const [activePlacesCategory, setActivePlacesCategory] = useState<string | null | undefined>(undefined);
-  // kept for backward compat with existing logic (unused in new UI)
-  const [activePlacesTab, setActivePlacesTab] = useState<PlacesTab>('recommendations');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingPlace, setAddingPlace] = useState<PlaceCard | null>(null);
   const [successToast, setSuccessToast] = useState<{ placeName: string; dayValue: string; bookingUrl: string } | null>(null);
@@ -266,7 +259,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailPlace, setDetailPlace] = useState<PlaceCard | null>(null);
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
-  const [detailEvent, setDetailEvent] = useState<EventCard | null>(null);
+  const [detailEvent, _setDetailEvent] = useState<EventCard | null>(null);
   const [mobileDiscoverTab, setMobileDiscoverTab] = useState<'explore' | 'map'>('explore');
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
@@ -361,18 +354,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     setDetailDialogOpen(true);
   }, []);
 
-  const handleAddClick = useCallback((placeId: string) => {
-    const place = places.find((p) => p.id === placeId) ?? null;
-    setAddingPlace(place);
-    setAddDialogOpen(true);
-  }, [places]);
-
-  const handleAddCuratedItem = useCallback((item: CuratedItem, idx: number) => {
-    const matchedPlace = item.place_id ? places.find((place) => place.id === item.place_id) : null;
-    setAddingPlace(matchedPlace ?? curatedItemToPlaceCard(item, idx));
-    setAddDialogOpen(true);
-  }, [places]);
-
   const handleConfirmAdd = useCallback((placeId: string, day: string) => {
     const place = places.find((p) => p.id === placeId) ?? addingPlace;
     if (place) {
@@ -436,11 +417,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     void fetchSyncStatus();
   }, [region?.id]);
 
-  const handleEventCardClick = useCallback((event: EventCard) => {
-    setDetailEvent(event);
-    setEventDetailOpen(true);
-  }, []);
-
   const sendAssistantMessage = useCallback(async (text?: string) => {
     const messageText = (text ?? assistantInput).trim();
     if (!messageText || isAssistantLoading) return;
@@ -479,55 +455,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     );
     setIsAssistantLoading(false);
   }, [assistantInput, assistantMessages, isAssistantLoading, stayId]);
-
-  const placeNameChips = useMemo(
-    () => places.slice(0, 4).map((place) => place.name),
-    [places],
-  );
-
-  const getSafeBackgroundImage = useCallback((imageUrl: string | undefined) => {
-    if (!imageUrl) return 'none';
-    try {
-      const parsed = new URL(imageUrl.trim());
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'none';
-      if (/[\\()"'\n\r]/.test(parsed.href)) return 'none';
-      return `url("${parsed.href}")`;
-    } catch {
-      return 'none';
-    }
-  }, []);
-
-  const getSourceLabel = useCallback((sourceUrl: string | undefined) => {
-    if (!sourceUrl) return 'Local source unavailable';
-    try {
-      return new URL(sourceUrl).host;
-    } catch {
-      return sourceUrl;
-    }
-  }, []);
-
-
-  const scrollCarousel = useCallback((direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const scrollAmount = 280;
-      carouselRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  }, []);
-
-  // Suppress unused-var warnings for preserved-but-unused state/helpers
-  void activePlacesTab;
-  void setActivePlacesTab;
-  void handleEventCardClick;
-  void getSafeBackgroundImage;
-  void getSourceLabel;
-  void placeNameChips;
-  void scrollCarousel;
-  void handleAddClick;
-  void handleAddCuratedItem;
-  void MAX_VISIBLE_SOURCES;
 
   // Scroll chat messages to bottom when new messages arrive
   useEffect(() => {
@@ -933,7 +860,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                           Ask about this area...
                         </p>
                       )}
-                      {assistantMessages.slice(-3).map((message) => (
+                      {assistantMessages.slice(-MAX_VISIBLE_CHAT_MESSAGES).map((message) => (
                         <div
                           key={message.id}
                           style={{
