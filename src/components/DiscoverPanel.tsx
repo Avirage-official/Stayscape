@@ -86,14 +86,14 @@ function PlaceRowCard({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       style={{
         padding: '12px 20px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid #EDE8E1',
         display: 'flex',
         gap: 12,
         alignItems: 'flex-start',
         cursor: 'pointer',
         transition: 'background 0.15s ease',
       }}
-      whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+      whileHover={{ backgroundColor: '#F5F2EE' }}
     >
       {/* Thumbnail */}
       <div
@@ -103,7 +103,7 @@ function PlaceRowCard({
           flexShrink: 0,
           borderRadius: 10,
           overflow: 'hidden',
-          background: 'rgba(255,255,255,0.04)',
+          background: '#F5F2EE',
           position: 'relative',
         }}
       >
@@ -125,7 +125,7 @@ function PlaceRowCard({
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 20,
-              color: 'rgba(255,255,255,0.20)',
+              color: '#9E9389',
             }}
           >
             {place.category.charAt(0).toUpperCase()}
@@ -139,7 +139,7 @@ function PlaceRowCard({
           style={{
             fontSize: 14,
             fontWeight: 600,
-            color: 'rgba(255,255,255,0.90)',
+            color: '#1C1A17',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -148,12 +148,12 @@ function PlaceRowCard({
         >
           {place.name}
         </p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: '#6B6158' }}>
           <span style={{ textTransform: 'capitalize' }}>{place.category}</span>
           {place.rating > 0 && (
             <>
               <span>·</span>
-              <span style={{ color: 'rgba(193,127,58,0.70)' }}>★ {place.rating.toFixed(1)}</span>
+              <span style={{ color: '#C17F3A' }}>★ {place.rating.toFixed(1)}</span>
             </>
           )}
         </div>
@@ -161,7 +161,7 @@ function PlaceRowCard({
           <p
             style={{
               fontSize: 12,
-              color: 'rgba(255,255,255,0.30)',
+              color: '#9E9389',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -204,20 +204,20 @@ function CategoryPill({
     alignItems: 'center',
     ...(active
       ? {
-          background: 'rgba(193,127,58,0.15)',
+          background: 'rgba(193,127,58,0.10)',
           border: '1px solid rgba(193,127,58,0.40)',
-          color: 'var(--gold)',
+          color: '#C17F3A',
         }
       : hovered
         ? {
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            color: 'rgba(255,255,255,0.70)',
+            background: '#F5F2EE',
+            border: '1px solid #EDE8E1',
+            color: '#1C1A17',
           }
         : {
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            color: 'rgba(255,255,255,0.45)',
+            background: '#FFFFFF',
+            border: '1px solid #EDE8E1',
+            color: '#6B6158',
           }),
   };
 
@@ -467,7 +467,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     <TooltipProvider>
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Mobile sub-tabs — pill style, hidden on lg+ */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11 border-b border-white/10" style={{ background: '#0F0E0C' }}>
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11" style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}>
           {(['explore', 'map'] as const).map((tab) => (
             <button
               key={tab}
@@ -477,14 +477,14 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               style={
                 mobileDiscoverTab === tab
                   ? {
-                      background: 'rgba(193,127,58,0.15)',
+                      background: 'rgba(193,127,58,0.10)',
                       color: '#C17F3A',
                       borderColor: 'rgba(193,127,58,0.40)',
                     }
                   : {
                       background: 'transparent',
-                      color: 'rgba(255,255,255,0.50)',
-                      borderColor: 'rgba(255,255,255,0.15)',
+                      color: '#6B6158',
+                      borderColor: '#EDE8E1',
                     }
               }
             >
@@ -509,8 +509,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
             style={{
               width: 340,
               flexShrink: 0,
-              background: '#0F0E0C',
-              borderRight: '1px solid rgba(255,255,255,0.07)',
+              background: '#FFFFFF',
+              borderRight: '1px solid #EDE8E1',
               overflow: 'hidden',
             }}
           >
@@ -523,7 +523,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
+                borderBottom: '1px solid #EDE8E1',
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -533,7 +533,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     fontSize: 15,
                     fontStyle: 'italic',
                     fontWeight: 500,
-                    color: 'rgba(255,255,255,0.85)',
+                    color: '#1C1A17',
                     lineHeight: 1.2,
                   }}
                 >
@@ -565,7 +565,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       height="20"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="rgba(255,255,255,0.4)"
+                      stroke="#9E9389"
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -590,7 +590,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                   style={{
                     flexShrink: 0,
                     overflow: 'hidden',
-                    borderBottom: '1px solid rgba(255,255,255,0.07)',
+                    borderBottom: '1px solid #EDE8E1',
                     padding: '0 16px',
                     display: 'flex',
                     alignItems: 'center',
@@ -606,11 +606,11 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       flex: 1,
                       height: 32,
                       borderRadius: 8,
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
+                      background: '#F5F2EE',
+                      border: '1px solid #EDE8E1',
                       padding: '0 12px',
                       fontSize: 13,
-                      color: 'rgba(255,255,255,0.80)',
+                      color: '#1C1A17',
                       outline: 'none',
                     }}
                   />
@@ -623,7 +623,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               style={{
                 flexShrink: 0,
                 padding: '14px 20px 12px',
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
+                borderBottom: '1px solid #EDE8E1',
               }}
             >
               {categoriesError && (
@@ -674,12 +674,12 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     fontWeight: 600,
                     textTransform: 'uppercase',
                     letterSpacing: '0.14em',
-                    color: 'rgba(255,255,255,0.40)',
+                    color: '#9E9389',
                   }}
                 >
                   {categories.find((c) => c.id === activeCategory)?.label ?? 'Places'}
                 </span>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+                <span style={{ fontSize: 11, color: '#C4BBB2' }}>
                   {places.length} {places.length === 1 ? 'place' : 'places'}
                 </span>
               </div>
@@ -702,7 +702,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       key={i}
                       style={{
                         padding: '12px 20px',
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        borderBottom: '1px solid #EDE8E1',
                         display: 'flex',
                         gap: 12,
                         alignItems: 'flex-start',
@@ -715,13 +715,13 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                           height: 64,
                           flexShrink: 0,
                           borderRadius: 10,
-                          background: 'rgba(255,255,255,0.04)',
+                          background: '#F5F2EE',
                         }}
                       />
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div className="animate-pulse" style={{ height: 14, borderRadius: 4, background: 'rgba(255,255,255,0.04)', width: '70%' }} />
-                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: 'rgba(255,255,255,0.04)', width: '50%' }} />
-                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: 'rgba(255,255,255,0.04)', width: '85%' }} />
+                        <div className="animate-pulse" style={{ height: 14, borderRadius: 4, background: '#F5F2EE', width: '70%' }} />
+                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: '#F5F2EE', width: '50%' }} />
+                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: '#F5F2EE', width: '85%' }} />
                       </div>
                     </div>
                   ))}
@@ -757,14 +757,14 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     fontSize: 11,
                     textTransform: 'uppercase',
                     letterSpacing: '0.12em',
-                    color: 'rgba(255,255,255,0.30)',
+                    color: '#9E9389',
                     cursor: 'pointer',
                     border: 'none',
                     background: 'none',
                     transition: 'color 0.15s ease',
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.30)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#9E9389'; }}
                 >
                   Load more places
                 </button>
@@ -777,8 +777,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               style={{
                 flexShrink: 0,
-                borderTop: '1px solid rgba(255,255,255,0.07)',
-                background: 'rgba(10,8,6,0.60)',
+                borderTop: '1px solid #EDE8E1',
+                background: '#F5F2EE',
                 display: 'flex',
                 flexDirection: 'column',
               }}
@@ -791,7 +791,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  borderBottom: '1px solid #EDE8E1',
                   flexShrink: 0,
                 }}
               >
@@ -811,7 +811,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       fontWeight: 600,
                       textTransform: 'uppercase',
                       letterSpacing: '0.14em',
-                      color: 'rgba(255,255,255,0.45)',
+                      color: '#6B6158',
                     }}
                   >
                     AI Concierge
@@ -828,7 +828,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     height="14"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="rgba(255,255,255,0.40)"
+                    stroke="#9E9389"
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -865,7 +865,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                       }}
                     >
                       {assistantMessages.length === 0 && (
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', alignSelf: 'center', marginTop: 'auto' }}>
+                        <p style={{ fontSize: 11, color: '#9E9389', alignSelf: 'center', marginTop: 'auto' }}>
                           Ask about this area...
                         </p>
                       )}
@@ -877,20 +877,20 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                               ? {
                                   alignSelf: 'flex-end',
                                   maxWidth: '75%',
-                                  background: 'rgba(193,127,58,0.15)',
-                                  border: '1px solid rgba(193,127,58,0.20)',
+                                  background: 'rgba(193,127,58,0.12)',
+                                  border: '1px solid rgba(193,127,58,0.30)',
                                   borderRadius: '12px 12px 2px 12px',
                                 }
                               : {
                                   alignSelf: 'flex-start',
                                   maxWidth: '85%',
-                                  background: 'rgba(255,255,255,0.05)',
-                                  border: '1px solid rgba(255,255,255,0.08)',
+                                  background: '#FFFFFF',
+                                  border: '1px solid #EDE8E1',
                                   borderRadius: '2px 12px 12px 12px',
                                 }),
                             padding: '8px 12px',
                             fontSize: 13,
-                            color: message.role === 'user' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.70)',
+                            color: '#1C1A17',
                             lineHeight: 1.5,
                           }}
                         >
@@ -914,7 +914,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                                 width: 5,
                                 height: 5,
                                 borderRadius: 999,
-                                background: 'rgba(255,255,255,0.25)',
+                                background: '#C4BBB2',
                                 animationDelay: `${i * 0.15}s`,
                               }}
                             />
@@ -954,22 +954,22 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     flex: 1,
                     height: 34,
                     borderRadius: 8,
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.10)',
+                    background: '#FFFFFF',
+                    border: '1px solid #EDE8E1',
                     padding: '0 12px',
                     fontSize: 13,
-                    color: 'rgba(255,255,255,0.80)',
+                    color: '#1C1A17',
                     outline: 'none',
                     transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
                   }}
                   onFocusCapture={(e) => {
                     (e.target as HTMLInputElement).style.borderColor = 'rgba(193,127,58,0.40)';
-                    (e.target as HTMLInputElement).style.background = 'rgba(255,255,255,0.08)';
+                    (e.target as HTMLInputElement).style.background = '#FFFFFF';
                     (e.target as HTMLInputElement).style.boxShadow = '0 0 0 2px rgba(193,127,58,0.10)';
                   }}
                   onBlurCapture={(e) => {
-                    (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.10)';
-                    (e.target as HTMLInputElement).style.background = 'rgba(255,255,255,0.06)';
+                    (e.target as HTMLInputElement).style.borderColor = '#EDE8E1';
+                    (e.target as HTMLInputElement).style.background = '#FFFFFF';
                     (e.target as HTMLInputElement).style.boxShadow = 'none';
                   }}
                 />
@@ -981,7 +981,7 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     width: 34,
                     height: 34,
                     borderRadius: 8,
-                    background: 'rgba(193,127,58,0.15)',
+                    background: 'rgba(193,127,58,0.12)',
                     border: '1px solid rgba(193,127,58,0.30)',
                     display: 'flex',
                     alignItems: 'center',
@@ -990,8 +990,8 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
                     transition: 'all 0.15s ease',
                     flexShrink: 0,
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.25)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.15)'; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.20)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.12)'; }}
                   aria-label="Send message"
                 >
                   <svg

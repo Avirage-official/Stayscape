@@ -67,22 +67,22 @@
   --map-zoom-bg: #1A1714;
   --map-zoom-border: #2A2520;
 
-  /* Discover (always dark) */
-  --discover-bg: #0F0E0C;
-  --discover-surface: #1A1714;
-  --discover-card: #221E18;
-  --discover-border: #2E2820;
-  --discover-gold: #C17F3A;
-  --discover-title: #F0EBE3;
-  --discover-body: #9E9389;
-  --discover-gold-5: rgba(193,127,58,0.05);
-  --discover-gold-8: rgba(193,127,58,0.08);
-  --discover-gold-12: rgba(193,127,58,0.12);
-  --discover-gold-15: rgba(193,127,58,0.15);
-  --discover-gold-20: rgba(193,127,58,0.20);
-  --discover-gold-25: rgba(193,127,58,0.25);
-  --discover-bg-overlay: rgba(15,14,12,0.90);
-  --discover-active-card: #2A2418;
+  /* Discover (warm light, matches home page) */
+  --discover-bg:           #FAF8F5;
+  --discover-surface:      #FFFFFF;
+  --discover-card:         #FFFFFF;
+  --discover-border:       #EDE8E1;
+  --discover-gold:         #C17F3A;
+  --discover-title:        #1C1A17;
+  --discover-body:         #6B6158;
+  --discover-gold-5:       rgba(193,127,58,0.05);
+  --discover-gold-8:       rgba(193,127,58,0.08);
+  --discover-gold-12:      rgba(193,127,58,0.12);
+  --discover-gold-15:      rgba(193,127,58,0.15);
+  --discover-gold-20:      rgba(193,127,58,0.20);
+  --discover-gold-25:      rgba(193,127,58,0.25);
+  --discover-bg-overlay:   rgba(250,248,245,0.92);
+  --discover-active-card:  rgba(193,127,58,0.08);
 
   /* Status */
   --success: #4A7C59;
@@ -135,13 +135,21 @@
   --map-label-bg: #1A1714;
   --map-zoom-bg: #1A1714;
   --map-zoom-border: #2A2520;
-  --discover-bg: #0F0E0C;
-  --discover-surface: #1A1714;
-  --discover-card: #221E18;
-  --discover-border: #2E2820;
-  --discover-gold: #C17F3A;
-  --discover-title: #F0EBE3;
-  --discover-body: #9E9389;
+  --discover-bg:           #FAF8F5;
+  --discover-surface:      #FFFFFF;
+  --discover-card:         #FFFFFF;
+  --discover-border:       #EDE8E1;
+  --discover-gold:         #C17F3A;
+  --discover-title:        #1C1A17;
+  --discover-body:         #6B6158;
+  --discover-gold-5:       rgba(193,127,58,0.05);
+  --discover-gold-8:       rgba(193,127,58,0.08);
+  --discover-gold-12:      rgba(193,127,58,0.12);
+  --discover-gold-15:      rgba(193,127,58,0.15);
+  --discover-gold-20:      rgba(193,127,58,0.20);
+  --discover-gold-25:      rgba(193,127,58,0.25);
+  --discover-bg-overlay:   rgba(250,248,245,0.92);
+  --discover-active-card:  rgba(193,127,58,0.08);
   --tab-bg: #FFFFFF;
   --tab-border: #EDE8E1;
   --tab-active: #C17F3A;
