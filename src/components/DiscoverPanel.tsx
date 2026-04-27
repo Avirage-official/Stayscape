@@ -473,11 +473,20 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
               key={tab}
               type="button"
               onClick={() => setMobileDiscoverTab(tab)}
-              className={`h-6 px-3.5 rounded-full text-[10px] font-medium uppercase tracking-[0.12em] transition-all duration-200 cursor-pointer border ${
+              className="h-6 px-3.5 rounded-full text-[10px] font-medium uppercase tracking-[0.12em] transition-all duration-200 cursor-pointer border"
+              style={
                 mobileDiscoverTab === tab
-                  ? 'bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/40'
-                  : 'bg-transparent text-white/50 border-white/15 hover:text-white/75 hover:border-white/25'
-              }`}
+                  ? {
+                      background: 'rgba(193,127,58,0.15)',
+                      color: '#C17F3A',
+                      borderColor: 'rgba(193,127,58,0.40)',
+                    }
+                  : {
+                      background: 'transparent',
+                      color: 'rgba(255,255,255,0.50)',
+                      borderColor: 'rgba(255,255,255,0.15)',
+                    }
+              }
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
