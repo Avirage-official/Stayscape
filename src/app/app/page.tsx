@@ -25,15 +25,16 @@ function HomeInner() {
   const { region: globalRegion } = useRegion();
   const { user } = useAuth();
 
-  // URL ?tab=map opens the concierge layout (which renders the map panel);
-  // ?tab=itinerary opens the itinerary tab;
-  // any other value (or unset) defaults to the discover tab.
+  // No ?tab param (/app)           → concierge layout (CustomerPanel + timeline + summary)
+  // ?tab=discover (/app?tab=discover) → DiscoverPanel
+  // ?tab=itinerary (/app?tab=itinerary) → ItineraryPanel
+  const tabParam = searchParams?.get('tab');
   const initialTab: ActiveTab =
-    searchParams?.get('tab') === 'map'
-      ? 'concierge'
-      : searchParams?.get('tab') === 'itinerary'
+    tabParam === 'discover'
+      ? 'discover'
+      : tabParam === 'itinerary'
         ? 'itinerary'
-        : 'discover';
+        : 'concierge';
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -134,14 +135,14 @@ function HomeInner() {
     fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.16em',
-    color: 'rgba(255,255,255,0.25)',
+    color: '#9E9389',
     marginBottom: 4,
   };
   const detailValueStyle: CSSProperties = {
     fontFamily: 'DM Sans, sans-serif',
     fontSize: 14,
     fontWeight: 500,
-    color: 'rgba(255,255,255,0.75)',
+    color: '#1C1A17',
   };
   const loadingOverlay = regionSetupFailed ? (
     <div
@@ -226,7 +227,7 @@ function HomeInner() {
             <ErrorBoundary fallbackTitle="Map & Concierge">
               <div className="flex flex-1 flex-col overflow-hidden">
                 <div className="flex flex-1 overflow-hidden">
-                  <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[38%] flex-col overflow-hidden border-r border-white/10 bg-black/70`}>
+                  <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[38%] flex-col overflow-hidden border-r border-[#EDE8E1] bg-white`}>
                     <CustomerPanel
                       stayId={dashboardData?.upcomingStay?.id}
                       guestName={dashboardData?.profile?.full_name ?? undefined}
@@ -238,7 +239,7 @@ function HomeInner() {
                     />
                   </div>
 
-                  <div className="hidden lg:flex lg:w-[24%] flex-col overflow-y-auto scrollbar-hide border-r border-white/10 bg-black/70 p-4 gap-4">
+                  <div className="hidden lg:flex lg:w-[24%] flex-col overflow-y-auto scrollbar-hide border-r border-[#EDE8E1] bg-white p-4 gap-4">
                     <ItineraryTimeline />
                     <QuickActions
                       stayId={dashboardData?.upcomingStay?.id}
@@ -246,8 +247,8 @@ function HomeInner() {
                     />
                   </div>
 
-                  <div className="hidden lg:flex lg:flex-1 flex-col overflow-y-auto scrollbar-hide border-l border-white/[0.07]"
-                    style={{ background: 'rgba(15,14,12,0.80)', padding: 24 }}
+                  <div className="hidden lg:flex lg:flex-1 flex-col overflow-y-auto scrollbar-hide border-l border-[#EDE8E1]"
+                    style={{ background: '#FFFFFF', padding: 24 }}
                   >
                     {/* Status badge */}
                     <div
@@ -276,7 +277,7 @@ function HomeInner() {
                         fontStyle: 'italic',
                         fontSize: 22,
                         fontWeight: 500,
-                        color: 'rgba(255,255,255,0.90)',
+                        color: '#1C1A17',
                         lineHeight: 1.2,
                         marginBottom: 4,
                       }}
@@ -289,7 +290,7 @@ function HomeInner() {
                       style={{
                         fontFamily: 'DM Sans, sans-serif',
                         fontSize: 12,
-                        color: 'rgba(255,255,255,0.35)',
+                        color: '#6B6158',
                         letterSpacing: '0.08em',
                         marginBottom: 24,
                       }}
@@ -298,7 +299,7 @@ function HomeInner() {
                     </p>
 
                     {/* Divider */}
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', marginBottom: 20 }} />
+                    <div style={{ height: 1, background: '#EDE8E1', marginBottom: 20 }} />
 
                     {/* Details grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -329,12 +330,15 @@ function HomeInner() {
                     </div>
 
                     {/* Divider */}
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '24px 0' }} />
+                    <div style={{ height: 1, background: '#EDE8E1', margin: '24px 0' }} />
 
                     {/* Discover link */}
                     <button
                       type="button"
-                      onClick={() => setActiveTab('discover')}
+                      onClick={() => {
+                        setActiveTab('discover');
+                        router.push('/app?tab=discover');
+                      }}
                       className="app-discover-link"
                       style={{
                         fontFamily: 'DM Sans, sans-serif',
@@ -359,7 +363,7 @@ function HomeInner() {
                       style={{
                         fontFamily: 'DM Sans, sans-serif',
                         fontSize: 11,
-                        color: 'rgba(255,255,255,0.20)',
+                        color: '#C4BBB2',
                         lineHeight: 1.5,
                         marginTop: 16,
                       }}

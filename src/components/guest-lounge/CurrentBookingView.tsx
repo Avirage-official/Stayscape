@@ -192,7 +192,7 @@ function BookedState({
         className="mt-5 flex flex-wrap gap-3 pb-2"
         {...fadeIn(0.36)}
       >
-        <ConciergeActionPill label="Open Map" href="/app?tab=map" icon={<MapIcon />} />
+        <ConciergeActionPill label="Open Map" href="/app?tab=discover" icon={<MapIcon />} />
         <ConciergeActionPill label="Explore Nearby" href="/app" icon={<CompassIcon />} />
         <ConciergeActionPill label="Itinerary" href="/app" icon={<CalendarIcon />} />
         <ConciergeActionPill label="Add Stay" onClick={onAddStay} icon={<PlusIcon />} />
