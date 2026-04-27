@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ConciergeExperience from '@/components/concierge/ConciergeExperience';
 import DiscoverPanel from '@/components/DiscoverPanel';
-import ItineraryPanel from '@/components/ItineraryPanel';
+import ItineraryExperience from '@/components/itinerary/ItineraryExperience';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { RegionProvider, useRegion } from '@/lib/context/region-context';
@@ -206,7 +206,12 @@ function HomeInner() {
             </ErrorBoundary>
           ) : (
             <ErrorBoundary fallbackTitle="Itinerary">
-              <ItineraryPanel />
+              <ItineraryExperience
+                stayId={selectedStay?.id ?? null}
+                checkIn={selectedStay?.check_in ?? null}
+                checkOut={selectedStay?.check_out ?? null}
+                guestName={dashboardData?.profile?.full_name ?? null}
+              />
             </ErrorBoundary>
           )}
         </main>
