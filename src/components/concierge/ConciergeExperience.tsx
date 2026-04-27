@@ -6,7 +6,6 @@ import { Cormorant_Garamond } from 'next/font/google';
 import {
   motion,
   AnimatePresence,
-  type PanInfo,
 } from 'framer-motion';
 import { isSameDay, differenceInCalendarDays } from 'date-fns';
 import { useItinerary } from '@/components/ItineraryContext';
@@ -19,7 +18,6 @@ const cormorant = Cormorant_Garamond({
 });
 
 const GOLD = '#C17F3A';
-const WORLD_COUNT = 4;
 /** Warm linen background used in gradients — matches var(--background) #FAF8F5 */
 const BG_LINEN = '250,248,245';
 
@@ -124,46 +122,6 @@ function isCurrentlyStaying(
   return today >= ci && today <= co;
 }
 
-/* ─── Dot Indicator ──────────────────────────────────────────── */
-
-function DotIndicator({
-  total,
-  active,
-  onDotClick,
-}: {
-  total: number;
-  active: number;
-  onDotClick: (i: number) => void;
-}) {
-  return (
-    <div
-      className="flex items-center justify-center gap-2"
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <motion.button
-          key={i}
-          type="button"
-          onClick={() => onDotClick(i)}
-          animate={{
-            width: i === active ? 20 : 6,
-            backgroundColor: i === active ? GOLD : '#EDE8E1',
-          }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          style={{
-            height: 6,
-            borderRadius: 3,
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            flexShrink: 0,
-            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 /* ─── Typing Indicator ───────────────────────────────────────── */
 
 function TypingIndicator() {
@@ -197,9 +155,9 @@ function TypingIndicator() {
   );
 }
 
-/* ─── World 1: Your Stay ─────────────────────────────────────── */
+/* ─── Left Panel: Stay Anchor ────────────────────────────────── */
 
-function WorldStay({
+function StayAnchor({
   propertyName,
   propertyImageUrl,
   propertyCity,
@@ -207,6 +165,7 @@ function WorldStay({
   checkIn,
   checkOut,
   guestCount,
+  guestName,
   bookingReference,
 }: {
   propertyName?: string | null;
@@ -216,6 +175,7 @@ function WorldStay({
   checkIn?: string | null;
   checkOut?: string | null;
   guestCount?: number | null;
+  guestName?: string | null;
   bookingReference?: string | null;
 }) {
   const nights = calcNights(checkIn, checkOut);
@@ -229,145 +189,207 @@ function WorldStay({
     { label: 'GUESTS', value: guestCount != null ? String(guestCount) : '—' },
   ];
 
+  const avatarInitials = guestName
+    ? guestName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'G';
+
   return (
     <div
-      className="flex flex-col"
-      style={{
-        minHeight: 'calc(100vh - 144px)',
-        background: 'var(--background)',
-      }}
+      className="flex flex-col flex-1 overflow-y-auto"
+      style={{ background: '#FAF8F5' }}
     >
-      {/* Hero image */}
-      <motion.div
-        initial={{ opacity: 0, scale: 1.03 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="relative flex-shrink-0"
-        style={{ height: '38vh' }}
+      {/* Hotel image hero */}
+      <div
+        style={{
+          height: 220,
+          position: 'relative',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}
       >
         <Image
           src={heroSrc}
           alt={propertyName ?? 'Property'}
           fill
-          sizes="(min-width: 1024px) 38vw, 100vw"
+          sizes="(min-width: 768px) 42vw, 100vw"
           style={{ objectFit: 'cover' }}
           priority
         />
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(to bottom, transparent 40%, var(--background) 100%)',
+            background: `linear-gradient(to bottom, transparent 50%, rgba(${BG_LINEN},0.95) 100%)`,
           }}
         />
-      </motion.div>
+        {/* Status pill */}
+        <div className="absolute top-3 left-3">
+          <span
+            style={{
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: isHere ? GOLD : 'rgba(255,255,255,0.75)',
+              background: isHere ? 'rgba(193,127,58,0.12)' : 'rgba(0,0,0,0.30)',
+              border: `1px solid ${isHere ? 'rgba(193,127,58,0.40)' : 'rgba(255,255,255,0.20)'}`,
+              borderRadius: 99,
+              padding: '4px 10px',
+            }}
+          >
+            {isHere ? "You're here ✦" : 'Upcoming'}
+          </span>
+        </div>
+      </div>
 
-      {/* Content below image */}
-      <div className="px-5 pb-6 flex flex-col gap-3" style={{ marginTop: -24 }}>
+      {/* Property identity */}
+      <div className="px-5 pt-4 pb-3 flex flex-col gap-1" style={{ marginTop: -20, position: 'relative', zIndex: 1 }}>
         <h1
           className={cormorant.className}
           style={{
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: 300,
-            color: 'var(--text-primary)',
+            color: '#1C1A17',
             lineHeight: 1.2,
             margin: 0,
           }}
         >
           {propertyName ?? 'Your Stay'}
         </h1>
-
         <p
           style={{
             fontFamily: 'DM Sans, sans-serif',
-            fontSize: 12,
-            color: 'var(--text-secondary)',
+            fontSize: 11,
+            color: '#9E9389',
             margin: 0,
+            letterSpacing: '0.04em',
           }}
         >
           {[propertyCity, propertyCountry].filter(Boolean).join(' · ') || 'Location unavailable'}
         </p>
+      </div>
 
-        {/* Stat tiles */}
-        <div className="grid grid-cols-4 gap-2" style={{ marginTop: 4 }}>
-          {statItems.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: i * 0.06 }}
-            >
-              <p
-                style={{
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 9,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  color: 'var(--text-muted)',
-                  marginBottom: 4,
-                }}
-              >
-                {stat.label}
-              </p>
-              <p
-                style={{
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color: 'var(--text-primary)',
-                }}
-              >
-                {stat.value}
-              </p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Status badge */}
-        <div>
-          {isHere ? (
+      {/* Guest identity */}
+      {guestName && (
+        <div className="px-5 py-2.5 flex items-center gap-2.5" style={{ borderTop: '1px solid #EDE8E1' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: 'rgba(193,127,58,0.10)',
+              border: '1px solid rgba(193,127,58,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
             <span
               style={{
                 fontFamily: 'DM Sans, sans-serif',
                 fontSize: 11,
+                fontWeight: 600,
                 color: GOLD,
               }}
             >
-              {"You're here ✦"}
+              {avatarInitials}
             </span>
-          ) : (
-            <span
+          </div>
+          <div>
+            <p
               style={{
                 fontFamily: 'DM Sans, sans-serif',
-                fontSize: 11,
-                color: 'var(--text-muted)',
+                fontSize: 12,
+                fontWeight: 500,
+                color: '#1C1A17',
+                margin: 0,
               }}
             >
-              Coming up
-            </span>
-          )}
+              {guestName}
+            </p>
+            {guestCount != null && (
+              <p
+                style={{
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: 10,
+                  color: '#9E9389',
+                  margin: 0,
+                }}
+              >
+                {guestCount} guest{guestCount !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
         </div>
+      )}
 
-        {/* Booking reference */}
-        {bookingReference && (
+      {/* Stat grid */}
+      <div
+        className="grid grid-cols-2 gap-px"
+        style={{ margin: '0 20px 16px', background: '#EDE8E1', borderRadius: 12, overflow: 'hidden' }}
+      >
+        {statItems.map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: i * 0.05 }}
+            style={{
+              background: '#FAF8F5',
+              padding: '10px 12px',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: '#9E9389',
+                margin: '0 0 3px 0',
+              }}
+            >
+              {stat.label}
+            </p>
+            <p
+              style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#1C1A17',
+                margin: 0,
+              }}
+            >
+              {stat.value}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Booking reference */}
+      {bookingReference && (
+        <div className="px-5 pb-5">
           <p
             style={{
               fontFamily: 'DM Sans, sans-serif',
-              fontSize: 11,
-              color: 'var(--text-muted)',
+              fontSize: 10,
+              color: '#9E9389',
               margin: 0,
+              letterSpacing: '0.06em',
             }}
           >
             Ref: {bookingReference}
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ─── World 2: Today ─────────────────────────────────────────── */
+/* ─── Right Panel Sections ───────────────────────────────────── */
 
-function WorldToday() {
+function SectionToday() {
   const { items } = useItinerary();
   const today = new Date();
   const todayItems = items.filter((item) => isSameDay(item.date, today));
@@ -376,7 +398,7 @@ function WorldToday() {
     return (
       <div
         style={{
-          minHeight: 'calc(100vh - 144px)',
+          flex: 1,
           background: 'var(--background)',
           display: 'flex',
           flexDirection: 'column',
@@ -384,13 +406,13 @@ function WorldToday() {
       >
         <div
           className="relative flex-1 flex items-end"
-          style={{ minHeight: 280 }}
+          style={{ minHeight: 240 }}
         >
           <Image
             src="/images/hotels/mbs-hero.jpg"
             alt="Morning"
             fill
-            sizes="(min-width: 1024px) 38vw, 100vw"
+            sizes="(min-width: 768px) 58vw, 100vw"
             style={{ objectFit: 'cover' }}
           />
           <div
@@ -403,7 +425,7 @@ function WorldToday() {
             <p
               style={{
                 fontFamily: 'DM Sans, sans-serif',
-                fontSize: 16,
+                fontSize: 15,
                 color: 'var(--text-primary)',
                 fontWeight: 500,
               }}
@@ -430,52 +452,40 @@ function WorldToday() {
   return (
     <div
       style={{
-        minHeight: 'calc(100vh - 144px)',
+        flex: 1,
         background: 'var(--background)',
-        padding: '20px 16px',
+        padding: '16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
+        gap: 10,
+        overflowY: 'auto',
       }}
     >
-      <h2
-        style={{
-          fontFamily: 'DM Sans, sans-serif',
-          fontSize: 11,
-          textTransform: 'uppercase',
-          letterSpacing: '0.14em',
-          color: 'var(--text-muted)',
-          margin: '0 0 4px 0',
-        }}
-      >
-        Today
-      </h2>
       {todayItems.map((item, i) => (
         <motion.div
           key={item.id}
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: i * 0.06 }}
+          transition={{ duration: 0.35, delay: i * 0.05 }}
           whileHover={{ y: -2 }}
           style={{
             display: 'flex',
             width: '100%',
-            height: 160,
-            borderRadius: 16,
+            height: 140,
+            borderRadius: 14,
             background: 'var(--card-bg)',
             border: '1px solid var(--border)',
             overflow: 'hidden',
             cursor: 'pointer',
           }}
         >
-          {/* Image */}
-          <div className="relative flex-shrink-0" style={{ width: 80 }}>
+          <div className="relative flex-shrink-0" style={{ width: 72 }}>
             {item.image ? (
               <Image
                 src={item.image}
                 alt={item.name}
                 fill
-                sizes="80px"
+                sizes="72px"
                 style={{ objectFit: 'cover' }}
               />
             ) : (
@@ -484,7 +494,7 @@ function WorldToday() {
                 style={{
                   background: 'var(--background)',
                   fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 24,
+                  fontSize: 22,
                   color: 'var(--text-muted)',
                   fontWeight: 600,
                 }}
@@ -493,38 +503,15 @@ function WorldToday() {
               </div>
             )}
           </div>
-
-          {/* Details */}
           <div className="flex flex-col justify-center px-3 py-3 gap-1">
-            <p
-              style={{
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: 15,
-                color: 'var(--text-primary)',
-                fontWeight: 500,
-              }}
-            >
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
               {item.name}
             </p>
-            <p
-              style={{
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: 10,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                color: 'var(--text-muted)',
-              }}
-            >
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
               {item.category}
             </p>
             {item.time && (
-              <p
-                style={{
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 12,
-                  color: GOLD,
-                }}
-              >
+              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: GOLD }}>
                 {item.time}
               </p>
             )}
@@ -535,9 +522,7 @@ function WorldToday() {
   );
 }
 
-/* ─── World 3: Preferences ───────────────────────────────────── */
-
-function WorldPreferences({ stayId }: { stayId?: string | null }) {
+function SectionPreferences({ stayId }: { stayId?: string | null }) {
   const [selected, setSelected] = useState<Record<string, Set<string>>>({
     dining: new Set(),
     room_service: new Set(),
@@ -609,12 +594,13 @@ function WorldPreferences({ stayId }: { stayId?: string | null }) {
   return (
     <div
       style={{
-        minHeight: 'calc(100vh - 144px)',
+        flex: 1,
         background: 'var(--background)',
-        padding: '20px 16px',
+        padding: '16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: 14,
+        overflowY: 'auto',
       }}
     >
       {PREF_SECTIONS.map((section, si) => (
@@ -624,17 +610,17 @@ function WorldPreferences({ stayId }: { stayId?: string | null }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: si * 0.06 }}
           style={{
-            borderRadius: 20,
+            borderRadius: 16,
             overflow: 'hidden',
             border: '1px solid var(--border)',
           }}
         >
-          <div className="relative" style={{ height: 200 }}>
+          <div className="relative" style={{ height: 180 }}>
             <Image
               src={section.bgImage}
               alt={section.title}
               fill
-              sizes="(min-width: 1024px) 38vw, 100vw"
+              sizes="(min-width: 768px) 58vw, 100vw"
               style={{ objectFit: 'cover' }}
             />
             <div
@@ -718,7 +704,7 @@ function WorldPreferences({ stayId }: { stayId?: string | null }) {
   );
 }
 
-/* ─── World 4: Chat ──────────────────────────────────────────── */
+/* ─── Section: Chat ──────────────────────────────────────────── */
 
 interface ChatMessage {
   id: number;
@@ -726,7 +712,7 @@ interface ChatMessage {
   content: string;
 }
 
-function WorldChat({ stayId }: { stayId?: string | null }) {
+function SectionChat({ stayId }: { stayId?: string | null }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -755,7 +741,6 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
         body: JSON.stringify({
           message: msg,
           stayId: stayId ?? null,
-          // API expects { role, text } format; our local state uses { role, content }
           history: messages.map((m) => ({ role: m.role, text: m.content })),
         }),
       });
@@ -787,13 +772,13 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
   return (
     <div
       style={{
-        minHeight: 'calc(100vh - 144px)',
+        flex: 1,
         background: 'var(--background)',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         overflow: 'hidden',
-        height: '100%',
+        minHeight: 0,
       }}
     >
       {/* Blurred backdrop */}
@@ -802,7 +787,7 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
           src="/images/hotels/mbs-hero.jpg"
           alt=""
           fill
-          sizes="(min-width: 1024px) 38vw, 100vw"
+          sizes="(min-width: 768px) 58vw, 100vw"
           style={{
             objectFit: 'cover',
             filter: 'blur(40px) brightness(1.1)',
@@ -820,38 +805,11 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
       {/* Content */}
       <div
         className="relative flex flex-col"
-        style={{ zIndex: 2, height: '100%', flex: 1 }}
+        style={{ zIndex: 2, flex: 1, minHeight: 0 }}
       >
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3 flex-shrink-0">
-          <h2
-            className={cormorant.className}
-            style={{
-              fontSize: 22,
-              fontWeight: 300,
-              color: 'var(--text-primary)',
-              margin: 0,
-              lineHeight: 1.2,
-            }}
-          >
-            Concierge
-          </h2>
-          <p
-            style={{
-              fontFamily: 'DM Sans, sans-serif',
-              fontSize: 12,
-              color: 'var(--text-secondary)',
-              marginTop: 2,
-              marginBottom: 0,
-            }}
-          >
-            Ask anything about your stay or the city
-          </p>
-        </div>
-
         {/* Messages */}
         <div
-          className="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-3"
+          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
           style={{ minHeight: 0 }}
         >
           {messages.length === 0 && (
@@ -994,10 +952,82 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
   );
 }
 
+/* ─── Right Panel: Reel ──────────────────────────────────────── */
+
+type ReelSection = 'today' | 'preferences' | 'chat';
+
+function RightReel({ stayId }: { stayId?: string | null }) {
+  const [activeSection, setActiveSection] = useState<ReelSection>('chat');
+
+  const tabs: { id: ReelSection; label: string }[] = [
+    { id: 'chat', label: 'Concierge' },
+    { id: 'today', label: 'Today' },
+    { id: 'preferences', label: 'Preferences' },
+  ];
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: 'var(--background)',
+      }}
+    >
+      {/* Section nav */}
+      <div
+        className="flex-shrink-0 flex items-center gap-1 px-4 pt-3 pb-0"
+        style={{ borderBottom: '1px solid #EDE8E1' }}
+      >
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveSection(tab.id)}
+            style={{
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: 12,
+              fontWeight: activeSection === tab.id ? 600 : 400,
+              color: activeSection === tab.id ? GOLD : '#9E9389',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: `2px solid ${activeSection === tab.id ? GOLD : 'transparent'}`,
+              padding: '8px 12px',
+              cursor: 'pointer',
+              transition: 'color 150ms, border-color 150ms',
+              marginBottom: -1,
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Active section content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSection}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
+        >
+          {activeSection === 'today' && <SectionToday />}
+          {activeSection === 'preferences' && <SectionPreferences stayId={stayId} />}
+          {activeSection === 'chat' && <SectionChat stayId={stayId} />}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────── */
 
 export default function ConciergeExperience({
   stayId,
+  guestName,
   propertyName,
   propertyImageUrl,
   propertyCity,
@@ -1007,129 +1037,43 @@ export default function ConciergeExperience({
   checkOut,
   guestCount,
 }: ConciergeExperienceProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [currentWorld, setCurrentWorld] = useState(0);
-
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth);
-      }
-    };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  const handleDragEnd = useCallback(
-    (_: unknown, info: PanInfo) => {
-      if (containerWidth === 0) return;
-      const threshold = containerWidth * 0.2;
-      const { offset, velocity } = info;
-      if (offset.x < -threshold || velocity.x < -300) {
-        setCurrentWorld((prev) => Math.min(prev + 1, WORLD_COUNT - 1));
-      } else if (offset.x > threshold || velocity.x > 300) {
-        setCurrentWorld((prev) => Math.max(prev - 1, 0));
-      }
-    },
-    [containerWidth],
-  );
-
-  const goToWorld = useCallback((i: number) => {
-    setCurrentWorld(Math.max(0, Math.min(i, WORLD_COUNT - 1)));
-  }, []);
-
-  const effectiveWidth = containerWidth > 0 ? containerWidth : 320;
-
   return (
     <div
-      ref={containerRef}
-      className="relative flex flex-col w-full h-full overflow-hidden"
-      style={{ background: 'var(--background)' }}
+      className="flex flex-col md:flex-row w-full"
+      style={{
+        height: 'calc(100vh - 64px)',
+        background: '#FAF8F5',
+        overflow: 'hidden',
+      }}
     >
-      {/* Worlds strip */}
-      <div className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
-        <motion.div
-          drag="x"
-          dragDirectionLock
-          dragConstraints={{
-            left: -(WORLD_COUNT - 1) * effectiveWidth,
-            right: 0,
-          }}
-          dragElastic={0.1}
-          onDragEnd={handleDragEnd}
-          animate={{ x: -currentWorld * effectiveWidth }}
-          transition={{ type: 'spring', stiffness: 300, damping: 35 }}
-          style={{
-            display: 'flex',
-            width: WORLD_COUNT * effectiveWidth,
-            height: '100%',
-          }}
-        >
-          {/* World 1 — Your Stay */}
-          <div
-            style={{
-              width: effectiveWidth,
-              flexShrink: 0,
-              overflowY: 'auto',
-              height: '100%',
-            }}
-          >
-            <WorldStay
-              propertyName={propertyName}
-              propertyImageUrl={propertyImageUrl}
-              propertyCity={propertyCity}
-              propertyCountry={propertyCountry}
-              checkIn={checkIn}
-              checkOut={checkOut}
-              guestCount={guestCount}
-              bookingReference={bookingReference}
-            />
-          </div>
-
-          {/* World 2 — Today */}
-          <div
-            style={{
-              width: effectiveWidth,
-              flexShrink: 0,
-              overflowY: 'auto',
-              height: '100%',
-            }}
-          >
-            <WorldToday />
-          </div>
-
-          {/* World 3 — Preferences */}
-          <div
-            style={{
-              width: effectiveWidth,
-              flexShrink: 0,
-              overflowY: 'auto',
-              height: '100%',
-            }}
-          >
-            <WorldPreferences stayId={stayId} />
-          </div>
-
-          {/* World 4 — Chat */}
-          <div
-            style={{
-              width: effectiveWidth,
-              flexShrink: 0,
-              overflow: 'hidden',
-              height: '100%',
-            }}
-          >
-            <WorldChat stayId={stayId} />
-          </div>
-        </motion.div>
+      {/* Left panel — static stay anchor */}
+      <div
+        className="w-full md:w-[42%] flex flex-col flex-shrink-0 overflow-hidden"
+        style={{
+          minWidth: 0,
+          borderRight: '1px solid #EDE8E1',
+          background: '#FAF8F5',
+        }}
+      >
+        <StayAnchor
+          propertyName={propertyName}
+          propertyImageUrl={propertyImageUrl}
+          propertyCity={propertyCity}
+          propertyCountry={propertyCountry}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          guestCount={guestCount}
+          guestName={guestName}
+          bookingReference={bookingReference}
+        />
       </div>
 
-      {/* Dot navigation — absolutely positioned inside wrapper */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
-        <DotIndicator total={WORLD_COUNT} active={currentWorld} onDotClick={goToWorld} />
+      {/* Right panel — reel */}
+      <div
+        className="flex-1 flex flex-col overflow-hidden"
+        style={{ minWidth: 0 }}
+      >
+        <RightReel stayId={stayId} />
       </div>
     </div>
   );
