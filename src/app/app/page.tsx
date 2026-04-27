@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import CustomerPanel from '@/components/CustomerPanel';
+import ConciergeExperience from '@/components/concierge/ConciergeExperience';
 import DiscoverPanel from '@/components/DiscoverPanel';
 import ItineraryPanel from '@/components/ItineraryPanel';
 import { ItineraryProvider } from '@/components/ItineraryContext';
@@ -227,14 +227,18 @@ function HomeInner() {
               <div className="flex flex-1 flex-col overflow-hidden">
                 <div className="flex flex-1 overflow-hidden">
                   <div className={`${mobileView === 'guest' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-[38%] flex-col overflow-hidden border-r border-[#EDE8E1] bg-white`}>
-                    <CustomerPanel
-                      stayId={dashboardData?.upcomingStay?.id}
-                      guestName={dashboardData?.profile?.full_name ?? undefined}
-                      roomLabel={dashboardData?.upcomingStay?.room_type ?? undefined}
-                      roomType={dashboardData?.upcomingStay?.room_type ?? undefined}
-                      guestCount={dashboardData?.upcomingStay?.guests ?? undefined}
-                      checkIn={dashboardData?.upcomingStay?.check_in ?? undefined}
-                      checkOut={dashboardData?.upcomingStay?.check_out ?? undefined}
+                    <ConciergeExperience
+                      stayId={dashboardData?.upcomingStay?.id ?? null}
+                      guestName={dashboardData?.profile?.full_name ?? null}
+                      propertyName={dashboardData?.upcomingStay?.property?.name ?? null}
+                      propertyImageUrl={dashboardData?.upcomingStay?.property?.image_url ?? null}
+                      propertyCity={dashboardData?.upcomingStay?.property?.city ?? null}
+                      propertyCountry={dashboardData?.upcomingStay?.property?.country ?? null}
+                      bookingReference={dashboardData?.upcomingStay?.booking_reference ?? null}
+                      checkIn={dashboardData?.upcomingStay?.check_in ?? null}
+                      checkOut={dashboardData?.upcomingStay?.check_out ?? null}
+                      guestCount={dashboardData?.upcomingStay?.guests ?? null}
+                      userId={user?.id ?? null}
                     />
                   </div>
 
