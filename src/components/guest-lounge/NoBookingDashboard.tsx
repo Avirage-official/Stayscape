@@ -40,11 +40,11 @@ const UNSPLASH_FALLBACK =
 /* ─── Nav items config ─── */
 
 const NAV_ITEMS = [
-  { label: 'Home', href: '/dashboard', icon: 'home', active: true },
-  { label: 'Discover', href: '/app', icon: 'compass', active: false },
-  { label: 'Map', href: '/app?tab=map', icon: 'map', active: false },
-  { label: 'Trips', href: '/dashboard/stay', icon: 'calendar', active: false },
-  { label: 'Profile', href: '/dashboard/profile', icon: 'user', active: false },
+  { label: 'Home',      href: '/dashboard',         icon: 'home',     active: true  },
+  { label: 'Concierge', href: '/app',               icon: 'compass',  active: false },
+  { label: 'Discover',  href: '/app?tab=map',       icon: 'map',      active: false },
+  { label: 'Itinerary', href: '/app?tab=itinerary', icon: 'calendar', active: false },
+  { label: 'Profile',   href: '/dashboard/profile', icon: 'user',     active: false },
 ] as const;
 
 /* ─── Inline SVG icons ─── */

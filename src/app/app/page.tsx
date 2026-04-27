@@ -216,10 +216,9 @@ function HomeInner() {
     <ItineraryProvider stayId={dashboardData?.upcomingStay?.id}>
       <div
         className="relative flex flex-col h-screen overflow-hidden"
-        data-theme="dark"
+        style={{ background: 'var(--background)' }}
       >
         {loadingOverlay}
-        <div className="fixed inset-0 -z-10 bg-[#0F0E0C]" />
 
         {/* Main layout */}
         <main className="flex flex-1 overflow-hidden">

@@ -38,7 +38,7 @@ const TABS: TabDef[] = [
     ),
   },
   {
-    label: 'Discover',
+    label: 'Concierge',
     href: '/app',
     match: (p, s) => p.startsWith('/app') && s.get('tab') !== 'map' && s.get('tab') !== 'itinerary',
     icon: (active) => (
@@ -49,7 +49,7 @@ const TABS: TabDef[] = [
     ),
   },
   {
-    label: 'Map',
+    label: 'Discover',
     href: '/app?tab=map',
     match: (p, s) => p.startsWith('/app') && s.get('tab') === 'map',
     icon: (active) => (
@@ -61,9 +61,9 @@ const TABS: TabDef[] = [
     ),
   },
   {
-    label: 'Trips',
-    href: '/dashboard/stay',
-    match: (p) => p.startsWith('/dashboard/stay'),
+    label: 'Itinerary',
+    href: '/app?tab=itinerary',
+    match: (p, s) => p.startsWith('/app') && s.get('tab') === 'itinerary',
     icon: (active) => (
       <svg {...ICON_PROPS(active)}>
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
