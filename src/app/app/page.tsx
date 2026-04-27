@@ -29,13 +29,12 @@ function HomeInner() {
   // ?tab=discover (/app?tab=discover) → DiscoverPanel
   // ?tab=itinerary (/app?tab=itinerary) → ItineraryPanel
   const tabParam = searchParams?.get('tab');
-  const initialTab: ActiveTab =
+  const activeTab: ActiveTab =
     tabParam === 'discover'
       ? 'discover'
       : tabParam === 'itinerary'
         ? 'itinerary'
         : 'concierge';
-  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [mobileView, setMobileView] = useState<MobileView>('guest');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [regionSetupFailed, setRegionSetupFailed] = useState(false);
@@ -335,10 +334,7 @@ function HomeInner() {
                     {/* Discover link */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveTab('discover');
-                        router.push('/app?tab=discover');
-                      }}
+                      onClick={() => router.push('/app?tab=discover')}
                       className="app-discover-link"
                       style={{
                         fontFamily: 'DM Sans, sans-serif',

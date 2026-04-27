@@ -159,7 +159,7 @@ const defaultSelected: Record<string, Set<string>> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[9px] font-medium text-white/35 uppercase tracking-[0.18em] mb-2">
+    <h3 className="text-[9px] font-medium text-[#9E9389] uppercase tracking-[0.18em] mb-2">
       {children}
     </h3>
   );
@@ -180,8 +180,8 @@ function PreferenceChip({
       onClick={onClick}
       className={`text-[10px] px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-200 ${
         active
-          ? 'bg-[#C9A84C]/15 border border-[#C9A84C]/35 text-[#C9A84C]'
-          : 'bg-white/5 border border-white/10 text-white/55 hover:text-white/80 hover:border-white/20'
+          ? 'bg-[#C17F3A]/10 border border-[#C17F3A]/40 text-[#C17F3A]'
+          : 'bg-white border border-[#EDE8E1] text-[#6B6158] hover:text-[#1C1A17] hover:border-[#C17F3A]/40'
       }`}
     >
       {label}
@@ -198,13 +198,13 @@ function UpdatedStatus({ visible }: { visible: boolean }) {
           : 'opacity-0 translate-y-1 pointer-events-none'
       }`}
     >
-      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#C9A84C]/12 border border-[#C9A84C]/25 gold-check-pulse">
+      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#C17F3A]/12 border border-[#C17F3A]/30 gold-check-pulse">
         <svg
           width="8"
           height="8"
           viewBox="0 0 10 10"
           fill="none"
-          className="text-[#C9A84C]"
+          className="text-[#C17F3A]"
         >
           <path
             d="M2 5.5L4 7.5L8 3"
@@ -215,7 +215,7 @@ function UpdatedStatus({ visible }: { visible: boolean }) {
           />
         </svg>
       </span>
-      <span className="text-[#C9A84C]/70 text-[10px] tracking-wide">
+      <span className="text-[#C17F3A] text-[10px] tracking-wide">
         Guest Preferences Updated
       </span>
     </div>
@@ -335,17 +335,17 @@ export default function CustomerPanel({
     <div className="flex flex-col h-full overflow-hidden animate-slide-in-left">
       <div className="flex-1 flex flex-col overflow-y-auto scrollbar-hide">
         {/* ── Room & Stay Summary ── */}
-        <div className="px-4 pt-5 pb-4 border-b border-white/8">
+        <div className="px-4 pt-5 pb-4 border-b border-[#EDE8E1]">
           {/* Guest identity */}
           <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-[#C9A84C]/10 border border-[#C9A84C]/25 flex items-center justify-center flex-shrink-0">
-              <span className="text-[12px] font-medium text-[#C9A84C]">{avatarInitials}</span>
+            <div className="w-10 h-10 rounded-xl bg-[#C17F3A]/10 border border-[#C17F3A]/30 flex items-center justify-center flex-shrink-0">
+              <span className="text-[12px] font-medium text-[#C17F3A]">{avatarInitials}</span>
             </div>
             <div className="min-w-0">
-              <h2 className="text-[14px] font-medium text-white tracking-wide">
+              <h2 className="text-[14px] font-medium text-[#1C1A17] tracking-wide">
                 {displayTitle ? `${displayTitle} ${displayName ?? 'Guest'}` : (displayName ?? 'Valued Guest')}
               </h2>
-              <p className="text-[10px] text-white/45 mt-0.5 tracking-wide">
+              <p className="text-[10px] text-[#9E9389] mt-0.5 tracking-wide">
                 {[displayRoomType, displayGuests != null ? `${displayGuests} guest${displayGuests !== 1 ? 's' : ''}` : null]
                   .filter(Boolean)
                   .join(' · ') || 'Room details unavailable'}
@@ -355,44 +355,44 @@ export default function CustomerPanel({
 
           {/* Status & room */}
           <div className="flex items-center space-x-2.5 mb-4">
-            <span className="inline-flex items-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] px-2 py-0.5 rounded-md uppercase tracking-wider">
+            <span className="inline-flex items-center bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] px-2 py-0.5 rounded-md uppercase tracking-wider">
               Checked In
             </span>
             {displayRoom && (
-              <span className="text-[10px] text-white/60">{displayRoom}</span>
+              <span className="text-[10px] text-[#6B6158]">{displayRoom}</span>
             )}
           </div>
 
           {/* Dates */}
-          <div className="bg-white/5 rounded-xl p-3.5 border border-white/8">
+          <div className="bg-[#F5F2EE] rounded-xl p-3.5 border border-[#EDE8E1]">
             <div className="flex items-center justify-between text-[11px]">
               <div>
-                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-0.5">Arrival</p>
-                <p className="text-[11px] text-white/70">{displayCheckIn ?? '—'}</p>
+                <p className="text-[9px] text-[#9E9389] uppercase tracking-wider mb-0.5">Arrival</p>
+                <p className="text-[11px] text-[#6B6158]">{displayCheckIn ?? '—'}</p>
               </div>
               <div className="flex items-center px-3">
-                <div className="w-6 h-px bg-white/15" />
-                <div className="w-1 h-1 rounded-full bg-[#C9A84C]/30 mx-1" />
-                <div className="w-6 h-px bg-white/15" />
+                <div className="w-6 h-px bg-[#EDE8E1]" />
+                <div className="w-1 h-1 rounded-full bg-[#C17F3A]/30 mx-1" />
+                <div className="w-6 h-px bg-[#EDE8E1]" />
               </div>
               <div className="text-right">
-                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-0.5">Departure</p>
-                <p className="text-[11px] text-white/70">{displayCheckOut ?? '—'}</p>
+                <p className="text-[9px] text-[#9E9389] uppercase tracking-wider mb-0.5">Departure</p>
+                <p className="text-[11px] text-[#6B6158]">{displayCheckOut ?? '—'}</p>
               </div>
             </div>
 
             {/* Arrival / Departure notes */}
             {(displayArrivalNote || displayDepartureNote) && (
-              <div className="mt-3 pt-2.5 border-t border-white/8 space-y-1.5">
+              <div className="mt-3 pt-2.5 border-t border-[#EDE8E1] space-y-1.5">
                 {displayArrivalNote && (
-                  <p className="text-[10px] text-white/55 leading-snug">
-                    <span className="text-[#C9A84C]/50 mr-1">↓</span>
+                  <p className="text-[10px] text-[#6B6158] leading-snug">
+                    <span className="text-[#C17F3A]/50 mr-1">↓</span>
                     {displayArrivalNote}
                   </p>
                 )}
                 {displayDepartureNote && (
-                  <p className="text-[10px] text-white/55 leading-snug">
-                    <span className="text-[#C9A84C]/50 mr-1">↑</span>
+                  <p className="text-[10px] text-[#6B6158] leading-snug">
+                    <span className="text-[#C17F3A]/50 mr-1">↑</span>
                     {displayDepartureNote}
                   </p>
                 )}
@@ -413,19 +413,19 @@ export default function CustomerPanel({
                   key={d.day}
                   className={`flex-1 rounded-lg py-2 text-center border ${
                     d.clean
-                      ? 'bg-white/5 border-white/8'
-                      : 'bg-transparent border-white/5 opacity-40'
+                      ? 'bg-[#F5F2EE] border-[#EDE8E1]'
+                      : 'bg-transparent border-[#EDE8E1] opacity-40'
                   }`}
                 >
-                  <p className="text-[8px] text-white/30 uppercase tracking-wider leading-none mb-1">
+                  <p className="text-[8px] text-[#9E9389] uppercase tracking-wider leading-none mb-1">
                     {dayName}
                   </p>
-                  <p className="text-[9px] text-white/50 leading-none mb-1.5">
+                  <p className="text-[9px] text-[#9E9389] leading-none mb-1.5">
                     {dayNum}
                   </p>
                   <span
                     className={`text-[10px] ${
-                      d.clean ? 'text-emerald-400/70' : 'text-white/30'
+                      d.clean ? 'text-emerald-700' : 'text-[#9E9389]'
                     }`}
                   >
                     {d.clean ? '✓' : '—'}
@@ -468,18 +468,18 @@ export default function CustomerPanel({
                   return (
                     <div
                       key={entry.day}
-                      className={`rounded-xl px-2.5 py-2 border bg-white/[0.04] border-white/8 ${
-                        isCurrentDay ? 'border-[var(--gold)]/50 bg-[var(--gold)]/[0.08]' : ''
+                      className={`rounded-xl px-2.5 py-2 border bg-[#F5F2EE] border-[#EDE8E1] ${
+                        isCurrentDay ? 'border-[#C17F3A]/50 bg-[#C17F3A]/10' : ''
                       } ${isPastDay ? 'opacity-50' : ''}`}
                     >
                       <p
                         className={`text-[9px] font-medium uppercase tracking-wider mb-0.5 ${
-                          isCurrentDay ? 'text-[#C9A84C]' : 'text-white/30'
+                          isCurrentDay ? 'text-[#C17F3A]' : 'text-[#9E9389]'
                         }`}
                       >
                         {entry.day}
                       </p>
-                      <p className="text-white/60 text-[10px] leading-snug">{entry.label}</p>
+                      <p className="text-[#6B6158] text-[10px] leading-snug">{entry.label}</p>
                     </div>
                   );
                 })}

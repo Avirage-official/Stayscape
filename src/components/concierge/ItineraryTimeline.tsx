@@ -14,8 +14,8 @@ export default function ItineraryTimeline() {
   const now = new Date();
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
-      <h3 className="text-[14px] font-serif text-white/90 mb-3">Stay Timeline</h3>
+    <section className="rounded-2xl border border-[#EDE8E1] bg-white p-4">
+      <h3 className="text-[14px] font-serif italic text-[#1C1A17] mb-3">Stay Timeline</h3>
       <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
         {DAY_OFFSETS.map((day) => {
           const date = addDays(now, day.offset);
@@ -26,19 +26,19 @@ export default function ItineraryTimeline() {
           return (
             <div
               key={day.label}
-              className="min-w-[180px] rounded-xl border border-white/10 bg-black/30 p-3"
+              className="min-w-[180px] rounded-xl border border-[#EDE8E1] bg-[#F5F2EE] p-3"
             >
-              <p className="text-[10px] uppercase tracking-[0.14em] text-[#C9A84C]/70 mb-0.5">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-[#C17F3A] mb-0.5">
                 {day.label}
               </p>
-              <p className="text-[11px] text-white/55 mb-2">{format(date, 'EEE, MMM d')}</p>
+              <p className="text-[11px] text-[#6B6158] mb-2">{format(date, 'EEE, MMM d')}</p>
               {dayItems.length === 0 ? (
-                <p className="text-[11px] text-white/40">No plans yet</p>
+                <p className="text-[11px] text-[#9E9389]">No plans yet</p>
               ) : (
                 <ul className="space-y-1.5">
                   {dayItems.map((item) => (
-                    <li key={item.id} className="text-[11px] text-white/80">
-                      <span className="text-white/45 mr-1.5">{item.time}</span>
+                    <li key={item.id} className="text-[11px] text-[#1C1A17]">
+                      <span className="text-[#9E9389] mr-1.5">{item.time}</span>
                       {item.name}
                     </li>
                   ))}
