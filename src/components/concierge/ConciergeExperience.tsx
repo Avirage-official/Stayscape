@@ -190,7 +190,7 @@ function StayAnchor({
   ];
 
   const avatarInitials = guestName
-    ? guestName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    ? guestName.split(' ').filter((n) => n.length > 0).map((n) => n[0]).join('').slice(0, 2).toUpperCase()
     : 'G';
 
   return (
