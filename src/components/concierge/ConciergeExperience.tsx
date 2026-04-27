@@ -20,6 +20,8 @@ const cormorant = Cormorant_Garamond({
 
 const GOLD = '#C17F3A';
 const WORLD_COUNT = 4;
+/** Warm linen background used in gradients — matches var(--background) #FAF8F5 */
+const BG_LINEN = '250,248,245';
 
 /* ─── Props ─────────────────────────────────────────────────── */
 
@@ -563,7 +565,9 @@ function WorldPreferences({ stayId }: { stayId?: string | null }) {
           setSelected((prev) => ({ ...prev, ...init }));
         }
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        console.error('[ConciergeExperience] Failed to load preferences:', err);
+      });
   }, [stayId]);
 
   // Debounced save
@@ -579,7 +583,9 @@ function WorldPreferences({ stayId }: { stayId?: string | null }) {
             preference_type: prefType,
             preference_data: { selected_chips: Array.from(chips) },
           }),
-        }).catch(() => {}),
+        }).catch((err: unknown) => {
+          console.error('[ConciergeExperience] Failed to save preference:', err);
+        }),
       );
       void Promise.all(saves).then(() => {
         setShowSaved(true);
@@ -635,7 +641,7 @@ function WorldPreferences({ stayId }: { stayId?: string | null }) {
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(to bottom, rgba(250,248,245,0) 0%, rgba(250,248,245,0.95) 100%)',
+                  `linear-gradient(to bottom, rgba(${BG_LINEN},0) 0%, rgba(${BG_LINEN},0.95) 100%)`,
               }}
             />
             <div className="absolute inset-0 flex flex-col justify-end px-4 pb-4">
@@ -749,6 +755,7 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
         body: JSON.stringify({
           message: msg,
           stayId: stayId ?? null,
+          // API expects { role, text } format; our local state uses { role, content }
           history: messages.map((m) => ({ role: m.role, text: m.content })),
         }),
       });
@@ -807,7 +814,7 @@ function WorldChat({ stayId }: { stayId?: string | null }) {
       {/* Semi-transparent overlay */}
       <div
         className="absolute inset-0"
-        style={{ background: 'rgba(250,248,245,0.88)', zIndex: 1 }}
+        style={{ background: `rgba(${BG_LINEN},0.88)`, zIndex: 1 }}
       />
 
       {/* Content */}
