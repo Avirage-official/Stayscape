@@ -1,12 +1,14 @@
 /**
  * Supabase client factories.
  *
- * • `supabaseBrowser`  – lightweight anon-key client for read-only
- *   frontend queries (runs in the browser).
- * • `supabaseAdmin`    – service-role client for backend mutations,
+ * • `getSupabaseBrowser` – anon-key client for client components. Uses
+ *   `createBrowserClient` from @supabase/ssr so that auth sessions are
+ *   stored in cookies, making them readable by server-side Route Handlers.
+ * • `getSupabaseAdmin`   – service-role client for backend mutations,
  *   sync jobs, and admin routes (never imported from client components).
  */
 
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   NEXT_PUBLIC_SUPABASE_URL,
@@ -20,7 +22,8 @@ let _browserClient: SupabaseClient | null = null;
 
 /**
  * Returns a singleton Supabase client using the public anon key.
- * Safe for use in client components and read-only server components.
+ * Uses @supabase/ssr's createBrowserClient so auth sessions are persisted
+ * in cookies, enabling server-side route handlers to read the session.
  * Returns `null` when credentials are not configured yet.
  */
 export function getSupabaseBrowser(): SupabaseClient | null {
@@ -28,7 +31,7 @@ export function getSupabaseBrowser(): SupabaseClient | null {
     return null;
   }
   if (!_browserClient) {
-    _browserClient = createClient(
+    _browserClient = createBrowserClient(
       NEXT_PUBLIC_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY,
     );

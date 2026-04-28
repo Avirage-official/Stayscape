@@ -54,7 +54,7 @@ function HomeInner() {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
+    fetch('/api/customer/dashboard', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: DashboardData | null) => {
         if (data) setDashboardData(data);
@@ -79,7 +79,7 @@ function HomeInner() {
         setRegionSetupFailed(true);
         return;
       }
-      fetch(`/api/customer/dashboard?userId=${encodeURIComponent(user.id)}`)
+      fetch('/api/customer/dashboard', { credentials: 'same-origin' })
         .then((r) => (r.ok ? r.json() : null))
         .then((data: DashboardData | null) => {
           if (data) setDashboardData(data);

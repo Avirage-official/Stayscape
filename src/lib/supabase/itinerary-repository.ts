@@ -42,7 +42,8 @@ export interface DbItinerary {
 export interface DbItineraryItem {
   id: string;
   itineraryid: string;
-  place_id: string | null;
+  /** UUID of the discover item — maps to discoveritems.id. */
+  discoveritemid: string | null;
   scheduleddate: string;
   starttime: string | null;
   durationhours: number | null;
@@ -55,9 +56,6 @@ export interface DbItineraryItem {
   source: ItemSource;
   createdat: string;
   updatedat: string;
-  name: string | null;
-  category: string | null;
-  image: string | null;
 }
 
 /* ── Itinerary helpers ──────────────────────────────────── */
@@ -121,14 +119,18 @@ export async function getOrCreateItinerary(
 /**
  * Insert a new item into the itinerary.
  * Returns the created row id, or null on failure.
+ *
+ * Field names deliberately match the real DB column names (all-lowercase,
+ * no camelCase) so they map directly onto the INSERT statement without
+ * transformation — consistent with scheduleddate, starttime, durationhours.
  */
 export async function insertItineraryItem(
   itineraryId: string,
   item: {
-    place_id: string;
-    name: string;
-    category: string;
-    image: string;
+    /** itineraryitems.discoveritemid — UUID of the discover item. */
+    discoveritemid: string | null;
+    /** itineraryitems.titleoverride — optional display name override. */
+    titleoverride: string | null;
     scheduleddate: string; // 'YYYY-MM-DD'
     starttime: string;     // 'HH:mm'
     durationhours: number;
@@ -141,10 +143,8 @@ export async function insertItineraryItem(
     .from('itineraryitems')
     .insert({
       itineraryid: itineraryId,
-      place_id: item.place_id,
-      name: item.name,
-      category: item.category,
-      image: item.image,
+      discoveritemid: item.discoveritemid,
+      titleoverride: item.titleoverride,
       scheduleddate: item.scheduleddate,
       starttime: item.starttime,
       durationhours: item.durationhours,
