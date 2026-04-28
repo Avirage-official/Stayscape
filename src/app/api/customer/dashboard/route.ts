@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabaseBrowser();
   if (!supabase) {
     return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 },
+      { error: 'Auth service unavailable' },
+      { status: 500 },
     );
   }
 
