@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
@@ -34,13 +34,32 @@ const dmSans = DM_Sans({
 const HERO_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
+const CATEGORY_FALLBACKS: Record<string, string> = {
+  dining: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
+  food: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
+  nature: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+  park: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+  culture: 'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
+  museum: 'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
+  shopping: 'https://images.unsplash.com/photo-1555529771-7888783a18d3?w=800&q=80&auto=format&fit=crop',
+  nightlife: 'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=800&q=80&auto=format&fit=crop',
+  wellness: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
+  spa: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
+  default: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80&auto=format&fit=crop',
+};
+
+function getPlaceImage(place: DiscoveryPlaceCard): string {
+  if (place.image_url) return place.image_url;
+  const key = (place.category ?? '').toLowerCase();
+  return CATEGORY_FALLBACKS[key] ?? CATEGORY_FALLBACKS.default;
+}
+
 type LoadState = 'loading' | 'ready' | 'error';
 
 /**
- * The repository's `DbItineraryItem` doesn't expose `name` / `category`
- * directly — the dashboard spec treats them as optional display fields
- * that may be populated by upstream joins. We keep them optional here so
- * the component degrades gracefully when they're absent.
+ * DbItineraryItem has name/category as VARCHAR columns in the schema.
+ * fetchItineraryItems uses select('*') so they come back from the DB.
+ * We extend here with explicit optionals for type safety.
  */
 type ItineraryItemDisplay = DbItineraryItem & {
   name?: string | null;
@@ -247,7 +266,7 @@ function MountSection({
   );
 }
 
-/* ─── Component ─── */
+/* ─── Main Component ─── */
 
 export default function HomeDashboard() {
   const router = useRouter();
@@ -259,11 +278,8 @@ export default function HomeDashboard() {
   const [itineraryItems, setItineraryItems] = useState<ItineraryItemDisplay[]>([]);
   const [mounted, setMounted] = useState(false);
 
+  // Mount animation trigger
   useEffect(() => {
-    // Defer to next frame so the initial paint happens with `mounted=false`,
-    // letting the entrance transition actually animate. Wrapping in rAF also
-    // avoids the `react-hooks/set-state-in-effect` lint rule which forbids
-    // synchronous state updates inside an effect body.
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
@@ -285,12 +301,10 @@ export default function HomeDashboard() {
         if (cancelled) return;
         setLoadState('error');
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  // Derived stay info
+  // Derived stay values
   const stay = data?.currentStays?.[0] ?? data?.upcomingStays?.[0] ?? null;
   const firstName = data?.profile?.full_name?.split(' ')?.[0] ?? 'Guest';
   const propertyName = stay?.property?.name ?? '';
@@ -311,37 +325,34 @@ export default function HomeDashboard() {
   const checkOutFormatted = checkOut ? formatDayMonth(checkOut) : null;
   const greeting = getGreeting();
 
-  // Places fetch
+  // Places fetch — fires once regionId is available
   useEffect(() => {
     if (!regionId) return;
     let cancelled = false;
     fetch(`/api/discovery/places?region_id=${regionId}&limit=6`)
       .then((r) => r.json())
-      .then((body) => {
+      .then((body: { data?: DiscoveryPlaceCard[] }) => {
         if (cancelled) return;
-        setPlaces((body?.data as DiscoveryPlaceCard[]) ?? []);
+        setPlaces(body?.data ?? []);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [regionId]);
 
-  // Itinerary fetch
+  // Itinerary fetch — fires once user.id and stayId are available
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
     fetchItineraryItems(user.id, stayId ?? undefined)
-      .then((items) => {
+      .then((items: DbItineraryItem[] | null) => {
         if (cancelled) return;
         setItineraryItems((items as ItineraryItemDisplay[] | null) ?? []);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user?.id, stayId]);
 
+  // Next 3 upcoming itinerary items from today onwards
   const upcomingItems = useMemo(
     () =>
       itineraryItems
@@ -355,12 +366,20 @@ export default function HomeDashboard() {
   return (
     <div
       className={dmSans.className}
-      style={{ background: 'var(--background)', minHeight: '100vh' }}
+      style={{
+        background: 'var(--background)',
+        minHeight: '100vh',
+        maxWidth: 390,
+        margin: '0 auto',
+        width: '100%',
+        position: 'relative',
+        overflowX: 'hidden',
+      }}
     >
-      {/* Shimmer keyframes — scoped via a unique animation name */}
+      {/* Shimmer keyframe — scoped name avoids conflicts */}
       <style>{`@keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}`}</style>
 
-      {/* SECTION 1 — HEADER */}
+      {/* ── SECTION 1: HEADER ── */}
       <MountSection mounted={mounted} delay={0}>
         <div
           style={{
@@ -378,12 +397,7 @@ export default function HomeDashboard() {
         >
           <span
             className={cormorant.className}
-            style={{
-              fontSize: 18,
-              fontWeight: 400,
-              color: 'var(--gold)',
-              lineHeight: 1,
-            }}
+            style={{ fontSize: 18, fontWeight: 400, color: 'var(--gold)', lineHeight: 1 }}
           >
             Stayscape
           </span>
@@ -413,23 +427,17 @@ export default function HomeDashboard() {
             }}
           >
             <IconSearch />
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 400,
-                color: 'var(--text-faint)',
-              }}
-            >
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-faint)' }}>
               Search places, hotels...
             </span>
           </div>
 
-          {/* Right: reserved for future avatar */}
+          {/* Right side reserved for future avatar */}
           <div style={{ width: 0 }} aria-hidden="true" />
         </div>
       </MountSection>
 
-      {/* SECTION 2 — HERO */}
+      {/* ── SECTION 2: HERO ── */}
       <MountSection mounted={mounted} delay={60}>
         {loadState === 'loading' ? (
           <Shimmer style={{ width: '100%', height: 'min(52vw, 240px)' }} />
@@ -442,17 +450,21 @@ export default function HomeDashboard() {
               backgroundImage: `url(${propertyImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
+              backgroundColor: 'var(--surface-raised)',
             }}
           >
+            {/* Warm gradient overlay — only glassmorphism-style effect */}
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
                 background:
-                  'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.7) 75%, var(--background) 100%)',
+                  'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
                 pointerEvents: 'none',
               }}
             />
+
+            {/* Top-left: greeting + name */}
             <div style={{ position: 'absolute', top: 16, left: 20 }}>
               <p
                 style={{
@@ -480,15 +492,9 @@ export default function HomeDashboard() {
               </p>
             </div>
 
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 14,
-                left: 20,
-                right: 20,
-              }}
-            >
-              {propertyName && (
+            {/* Bottom-left: property name + location */}
+            <div style={{ position: 'absolute', bottom: 14, left: 20, right: 20 }}>
+              {propertyName ? (
                 <p
                   className={cormorant.className}
                   style={{
@@ -501,8 +507,8 @@ export default function HomeDashboard() {
                 >
                   {propertyName}
                 </p>
-              )}
-              {(propertyCity || propertyCountry) && (
+              ) : null}
+              {(propertyCity || propertyCountry) ? (
                 <p
                   style={{
                     margin: '3px 0 0',
@@ -515,13 +521,13 @@ export default function HomeDashboard() {
                 >
                   {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
         )}
       </MountSection>
 
-      {/* SECTION 3 — STAY STATS */}
+      {/* ── SECTION 3: STAY STATS (boarding pass) ── */}
       <MountSection mounted={mounted} delay={120}>
         {loadState === 'loading' ? (
           <div
@@ -559,8 +565,8 @@ export default function HomeDashboard() {
             }}
           >
             {[
-              { value: nightsLeft ?? '—', label: 'NIGHTS' },
-              { value: guestCount ?? '—', label: 'GUESTS' },
+              { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'NIGHTS' },
+              { value: guestCount !== null ? String(guestCount) : '—', label: 'GUESTS' },
               { value: checkOutFormatted ?? '—', label: 'CHECKOUT' },
             ].map((col, i) => (
               <div
@@ -605,7 +611,7 @@ export default function HomeDashboard() {
         )}
       </MountSection>
 
-      {/* SECTION 4 — BOOKINGS & RESERVATIONS */}
+      {/* ── SECTION 4: BOOKINGS & RESERVATIONS ── */}
       <MountSection mounted={mounted} delay={180}>
         <div
           style={{
@@ -617,6 +623,7 @@ export default function HomeDashboard() {
             boxShadow: 'var(--card-shadow)',
           }}
         >
+          {/* Card header */}
           <div
             style={{
               display: 'flex',
@@ -625,14 +632,7 @@ export default function HomeDashboard() {
               marginBottom: 14,
             }}
           >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-              }}
-            >
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
               Bookings &amp; Reservations
             </p>
             <IconAirplane />
@@ -647,8 +647,7 @@ export default function HomeDashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     padding: '10px 0',
-                    borderBottom:
-                      i === 2 ? 'none' : '1px solid var(--border-subtle)',
+                    borderBottom: i === 2 ? 'none' : '1px solid var(--border-subtle)',
                     gap: 12,
                   }}
                 >
@@ -659,8 +658,8 @@ export default function HomeDashboard() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {/* Stay row */}
-              {checkIn && (
+              {/* Stay row — always first */}
+              {checkIn ? (
                 <TimelineRow
                   dateStr={checkIn}
                   today={today}
@@ -668,27 +667,36 @@ export default function HomeDashboard() {
                   subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
                   onClick={() => router.push('/app')}
                   isLast={upcomingItems.length === 0}
+                  cormorantClass={cormorant.className}
                 />
-              )}
+              ) : null}
 
-              {/* Itinerary rows */}
+              {/* Next 3 itinerary items */}
               {upcomingItems.map((item, idx) => (
                 <TimelineRow
                   key={item.id}
                   dateStr={item.scheduleddate}
                   today={today}
                   title={item.name ?? item.category ?? 'Activity'}
-                  subtitle={item.starttime ?? item.scheduleddate}
+                  subtitle={item.starttime ?? formatDayMonth(item.scheduleddate)}
                   onClick={() => router.push('/app?tab=itinerary')}
                   isLast={idx === upcomingItems.length - 1}
+                  cormorantClass={cormorant.className}
                 />
               ))}
+
+              {/* Empty state */}
+              {!checkIn && upcomingItems.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                  No upcoming bookings.
+                </p>
+              ) : null}
             </div>
           )}
         </div>
       </MountSection>
 
-      {/* SECTION 5 — PLACES TO EXPLORE */}
+      {/* ── SECTION 5: PLACES TO EXPLORE ── */}
       <MountSection mounted={mounted} delay={240} style={{ marginTop: 20 }}>
         <div
           style={{
@@ -733,8 +741,8 @@ export default function HomeDashboard() {
           </span>
         </div>
 
-        {loadState === 'loading' || places.length === 0 ? (
-          <PlacesSkeleton loading={loadState === 'loading'} />
+        {loadState === 'loading' ? (
+          <PlacesSkeleton />
         ) : (
           <PlacesGrid
             places={places}
@@ -743,7 +751,7 @@ export default function HomeDashboard() {
         )}
       </MountSection>
 
-      {/* SECTION 6 — ACTIVITIES NEAR YOU */}
+      {/* ── SECTION 6: ACTIVITIES NEAR YOU ── */}
       <MountSection mounted={mounted} delay={300}>
         <div
           style={{
@@ -755,14 +763,7 @@ export default function HomeDashboard() {
             boxShadow: 'var(--card-shadow)',
           }}
         >
-          <p
-            style={{
-              margin: '0 0 14px',
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
+          <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
             Activities Near You
           </p>
 
@@ -775,14 +776,11 @@ export default function HomeDashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     padding: '11px 0',
-                    borderBottom:
-                      i === 3 ? 'none' : '1px solid var(--border-subtle)',
+                    borderBottom: i === 3 ? 'none' : '1px solid var(--border-subtle)',
                     gap: 10,
                   }}
                 >
-                  <Shimmer
-                    style={{ width: 32, height: 32, borderRadius: 8 }}
-                  />
+                  <Shimmer style={{ width: 32, height: 32, borderRadius: 8 }} />
                   <Shimmer style={{ flex: 1, height: 12 }} />
                 </div>
               ))}
@@ -793,7 +791,10 @@ export default function HomeDashboard() {
         </div>
       </MountSection>
 
-      {/* Bottom tab bar — unchanged */}
+      {/* Bottom spacer so last card isn't hidden behind tab bar */}
+      <div style={{ height: 20 }} aria-hidden="true" />
+
+      {/* Bottom tab bar — never inside the maxWidth wrapper */}
       <WarmBottomTabBar />
     </div>
   );
@@ -808,6 +809,7 @@ function TimelineRow({
   subtitle,
   onClick,
   isLast,
+  cormorantClass,
 }: {
   dateStr: string;
   today: Date;
@@ -815,6 +817,7 @@ function TimelineRow({
   subtitle: string;
   onClick: () => void;
   isLast: boolean;
+  cormorantClass: string;
 }) {
   const dayLabel = isSameLocalDay(dateStr, today) ? 'Today' : weekdayShort(dateStr);
 
@@ -837,22 +840,11 @@ function TimelineRow({
         cursor: 'pointer',
       }}
     >
-      <div
-        style={{
-          width: 44,
-          flexShrink: 0,
-          textAlign: 'center',
-        }}
-      >
+      {/* Date badge */}
+      <div style={{ width: 44, flexShrink: 0, textAlign: 'center' }}>
         <p
-          className={cormorant.className}
-          style={{
-            margin: 0,
-            fontSize: 22,
-            fontWeight: 400,
-            lineHeight: 1,
-            color: 'var(--text-primary)',
-          }}
+          className={cormorantClass}
+          style={{ margin: 0, fontSize: 22, fontWeight: 400, lineHeight: 1, color: 'var(--text-primary)' }}
         >
           {formatDayNumber(dateStr)}
         </p>
@@ -870,6 +862,7 @@ function TimelineRow({
         </p>
       </div>
 
+      {/* Vertical divider */}
       <div
         style={{
           width: 1,
@@ -880,6 +873,7 @@ function TimelineRow({
         }}
       />
 
+      {/* Day label */}
       <div
         style={{
           width: 52,
@@ -892,29 +886,17 @@ function TimelineRow({
         {dayLabel}
       </div>
 
+      {/* Content */}
       <div style={{ flex: 1 }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-          }}
-        >
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
           {title}
         </p>
-        <p
-          style={{
-            margin: '2px 0 0',
-            fontSize: 11,
-            fontWeight: 400,
-            color: 'var(--text-muted)',
-          }}
-        >
+        <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>
           {subtitle}
         </p>
       </div>
 
+      {/* Arrow */}
       <div style={{ flexShrink: 0, marginLeft: 8 }}>
         <IconArrow />
       </div>
@@ -948,14 +930,18 @@ function PlaceCard({
         position: 'relative',
         overflow: 'hidden',
         cursor: 'pointer',
+        // width: 100% ensures full-width cards actually fill the column
+        // flex: 1 ensures side-by-side cards share space equally
+        width: '100%',
         flex: 1,
         height,
-        backgroundImage: place.image_url ? `url(${place.image_url})` : undefined,
+        backgroundImage: `url(${getPlaceImage(place)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundColor: 'var(--surface-raised)',
       }}
     >
+      {/* Scrim */}
       <div
         style={{
           position: 'absolute',
@@ -964,7 +950,9 @@ function PlaceCard({
             'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
         }}
       />
-      {place.rating != null && (
+
+      {/* Rating — top right */}
+      {place.rating !== null && place.rating !== undefined ? (
         <div
           style={{
             position: 'absolute',
@@ -977,16 +965,11 @@ function PlaceCard({
         >
           ★ {place.rating.toFixed(1)}
         </div>
-      )}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 12,
-          left: 12,
-          right: 28,
-        }}
-      >
-        {place.category && (
+      ) : null}
+
+      {/* Category + name — bottom left */}
+      <div style={{ position: 'absolute', bottom: 12, left: 12, right: 28 }}>
+        {place.category ? (
           <p
             style={{
               margin: '0 0 3px',
@@ -999,7 +982,7 @@ function PlaceCard({
           >
             {place.category}
           </p>
-        )}
+        ) : null}
         <p
           style={{
             margin: 0,
@@ -1023,9 +1006,24 @@ function PlacesGrid({
   places: DiscoveryPlaceCard[];
   onSelect: () => void;
 }) {
-  // Group: index 0 (full), index 1+2 (row), index 3 (full), index 4+ (full)
+  if (places.length === 0) {
+    return (
+      <div
+        style={{
+          padding: '0 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}
+      >
+        <PlacesSkeleton dim />
+      </div>
+    );
+  }
+
   const elements: ReactNode[] = [];
 
+  // Card 0 — full width tall
   if (places[0]) {
     elements.push(
       <PlaceCard
@@ -1038,29 +1036,21 @@ function PlacesGrid({
     );
   }
 
+  // Cards 1 + 2 — side by side
   if (places[1] || places[2]) {
     elements.push(
-      <div key="row-1-2" style={{ display: 'flex', gap: 4 }}>
-        {places[1] && (
-          <PlaceCard
-            place={places[1]}
-            height={150}
-            nameSize={12}
-            onClick={onSelect}
-          />
-        )}
-        {places[2] && (
-          <PlaceCard
-            place={places[2]}
-            height={150}
-            nameSize={12}
-            onClick={onSelect}
-          />
-        )}
+      <div key="row-1-2" style={{ display: 'flex', gap: 4, width: '100%' }}>
+        {places[1] ? (
+          <PlaceCard place={places[1]} height={150} nameSize={12} onClick={onSelect} />
+        ) : null}
+        {places[2] ? (
+          <PlaceCard place={places[2]} height={150} nameSize={12} onClick={onSelect} />
+        ) : null}
       </div>,
     );
   }
 
+  // Card 3 — full width
   if (places[3]) {
     elements.push(
       <PlaceCard
@@ -1073,6 +1063,7 @@ function PlacesGrid({
     );
   }
 
+  // Cards 4+ — full width
   for (let i = 4; i < places.length; i++) {
     elements.push(
       <PlaceCard
@@ -1099,11 +1090,7 @@ function PlacesGrid({
   );
 }
 
-function PlacesSkeleton({ loading }: { loading: boolean }) {
-  // Always render a placeholder structure so layout doesn't shift when
-  // places arrive empty (e.g. no region). When `loading` is false we still
-  // render dimmer blocks so the rhythm of the page is preserved.
-  const opacity = loading ? 1 : 0.4;
+function PlacesSkeleton({ dim }: { dim?: boolean }) {
   return (
     <div
       style={{
@@ -1111,11 +1098,11 @@ function PlacesSkeleton({ loading }: { loading: boolean }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        opacity,
+        opacity: dim ? 0.4 : 1,
       }}
     >
       <Shimmer style={{ width: '100%', height: 220 }} />
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4, width: '100%' }}>
         <Shimmer style={{ flex: 1, height: 150 }} />
         <Shimmer style={{ flex: 1, height: 150 }} />
       </div>
@@ -1127,14 +1114,7 @@ function PlacesSkeleton({ loading }: { loading: boolean }) {
 function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
   if (places.length === 0) {
     return (
-      <p
-        style={{
-          margin: 0,
-          fontSize: 12,
-          fontWeight: 400,
-          color: 'var(--text-muted)',
-        }}
-      >
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>
         No nearby activities yet.
       </p>
     );
@@ -1144,6 +1124,12 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {places.map((place, idx) => {
         const isLast = idx === places.length - 1;
+        const subtitle = place.distance
+          ? place.distance
+          : place.category
+            ? place.category.charAt(0).toUpperCase() + place.category.slice(1)
+            : '';
+
         return (
           <div
             key={place.id}
@@ -1154,6 +1140,7 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
               borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
             }}
           >
+            {/* Category icon */}
             <div
               style={{
                 width: 32,
@@ -1169,30 +1156,20 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
               <CategoryIcon category={place.category} />
             </div>
 
+            {/* Name + subtitle */}
             <div style={{ flex: 1, marginLeft: 10 }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  fontWeight: 400,
-                  color: 'var(--text-primary)',
-                }}
-              >
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}>
                 {place.name}
               </p>
-              <p
-                style={{
-                  margin: '2px 0 0',
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {place.distance ? place.distance : place.category}
-              </p>
+              {subtitle ? (
+                <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
 
-            {place.rating != null && (
+            {/* Rating */}
+            {place.rating !== null && place.rating !== undefined ? (
               <div
                 style={{
                   flexShrink: 0,
@@ -1204,7 +1181,7 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
               >
                 ★ {place.rating.toFixed(1)}
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}
