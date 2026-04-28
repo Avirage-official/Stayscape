@@ -60,8 +60,10 @@ function StayDetailContent({
     return <GuestArrivalSkeleton />;
   }
 
-  if (loadState === 'ready' && !stay) {
-    router.replace('/dashboard');
+  if (!stay) {
+    if (loadState === 'ready') {
+      router.replace('/dashboard');
+    }
     return null;
   }
 
