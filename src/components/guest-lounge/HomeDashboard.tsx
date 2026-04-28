@@ -403,11 +403,11 @@ export default function HomeDashboard() {
           <div
             role="button"
             tabIndex={0}
-            onClick={() => router.push('/app?tab=discover')}
+            onClick={() => stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                router.push('/app?tab=discover');
+                stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover');
               }
             }}
             style={{
@@ -717,11 +717,11 @@ export default function HomeDashboard() {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={() => router.push('/app?tab=discover')}
+                onClick={() => stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    router.push('/app?tab=discover');
+                    stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover');
                   }
                 }}
                 style={{
@@ -741,7 +741,7 @@ export default function HomeDashboard() {
             ) : (
               <PlacesGrid
                 places={places}
-                onSelect={() => router.push('/app?tab=discover')}
+                onSelect={() => stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover')}
               />
             )}
           </MountSection>

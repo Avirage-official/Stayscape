@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import type { CustomerStay } from '@/types/customer';
@@ -8,6 +8,7 @@ import type { CustomerStay } from '@/types/customer';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import StayDetailView from '@/components/guest-lounge/StayDetailView';
 import StayOnboardingFlow from '@/components/guest-lounge/StayOnboardingFlow';
+import ConciergeExperience from '@/components/concierge/ConciergeExperience';
 
 type LoadState = 'loading' | 'ready';
 
@@ -38,6 +39,14 @@ function StayDetailContent({
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [stay, setStay] = useState<CustomerStay | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   /* Fetch the single stay on mount using useState lazy initializer —
      avoids react-hooks/set-state-in-effect lint errors (matches codebase pattern). */
@@ -77,6 +86,24 @@ function StayDetailContent({
     );
   }
 
+  if (isDesktop) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <ConciergeExperience
+          stayId={stay.id}
+          guestName={null}
+          propertyName={stay.property?.name ?? null}
+          propertyImageUrl={stay.property?.image_url ?? null}
+          propertyCity={stay.property?.city ?? null}
+          propertyCountry={stay.property?.country ?? null}
+          bookingReference={stay.booking_reference ?? null}
+          checkIn={stay.check_in ?? null}
+          checkOut={stay.check_out ?? null}
+          guestCount={stay.guests ?? null}
+        />
+      </div>
+    );
+  }
   return <StayDetailView stay={stay} onBack={() => router.push('/dashboard')} />;
 }
 
