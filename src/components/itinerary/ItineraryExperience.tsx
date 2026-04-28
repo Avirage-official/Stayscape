@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { useItinerary, type ItineraryItem } from '@/components/ItineraryContext';
 import { format, isSameDay, addDays, isToday, differenceInDays } from 'date-fns';
+import { sendChatMessage } from '@/lib/ai/chat';
 
 export interface ItineraryExperienceProps {
   stayId?: string | null;
@@ -107,6 +108,7 @@ const AI_PROMPTS = [
 /* ─── Main component ─── */
 
 export default function ItineraryExperience({
+  stayId,
   checkIn,
   checkOut,
   guestName,
@@ -116,6 +118,8 @@ export default function ItineraryExperience({
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
   const [promptFocused, setPromptFocused] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [aiReply, setAiReply] = useState('');
 
   /* Stay days */
   const stayDays = useMemo(() => generateStayDays(checkIn, checkOut), [checkIn, checkOut]);
@@ -473,7 +477,17 @@ export default function ItineraryExperience({
 
           <button
             type="button"
-            disabled={!aiPrompt.trim()}
+            disabled={!aiPrompt.trim() || isRefining}
+            onClick={async () => {
+              if (!aiPrompt.trim() || isRefining) return;
+              setIsRefining(true);
+              try {
+                const reply = await sendChatMessage(aiPrompt, stayId, [], 'itinerary');
+                setAiReply(reply);
+              } finally {
+                setIsRefining(false);
+              }
+            }}
             style={{
               marginTop: 10,
               width: '100%',
@@ -481,16 +495,35 @@ export default function ItineraryExperience({
               fontSize: 13,
               fontWeight: 500,
               color: '#fff',
-              background: aiPrompt.trim() ? '#C17F3A' : 'rgba(193,127,58,0.3)',
+              background: aiPrompt.trim() && !isRefining ? '#C17F3A' : 'rgba(193,127,58,0.3)',
               border: 'none',
               borderRadius: 8,
               padding: '11px 16px',
-              cursor: aiPrompt.trim() ? 'pointer' : 'default',
+              cursor: aiPrompt.trim() && !isRefining ? 'pointer' : 'default',
               transition: 'background 200ms',
             }}
           >
-            Refine itinerary →
+            {isRefining ? 'Refining…' : 'Refine itinerary →'}
           </button>
+
+          {aiReply && (
+            <div
+              style={{
+                marginTop: 12,
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: 13,
+                lineHeight: 1.6,
+                color: '#1C1A17',
+                background: '#fff',
+                border: '1px solid #EDE8E1',
+                borderRadius: 8,
+                padding: '12px',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {aiReply}
+            </div>
+          )}
         </div>
       </div>
     </div>
