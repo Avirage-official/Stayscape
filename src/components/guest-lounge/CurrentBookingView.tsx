@@ -78,6 +78,11 @@ function BookedState({
   const statusLabel = getStatusLabel(stay.status);
   const tod = getTimeOfDay();
 
+  const stayBase =
+    stay.property?.slug && stay.id
+      ? `/stay/${encodeURIComponent(stay.property.slug)}/${encodeURIComponent(stay.id)}`
+      : null;
+
   const fadeIn = (delay: number) =>
     prefersReducedMotion
       ? {}
@@ -192,31 +197,21 @@ function BookedState({
         className="mt-5 flex flex-wrap gap-3 pb-2"
         {...fadeIn(0.36)}
       >
-        {(() => {
-          const stayBase =
-            stay.property?.slug && stay.id
-              ? `/stay/${stay.property.slug}/${stay.id}`
-              : null;
-          return (
-            <>
-              <ConciergeActionPill
-                label="Open Map"
-                href={stayBase ? `${stayBase}/discover` : '/dashboard'}
-                icon={<MapIcon />}
-              />
-              <ConciergeActionPill
-                label="Explore Nearby"
-                href={stayBase ?? '/dashboard'}
-                icon={<CompassIcon />}
-              />
-              <ConciergeActionPill
-                label="Itinerary"
-                href={stayBase ? `${stayBase}/itinerary` : '/dashboard'}
-                icon={<CalendarIcon />}
-              />
-            </>
-          );
-        })()}
+        <ConciergeActionPill
+          label="Open Map"
+          href={stayBase ? `${stayBase}/discover` : '/dashboard'}
+          icon={<MapIcon />}
+        />
+        <ConciergeActionPill
+          label="Explore Nearby"
+          href={stayBase ?? '/dashboard'}
+          icon={<CompassIcon />}
+        />
+        <ConciergeActionPill
+          label="Itinerary"
+          href={stayBase ? `${stayBase}/itinerary` : '/dashboard'}
+          icon={<CalendarIcon />}
+        />
         <ConciergeActionPill label="Add Stay" onClick={onAddStay} icon={<PlusIcon />} />
       </motion.div>
     </div>

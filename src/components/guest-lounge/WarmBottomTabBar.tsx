@@ -33,7 +33,7 @@ function WarmBottomTabBarInner() {
         const slug = stay?.property?.slug ?? null;
         const stayId = stay?.id ?? null;
         if (slug && stayId) {
-          setStayBase(`/stay/${slug}/${stayId}`);
+          setStayBase(`/stay/${encodeURIComponent(slug)}/${encodeURIComponent(stayId)}`);
         }
       })
       .catch(() => {});
