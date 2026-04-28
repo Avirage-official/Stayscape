@@ -3,7 +3,7 @@
 import ConciergeExperience from '@/components/concierge/ConciergeExperience';
 import { useStay } from './stay-context';
 
-export default function ConciergePage() {
+export default function StayConciergePage() {
   const { stay } = useStay();
 
   return (

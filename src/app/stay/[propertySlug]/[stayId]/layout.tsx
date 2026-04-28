@@ -50,6 +50,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (!user) return;
+    if (!UUID_REGEX.test(stayId)) return;
     fetchStayApi(user.id, stayId)
       .then((found) => {
         setStay(found);
@@ -60,16 +61,16 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       });
   }, [user, stayId, router]);
 
-  // Fail-fast UUID validation — hooks are already called above, safe to return early
-  if (!UUID_REGEX.test(stayId)) {
-    router.replace('/dashboard');
-    return null;
-  }
-
   if (isLoading) return <GuestArrivalSkeleton />;
 
   if (!user) {
     router.replace('/login');
+    return null;
+  }
+
+  // UUID validation after auth resolves — hooks are already called above, safe to return early
+  if (!UUID_REGEX.test(stayId)) {
+    router.replace('/dashboard');
     return null;
   }
 
