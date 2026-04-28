@@ -11,7 +11,6 @@ import { RegionProvider, useRegion } from '@/lib/context/region-context';
 import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
-import WarmBottomTabBar from '@/components/guest-lounge/WarmBottomTabBar';
 
 type ActiveTab = 'concierge' | 'discover' | 'itinerary';
 
@@ -215,9 +214,6 @@ function HomeInner() {
             </ErrorBoundary>
           )}
         </main>
-
-        {/* Warm bottom tab bar — consistent across the whole app */}
-        <WarmBottomTabBar />
       </div>
     </ItineraryProvider>
   );
