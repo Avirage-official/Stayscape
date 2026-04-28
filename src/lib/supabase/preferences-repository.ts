@@ -15,33 +15,19 @@ import type {
 
 /**
  * Save a guest preference from the concierge/map.
+ *
+ * Upserts by (stay_id, preference_type) so repeated saves of the same
+ * preference type for a stay update the existing row rather than
+ * inserting duplicates. Delegates to `upsertStayPreference`, which
+ * implements the update-then-insert fallback pattern and cleans up
+ * any pre-existing duplicate rows.
  */
 export async function savePreference(
   stayId: string,
   preferenceType: PreferenceType,
   preferenceData: Record<string, unknown>,
 ): Promise<string> {
-  const supabase = getSupabaseAdmin();
-  const now = new Date().toISOString();
-
-  const { data, error } = await supabase
-    .from('guest_preferences')
-    .insert({
-      stay_id: stayId,
-      preference_type: preferenceType,
-      preference_data: preferenceData,
-      synced_to_pms: false,
-      synced_at: null,
-      created_at: now,
-    })
-    .select('id')
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Failed to save preference: ${error?.message ?? 'Unknown error'}`);
-  }
-
-  return data.id as string;
+  return upsertStayPreference(stayId, preferenceType, preferenceData);
 }
 
 /**

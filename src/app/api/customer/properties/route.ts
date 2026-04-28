@@ -1,7 +1,7 @@
 /**
  * GET /api/customer/properties
  *
- * Returns all active properties with their booking URLs for the
+ * Returns all properties with their booking URLs for the
  * no-booking discovery screen.
  *
  * No auth required — property listing is not sensitive.
@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('properties')
       .select('id, name, city, country, image_url, booking_url')
-      .eq('is_active', true)
       .order('name', { ascending: true });
 
     if (error) throw error;

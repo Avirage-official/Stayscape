@@ -740,6 +740,7 @@ function SectionChat({ stayId }: { stayId?: string | null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: msg,
+          mode: 'discovery',
           stayId: stayId ?? null,
           history: messages.map((m) => ({ role: m.role, text: m.content })),
         }),
