@@ -62,8 +62,17 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
   const { addItem } = useItinerary();
   /* Keep region in a ref so initMap (stable callback) can read the latest value */
   const regionRef = useRef(region);
-  useEffect(() => { regionRef.current = region; }, [region]);
-
+  useEffect(() => {
+    if (!region) return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [region.longitude, region.latitude],
+      zoom: 13,
+      duration: 1200,
+    });
+  }, [region]); // eslint-disable-line react-hooks/exhaustive-deps
+  
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const hotelMarkerRef = useRef<mapboxgl.Marker | null>(null);
