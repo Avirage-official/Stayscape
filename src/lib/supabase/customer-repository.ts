@@ -71,7 +71,7 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
       ? {
           id: propertyRaw.id as string,
           name: propertyRaw.name as string,
-          slug: (propertyRaw.slug as string) ?? null,
+          slug: propertyRaw.slug ?? null,
           image_url: (propertyRaw.image_url as string) ?? null,
           address: (propertyRaw.address as string) ?? null,
           city: (propertyRaw.city as string) ?? null,
