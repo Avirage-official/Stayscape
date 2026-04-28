@@ -5,7 +5,7 @@ import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth-context';
 import { ItineraryProvider } from '@/components/ItineraryContext';
-import { RegionProvider } from '@/lib/context/region-context';
+import { useRegion } from '@/lib/context/region-context';
 import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import StayOnboardingFlow from '@/components/guest-lounge/StayOnboardingFlow';
@@ -37,6 +37,7 @@ function getActiveTab(
 
 export default function StayLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const { setRegion } = useRegion();
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
@@ -83,6 +84,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
     }
   }, [loadState, stay, propertySlug, router]);
 
+  // Fetch stay + update root region context so the map centers on this hotel's region
   useEffect(() => {
     if (!user) return;
     if (!UUID_REGEX.test(stayId)) return;
@@ -90,11 +92,15 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       .then((found) => {
         setStay(found);
         setLoadState('ready');
+        // Push the stay's region into the root RegionContext so all
+        // children (including the map) automatically center on this hotel.
+        const stayRegion = getStaySelectedRegion(found);
+        if (stayRegion) setRegion(stayRegion);
       })
       .catch(() => {
         router.replace('/dashboard');
       });
-  }, [user, stayId, router]);
+  }, [user, stayId, router, setRegion]);
 
   if (isLoading) return <GuestArrivalSkeleton />;
 
@@ -102,7 +108,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
     return null;
   }
 
-  // UUID validation after auth resolves — hooks are already called above, safe to return early
   if (!UUID_REGEX.test(stayId)) {
     return null;
   }
@@ -113,7 +118,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
     return null;
   }
 
-  // A null property slug means this stay cannot be reached via the slug-based URL.
   const dbSlug = stay.property?.slug ?? null;
   if (dbSlug === null || dbSlug !== propertySlug) {
     return null;
@@ -128,8 +132,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       />
     );
   }
-
-  const stayRegion = getStaySelectedRegion(stay);
 
   const activeTab = getActiveTab(pathname, propertySlug, stayId);
   const isConciergeActive = activeTab === 'concierge';
@@ -182,16 +184,9 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
               }}
             />
           )}
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={isConciergeActive ? 2 : 1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth={isConciergeActive ? 2 : 1.5}
+            strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -226,16 +221,9 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
               }}
             />
           )}
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={isDiscoverActive ? 2 : 1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth={isDiscoverActive ? 2 : 1.5}
+            strokeLinecap="round" strokeLinejoin="round">
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
             <line x1="8" y1="2" x2="8" y2="18" />
             <line x1="16" y1="6" x2="16" y2="22" />
@@ -271,16 +259,9 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
               }}
             />
           )}
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={isItineraryActive ? 2 : 1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth={isItineraryActive ? 2 : 1.5}
+            strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
             <line x1="16" y1="2" x2="16" y2="6" />
             <line x1="8" y1="2" x2="8" y2="6" />
@@ -292,7 +273,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
     </>
   );
 
-  const content = (
+  return (
     <StayContext.Provider value={{ stay, userId: user.id }}>
       <ItineraryProvider stayId={stay.id}>
         <Suspense fallback={<GuestArrivalSkeleton />}>
@@ -302,8 +283,4 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       </ItineraryProvider>
     </StayContext.Provider>
   );
-
-  return stayRegion
-    ? <RegionProvider initialRegion={stayRegion}>{content}</RegionProvider>
-    : content;
 }
