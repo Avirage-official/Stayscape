@@ -22,6 +22,7 @@ async function fetchStayApi(userId: string, stayId: string): Promise<CustomerSta
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TAB_LABEL_STYLE = { fontSize: 10, fontWeight: 500, letterSpacing: '0.05em', fontFamily: 'DM Sans, sans-serif' } as const;
 
 export default function StayLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -49,7 +50,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (!user) return;
-    if (!UUID_REGEX.test(stayId)) return;
     fetchStayApi(user.id, stayId)
       .then((found) => {
         setStay(found);
@@ -162,16 +162,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.05em',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
-            Concierge
-          </span>
+          <span style={TAB_LABEL_STYLE}>Concierge</span>
         </Link>
 
         {/* Discover tab */}
@@ -216,16 +207,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
             <line x1="8" y1="2" x2="8" y2="18" />
             <line x1="16" y1="6" x2="16" y2="22" />
           </svg>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.05em',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
-            Discover
-          </span>
+          <span style={TAB_LABEL_STYLE}>Discover</span>
         </Link>
 
         {/* Itinerary tab */}
@@ -271,16 +253,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
             <line x1="8" y1="2" x2="8" y2="6" />
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.05em',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
-            Itinerary
-          </span>
+          <span style={TAB_LABEL_STYLE}>Itinerary</span>
         </Link>
       </nav>
     </>
