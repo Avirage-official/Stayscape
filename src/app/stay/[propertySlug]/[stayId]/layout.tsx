@@ -24,6 +24,17 @@ async function fetchStayApi(userId: string, stayId: string): Promise<CustomerSta
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TAB_LABEL_STYLE = { fontSize: 10, fontWeight: 500, letterSpacing: '0.05em', fontFamily: 'DM Sans, sans-serif' } as const;
 
+function getActiveTab(
+  pathname: string,
+  propertySlug: string,
+  stayId: string,
+): 'concierge' | 'discover' | 'itinerary' | null {
+  if (pathname === `/stay/${propertySlug}/${stayId}`) return 'concierge';
+  if (pathname.endsWith('/discover')) return 'discover';
+  if (pathname.endsWith('/itinerary')) return 'itinerary';
+  return null;
+}
+
 export default function StayLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -100,9 +111,10 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
 
   const stayRegion = getStaySelectedRegion(stay);
 
-  const isConciergeActive = pathname === `/stay/${propertySlug}/${stayId}`;
-  const isDiscoverActive = pathname.endsWith('/discover');
-  const isItineraryActive = pathname.endsWith('/itinerary');
+  const activeTab = getActiveTab(pathname, propertySlug, stayId);
+  const isConciergeActive = activeTab === 'concierge';
+  const isDiscoverActive = activeTab === 'discover';
+  const isItineraryActive = activeTab === 'itinerary';
 
   const tabBar = (
     <>
