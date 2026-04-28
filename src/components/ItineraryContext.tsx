@@ -46,7 +46,7 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
 
   const loadFromDb = useCallback(() => {
     if (!user) return;
-    fetchItineraryItems(user.id)
+    fetchItineraryItems(user.id, stayId ?? undefined)
       .then((dbItems) => {
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
@@ -65,7 +65,7 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
       .catch(() => {
         // Supabase unavailable — keep local state
       });
-  }, [user]);
+  }, [user, stayId]);
 
   // Load from DB on first render (using null-check pattern for eslint refs rule)
   if (dbLoadedRef.current == null) {

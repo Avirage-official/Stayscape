@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabaseAdmin();
+    // NOTE: If this insert silently errors with a "relation does not exist" /
+    // missing-table message, the `place_searches` table migration has not been
+    // run on the live database. See `src/lib/supabase/schema.ts` for the
+    // canonical table definition.
     const { error: insertError } = await supabase.from('place_searches').insert({
       query: body.query.slice(0, 200),
       place_name: body.place_name.slice(0, 200),
