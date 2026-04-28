@@ -59,6 +59,30 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   const [loadState, setLoadState] = useState<'loading' | 'ready'>('loading');
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
+  // Auth redirect
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/login');
+    }
+  }, [isLoading, user, router]);
+
+  // Invalid UUID redirect
+  useEffect(() => {
+    if (user && !UUID_REGEX.test(stayId)) {
+      router.replace('/dashboard');
+    }
+  }, [user, stayId, router]);
+
+  // Slug-mismatch redirect (after stay loads)
+  useEffect(() => {
+    if (loadState === 'ready' && stay) {
+      const dbSlug = stay.property?.slug ?? null;
+      if (dbSlug === null || dbSlug !== propertySlug) {
+        router.replace('/dashboard');
+      }
+    }
+  }, [loadState, stay, propertySlug, router]);
+
   useEffect(() => {
     if (!user) return;
     if (!UUID_REGEX.test(stayId)) return;
@@ -75,27 +99,23 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   if (isLoading) return <GuestArrivalSkeleton />;
 
   if (!user) {
-    router.replace('/login');
     return null;
   }
 
   // UUID validation after auth resolves — hooks are already called above, safe to return early
   if (!UUID_REGEX.test(stayId)) {
-    router.replace('/dashboard');
     return null;
   }
 
   if (loadState === 'loading') return <GuestArrivalSkeleton />;
 
   if (!stay) {
-    router.replace('/dashboard');
     return null;
   }
 
   // A null property slug means this stay cannot be reached via the slug-based URL.
   const dbSlug = stay.property?.slug ?? null;
   if (dbSlug === null || dbSlug !== propertySlug) {
-    router.replace('/dashboard');
     return null;
   }
 
