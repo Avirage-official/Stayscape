@@ -192,9 +192,31 @@ function BookedState({
         className="mt-5 flex flex-wrap gap-3 pb-2"
         {...fadeIn(0.36)}
       >
-        <ConciergeActionPill label="Open Map" href="/app?tab=discover" icon={<MapIcon />} />
-        <ConciergeActionPill label="Explore Nearby" href="/app" icon={<CompassIcon />} />
-        <ConciergeActionPill label="Itinerary" href="/app" icon={<CalendarIcon />} />
+        {(() => {
+          const stayBase =
+            stay.property?.slug && stay.id
+              ? `/stay/${stay.property.slug}/${stay.id}`
+              : null;
+          return (
+            <>
+              <ConciergeActionPill
+                label="Open Map"
+                href={stayBase ? `${stayBase}/discover` : '/dashboard'}
+                icon={<MapIcon />}
+              />
+              <ConciergeActionPill
+                label="Explore Nearby"
+                href={stayBase ?? '/dashboard'}
+                icon={<CompassIcon />}
+              />
+              <ConciergeActionPill
+                label="Itinerary"
+                href={stayBase ? `${stayBase}/itinerary` : '/dashboard'}
+                icon={<CalendarIcon />}
+              />
+            </>
+          );
+        })()}
         <ConciergeActionPill label="Add Stay" onClick={onAddStay} icon={<PlusIcon />} />
       </motion.div>
     </div>

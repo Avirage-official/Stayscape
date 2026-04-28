@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // Step 2 — Look up stay by booking reference
     const { data: stay, error: stayError } = await supabase
       .from('stays')
-      .select('id, userid, guest_email')
+      .select('id, userid, guest_email, properties:propertyid(slug)')
       .eq('booking_reference', bookingRef)
       .maybeSingle();
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stayRow = stay as { id: string; userid: string | null; guest_email: string | null };
+    const stayRow = stay as unknown as { id: string; userid: string | null; guest_email: string | null; properties: { slug: string | null } | null };
 
     // Step 3 — Verify guest_email matches the logged-in user's email
     if (!stayRow.guest_email || stayRow.guest_email.toLowerCase() !== profile.email.toLowerCase()) {
@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
         data: {
           stay_id: stayRow.id,
           redirect_stay_id: stayRow.id,
+          property_slug: stayRow.properties?.slug ?? null,
         },
       },
       { status: 200, headers: rateLimit.headers },
