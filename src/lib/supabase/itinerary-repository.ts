@@ -119,11 +119,17 @@ export async function getOrCreateItinerary(
 /**
  * Insert a new item into the itinerary.
  * Returns the created row id, or null on failure.
+ *
+ * Field names deliberately match the real DB column names (all-lowercase,
+ * no camelCase) so they map directly onto the INSERT statement without
+ * transformation — consistent with scheduleddate, starttime, durationhours.
  */
 export async function insertItineraryItem(
   itineraryId: string,
   item: {
+    /** itineraryitems.discoveritemid — UUID of the discover item. */
     discoveritemid: string | null;
+    /** itineraryitems.titleoverride — optional display name override. */
     titleoverride: string | null;
     scheduleddate: string; // 'YYYY-MM-DD'
     starttime: string;     // 'HH:mm'

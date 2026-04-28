@@ -13,9 +13,13 @@ import { useAuth } from '@/lib/context/auth-context';
 
 export interface ItineraryItem {
   id: string;
+  /** Maps to itineraryitems.discoveritemid in the DB. */
   placeId: string;
+  /** Maps to itineraryitems.titleoverride in the DB. */
   name: string;
+  /** UI-only display field — not persisted to the DB. */
   category: string;
+  /** UI-only display field — not persisted to the DB. */
   image: string;
   date: Date;
   time: string;
