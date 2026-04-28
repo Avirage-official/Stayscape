@@ -27,7 +27,7 @@ export default function LandingFooter() {
             For Hotels
           </a>
           <a
-            href="/app"
+            href="/dashboard"
             className="text-sm transition-colors duration-200"
             style={{ color: '#8a8580' }}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#e8e4dc')}

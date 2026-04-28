@@ -252,7 +252,7 @@ export default function LoginPage() {
         {/* Skip to App */}
         <div className="mt-4 text-center">
           <a
-            href="/app"
+            href="/dashboard"
             className="inline-block text-[12px] text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors tracking-wide"
           >
             Explore without signing in →
