@@ -401,11 +401,11 @@ export default function HomeDashboard() {
           <div
             role="button"
             tabIndex={0}
-            onClick={() => stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover')}
+            onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover');
+                stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard');
               }
             }}
             style={{
@@ -478,11 +478,11 @@ export default function HomeDashboard() {
                   key={s.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/dashboard/stay/${s.id}`)}
+                  onClick={() => s.property?.slug ? router.push(`/stay/${s.property.slug}/${s.id}`) : router.push('/dashboard')}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      router.push(`/dashboard/stay/${s.id}`);
+                      s.property?.slug ? router.push(`/stay/${s.property.slug}/${s.id}`) : router.push('/dashboard');
                     }
                   }}
                   style={{
@@ -900,7 +900,7 @@ export default function HomeDashboard() {
                       today={today}
                       title={`Stay at ${propertyName || 'your hotel'}`}
                       subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
-                      onClick={() => stayId ? router.push(`/dashboard/stay/${stayId}`) : router.push('/app')}
+                      onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}`) : router.push('/dashboard')}
                       isLast={upcomingItems.length === 0}
                       cormorantClass={cormorant.className}
                     />
@@ -912,7 +912,7 @@ export default function HomeDashboard() {
                       today={today}
                       title={item.name ?? item.category ?? 'Activity'}
                       subtitle={item.starttime ?? formatDayMonth(item.scheduleddate)}
-                      onClick={() => router.push('/app?tab=itinerary')}
+                      onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/itinerary`) : router.push('/dashboard')}
                       isLast={idx === upcomingItems.length - 1}
                       cormorantClass={cormorant.className}
                     />
@@ -955,11 +955,11 @@ export default function HomeDashboard() {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={() => stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover')}
+                onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover');
+                    stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard');
                   }
                 }}
                 style={{
@@ -979,7 +979,7 @@ export default function HomeDashboard() {
             ) : (
               <PlacesGrid
                 places={places}
-                onSelect={() => stayId ? router.push(`/dashboard/stay/${stayId}?tab=discover`) : router.push('/app?tab=discover')}
+                onSelect={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
               />
             )}
           </MountSection>

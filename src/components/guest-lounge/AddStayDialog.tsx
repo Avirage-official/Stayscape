@@ -85,7 +85,7 @@ export default function AddStayDialog({
           onOpenChange(false);
           reset();
           if (stayId) {
-            router.push(`/dashboard/stay/${encodeURIComponent(stayId)}`);
+            router.push('/dashboard');
           }
           onActivated?.();
         }, SUCCESS_REDIRECT_DELAY_MS);
