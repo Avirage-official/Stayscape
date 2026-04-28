@@ -9,7 +9,7 @@ import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton
 import StayDetailView from '@/components/guest-lounge/StayDetailView';
 import StayOnboardingFlow from '@/components/guest-lounge/StayOnboardingFlow';
 
-type LoadState = 'loading' | 'ready' | 'error';
+type LoadState = 'loading' | 'ready';
 
 async function fetchStayApi(userId: string, stayId: string): Promise<CustomerStay> {
   const res = await fetch(
@@ -41,34 +41,28 @@ function StayDetailContent({
 
   /* Fetch the single stay on mount using useState lazy initializer —
      avoids react-hooks/set-state-in-effect lint errors (matches codebase pattern). */
+  // Security: getStayById enforces ownership at the DB level via
+  // .eq('userid', effectiveId). A user can never access another
+  // user's stay — the query returns null and we redirect to /dashboard.
   useState(() => {
     fetchStayApi(userId, stayId)
       .then((found) => {
         setStay(found);
         setLoadState('ready');
       })
-      .catch(() => setLoadState('error'));
+      .catch((err) => {
+        console.error('[StayDetailContent] fetchStayApi failed:', err);
+        router.replace('/dashboard');
+      });
   });
 
   if (loadState === 'loading') {
     return <GuestArrivalSkeleton />;
   }
 
-  if (loadState === 'error' || !stay) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
-        <div className="text-center px-6">
-          <p className="text-white/40 mb-4 text-[14px]">Stay not found.</p>
-          <button
-            type="button"
-            onClick={() => router.push('/dashboard')}
-            className="text-[var(--gold)] hover:underline text-[13px] cursor-pointer"
-          >
-            ← Back to dashboard
-          </button>
-        </div>
-      </div>
-    );
+  if (loadState === 'ready' && !stay) {
+    router.replace('/dashboard');
+    return null;
   }
 
   if (!stay.onboarding_completed && !onboardingCompleted) {
@@ -104,6 +98,14 @@ export default function StayDetailPage() {
 
   if (!user) {
     router.replace('/');
+    return null;
+  }
+
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!UUID_REGEX.test(stayId)) {
+    // redirect to dashboard — invalid stayId in URL
+    router.replace('/dashboard');
     return null;
   }
 

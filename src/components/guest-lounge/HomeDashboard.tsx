@@ -662,7 +662,7 @@ export default function HomeDashboard() {
                       today={today}
                       title={`Stay at ${propertyName || 'your hotel'}`}
                       subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
-                      onClick={() => router.push('/app')}
+                      onClick={() => stayId ? router.push(`/dashboard/stay/${stayId}`) : router.push('/app')}
                       isLast={upcomingItems.length === 0}
                       cormorantClass={cormorant.className}
                     />
