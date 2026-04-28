@@ -78,7 +78,7 @@ export default function SelectRegionPage() {
       country_code: region.country_code,
     };
     setRegion(selected);
-    router.push('/app');
+    router.push('/dashboard');
   };
 
   return (
