@@ -19,10 +19,10 @@ const HERO_FALLBACK =
 
 /* ─── Fetch helper ─── */
 
-async function fetchDashboardApi(userId: string): Promise<DashboardData> {
-  const res = await fetch(
-    `/api/customer/dashboard?userId=${encodeURIComponent(userId)}`,
-  );
+async function fetchDashboardApi(): Promise<DashboardData> {
+  const res = await fetch('/api/customer/dashboard', {
+    credentials: 'same-origin',
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -182,7 +182,7 @@ function GuestArrivalContent({
 
   // Lazy initial fetch
   useState(() => {
-    fetchDashboardApi(userId)
+    fetchDashboardApi()
       .then((json) => {
         setData(json);
         setLoadState('ready');
@@ -195,7 +195,7 @@ function GuestArrivalContent({
 
   const refetch = useCallback(() => {
     setLoadState('loading');
-    fetchDashboardApi(userId)
+    fetchDashboardApi()
       .then((json) => {
         setData(json);
         setLoadState('ready');
@@ -204,7 +204,7 @@ function GuestArrivalContent({
         setErrorMsg(err.message);
         setLoadState('error');
       });
-  }, [userId]);
+  }, []);
 
   const firstName = data?.profile.full_name?.split(' ')[0] ?? 'Guest';
   const currentStays = data?.currentStays ?? [];

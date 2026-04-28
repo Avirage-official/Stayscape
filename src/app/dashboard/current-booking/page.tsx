@@ -13,10 +13,10 @@ import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-async function fetchDashboardApi(userId: string): Promise<DashboardData> {
-  const res = await fetch(
-    `/api/customer/dashboard?userId=${encodeURIComponent(userId)}`,
-  );
+async function fetchDashboardApi(): Promise<DashboardData> {
+  const res = await fetch('/api/customer/dashboard', {
+    credentials: 'same-origin',
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -135,7 +135,7 @@ function CurrentBookingContent({ userId }: { userId: string }) {
 
   /* Initial fetch via lazy initializer (project pattern) */
   useState(() => {
-    fetchDashboardApi(userId)
+    fetchDashboardApi()
       .then((json) => {
         setData(json);
         setLoadState('ready');
@@ -148,7 +148,7 @@ function CurrentBookingContent({ userId }: { userId: string }) {
 
   const refetch = useCallback(() => {
     setLoadState('loading');
-    fetchDashboardApi(userId)
+    fetchDashboardApi()
       .then((json) => {
         setData(json);
         setLoadState('ready');
@@ -157,7 +157,7 @@ function CurrentBookingContent({ userId }: { userId: string }) {
         setErrorMsg(err.message);
         setLoadState('error');
       });
-  }, [userId]);
+  }, []);
 
   const handleBack = useCallback(() => {
     router.push('/dashboard');

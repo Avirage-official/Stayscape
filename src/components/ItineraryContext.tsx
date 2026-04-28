@@ -51,10 +51,10 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
             id: row.id,
-            placeId: row.place_id ?? '',
-            name: row.name ?? '',
-            category: row.category ?? '',
-            image: row.image ?? '',
+            placeId: row.discoveritemid ?? '',
+            name: row.titleoverride ?? '',
+            category: '',
+            image: '',
             date: new Date(row.scheduleddate),
             time: row.starttime ?? '',
             durationHours: row.durationhours ?? 1,
@@ -88,10 +88,8 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
       .then((itineraryId) => {
         if (!itineraryId) return;
         return insertItineraryItem(itineraryId, {
-          place_id: item.placeId,
-          name: item.name,
-          category: item.category,
-          image: item.image,
+          discoveritemid: item.placeId || null,
+          titleoverride: item.name || null,
           scheduleddate: format(item.date, 'yyyy-MM-dd'),
           starttime: item.time,
           durationhours: item.durationHours,
