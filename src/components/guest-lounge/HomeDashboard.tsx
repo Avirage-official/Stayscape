@@ -12,8 +12,6 @@ import {
 import type { DashboardData } from '@/types/customer';
 import type { DiscoveryPlaceCard } from '@/types/database';
 
-import WarmBottomTabBar from './WarmBottomTabBar';
-
 /* ─── Fonts ─── */
 
 const cormorant = Cormorant_Garamond({
@@ -435,6 +433,246 @@ export default function HomeDashboard() {
         </div>
       </MountSection>
 
+      {/* ── SECTION: YOUR STAYS ── */}
+      {(() => {
+        const allStays = [
+          ...(data?.currentStays ?? []),
+          ...(data?.upcomingStays ?? []),
+        ];
+        if (allStays.length === 0) return null;
+        return (
+          <MountSection mounted={mounted} delay={140}>
+            <div style={{ padding: '24px 20px 12px' }}>
+              <p
+                className={cormorant.className}
+                style={{
+                  margin: 0,
+                  fontSize: 20,
+                  fontWeight: 400,
+                  fontStyle: 'italic',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                Your Stays
+              </p>
+            </div>
+            {allStays.map((s) => {
+              const img = s.property?.image_url ?? null;
+              const name = s.property?.name ?? 'Your stay';
+              const city = s.property?.city ?? '';
+              const country = s.property?.country ?? '';
+              const ci = s.check_in
+                ? new Date(s.check_in + 'T00:00:00').toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                  })
+                : '';
+              const co = s.check_out
+                ? new Date(s.check_out + 'T00:00:00').toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                  })
+                : '';
+              return (
+                <div
+                  key={s.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/dashboard/stay/${s.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/dashboard/stay/${s.id}`);
+                    }
+                  }}
+                  style={{
+                    margin: '0 20px 8px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 16,
+                    padding: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 10,
+                      backgroundImage: img ? `url(${img})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundColor: 'var(--surface-raised)',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {name}
+                    </p>
+                    <p
+                      style={{
+                        margin: '2px 0 0',
+                        fontSize: 11,
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      {[city, country].filter(Boolean).join(', ')}
+                    </p>
+                    <p
+                      style={{
+                        margin: '2px 0 0',
+                        fontSize: 11,
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      {ci} – {co}
+                    </p>
+                  </div>
+                  <div style={{ flexShrink: 0 }}>
+                    <IconArrow />
+                  </div>
+                </div>
+              );
+            })}
+          </MountSection>
+        );
+      })()}
+
+      {/* ── SECTION: COUNTDOWN ── */}
+      {(() => {
+        const upcoming = data?.upcomingStays?.[0] ?? null;
+        if (!upcoming?.check_in) return null;
+        const ciDate = parseLocalDate(upcoming.check_in);
+        if (ciDate.getTime() <= today.getTime() - 86400000) return null;
+        const daysUntil = Math.max(
+          0,
+          Math.ceil((ciDate.getTime() - today.getTime()) / 86400000),
+        );
+        const label =
+          daysUntil === 0
+            ? "You're here ✦"
+            : daysUntil === 1
+              ? 'Tomorrow'
+              : `${daysUntil} days away`;
+        const rightDotColor =
+          daysUntil === 0 ? 'var(--gold)' : 'var(--border-subtle)';
+        return (
+          <MountSection mounted={mounted} delay={160}>
+            <div style={{ padding: '0 20px', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: 'var(--gold)',
+                    flexShrink: 0,
+                  }}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    height: 1,
+                    background: 'var(--border)',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      background: 'var(--background)',
+                      padding: '0 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--gold)',
+                    }}
+                  >
+                    <svg
+                      width={14}
+                      height={14}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: rightDotColor,
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  Today
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--gold)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  {formatDayMonth(upcoming.check_in)}
+                </span>
+              </div>
+              <p
+                className={cormorant.className}
+                style={{
+                  margin: '8px 0 0',
+                  textAlign: 'center',
+                  fontSize: 18,
+                  fontStyle: 'italic',
+                  color: 'var(--gold)',
+                  fontWeight: 400,
+                }}
+              >
+                {label}
+              </p>
+            </div>
+          </MountSection>
+        );
+      })()}
+
       {/* ── RESPONSIVE MAIN GRID ── */}
       {/* Mobile: single column | Tablet 768px+: 2col | Desktop 1024px+: 3col */}
       <div className="hd-main-grid">
@@ -793,8 +1031,54 @@ export default function HomeDashboard() {
       {/* Bottom spacer so last card isn't hidden behind tab bar */}
       <div style={{ height: 20 }} aria-hidden="true" />
 
-      {/* Bottom tab bar — never inside the maxWidth wrapper */}
-      <WarmBottomTabBar />
+      {/* Spacer above the home indicator */}
+      <div style={{ height: 80 }} aria-hidden="true" />
+
+      {/* Minimal single-tab home indicator (replaces WarmBottomTabBar) */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 64,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3,
+            color: 'var(--gold)',
+          }}
+        >
+          <svg
+            width={22}
+            height={22}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.05em' }}>
+            Home
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
