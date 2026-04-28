@@ -34,25 +34,7 @@ const dmSans = DM_Sans({
 const HERO_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
-const CATEGORY_FALLBACKS: Record<string, string> = {
-  dining: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
-  food: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
-  nature: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
-  park: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
-  culture: 'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
-  museum: 'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
-  shopping: 'https://images.unsplash.com/photo-1555529771-7888783a18d3?w=800&q=80&auto=format&fit=crop',
-  nightlife: 'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=800&q=80&auto=format&fit=crop',
-  wellness: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
-  spa: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
-  default: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80&auto=format&fit=crop',
-};
 
-function getPlaceImage(place: DiscoveryPlaceCard): string {
-  if (place.image_url) return place.image_url;
-  const key = (place.category ?? '').toLowerCase();
-  return CATEGORY_FALLBACKS[key] ?? CATEGORY_FALLBACKS.default;
-}
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -365,19 +347,35 @@ export default function HomeDashboard() {
 
   return (
     <div
-      className={dmSans.className}
+      className={`${dmSans.className} hd-body`}
       style={{
         background: 'var(--background)',
         minHeight: '100vh',
-        maxWidth: 390,
-        margin: '0 auto',
         width: '100%',
         position: 'relative',
         overflowX: 'hidden',
       }}
     >
-      {/* Shimmer keyframe — scoped name avoids conflicts */}
-      <style>{`@keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}`}</style>
+      {/* Shimmer keyframe + responsive grid — scoped to hd- prefix */}
+      <style>{`
+        @keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
+        .hd-body{max-width:100%;width:100%;}
+        .hd-main-grid{display:flex;flex-direction:column;}
+        .hd-left{width:100%;}
+        .hd-center{width:100%;}
+        .hd-right{width:100%;}
+        @media(min-width:768px){
+          .hd-main-grid{flex-direction:row;align-items:flex-start;gap:20px;padding:0 20px;}
+          .hd-left{width:30%;flex-shrink:0;}
+          .hd-center{flex:1;min-width:0;}
+          .hd-right{width:28%;flex-shrink:0;}
+        }
+        @media(min-width:1024px){
+          .hd-main-grid{gap:28px;padding:0 32px;}
+          .hd-left{width:28%;}
+          .hd-right{width:26%;}
+        }
+      `}</style>
 
       {/* ── SECTION 1: HEADER ── */}
       <MountSection mounted={mounted} delay={0}>
@@ -437,359 +435,360 @@ export default function HomeDashboard() {
         </div>
       </MountSection>
 
-      {/* ── SECTION 2: HERO ── */}
-      <MountSection mounted={mounted} delay={60}>
-        {loadState === 'loading' ? (
-          <Shimmer style={{ width: '100%', height: 'min(52vw, 240px)' }} />
-        ) : (
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: 'min(52vw, 240px)',
-              backgroundImage: `url(${propertyImage})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundColor: 'var(--surface-raised)',
-            }}
-          >
-            {/* Warm gradient overlay — only glassmorphism-style effect */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
-                pointerEvents: 'none',
-              }}
-            />
+      {/* ── RESPONSIVE MAIN GRID ── */}
+      {/* Mobile: single column | Tablet 768px+: 2col | Desktop 1024px+: 3col */}
+      <div className="hd-main-grid">
 
-            {/* Top-left: greeting + name */}
-            <div style={{ position: 'absolute', top: 16, left: 20 }}>
-              <p
+        {/* LEFT COLUMN: Hero + Bookings */}
+        <div className="hd-left">
+
+          {/* ── SECTION 2: HERO ── */}
+          <MountSection mounted={mounted} delay={60}>
+            {loadState === 'loading' ? (
+              <Shimmer style={{ width: '100%', height: 'min(52vw, 240px)' }} />
+            ) : (
+              <div
                 style={{
-                  margin: 0,
-                  fontSize: 9,
-                  fontWeight: 500,
-                  letterSpacing: '0.22em',
-                  color: 'var(--gold)',
-                  textTransform: 'uppercase',
+                  position: 'relative',
+                  width: '100%',
+                  height: 'min(52vw, 240px)',
+                  backgroundImage: propertyImage ? `url(${propertyImage})` : undefined,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundColor: 'var(--surface-raised)',
                 }}
               >
-                {greeting}
-              </p>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <div style={{ position: 'absolute', top: 16, left: 20 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 9,
+                      fontWeight: 500,
+                      letterSpacing: '0.22em',
+                      color: 'var(--gold)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {greeting}
+                  </p>
+                  <p
+                    className={cormorant.className}
+                    style={{
+                      margin: '4px 0 0',
+                      fontSize: 20,
+                      fontWeight: 400,
+                      lineHeight: 1.1,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {firstName}
+                  </p>
+                </div>
+                <div style={{ position: 'absolute', bottom: 14, left: 20, right: 20 }}>
+                  {propertyName ? (
+                    <p
+                      className={cormorant.className}
+                      style={{
+                        margin: 0,
+                        fontSize: 24,
+                        fontWeight: 400,
+                        lineHeight: 1.1,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {propertyName}
+                    </p>
+                  ) : null}
+                  {(propertyCity || propertyCountry) ? (
+                    <p
+                      style={{
+                        margin: '3px 0 0',
+                        fontSize: 10,
+                        fontWeight: 400,
+                        letterSpacing: '0.18em',
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </MountSection>
+
+          {/* ── SECTION 3: STAY STATS (boarding pass) ── */}
+          <MountSection mounted={mounted} delay={120}>
+            {loadState === 'loading' ? (
+              <div
+                style={{
+                  display: 'flex',
+                  borderTop: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '20px 0',
+                      gap: 6,
+                      borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                    }}
+                  >
+                    <Shimmer style={{ width: 40, height: 10 }} />
+                    <Shimmer style={{ width: 24, height: 6 }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  borderTop: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                {[
+                  { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'NIGHTS' },
+                  { value: guestCount !== null ? String(guestCount) : '—', label: 'GUESTS' },
+                  { value: checkOutFormatted ?? '—', label: 'CHECKOUT' },
+                ].map((col, i) => (
+                  <div
+                    key={col.label}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '20px 0',
+                      borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                    }}
+                  >
+                    <p
+                      className={cormorant.className}
+                      style={{
+                        margin: 0,
+                        fontSize: 32,
+                        fontWeight: 400,
+                        lineHeight: 1,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {col.value}
+                    </p>
+                    <p
+                      style={{
+                        margin: '5px 0 0',
+                        fontSize: 9,
+                        fontWeight: 500,
+                        letterSpacing: '0.18em',
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {col.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </MountSection>
+
+          {/* ── SECTION 4: BOOKINGS & RESERVATIONS ── */}
+          <MountSection mounted={mounted} delay={180}>
+            <div
+              style={{
+                margin: '20px 20px 0',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: 'var(--card-shadow)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 14,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                  Bookings &amp; Reservations
+                </p>
+                <IconAirplane />
+              </div>
+              {loadState === 'loading' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px 0',
+                        borderBottom: i === 2 ? 'none' : '1px solid var(--border-subtle)',
+                        gap: 12,
+                      }}
+                    >
+                      <Shimmer style={{ width: 44, height: 32 }} />
+                      <Shimmer style={{ flex: 1, height: 14 }} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {checkIn ? (
+                    <TimelineRow
+                      dateStr={checkIn}
+                      today={today}
+                      title={`Stay at ${propertyName || 'your hotel'}`}
+                      subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
+                      onClick={() => router.push('/app')}
+                      isLast={upcomingItems.length === 0}
+                      cormorantClass={cormorant.className}
+                    />
+                  ) : null}
+                  {upcomingItems.map((item, idx) => (
+                    <TimelineRow
+                      key={item.id}
+                      dateStr={item.scheduleddate}
+                      today={today}
+                      title={item.name ?? item.category ?? 'Activity'}
+                      subtitle={item.starttime ?? formatDayMonth(item.scheduleddate)}
+                      onClick={() => router.push('/app?tab=itinerary')}
+                      isLast={idx === upcomingItems.length - 1}
+                      cormorantClass={cormorant.className}
+                    />
+                  ))}
+                  {!checkIn && upcomingItems.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                      No upcoming bookings.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </MountSection>
+
+        </div>{/* end hd-left */}
+
+        {/* CENTER COLUMN: Places to Explore */}
+        <div className="hd-center">
+          <MountSection mounted={mounted} delay={240} style={{ marginTop: 20 }}>
+            <div
+              style={{
+                padding: '0 20px 12px',
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+              }}
+            >
               <p
                 className={cormorant.className}
                 style={{
-                  margin: '4px 0 0',
+                  margin: 0,
                   fontSize: 20,
                   fontWeight: 400,
-                  lineHeight: 1.1,
+                  fontStyle: 'italic',
                   color: 'var(--text-primary)',
                 }}
               >
-                {firstName}
+                Places to Explore
               </p>
-            </div>
-
-            {/* Bottom-left: property name + location */}
-            <div style={{ position: 'absolute', bottom: 14, left: 20, right: 20 }}>
-              {propertyName ? (
-                <p
-                  className={cormorant.className}
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 400,
-                    lineHeight: 1.1,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {propertyName}
-                </p>
-              ) : null}
-              {(propertyCity || propertyCountry) ? (
-                <p
-                  style={{
-                    margin: '3px 0 0',
-                    fontSize: 10,
-                    fontWeight: 400,
-                    letterSpacing: '0.18em',
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        )}
-      </MountSection>
-
-      {/* ── SECTION 3: STAY STATS (boarding pass) ── */}
-      <MountSection mounted={mounted} delay={120}>
-        {loadState === 'loading' ? (
-          <div
-            style={{
-              display: 'flex',
-              borderTop: '1px solid var(--border)',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push('/app?tab=discover')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    router.push('/app?tab=discover');
+                  }
+                }}
                 style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '20px 0',
-                  gap: 6,
-                  borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: '0.12em',
+                  color: 'var(--gold)',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
                 }}
               >
-                <Shimmer style={{ width: 40, height: 10 }} />
-                <Shimmer style={{ width: 24, height: 6 }} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              borderTop: '1px solid var(--border)',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            {[
-              { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'NIGHTS' },
-              { value: guestCount !== null ? String(guestCount) : '—', label: 'GUESTS' },
-              { value: checkOutFormatted ?? '—', label: 'CHECKOUT' },
-            ].map((col, i) => (
-              <div
-                key={col.label}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '20px 0',
-                  borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
-                }}
-              >
-                <p
-                  className={cormorant.className}
-                  style={{
-                    margin: 0,
-                    fontSize: 32,
-                    fontWeight: 400,
-                    lineHeight: 1,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {col.value}
-                </p>
-                <p
-                  style={{
-                    margin: '5px 0 0',
-                    fontSize: 9,
-                    fontWeight: 500,
-                    letterSpacing: '0.18em',
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {col.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </MountSection>
+                See all →
+              </span>
+            </div>
+            {loadState === 'loading' ? (
+              <PlacesSkeleton />
+            ) : (
+              <PlacesGrid
+                places={places}
+                onSelect={() => router.push('/app?tab=discover')}
+              />
+            )}
+          </MountSection>
+        </div>{/* end hd-center */}
 
-      {/* ── SECTION 4: BOOKINGS & RESERVATIONS ── */}
-      <MountSection mounted={mounted} delay={180}>
-        <div
-          style={{
-            margin: '20px 20px 0',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 16,
-            padding: 16,
-            boxShadow: 'var(--card-shadow)',
-          }}
-        >
-          {/* Card header */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-              Bookings &amp; Reservations
-            </p>
-            <IconAirplane />
-          </div>
-
-          {loadState === 'loading' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderBottom: i === 2 ? 'none' : '1px solid var(--border-subtle)',
-                    gap: 12,
-                  }}
-                >
-                  <Shimmer style={{ width: 44, height: 32 }} />
-                  <Shimmer style={{ flex: 1, height: 14 }} />
+        {/* RIGHT COLUMN: Activities Near You */}
+        <div className="hd-right">
+          <MountSection mounted={mounted} delay={300}>
+            <div
+              style={{
+                margin: '20px 20px 0',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: 'var(--card-shadow)',
+              }}
+            >
+              <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                Activities Near You
+              </p>
+              {loadState === 'loading' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '11px 0',
+                        borderBottom: i === 3 ? 'none' : '1px solid var(--border-subtle)',
+                        gap: 10,
+                      }}
+                    >
+                      <Shimmer style={{ width: 32, height: 32, borderRadius: 8 }} />
+                      <Shimmer style={{ flex: 1, height: 12 }} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <ActivitiesList places={places.slice(0, 5)} />
+              )}
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {/* Stay row — always first */}
-              {checkIn ? (
-                <TimelineRow
-                  dateStr={checkIn}
-                  today={today}
-                  title={`Stay at ${propertyName || 'your hotel'}`}
-                  subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
-                  onClick={() => router.push('/app')}
-                  isLast={upcomingItems.length === 0}
-                  cormorantClass={cormorant.className}
-                />
-              ) : null}
+          </MountSection>
+        </div>{/* end hd-right */}
 
-              {/* Next 3 itinerary items */}
-              {upcomingItems.map((item, idx) => (
-                <TimelineRow
-                  key={item.id}
-                  dateStr={item.scheduleddate}
-                  today={today}
-                  title={item.name ?? item.category ?? 'Activity'}
-                  subtitle={item.starttime ?? formatDayMonth(item.scheduleddate)}
-                  onClick={() => router.push('/app?tab=itinerary')}
-                  isLast={idx === upcomingItems.length - 1}
-                  cormorantClass={cormorant.className}
-                />
-              ))}
-
-              {/* Empty state */}
-              {!checkIn && upcomingItems.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                  No upcoming bookings.
-                </p>
-              ) : null}
-            </div>
-          )}
-        </div>
-      </MountSection>
-
-      {/* ── SECTION 5: PLACES TO EXPLORE ── */}
-      <MountSection mounted={mounted} delay={240} style={{ marginTop: 20 }}>
-        <div
-          style={{
-            padding: '0 20px 12px',
-            display: 'flex',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
-          }}
-        >
-          <p
-            className={cormorant.className}
-            style={{
-              margin: 0,
-              fontSize: 20,
-              fontWeight: 400,
-              fontStyle: 'italic',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Places to Explore
-          </p>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={() => router.push('/app?tab=discover')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                router.push('/app?tab=discover');
-              }
-            }}
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.12em',
-              color: 'var(--gold)',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            See all →
-          </span>
-        </div>
-
-        {loadState === 'loading' ? (
-          <PlacesSkeleton />
-        ) : (
-          <PlacesGrid
-            places={places}
-            onSelect={() => router.push('/app?tab=discover')}
-          />
-        )}
-      </MountSection>
-
-      {/* ── SECTION 6: ACTIVITIES NEAR YOU ── */}
-      <MountSection mounted={mounted} delay={300}>
-        <div
-          style={{
-            margin: '20px 20px 0',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 16,
-            padding: 16,
-            boxShadow: 'var(--card-shadow)',
-          }}
-        >
-          <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Activities Near You
-          </p>
-
-          {loadState === 'loading' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '11px 0',
-                    borderBottom: i === 3 ? 'none' : '1px solid var(--border-subtle)',
-                    gap: 10,
-                  }}
-                >
-                  <Shimmer style={{ width: 32, height: 32, borderRadius: 8 }} />
-                  <Shimmer style={{ flex: 1, height: 12 }} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ActivitiesList places={places.slice(0, 5)} />
-          )}
-        </div>
-      </MountSection>
+      </div>{/* end hd-main-grid */}
 
       {/* Bottom spacer so last card isn't hidden behind tab bar */}
       <div style={{ height: 20 }} aria-hidden="true" />
@@ -935,7 +934,7 @@ function PlaceCard({
         width: '100%',
         flex: 1,
         height,
-        backgroundImage: `url(${getPlaceImage(place)})`,
+        backgroundImage: place.image_url ? `url(${place.image_url})` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundColor: 'var(--surface-raised)',
