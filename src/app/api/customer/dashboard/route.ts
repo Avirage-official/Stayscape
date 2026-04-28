@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getDashboardBundle,
 } from '@/lib/supabase/customer-repository';
+import { getSupabaseBrowser } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId');
@@ -11,6 +12,47 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Auth guard: verify the caller's Supabase session and ensure it
+  // belongs to the userId being requested.
+  const authHeader =
+    request.headers.get('authorization') ||
+    request.headers.get('Authorization');
+  const accessToken = authHeader?.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : null;
+
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 },
+    );
+  }
+
+  const supabase = getSupabaseBrowser();
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 },
+    );
+  }
+
+  const { data: userData, error: authError } =
+    await supabase.auth.getUser(accessToken);
+  if (authError || !userData?.user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 },
+    );
+  }
+
+  if (userData.user.id !== userId) {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { status: 403 },
+    );
+  }
+
   try {
     const dashboard = await getDashboardBundle(userId);
     if (!dashboard) {
