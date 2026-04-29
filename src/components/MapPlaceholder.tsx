@@ -80,6 +80,20 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
   const selectedPlaceIdRef = useRef(selectedPlaceId);
   useEffect(() => { selectedPlaceIdRef.current = selectedPlaceId; }, [selectedPlaceId]);
 
+  /* ─── Re-center map when region changes after map is already initialized ─── */
+  /* Handles the case where setRegion() is called from the stay layout AFTER  */
+  /* the map has already mounted with a null/stale region.                    */
+  useEffect(() => {
+    if (!region) return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [region.longitude, region.latitude],
+      zoom: 13,
+      duration: 1200,
+    });
+  }, [region]);
+
   /* Track GeoJSON source state and hover/selected feature IDs */
   const sourceAddedRef = useRef(false);
   const hoveredIdRef = useRef<number | null>(null);

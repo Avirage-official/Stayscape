@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
@@ -11,8 +11,6 @@ import {
 } from '@/lib/supabase/itinerary-repository';
 import type { DashboardData } from '@/types/customer';
 import type { DiscoveryPlaceCard } from '@/types/database';
-
-import WarmBottomTabBar from './WarmBottomTabBar';
 
 /* ─── Fonts ─── */
 
@@ -34,44 +32,14 @@ const dmSans = DM_Sans({
 const HERO_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
-const CATEGORY_FALLBACKS: Record<string, string> = {
-  dining:
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
-  nature:
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
-  culture:
-    'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
-  shopping:
-    'https://images.unsplash.com/photo-1555529771-7888783a18d3?w=800&q=80&auto=format&fit=crop',
-  nightlife:
-    'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=800&q=80&auto=format&fit=crop',
-  wellness:
-    'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
-  default:
-    'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80&auto=format&fit=crop',
-};
 
-function getPlaceImage(place: {
-  image_url?: string | null;
-  category?: string | null;
-}): string {
-  if (place.image_url) return place.image_url;
-  const key = (place.category ?? '').toLowerCase();
-  return CATEGORY_FALLBACKS[key] ?? CATEGORY_FALLBACKS.default;
-}
-
-function capitalizeFirst(s: string | null | undefined): string {
-  if (!s) return '';
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 type LoadState = 'loading' | 'ready' | 'error';
 
 /**
- * The repository's `DbItineraryItem` doesn't expose `name` / `category`
- * directly — the dashboard spec treats them as optional display fields
- * that may be populated by upstream joins. We keep them optional here so
- * the component degrades gracefully when they're absent.
+ * DbItineraryItem has name/category as VARCHAR columns in the schema.
+ * fetchItineraryItems uses select('*') so they come back from the DB.
+ * We extend here with explicit optionals for type safety.
  */
 type ItineraryItemDisplay = DbItineraryItem & {
   name?: string | null;
@@ -278,7 +246,7 @@ function MountSection({
   );
 }
 
-/* ─── Component ─── */
+/* ─── Main Component ─── */
 
 export default function HomeDashboard() {
   const router = useRouter();
@@ -290,11 +258,8 @@ export default function HomeDashboard() {
   const [itineraryItems, setItineraryItems] = useState<ItineraryItemDisplay[]>([]);
   const [mounted, setMounted] = useState(false);
 
+  // Mount animation trigger
   useEffect(() => {
-    // Defer to next frame so the initial paint happens with `mounted=false`,
-    // letting the entrance transition actually animate. Wrapping in rAF also
-    // avoids the `react-hooks/set-state-in-effect` lint rule which forbids
-    // synchronous state updates inside an effect body.
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
@@ -316,12 +281,10 @@ export default function HomeDashboard() {
         if (cancelled) return;
         setLoadState('error');
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  // Derived stay info
+  // Derived stay values
   const stay = data?.currentStays?.[0] ?? data?.upcomingStays?.[0] ?? null;
   const firstName = data?.profile?.full_name?.split(' ')?.[0] ?? 'Guest';
   const propertyName = stay?.property?.name ?? '';
@@ -342,37 +305,34 @@ export default function HomeDashboard() {
   const checkOutFormatted = checkOut ? formatDayMonth(checkOut) : null;
   const greeting = getGreeting();
 
-  // Places fetch
+  // Places fetch — fires once regionId is available
   useEffect(() => {
     if (!regionId) return;
     let cancelled = false;
     fetch(`/api/discovery/places?region_id=${regionId}&limit=6`)
       .then((r) => r.json())
-      .then((body) => {
+      .then((body: { data?: DiscoveryPlaceCard[] }) => {
         if (cancelled) return;
-        setPlaces((body?.data as DiscoveryPlaceCard[]) ?? []);
+        setPlaces(body?.data ?? []);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [regionId]);
 
-  // Itinerary fetch
+  // Itinerary fetch — fires once user.id and stayId are available
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
     fetchItineraryItems(user.id, stayId ?? undefined)
-      .then((items) => {
+      .then((items: DbItineraryItem[] | null) => {
         if (cancelled) return;
         setItineraryItems((items as ItineraryItemDisplay[] | null) ?? []);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user?.id, stayId]);
 
+  // Next 3 upcoming itinerary items from today onwards
   const upcomingItems = useMemo(
     () =>
       itineraryItems
@@ -385,24 +345,37 @@ export default function HomeDashboard() {
 
   return (
     <div
-      className={dmSans.className}
-      style={{ background: 'var(--background)', minHeight: '100vh' }}
+      className={`${dmSans.className} hd-body`}
+      style={{
+        background: 'var(--background)',
+        minHeight: '100vh',
+        width: '100%',
+        position: 'relative',
+        overflowX: 'hidden',
+      }}
     >
-      {/* Shimmer keyframes — scoped via a unique animation name */}
-      <style>{`@keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}`}</style>
+      {/* Shimmer keyframe + responsive grid — scoped to hd- prefix */}
+      <style>{`
+        @keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
+        .hd-body{max-width:100%;width:100%;}
+        .hd-main-grid{display:flex;flex-direction:column;}
+        .hd-left{width:100%;}
+        .hd-center{width:100%;}
+        .hd-right{width:100%;}
+        @media(min-width:768px){
+          .hd-main-grid{flex-direction:row;align-items:flex-start;gap:20px;padding:0 20px;}
+          .hd-left{width:30%;flex-shrink:0;}
+          .hd-center{flex:1;min-width:0;}
+          .hd-right{width:28%;flex-shrink:0;}
+        }
+        @media(min-width:1024px){
+          .hd-main-grid{gap:28px;padding:0 32px;}
+          .hd-left{width:28%;}
+          .hd-right{width:26%;}
+        }
+      `}</style>
 
-      <div
-        style={{
-          maxWidth: 390,
-          margin: '0 auto',
-          width: '100%',
-          background: 'var(--background)',
-          minHeight: '100vh',
-          position: 'relative',
-          overflowX: 'hidden',
-        }}
-      >
-      {/* SECTION 1 — HEADER */}
+      {/* ── SECTION 1: HEADER ── */}
       <MountSection mounted={mounted} delay={0}>
         <div
           style={{
@@ -420,12 +393,7 @@ export default function HomeDashboard() {
         >
           <span
             className={cormorant.className}
-            style={{
-              fontSize: 18,
-              fontWeight: 400,
-              color: 'var(--gold)',
-              lineHeight: 1,
-            }}
+            style={{ fontSize: 18, fontWeight: 400, color: 'var(--gold)', lineHeight: 1 }}
           >
             Stayscape
           </span>
@@ -433,11 +401,11 @@ export default function HomeDashboard() {
           <div
             role="button"
             tabIndex={0}
-            onClick={() => router.push('/app?tab=discover')}
+            onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                router.push('/app?tab=discover');
+                stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard');
               }
             }}
             style={{
@@ -455,390 +423,662 @@ export default function HomeDashboard() {
             }}
           >
             <IconSearch />
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 400,
-                color: 'var(--text-faint)',
-              }}
-            >
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-faint)' }}>
               Search places, hotels...
             </span>
           </div>
 
-          {/* Right: reserved for future avatar */}
+          {/* Right side reserved for future avatar */}
           <div style={{ width: 0 }} aria-hidden="true" />
         </div>
       </MountSection>
 
-      {/* SECTION 2 — HERO */}
-      <MountSection mounted={mounted} delay={60}>
-        {loadState === 'loading' ? (
-          <Shimmer style={{ width: '100%', height: 'min(52vw, 240px)' }} />
-        ) : (
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: 'min(52vw, 240px)',
-              backgroundImage: `url(${propertyImage})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundColor: 'var(--surface-raised)',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
-                pointerEvents: 'none',
-              }}
-            />
-            <div style={{ position: 'absolute', top: 16, left: 20 }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 9,
-                  fontWeight: 500,
-                  letterSpacing: '0.22em',
-                  color: 'var(--gold)',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {greeting}
-              </p>
+      {/* ── SECTION: YOUR STAYS ── */}
+      {(() => {
+        const allStays = [
+          ...(data?.currentStays ?? []),
+          ...(data?.upcomingStays ?? []),
+        ];
+        if (allStays.length === 0) return null;
+        return (
+          <MountSection mounted={mounted} delay={140}>
+            <div style={{ padding: '24px 20px 12px' }}>
               <p
                 className={cormorant.className}
                 style={{
-                  margin: '4px 0 0',
+                  margin: 0,
                   fontSize: 20,
                   fontWeight: 400,
-                  lineHeight: 1.1,
+                  fontStyle: 'italic',
                   color: 'var(--text-primary)',
                 }}
               >
-                {firstName}
+                Your Stays
               </p>
             </div>
+            {allStays.map((s) => {
+              const img = s.property?.image_url ?? null;
+              const name = s.property?.name ?? 'Your stay';
+              const city = s.property?.city ?? '';
+              const country = s.property?.country ?? '';
+              const ci = s.check_in
+                ? new Date(s.check_in + 'T00:00:00').toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                  })
+                : '';
+              const co = s.check_out
+                ? new Date(s.check_out + 'T00:00:00').toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                  })
+                : '';
+              return (
+                <div
+                  key={s.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => s.property?.slug ? router.push(`/stay/${s.property.slug}/${s.id}`) : router.push('/dashboard')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      s.property?.slug ? router.push(`/stay/${s.property.slug}/${s.id}`) : router.push('/dashboard');
+                    }
+                  }}
+                  style={{
+                    margin: '0 20px 8px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 16,
+                    padding: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 10,
+                      backgroundImage: img ? `url(${img})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundColor: 'var(--surface-raised)',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {name}
+                    </p>
+                    <p
+                      style={{
+                        margin: '2px 0 0',
+                        fontSize: 11,
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      {[city, country].filter(Boolean).join(', ')}
+                    </p>
+                    <p
+                      style={{
+                        margin: '2px 0 0',
+                        fontSize: 11,
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      {ci} – {co}
+                    </p>
+                  </div>
+                  <div style={{ flexShrink: 0 }}>
+                    <IconArrow />
+                  </div>
+                </div>
+              );
+            })}
+          </MountSection>
+        );
+      })()}
 
+      {/* ── SECTION: COUNTDOWN ── */}
+      {(() => {
+        const upcoming = data?.upcomingStays?.[0] ?? null;
+        if (!upcoming?.check_in) return null;
+        const ciDate = parseLocalDate(upcoming.check_in);
+        if (ciDate.getTime() <= today.getTime() - 86400000) return null;
+        const daysUntil = Math.max(
+          0,
+          Math.ceil((ciDate.getTime() - today.getTime()) / 86400000),
+        );
+        const label =
+          daysUntil === 0
+            ? "You're here ✦"
+            : daysUntil === 1
+              ? 'Tomorrow'
+              : `${daysUntil} days away`;
+        const rightDotColor =
+          daysUntil === 0 ? 'var(--gold)' : 'var(--border-subtle)';
+        return (
+          <MountSection mounted={mounted} delay={160}>
+            <div style={{ padding: '0 20px', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: 'var(--gold)',
+                    flexShrink: 0,
+                  }}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    height: 1,
+                    background: 'var(--border)',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      background: 'var(--background)',
+                      padding: '0 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--gold)',
+                    }}
+                  >
+                    <svg
+                      width={14}
+                      height={14}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: rightDotColor,
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  Today
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--gold)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  {formatDayMonth(upcoming.check_in)}
+                </span>
+              </div>
+              <p
+                className={cormorant.className}
+                style={{
+                  margin: '8px 0 0',
+                  textAlign: 'center',
+                  fontSize: 18,
+                  fontStyle: 'italic',
+                  color: 'var(--gold)',
+                  fontWeight: 400,
+                }}
+              >
+                {label}
+              </p>
+            </div>
+          </MountSection>
+        );
+      })()}
+
+      {/* ── RESPONSIVE MAIN GRID ── */}
+      {/* Mobile: single column | Tablet 768px+: 2col | Desktop 1024px+: 3col */}
+      <div className="hd-main-grid">
+
+        {/* LEFT COLUMN: Hero + Bookings */}
+        <div className="hd-left">
+
+          {/* ── SECTION 2: HERO ── */}
+          <MountSection mounted={mounted} delay={60}>
+            {loadState === 'loading' ? (
+              <Shimmer style={{ width: '100%', height: 'min(52vw, 240px)' }} />
+            ) : (
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: 'min(52vw, 240px)',
+                  backgroundImage: propertyImage ? `url(${propertyImage})` : undefined,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundColor: 'var(--surface-raised)',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <div style={{ position: 'absolute', top: 16, left: 20 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 9,
+                      fontWeight: 500,
+                      letterSpacing: '0.22em',
+                      color: 'var(--gold)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {greeting}
+                  </p>
+                  <p
+                    className={cormorant.className}
+                    style={{
+                      margin: '4px 0 0',
+                      fontSize: 20,
+                      fontWeight: 400,
+                      lineHeight: 1.1,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {firstName}
+                  </p>
+                </div>
+                <div style={{ position: 'absolute', bottom: 14, left: 20, right: 20 }}>
+                  {propertyName ? (
+                    <p
+                      className={cormorant.className}
+                      style={{
+                        margin: 0,
+                        fontSize: 24,
+                        fontWeight: 400,
+                        lineHeight: 1.1,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {propertyName}
+                    </p>
+                  ) : null}
+                  {(propertyCity || propertyCountry) ? (
+                    <p
+                      style={{
+                        margin: '3px 0 0',
+                        fontSize: 10,
+                        fontWeight: 400,
+                        letterSpacing: '0.18em',
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </MountSection>
+
+          {/* ── SECTION 3: STAY STATS (boarding pass) ── */}
+          <MountSection mounted={mounted} delay={120}>
+            {loadState === 'loading' ? (
+              <div
+                style={{
+                  display: 'flex',
+                  borderTop: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '20px 0',
+                      gap: 6,
+                      borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                    }}
+                  >
+                    <Shimmer style={{ width: 40, height: 10 }} />
+                    <Shimmer style={{ width: 24, height: 6 }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  borderTop: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                {[
+                  { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'NIGHTS' },
+                  { value: guestCount !== null ? String(guestCount) : '—', label: 'GUESTS' },
+                  { value: checkOutFormatted ?? '—', label: 'CHECKOUT' },
+                ].map((col, i) => (
+                  <div
+                    key={col.label}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '20px 0',
+                      borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                    }}
+                  >
+                    <p
+                      className={cormorant.className}
+                      style={{
+                        margin: 0,
+                        fontSize: 32,
+                        fontWeight: 400,
+                        lineHeight: 1,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {col.value}
+                    </p>
+                    <p
+                      style={{
+                        margin: '5px 0 0',
+                        fontSize: 9,
+                        fontWeight: 500,
+                        letterSpacing: '0.18em',
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {col.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </MountSection>
+
+          {/* ── SECTION 4: BOOKINGS & RESERVATIONS ── */}
+          <MountSection mounted={mounted} delay={180}>
             <div
               style={{
-                position: 'absolute',
-                bottom: 14,
-                left: 20,
-                right: 20,
+                margin: '20px 20px 0',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: 'var(--card-shadow)',
               }}
             >
-              {propertyName && (
-                <p
-                  className={cormorant.className}
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 400,
-                    lineHeight: 1.1,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {propertyName}
-                </p>
-              )}
-              {(propertyCity || propertyCountry) && (
-                <p
-                  style={{
-                    margin: '3px 0 0',
-                    fontSize: 10,
-                    fontWeight: 400,
-                    letterSpacing: '0.18em',
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-      </MountSection>
-
-      {/* SECTION 3 — STAY STATS */}
-      <MountSection mounted={mounted} delay={120}>
-        {loadState === 'loading' ? (
-          <div
-            style={{
-              display: 'flex',
-              borderTop: '1px solid var(--border)',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            {[0, 1, 2].map((i) => (
               <div
-                key={i}
                 style={{
-                  flex: 1,
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '20px 0',
-                  gap: 6,
-                  borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                  justifyContent: 'space-between',
+                  marginBottom: 14,
                 }}
               >
-                <Shimmer style={{ width: 40, height: 10 }} />
-                <Shimmer style={{ width: 24, height: 6 }} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              borderTop: '1px solid var(--border)',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            {[
-              { value: nightsLeft ?? '—', label: 'NIGHTS' },
-              { value: guestCount ?? '—', label: 'GUESTS' },
-              { value: checkOutFormatted ?? '—', label: 'CHECKOUT' },
-            ].map((col, i) => (
-              <div
-                key={col.label}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '20px 0',
-                  borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
-                }}
-              >
-                <p
-                  className={cormorant.className}
-                  style={{
-                    margin: 0,
-                    fontSize: 32,
-                    fontWeight: 400,
-                    lineHeight: 1,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {col.value}
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                  Bookings &amp; Reservations
                 </p>
-                <p
-                  style={{
-                    margin: '5px 0 0',
-                    fontSize: 9,
-                    fontWeight: 500,
-                    letterSpacing: '0.18em',
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {col.label}
-                </p>
+                <IconAirplane />
               </div>
-            ))}
-          </div>
-        )}
-      </MountSection>
-
-      {/* SECTION 4 — BOOKINGS & RESERVATIONS */}
-      <MountSection mounted={mounted} delay={180}>
-        <div
-          style={{
-            margin: '20px 20px 0',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 16,
-            padding: 16,
-            boxShadow: 'var(--card-shadow)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-              }}
-            >
-              Bookings &amp; Reservations
-            </p>
-            <IconAirplane />
-          </div>
-
-          {loadState === 'loading' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderBottom:
-                      i === 2 ? 'none' : '1px solid var(--border-subtle)',
-                    gap: 12,
-                  }}
-                >
-                  <Shimmer style={{ width: 44, height: 32 }} />
-                  <Shimmer style={{ flex: 1, height: 14 }} />
+              {loadState === 'loading' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px 0',
+                        borderBottom: i === 2 ? 'none' : '1px solid var(--border-subtle)',
+                        gap: 12,
+                      }}
+                    >
+                      <Shimmer style={{ width: 44, height: 32 }} />
+                      <Shimmer style={{ flex: 1, height: 14 }} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {/* Stay row */}
-              {checkIn && (
-                <TimelineRow
-                  dateStr={checkIn}
-                  today={today}
-                  title={`Stay at ${propertyName || 'your hotel'}`}
-                  subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
-                  onClick={() => router.push('/app')}
-                  isLast={upcomingItems.length === 0}
-                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {checkIn ? (
+                    <TimelineRow
+                      dateStr={checkIn}
+                      today={today}
+                      title={`Stay at ${propertyName || 'your hotel'}`}
+                      subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
+                      onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}`) : router.push('/dashboard')}
+                      isLast={upcomingItems.length === 0}
+                      cormorantClass={cormorant.className}
+                    />
+                  ) : null}
+                  {upcomingItems.map((item, idx) => (
+                    <TimelineRow
+                      key={item.id}
+                      dateStr={item.scheduleddate}
+                      today={today}
+                      title={item.name ?? item.category ?? 'Activity'}
+                      subtitle={item.starttime ?? formatDayMonth(item.scheduleddate)}
+                      onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/itinerary`) : router.push('/dashboard')}
+                      isLast={idx === upcomingItems.length - 1}
+                      cormorantClass={cormorant.className}
+                    />
+                  ))}
+                  {!checkIn && upcomingItems.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                      No upcoming bookings.
+                    </p>
+                  ) : null}
+                </div>
               )}
-
-              {/* Itinerary rows */}
-              {upcomingItems.map((item, idx) => (
-                <TimelineRow
-                  key={item.id}
-                  dateStr={item.scheduleddate}
-                  today={today}
-                  title={item.name ?? item.category ?? 'Activity'}
-                  subtitle={item.starttime ?? item.scheduleddate}
-                  onClick={() => router.push('/app?tab=itinerary')}
-                  isLast={idx === upcomingItems.length - 1}
-                />
-              ))}
             </div>
-          )}
-        </div>
-      </MountSection>
+          </MountSection>
 
-      {/* SECTION 5 — PLACES TO EXPLORE */}
-      <MountSection mounted={mounted} delay={240} style={{ marginTop: 20 }}>
+        </div>{/* end hd-left */}
+
+        {/* CENTER COLUMN: Places to Explore */}
+        <div className="hd-center">
+          <MountSection mounted={mounted} delay={240} style={{ marginTop: 20 }}>
+            <div
+              style={{
+                padding: '0 20px 12px',
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+              }}
+            >
+              <p
+                className={cormorant.className}
+                style={{
+                  margin: 0,
+                  fontSize: 20,
+                  fontWeight: 400,
+                  fontStyle: 'italic',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                Places to Explore
+              </p>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard');
+                  }
+                }}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: '0.12em',
+                  color: 'var(--gold)',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                See all →
+              </span>
+            </div>
+            {loadState === 'loading' ? (
+              <PlacesSkeleton />
+            ) : (
+              <PlacesGrid
+                places={places}
+                onSelect={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
+              />
+            )}
+          </MountSection>
+        </div>{/* end hd-center */}
+
+        {/* RIGHT COLUMN: Activities Near You */}
+        <div className="hd-right">
+          <MountSection mounted={mounted} delay={300}>
+            <div
+              style={{
+                margin: '20px 20px 0',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: 'var(--card-shadow)',
+              }}
+            >
+              <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                Activities Near You
+              </p>
+              {loadState === 'loading' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '11px 0',
+                        borderBottom: i === 3 ? 'none' : '1px solid var(--border-subtle)',
+                        gap: 10,
+                      }}
+                    >
+                      <Shimmer style={{ width: 32, height: 32, borderRadius: 8 }} />
+                      <Shimmer style={{ flex: 1, height: 12 }} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ActivitiesList places={places.slice(0, 5)} />
+              )}
+            </div>
+          </MountSection>
+        </div>{/* end hd-right */}
+
+      </div>{/* end hd-main-grid */}
+
+      {/* Bottom spacer so last card isn't hidden behind tab bar */}
+      <div style={{ height: 20 }} aria-hidden="true" />
+
+      {/* Spacer above the home indicator */}
+      <div style={{ height: 80 }} aria-hidden="true" />
+
+      {/* Minimal single-tab home indicator (replaces WarmBottomTabBar) */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 64,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+        }}
+      >
         <div
           style={{
-            padding: '0 20px 12px',
             display: 'flex',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3,
+            color: 'var(--gold)',
           }}
         >
-          <p
-            className={cormorant.className}
-            style={{
-              margin: 0,
-              fontSize: 20,
-              fontWeight: 400,
-              fontStyle: 'italic',
-              color: 'var(--text-primary)',
-            }}
+          <svg
+            width={22}
+            height={22}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
           >
-            Places to Explore
-          </p>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={() => router.push('/app?tab=discover')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                router.push('/app?tab=discover');
-              }
-            }}
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.12em',
-              color: 'var(--gold)',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            See all →
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.05em' }}>
+            Home
           </span>
         </div>
-
-        {loadState === 'loading' || places.length === 0 ? (
-          <PlacesSkeleton loading={loadState === 'loading'} />
-        ) : (
-          <PlacesGrid
-            places={places}
-            onSelect={() => router.push('/app?tab=discover')}
-          />
-        )}
-      </MountSection>
-
-      {/* SECTION 6 — ACTIVITIES NEAR YOU */}
-      <MountSection mounted={mounted} delay={300}>
-        <div
-          style={{
-            margin: '20px 20px 0',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 16,
-            padding: 16,
-            boxShadow: 'var(--card-shadow)',
-          }}
-        >
-          <p
-            style={{
-              margin: '0 0 14px',
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
-            Activities Near You
-          </p>
-
-          {loadState === 'loading' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '11px 0',
-                    borderBottom:
-                      i === 3 ? 'none' : '1px solid var(--border-subtle)',
-                    gap: 10,
-                  }}
-                >
-                  <Shimmer
-                    style={{ width: 32, height: 32, borderRadius: 8 }}
-                  />
-                  <Shimmer style={{ flex: 1, height: 12 }} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ActivitiesList places={places.slice(0, 5)} />
-          )}
-        </div>
-      </MountSection>
-
-      {/* Bottom tab bar — unchanged */}
       </div>
-      <WarmBottomTabBar />
     </div>
   );
 }
@@ -852,6 +1092,7 @@ function TimelineRow({
   subtitle,
   onClick,
   isLast,
+  cormorantClass,
 }: {
   dateStr: string;
   today: Date;
@@ -859,6 +1100,7 @@ function TimelineRow({
   subtitle: string;
   onClick: () => void;
   isLast: boolean;
+  cormorantClass: string;
 }) {
   const dayLabel = isSameLocalDay(dateStr, today) ? 'Today' : weekdayShort(dateStr);
 
@@ -881,22 +1123,11 @@ function TimelineRow({
         cursor: 'pointer',
       }}
     >
-      <div
-        style={{
-          width: 44,
-          flexShrink: 0,
-          textAlign: 'center',
-        }}
-      >
+      {/* Date badge */}
+      <div style={{ width: 44, flexShrink: 0, textAlign: 'center' }}>
         <p
-          className={cormorant.className}
-          style={{
-            margin: 0,
-            fontSize: 22,
-            fontWeight: 400,
-            lineHeight: 1,
-            color: 'var(--text-primary)',
-          }}
+          className={cormorantClass}
+          style={{ margin: 0, fontSize: 22, fontWeight: 400, lineHeight: 1, color: 'var(--text-primary)' }}
         >
           {formatDayNumber(dateStr)}
         </p>
@@ -914,6 +1145,7 @@ function TimelineRow({
         </p>
       </div>
 
+      {/* Vertical divider */}
       <div
         style={{
           width: 1,
@@ -924,6 +1156,7 @@ function TimelineRow({
         }}
       />
 
+      {/* Day label */}
       <div
         style={{
           width: 52,
@@ -936,29 +1169,17 @@ function TimelineRow({
         {dayLabel}
       </div>
 
+      {/* Content */}
       <div style={{ flex: 1 }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-          }}
-        >
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
           {title}
         </p>
-        <p
-          style={{
-            margin: '2px 0 0',
-            fontSize: 11,
-            fontWeight: 400,
-            color: 'var(--text-muted)',
-          }}
-        >
+        <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>
           {subtitle}
         </p>
       </div>
 
+      {/* Arrow */}
       <div style={{ flexShrink: 0, marginLeft: 8 }}>
         <IconArrow />
       </div>
@@ -992,6 +1213,9 @@ function PlaceCard({
         position: 'relative',
         overflow: 'hidden',
         cursor: 'pointer',
+        // width: 100% ensures full-width cards actually fill the column
+        // flex: 1 ensures side-by-side cards share space equally
+        width: '100%',
         flex: 1,
         height,
         backgroundImage: `url(${getPlaceImage(place)})`,
@@ -1000,6 +1224,7 @@ function PlaceCard({
         backgroundColor: 'var(--surface-raised)',
       }}
     >
+      {/* Scrim */}
       <div
         style={{
           position: 'absolute',
@@ -1008,7 +1233,9 @@ function PlaceCard({
             'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
         }}
       />
-      {place.rating != null && (
+
+      {/* Rating — top right */}
+      {place.rating !== null && place.rating !== undefined ? (
         <div
           style={{
             position: 'absolute',
@@ -1021,16 +1248,11 @@ function PlaceCard({
         >
           ★ {place.rating.toFixed(1)}
         </div>
-      )}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 12,
-          left: 12,
-          right: 28,
-        }}
-      >
-        {place.category && (
+      ) : null}
+
+      {/* Category + name — bottom left */}
+      <div style={{ position: 'absolute', bottom: 12, left: 12, right: 28 }}>
+        {place.category ? (
           <p
             style={{
               margin: '0 0 3px',
@@ -1043,7 +1265,7 @@ function PlaceCard({
           >
             {place.category}
           </p>
-        )}
+        ) : null}
         <p
           style={{
             margin: 0,
@@ -1067,9 +1289,24 @@ function PlacesGrid({
   places: DiscoveryPlaceCard[];
   onSelect: () => void;
 }) {
-  // Group: index 0 (full), index 1+2 (row), index 3 (full), index 4+ (full)
+  if (places.length === 0) {
+    return (
+      <div
+        style={{
+          padding: '0 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}
+      >
+        <PlacesSkeleton dim />
+      </div>
+    );
+  }
+
   const elements: ReactNode[] = [];
 
+  // Card 0 — full width tall
   if (places[0]) {
     elements.push(
       <PlaceCard
@@ -1082,29 +1319,21 @@ function PlacesGrid({
     );
   }
 
+  // Cards 1 + 2 — side by side
   if (places[1] || places[2]) {
     elements.push(
-      <div key="row-1-2" style={{ display: 'flex', gap: 4 }}>
-        {places[1] && (
-          <PlaceCard
-            place={places[1]}
-            height={150}
-            nameSize={12}
-            onClick={onSelect}
-          />
-        )}
-        {places[2] && (
-          <PlaceCard
-            place={places[2]}
-            height={150}
-            nameSize={12}
-            onClick={onSelect}
-          />
-        )}
+      <div key="row-1-2" style={{ display: 'flex', gap: 4, width: '100%' }}>
+        {places[1] ? (
+          <PlaceCard place={places[1]} height={150} nameSize={12} onClick={onSelect} />
+        ) : null}
+        {places[2] ? (
+          <PlaceCard place={places[2]} height={150} nameSize={12} onClick={onSelect} />
+        ) : null}
       </div>,
     );
   }
 
+  // Card 3 — full width
   if (places[3]) {
     elements.push(
       <PlaceCard
@@ -1117,6 +1346,7 @@ function PlacesGrid({
     );
   }
 
+  // Cards 4+ — full width
   for (let i = 4; i < places.length; i++) {
     elements.push(
       <PlaceCard
@@ -1143,11 +1373,7 @@ function PlacesGrid({
   );
 }
 
-function PlacesSkeleton({ loading }: { loading: boolean }) {
-  // Always render a placeholder structure so layout doesn't shift when
-  // places arrive empty (e.g. no region). When `loading` is false we still
-  // render dimmer blocks so the rhythm of the page is preserved.
-  const opacity = loading ? 1 : 0.4;
+function PlacesSkeleton({ dim }: { dim?: boolean }) {
   return (
     <div
       style={{
@@ -1155,11 +1381,11 @@ function PlacesSkeleton({ loading }: { loading: boolean }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        opacity,
+        opacity: dim ? 0.4 : 1,
       }}
     >
       <Shimmer style={{ width: '100%', height: 220 }} />
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4, width: '100%' }}>
         <Shimmer style={{ flex: 1, height: 150 }} />
         <Shimmer style={{ flex: 1, height: 150 }} />
       </div>
@@ -1171,14 +1397,7 @@ function PlacesSkeleton({ loading }: { loading: boolean }) {
 function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
   if (places.length === 0) {
     return (
-      <p
-        style={{
-          margin: 0,
-          fontSize: 12,
-          fontWeight: 400,
-          color: 'var(--text-muted)',
-        }}
-      >
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>
         No nearby activities yet.
       </p>
     );
@@ -1188,6 +1407,12 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {places.map((place, idx) => {
         const isLast = idx === places.length - 1;
+        const subtitle = place.distance
+          ? place.distance
+          : place.category
+            ? place.category.charAt(0).toUpperCase() + place.category.slice(1)
+            : '';
+
         return (
           <div
             key={place.id}
@@ -1198,6 +1423,7 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
               borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
             }}
           >
+            {/* Category icon */}
             <div
               style={{
                 width: 32,
@@ -1213,30 +1439,20 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
               <CategoryIcon category={place.category} />
             </div>
 
+            {/* Name + subtitle */}
             <div style={{ flex: 1, marginLeft: 10 }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  fontWeight: 400,
-                  color: 'var(--text-primary)',
-                }}
-              >
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}>
                 {place.name}
               </p>
-              <p
-                style={{
-                  margin: '2px 0 0',
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {place.distance ? place.distance : capitalizeFirst(place.category)}
-              </p>
+              {subtitle ? (
+                <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
 
-            {place.rating != null && (
+            {/* Rating */}
+            {place.rating !== null && place.rating !== undefined ? (
               <div
                 style={{
                   flexShrink: 0,
@@ -1248,7 +1464,7 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
               >
                 ★ {place.rating.toFixed(1)}
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}

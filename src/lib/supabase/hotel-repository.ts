@@ -16,6 +16,8 @@ export interface HotelContext {
     hero_image_url: string | null;
     welcome_message: string | null;
     subdomain_slug: string | null;
+    concierge_name: string;
+    concierge_tone: string;
   } | null;
   amenities: Array<{
     id: string;
@@ -45,6 +47,8 @@ interface HotelBrandingRow {
   hero_image_url: string | null;
   welcome_message: string | null;
   subdomain_slug: string | null;
+  concierge_name: string;
+  concierge_tone: string;
 }
 
 interface HotelAmenityRow {
@@ -82,7 +86,7 @@ export async function getHotelContext(
     supabase
       .from('hotel_branding')
       .select(
-        'logo_url, accent_color, hero_image_url, welcome_message, subdomain_slug',
+        'logo_url, accent_color, hero_image_url, welcome_message, subdomain_slug, concierge_name, concierge_tone',
       )
       .eq('property_id', propertyId)
       .maybeSingle<HotelBrandingRow>(),
@@ -130,7 +134,11 @@ export async function getHotelContext(
   }
 
   return {
-    branding: brandingResult.data,
+    branding: {
+      ...brandingResult.data,
+      concierge_name: brandingResult.data.concierge_name ?? 'Aria',
+      concierge_tone: brandingResult.data.concierge_tone ?? 'warm',
+    },
     amenities: amenitiesResult.data ?? [],
     policies: policiesResult.data ?? null,
   };

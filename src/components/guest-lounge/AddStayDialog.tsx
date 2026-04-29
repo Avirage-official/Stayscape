@@ -15,6 +15,7 @@ type ActivationResponse = {
     redirect_stay_id?: string;
     stay_existed?: boolean;
     message?: string;
+    property_slug?: string | null;
   };
   error?: string;
 };
@@ -80,12 +81,15 @@ export default function AddStayDialog({
         }
 
         const stayId = json.data?.redirect_stay_id ?? json.data?.stay_id;
+        const slug = json.data?.property_slug ?? null;
         setState('success');
         setTimeout(() => {
           onOpenChange(false);
           reset();
-          if (stayId) {
-            router.push(`/dashboard/stay/${encodeURIComponent(stayId)}`);
+          if (stayId && slug) {
+            router.push(`/stay/${encodeURIComponent(slug)}/${encodeURIComponent(stayId)}`);
+          } else {
+            router.push('/dashboard');
           }
           onActivated?.();
         }, SUCCESS_REDIRECT_DELAY_MS);

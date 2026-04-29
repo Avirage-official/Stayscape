@@ -16,6 +16,7 @@ function buildStay(): CustomerStay {
     property: {
       id: 'property-1',
       name: 'Hotel',
+      slug: null,
       image_url: null,
       address: null,
       city: 'Singapore',

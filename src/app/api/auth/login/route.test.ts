@@ -1,9 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { POST } from './route';
 
 describe('POST /api/auth/login', () => {
-  it('returns staff demo user for valid staff credentials', async () => {
+  const originalEmail = process.env.SUPER_ADMIN_EMAIL;
+  const originalPassword = process.env.SUPER_ADMIN_PASSWORD;
+
+  beforeEach(() => {
+    process.env.SUPER_ADMIN_EMAIL = 'staff@stayscape-demo.com';
+    process.env.SUPER_ADMIN_PASSWORD = 'Staff1234!';
+  });
+
+  afterEach(() => {
+    if (originalEmail === undefined) delete process.env.SUPER_ADMIN_EMAIL;
+    else process.env.SUPER_ADMIN_EMAIL = originalEmail;
+    if (originalPassword === undefined) delete process.env.SUPER_ADMIN_PASSWORD;
+    else process.env.SUPER_ADMIN_PASSWORD = originalPassword;
+  });
+
+  it('returns super admin user for valid super admin credentials', async () => {
     const request = new Request('http://localhost/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -18,7 +33,7 @@ describe('POST /api/auth/login', () => {
 
     expect(response.status).toBe(200);
     expect((body as { user: { id: string; email: string } }).user).toEqual({
-      id: 'staff-demo-001',
+      id: 'super-admin-001',
       email: 'staff@stayscape-demo.com',
     });
   });

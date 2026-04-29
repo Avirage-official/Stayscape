@@ -482,7 +482,7 @@ export default function ItineraryExperience({
               if (!aiPrompt.trim() || isRefining) return;
               setIsRefining(true);
               try {
-                const reply = await sendChatMessage(aiPrompt, stayId, [], 'itinerary');
+                const reply = await sendChatMessage(aiPrompt, stayId, 'itinerary');
                 setAiReply(reply);
               } finally {
                 setIsRefining(false);

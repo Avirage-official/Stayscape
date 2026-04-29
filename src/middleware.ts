@@ -44,8 +44,30 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refresh the session — this is a no-op when the token is still valid.
-  await supabase.auth.getUser();
+  // Refresh the session and capture the user — this is a no-op when the
+  // token is still valid but also gives us the authenticated user for guards.
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Block unauthenticated access to /admin routes
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith('/admin')) {
+    // Check for the sa_session cookie set on successful staff login.
+    const saSession = request.cookies.get('sa_session');
+    if (!saSession?.value) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // Block unauthenticated access to hotel-admin routes (requires Supabase JWT)
+  if (pathname.startsWith('/hotel-admin')) {
+    if (!user) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
 
   return response;
 }

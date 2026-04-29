@@ -8,7 +8,6 @@
  *   - users.role       — userrole enum (DB default 'guest'). Not used by
  *                         the consumer dashboard; see DbUser for the full shape.
  *   - users.updatedat  — tracked in DB but not surfaced in profile card.
- *   - properties.slug  — DB-generated, not used by consumer UI.
  *   - properties.createdat / updatedat — not relevant for dashboard display.
  */
 
@@ -53,6 +52,7 @@ export interface CustomerStay {
   property?: {
     id: string;
     name: string;
+    slug: string | null;
     image_url: string | null;
     address: string | null;
     city: string | null;
