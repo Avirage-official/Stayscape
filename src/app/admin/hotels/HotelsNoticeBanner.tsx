@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface Props {
   notice?: string;
@@ -9,13 +9,9 @@ interface Props {
 }
 
 export default function HotelsNoticeBanner({ notice, email, warn }: Props) {
-  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    if (notice) setVisible(true);
-  }, [notice]);
-
-  if (!visible || !notice) return null;
+  if (dismissed || !notice) return null;
 
   const isError = notice === 'created' && warn;
 
@@ -34,7 +30,7 @@ export default function HotelsNoticeBanner({ notice, email, warn }: Props) {
       </span>
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={() => setDismissed(true)}
         className="text-current opacity-60 hover:opacity-100 flex-shrink-0"
         aria-label="Dismiss"
       >
