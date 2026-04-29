@@ -116,6 +116,11 @@ const TONE_GUIDANCE: Record<string, string> = {
   playful: 'You are upbeat, enthusiastic, and fun. Use light humour where appropriate.',
 };
 
+const AUTO_DETECT_LANGUAGE =
+  '\n\nLanguage: Detect the language the guest is writing in and always respond in that same language. ' +
+  'If they write in Spanish, respond in Spanish. If they write in French, respond in French. ' +
+  'Default to English if the language is unclear.';
+
 const STRICT_BOUNDARIES =
   '\nSTRICT BOUNDARIES — follow these at all times:\n' +
   "- You only discuss topics relevant to the guest's stay, the hotel, the local area, travel, dining, activities, and service requests. Politely decline anything unrelated.\n" +
@@ -171,7 +176,7 @@ async function buildSystemPrompt(
   // Layer 1 — Identity (defaults used when there is no stay context)
   if (!stayId) {
     return {
-      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode),
+      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode) + AUTO_DETECT_LANGUAGE,
       propertyId: null,
     };
   }
@@ -190,7 +195,7 @@ async function buildSystemPrompt(
 
   if (!stay) {
     return {
-      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode),
+      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode) + AUTO_DETECT_LANGUAGE,
       propertyId: null,
     };
   }
@@ -256,6 +261,21 @@ async function buildSystemPrompt(
     if (pd.pace != null) prefLines.push(`- Pace: ${JSON.stringify(pd.pace)}`);
     if (pd.food_preferences != null) prefLines.push(`- Food preferences: ${JSON.stringify(pd.food_preferences)}`);
     if (prefLines.length > 1) systemPrompt += prefLines.join('\n');
+  }
+
+  // Layer 3b — Language preference
+  const rawPreferredLanguage = prefRow?.preference_data?.preferred_language;
+  const preferredLanguage =
+    typeof rawPreferredLanguage === 'string' && rawPreferredLanguage.trim().length > 0
+      ? rawPreferredLanguage.trim()
+      : null;
+
+  if (preferredLanguage) {
+    systemPrompt +=
+      `\n\nLanguage: Always respond in ${preferredLanguage}, regardless of what language ` +
+      `the guest writes in. If the guest writes in a different language, still respond in ${preferredLanguage}.`;
+  } else {
+    systemPrompt += AUTO_DETECT_LANGUAGE;
   }
 
   // Layer 4 — Region places
@@ -478,6 +498,19 @@ export async function POST(request: NextRequest) {
               required: ['title', 'description', 'task_type'],
             },
           },
+          {
+            name: 'get_service_request_status',
+            description:
+              'Check the status of service requests made by this guest during their stay. ' +
+              'Call this when the guest asks about a request they made — e.g. "did anyone bring my towels?", ' +
+              '"what happened to my request?", "has housekeeping come yet?". ' +
+              'Returns a list of their requests and current statuses.',
+            input_schema: {
+              type: 'object',
+              properties: {},
+              required: [],
+            },
+          },
         ],
         messages,
       }),
@@ -494,71 +527,121 @@ export async function POST(request: NextRequest) {
     const json = (await claudeRes.json()) as ClaudeResponse;
 
     const toolUseBlock = json.content?.find((b) => b.type === 'tool_use');
-    const isServiceRequestTool = toolUseBlock?.name === 'log_service_request';
     let reply: string;
 
-    if (toolUseBlock && isServiceRequestTool && stayId) {
-      const input = toolUseBlock.input as LogServiceRequestInput;
+    if (toolUseBlock && stayId) {
+      let toolResultContent: string | null = null;
 
-      try {
-        if (propertyId && isValidTaskType(input.task_type)) {
-          const supabase = getSupabaseAdmin();
-          await supabase.from('service_tasks').insert({
-            propertyid: propertyId,
-            stayid: stayId,
-            task_type: input.task_type,
-            title: input.title,
-            description: input.description,
-            status: 'pending',
-            priority: 0,
-          });
-        } else {
-          console.error('[ai/chat] Service request skipped — validation failed:', {
-            propertyId,
-            task_type: input.task_type,
-          });
+      if (toolUseBlock.name === 'log_service_request') {
+        const input = toolUseBlock.input as LogServiceRequestInput;
+
+        try {
+          if (propertyId && isValidTaskType(input.task_type)) {
+            const supabase = getSupabaseAdmin();
+            await supabase.from('service_tasks').insert({
+              propertyid: propertyId,
+              stayid: stayId,
+              task_type: input.task_type,
+              title: input.title,
+              description: input.description,
+              status: 'pending',
+              priority: 0,
+            });
+          } else {
+            console.error('[ai/chat] Service request skipped — validation failed:', {
+              propertyId,
+              task_type: input.task_type,
+            });
+          }
+        } catch (toolErr) {
+          console.error('[ai/chat] Tool execution failed:', toolErr);
+          // Never surface this error to the guest
         }
-      } catch (toolErr) {
-        console.error('[ai/chat] Tool execution failed:', toolErr);
-        // Never surface this error to the guest
+
+        toolResultContent = 'Service request logged successfully.';
+      } else if (toolUseBlock.name === 'get_service_request_status') {
+        try {
+          const supabase = getSupabaseAdmin();
+          const { data: tasks } = await supabase
+            .from('service_tasks')
+            .select('title, description, status, task_type, createdat')
+            .eq('stayid', stayId)
+            .order('createdat', { ascending: false })
+            .limit(10)
+            .returns<Array<{
+              title: string | null;
+              description: string | null;
+              status: string | null;
+              task_type: string | null;
+              createdat: string | null;
+            }>>();
+
+          if (!tasks || tasks.length === 0) {
+            toolResultContent = 'No service requests found.';
+          } else {
+            toolResultContent = (tasks as Array<{
+              title: string | null;
+              description: string | null;
+              status: string | null;
+              task_type: string | null;
+              createdat: string | null;
+            }>)
+              .map((t, i) => {
+                const title = t.title ?? 'Untitled request';
+                const type = t.task_type ?? 'other';
+                const status = t.status ?? 'unknown';
+                return `${i + 1}. ${title} (${type}) — ${status}`;
+              })
+              .join('\n');
+          }
+        } catch (toolErr) {
+          console.error('[ai/chat] get_service_request_status failed:', toolErr);
+          toolResultContent = 'Unable to fetch service requests right now.';
+        }
       }
 
-      const toolResultMessages = [
-        ...messages,
-        { role: 'assistant' as const, content: json.content },
-        {
-          role: 'user' as const,
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: toolUseBlock.id,
-              content: 'Service request logged successfully.',
-            },
-          ],
-        },
-      ];
+      if (toolResultContent !== null) {
+        const toolResultMessages = [
+          ...messages,
+          { role: 'assistant' as const, content: json.content },
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: toolUseBlock.id,
+                content: toolResultContent,
+              },
+            ],
+          },
+        ];
 
-      const followUpRes = await fetch(ANTHROPIC_API_URL, {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': ANTHROPIC_VERSION,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: ANTHROPIC_MODEL,
-          max_tokens: MAX_TOKENS_TOOL_RESPONSE,
-          system: systemPrompt,
-          messages: toolResultMessages,
-        }),
-      });
+        const followUpRes = await fetch(ANTHROPIC_API_URL, {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': ANTHROPIC_VERSION,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ANTHROPIC_MODEL,
+            max_tokens: MAX_TOKENS_TOOL_RESPONSE,
+            system: systemPrompt,
+            messages: toolResultMessages,
+          }),
+        });
 
-      const followUpJson = (await followUpRes.json()) as ClaudeResponse;
-      const followUpText = followUpJson.content?.find((b) => b.type === 'text');
-      reply =
-        followUpText?.text ??
-        "I've passed that request to the hotel team. Is there anything else I can help with?";
-    } else if (toolUseBlock && isServiceRequestTool && !stayId) {
+        const followUpJson = (await followUpRes.json()) as ClaudeResponse;
+        const followUpText = followUpJson.content?.find((b) => b.type === 'text');
+        reply =
+          followUpText?.text ??
+          "I've passed that request to the hotel team. Is there anything else I can help with?";
+      } else {
+        // Unknown tool name — fall through to plain-text response
+        const textBlock = json.content?.find((b) => b.type === 'text');
+        reply = textBlock?.text ?? "I couldn't generate a response. Please try again.";
+      }
+    } else if (toolUseBlock && !stayId) {
       // Tool was called but there is no active stay — cannot log the request
       reply =
         "I'm sorry, I can't log that service request without an active stay on file. Please contact the hotel team directly.";
