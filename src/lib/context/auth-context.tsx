@@ -35,10 +35,6 @@ interface AuthContextValue {
 
 const STORAGE_KEY = 'stayscape_auth';
 
-// Staff email addresses that authenticate via the API route (not Supabase Auth).
-// Must stay in sync with STAFF_DEMO_CREDENTIALS in src/app/api/auth/login/route.ts.
-const STAFF_EMAILS = ['staff@stayscape-demo.com'];
-
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -99,10 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return {};
         }
 
-        // Sign-in failed — only fall through to the API route for staff.
-        if (!STAFF_EMAILS.includes(email)) {
-          return { error: 'Invalid credentials' };
-        }
+        // Sign-in failed via Supabase — try the staff API route.
+        // (Covers super admin and any non-Supabase accounts.)
       }
 
       // Staff accounts (or Supabase not configured) — authenticate via API route.
@@ -148,6 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+    // Clear the super admin session cookie if present
+    void fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   }, []);
 
   return (

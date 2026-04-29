@@ -47,6 +47,18 @@ export async function middleware(request: NextRequest) {
   // Refresh the session — this is a no-op when the token is still valid.
   await supabase.auth.getUser();
 
+  // Block unauthenticated access to /admin routes
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith('/admin')) {
+    // Check for the sa_session cookie set on successful staff login.
+    const saSession = request.cookies.get('sa_session');
+    if (!saSession?.value) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   return response;
 }
 
