@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell, BedDouble, Users, CheckSquare, LayoutGrid } from 'lucide-react';
+import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -19,10 +20,12 @@ const STAT_CARDS = [
 const TABLE_HEADERS = ['Request', 'Room', 'Type', 'Status', 'Time'];
 
 export default function HotelAdminDashboardPage() {
+  const { adminName } = useHotelAdmin();
+
   return (
     <div className="px-5 py-8 md:px-8 space-y-8">
       {/* Greeting */}
-      <p className="text-[13px] text-white/40">{getGreeting()}, Admin.</p>
+      <p className="text-[13px] text-white/40">{getGreeting()}, {adminName}.</p>
 
       {/* Page title */}
       <h1 className="text-[22px] font-semibold text-white -mt-4">Dashboard</h1>
