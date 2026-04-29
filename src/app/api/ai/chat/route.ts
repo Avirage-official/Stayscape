@@ -5,7 +5,7 @@
  * system prompt using real data from the DB, calls Claude, and returns
  * the assistant reply.
  *
- * Body:  { message: string; stayId?: string | null; history?: Array<{ role: 'user' | 'assistant'; text: string }>; mode?: 'discovery' | 'itinerary' }
+ * Body:  { message: string; stayId?: string | null; history?: Array<{ role: 'user' | 'assistant'; text: string }>; mode?: 'discovery' | 'itinerary' | 'concierge' }
  * Reply: { reply: string } | { error: string }
  */
 
@@ -26,8 +26,35 @@ const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
 
 interface ClaudeResponse {
-  content: Array<{ type: string; text: string }>;
+  content: Array<{
+    type: string;
+    text?: string;
+    id?: string;
+    name?: string;
+    input?: unknown;
+  }>;
   error?: { message: string };
+}
+
+interface LogServiceRequestInput {
+  title: string;
+  description: string;
+  task_type:
+    | 'housekeeping'
+    | 'room_service'
+    | 'maintenance'
+    | 'concierge'
+    | 'breakfast'
+    | 'transport'
+    | 'other';
+  // stay_id and property_id are filled in server-side, not by Claude
+  stay_id?: string;
+  property_id?: string;
+}
+
+interface PromptBuildResult {
+  systemPrompt: string;
+  propertyId: string | null;
 }
 
 interface StayRow {
@@ -67,30 +94,57 @@ interface OnboardingPreferences {
   [key: string]: unknown;
 }
 
-async function buildSystemPrompt(
-  stayId: string | null | undefined,
-  mode?: 'discovery' | 'itinerary',
-): Promise<string> {
-  // Layer 1 — Base persona
-  let systemPrompt: string;
+const TONE_GUIDANCE: Record<string, string> = {
+  warm: 'You are warm, empathetic, and conversational. Speak like a knowledgeable friend.',
+  poetic: 'You are lyrical and evocative. Paint pictures with your words while staying practical.',
+  efficient: 'You are precise and concise. Get to the point quickly while remaining courteous.',
+  playful: 'You are upbeat, enthusiastic, and fun. Use light humour where appropriate.',
+};
+
+function buildLayer1(
+  conciergeName: string,
+  conciergeTone: string,
+  hotelName: string,
+  mode: 'discovery' | 'itinerary' | 'concierge' | undefined,
+): string {
+  const toneLine = TONE_GUIDANCE[conciergeTone] ?? TONE_GUIDANCE.warm;
+
+  let prompt =
+    `You are ${conciergeName}, the AI concierge for ${hotelName}, powered by Stayscape. You are warm, empathetic, and extroverted.\n` +
+    `${toneLine}\n` +
+    `Never say you are an AI or a language model. You are ${conciergeName}.\n` +
+    `Always use the guest's first name when you know it.\n` +
+    `If this is the guest's first message (no memory yet), introduce yourself by name and reference their actual hotel and stay dates.`;
+
   if (mode === 'discovery') {
-    systemPrompt =
-      'You are a warm, knowledgeable luxury travel concierge for Stayscape. ' +
-      'You help guests discover places, plan activities, and make the most ' +
-      'of their stay. Be concise, specific, and helpful. You have memory of ' +
-      "this guest's stay and preferences — use them naturally.";
+    prompt +=
+      '\nYour focus is helping guests discover places, activities, and dining. Recommend from the places list provided. Be specific — name places, give one-line reasons.';
+  } else if (mode === 'itinerary') {
+    prompt +=
+      '\nYour focus is helping guests plan and organise their days. Be practical. Suggest timings. Reference their check-in and check-out dates.';
   } else {
-    systemPrompt =
-      'You are a personal trip planning assistant for Stayscape. You help ' +
-      'guests organise their days, suggest what to do and when, and refine ' +
-      'their itinerary. Be practical and warm.';
+    prompt +=
+      '\nYou handle all guest needs — discovery, itinerary planning, hotel information, and service requests. When a guest asks for something that requires hotel staff action (extra towels, housekeeping, wake-up calls, room service, maintenance, late checkout requests, luggage storage, taxi booking), you MUST use the log_service_request tool. Never just say you will pass it on — actually call the tool.';
   }
 
-  if (!stayId) return systemPrompt;
+  return prompt;
+}
+
+async function buildSystemPrompt(
+  stayId: string | null | undefined,
+  mode?: 'discovery' | 'itinerary' | 'concierge',
+): Promise<PromptBuildResult> {
+  // Layer 1 — Identity (defaults used when there is no stay context)
+  if (!stayId) {
+    return {
+      systemPrompt: buildLayer1('Aria', 'warm', 'your hotel', mode),
+      propertyId: null,
+    };
+  }
 
   const supabase = getSupabaseAdmin();
 
-  // Layer 2 — Stay context
+  // Fetch stay row
   const { data: stay } = await supabase
     .from('stays')
     .select(
@@ -99,11 +153,33 @@ async function buildSystemPrompt(
     .eq('id', stayId)
     .single<StayRow>();
 
-  if (!stay) return systemPrompt;
+  if (!stay) {
+    return {
+      systemPrompt: buildLayer1('Aria', 'warm', 'your hotel', mode),
+      propertyId: null,
+    };
+  }
 
   const prop = stay.properties;
   const regionName = prop?.regions?.name ?? null;
 
+  // Fetch hotel context (needed for Layer 1 identity)
+  let hotelCtx = null;
+  try {
+    hotelCtx = prop?.id ? await getHotelContext(supabase, prop.id) : null;
+  } catch (hotelCtxErr) {
+    console.error('[ai/chat] Failed to load hotel context for identity:', hotelCtxErr);
+  }
+
+  // Resolve concierge identity
+  const conciergeName = hotelCtx?.branding?.concierge_name ?? 'Aria';
+  const conciergeTone = hotelCtx?.branding?.concierge_tone ?? 'warm';
+  const hotelName = prop?.name ?? 'your hotel';
+
+  // Layer 1 — Identity
+  let systemPrompt = buildLayer1(conciergeName, conciergeTone, hotelName, mode);
+
+  // Layer 2 — Stay context
   const contextLines: string[] = [
     '\n\nCurrent stay context:',
     `- Hotel: ${prop?.name ?? 'Unknown'}`,
@@ -116,6 +192,18 @@ async function buildSystemPrompt(
   if (stay.trip_type) contextLines.push(`- Trip type: ${stay.trip_type}`);
 
   systemPrompt += contextLines.join('\n');
+
+  // Guest first name
+  if (stay.userid) {
+    const { data: guestUser } = await supabase
+      .from('users')
+      .select('firstname')
+      .eq('id', stay.userid)
+      .maybeSingle<{ firstname: string | null }>();
+    if (guestUser?.firstname) {
+      systemPrompt += `\n- Guest first name: ${guestUser.firstname}`;
+    }
+  }
 
   // Layer 3 — Onboarding preferences
   const { data: prefRow } = await supabase
@@ -156,38 +244,33 @@ async function buildSystemPrompt(
     }
   }
 
-  // Layer 4a — Hotel knowledge (amenities + policies)
+  // Layer 4a — Hotel knowledge (amenities + policies) — use already-fetched hotelCtx
   try {
-    const propertyId = stay.properties?.id ?? null;
-    if (propertyId) {
-      const hotelCtx = await getHotelContext(supabase, propertyId);
-
-      if (hotelCtx?.policies) {
-        const p = hotelCtx.policies;
-        const policyLines: string[] = ['\n\nHotel Policies:'];
-        if (p.checkin_time) policyLines.push(`- Check-in time: ${p.checkin_time}`);
-        if (p.checkout_time) policyLines.push(`- Check-out time: ${p.checkout_time}`);
-        if (p.wifi_name) {
-          policyLines.push(
-            `- WiFi: ${p.wifi_name}${p.wifi_password ? ` / Password: ${p.wifi_password}` : ''}`,
-          );
-        }
-        if (p.cancellation_policy) policyLines.push(`- Cancellation: ${p.cancellation_policy}`);
-        if (p.pet_policy) policyLines.push(`- Pets: ${p.pet_policy}`);
-        if (p.smoking_policy) policyLines.push(`- Smoking: ${p.smoking_policy}`);
-        if (policyLines.length > 1) systemPrompt += policyLines.join('\n');
+    if (hotelCtx?.policies) {
+      const p = hotelCtx.policies;
+      const policyLines: string[] = ['\n\nHotel Policies:'];
+      if (p.checkin_time) policyLines.push(`- Check-in time: ${p.checkin_time}`);
+      if (p.checkout_time) policyLines.push(`- Check-out time: ${p.checkout_time}`);
+      if (p.wifi_name) {
+        policyLines.push(
+          `- WiFi: ${p.wifi_name}${p.wifi_password ? ` / Password: ${p.wifi_password}` : ''}`,
+        );
       }
+      if (p.cancellation_policy) policyLines.push(`- Cancellation: ${p.cancellation_policy}`);
+      if (p.pet_policy) policyLines.push(`- Pets: ${p.pet_policy}`);
+      if (p.smoking_policy) policyLines.push(`- Smoking: ${p.smoking_policy}`);
+      if (policyLines.length > 1) systemPrompt += policyLines.join('\n');
+    }
 
-      if (hotelCtx?.amenities && hotelCtx.amenities.length > 0) {
-        const amenityLines = hotelCtx.amenities.map((a) => {
-          let line = `- ${a.name} (${a.category})`;
-          if (a.availability_hours) line += `: ${a.availability_hours}`;
-          if (a.location_hint) line += ` — ${a.location_hint}`;
-          if (a.description) line += `. ${a.description}`;
-          return line;
-        });
-        systemPrompt += '\n\nHotel Amenities:\n' + amenityLines.join('\n');
-      }
+    if (hotelCtx?.amenities && hotelCtx.amenities.length > 0) {
+      const amenityLines = hotelCtx.amenities.map((a) => {
+        let line = `- ${a.name} (${a.category})`;
+        if (a.availability_hours) line += `: ${a.availability_hours}`;
+        if (a.location_hint) line += ` — ${a.location_hint}`;
+        if (a.description) line += `. ${a.description}`;
+        return line;
+      });
+      systemPrompt += '\n\nHotel Amenities:\n' + amenityLines.join('\n');
     }
   } catch (hotelErr) {
     console.error('[ai/chat] Failed to load hotel context:', hotelErr);
@@ -220,7 +303,7 @@ async function buildSystemPrompt(
     }
   }
 
-  return systemPrompt;
+  return { systemPrompt, propertyId: prop?.id ?? null };
 }
 
 export async function POST(request: NextRequest) {
@@ -246,7 +329,7 @@ export async function POST(request: NextRequest) {
     message?: string;
     stayId?: string | null;
     history?: Array<{ role: 'user' | 'assistant'; text: string }>;
-    mode?: 'discovery' | 'itinerary';
+    mode?: 'discovery' | 'itinerary' | 'concierge';
   };
   try {
     body = (await request.json()) as typeof body;
@@ -270,24 +353,28 @@ export async function POST(request: NextRequest) {
   const rawHistory = Array.isArray(body.history) ? body.history : [];
 
   let systemPrompt: string;
+  let propertyId: string | null = null;
   try {
-    systemPrompt = await buildSystemPrompt(stayId, mode);
+    ({ systemPrompt, propertyId } = await buildSystemPrompt(stayId, mode));
   } catch {
-    // Fallback respects the requested mode
-    systemPrompt =
-      mode === 'discovery'
-        ? 'You are a warm, knowledgeable luxury travel concierge for Stayscape. ' +
-          'You help guests discover places, plan activities, and make the most of their stay. ' +
-          'Be concise, specific, and helpful.'
-        : 'You are a personal trip planning assistant for Stayscape. You help ' +
-          'guests organise their days, suggest what to do and when, and refine ' +
-          'their itinerary. Be practical and warm.';
+    // Fallback uses Aria identity with a warm tone
+    const fallbackBase =
+      'You are Aria, the AI concierge for this hotel, powered by Stayscape. ' +
+      'You are warm, empathetic, and extroverted. Never say you are an AI. ' +
+      'You are Aria.';
+    if (mode === 'discovery') {
+      systemPrompt = fallbackBase + ' Help guests discover places, activities, and dining. Be specific.';
+    } else if (mode === 'itinerary') {
+      systemPrompt = fallbackBase + ' Help guests plan and organise their days. Be practical.';
+    } else {
+      systemPrompt = fallbackBase + ' You handle all guest needs — discovery, itinerary planning, and service requests.';
+    }
   }
 
   // Cap history at last 10 exchanges (20 messages)
   const cappedHistory = rawHistory.slice(-20);
 
-  const messages = [
+  const messages: Array<{ role: 'user' | 'assistant'; content: unknown }> = [
     ...cappedHistory.map((h) => ({ role: h.role, content: h.text })),
     { role: 'user' as const, content: message },
   ];
@@ -302,8 +389,46 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 600,
+        max_tokens: 800,
         system: systemPrompt,
+        tools: [
+          {
+            name: 'log_service_request',
+            description:
+              'Log a service request from the guest to the hotel operations team. ' +
+              'Call this whenever the guest needs something that requires hotel staff action: ' +
+              'extra towels, housekeeping, room service, maintenance, wake-up calls, ' +
+              'late checkout, luggage storage, taxi booking, or any physical request. ' +
+              'Always call this tool — do not just promise to pass it on.',
+            input_schema: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'Short title for the request, e.g. "Extra towels requested"',
+                },
+                description: {
+                  type: 'string',
+                  description: 'Full details of what the guest needs, in plain English',
+                },
+                task_type: {
+                  type: 'string',
+                  enum: [
+                    'housekeeping',
+                    'room_service',
+                    'maintenance',
+                    'concierge',
+                    'breakfast',
+                    'transport',
+                    'other',
+                  ],
+                  description: 'Category of the service request',
+                },
+              },
+              required: ['title', 'description', 'task_type'],
+            },
+          },
+        ],
         messages,
       }),
     });
@@ -317,8 +442,83 @@ export async function POST(request: NextRequest) {
     }
 
     const json = (await claudeRes.json()) as ClaudeResponse;
-    const textBlock = json.content?.find((b) => b.type === 'text');
-    const reply = textBlock?.text ?? "I couldn't generate a response. Please try again.";
+
+    const toolUseBlock = json.content?.find((b) => b.type === 'tool_use');
+    let reply: string;
+
+    if (toolUseBlock && toolUseBlock.name === 'log_service_request' && stayId) {
+      const input = toolUseBlock.input as LogServiceRequestInput;
+
+      try {
+        const validTaskTypes = [
+          'housekeeping',
+          'room_service',
+          'maintenance',
+          'concierge',
+          'breakfast',
+          'transport',
+          'other',
+        ] as const;
+        type ValidTaskType = (typeof validTaskTypes)[number];
+        const isValidTaskType = (v: string): v is ValidTaskType =>
+          (validTaskTypes as readonly string[]).includes(v);
+
+        if (propertyId && isValidTaskType(input.task_type)) {
+          const supabase = getSupabaseAdmin();
+          await supabase.from('service_tasks').insert({
+            propertyid: propertyId,
+            stayid: stayId,
+            task_type: input.task_type,
+            title: input.title,
+            description: input.description,
+            status: 'pending',
+            priority: 0,
+          });
+        }
+      } catch (toolErr) {
+        console.error('[ai/chat] Tool execution failed:', toolErr);
+        // Never surface this error to the guest
+      }
+
+      const toolResultMessages = [
+        ...messages,
+        { role: 'assistant' as const, content: json.content },
+        {
+          role: 'user' as const,
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUseBlock.id,
+              content: 'Service request logged successfully.',
+            },
+          ],
+        },
+      ];
+
+      const followUpRes = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': ANTHROPIC_VERSION,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 400,
+          system: systemPrompt,
+          messages: toolResultMessages,
+        }),
+      });
+
+      const followUpJson = (await followUpRes.json()) as ClaudeResponse;
+      const followUpText = followUpJson.content?.find((b) => b.type === 'text');
+      reply =
+        followUpText?.text ??
+        "I've passed that request to the hotel team. Is there anything else I can help with?";
+    } else {
+      const textBlock = json.content?.find((b) => b.type === 'text');
+      reply = textBlock?.text ?? "I couldn't generate a response. Please try again.";
+    }
 
     // Fire-and-forget memory extraction — never blocks the response
     if (stayId) {
