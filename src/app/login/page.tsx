@@ -3,12 +3,13 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [mode, setMode] = useState<'guest' | 'staff'>('guest');
+  const [mode, setMode] = useState<'guest' | 'hotel'>('guest');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,13 +25,48 @@ export default function LoginPage() {
     if (result.error) {
       setError(result.error);
       setIsSubmitting(false);
-    } else {
-      router.push(mode === 'guest' ? '/dashboard' : '/admin');
+      return;
+    }
+
+    if (mode === 'guest') {
+      router.push('/dashboard');
+      return;
+    }
+
+    // Hotel mode: verify active hotel_admins record
+    try {
+      const supabase = getSupabaseBrowser();
+      const token = supabase
+        ? (await supabase.auth.getSession()).data.session?.access_token
+        : null;
+
+      const res = await fetch('/api/hotel-admin/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        setError('No hotel admin account found for this email.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.push('/hotel-admin/dashboard');
+    } catch {
+      setError('No hotel admin account found for this email.');
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
+      {/* Discreet super admin link */}
+      <a
+        href="/admin"
+        className="absolute top-4 right-4 text-[11px] text-white/20 hover:text-white/40 transition-colors"
+      >
+        Admin ↗
+      </a>
+
       <div className="w-full max-w-[400px]">
         {/* Brand */}
         <div className="text-center mb-10">
@@ -40,7 +76,7 @@ export default function LoginPage() {
           <p className="text-[13px] text-[var(--text-muted)] tracking-wide">
             {mode === 'guest'
               ? 'Sign in to your guest account'
-              : 'Hotel Staff Portal'}
+              : 'Hotel Admin Portal'}
           </p>
         </div>
 
@@ -65,17 +101,17 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                setMode('staff');
+                setMode('hotel');
                 setError(null);
               }}
-              aria-pressed={mode === 'staff'}
+              aria-pressed={mode === 'hotel'}
               className={`h-10 rounded-full text-[12px] font-medium tracking-wide transition-all ${
-                mode === 'staff'
+                mode === 'hotel'
                   ? 'bg-[var(--gold)] text-[var(--background)]'
                   : 'border border-white/15 text-white/50 hover:border-white/25 hover:text-white/70'
               }`}
             >
-              Hotel Staff
+              Hotel
             </button>
           </div>
 
@@ -199,7 +235,7 @@ export default function LoginPage() {
             </svg>
             <div className="space-y-1">
               <p className="text-[11px] font-medium text-[var(--gold)] uppercase tracking-wider">
-                {mode === 'guest' ? 'Demo Mode' : 'Hotel Staff'}
+                {mode === 'guest' ? 'Demo Mode' : 'Hotel Admin'}
               </p>
               {mode === 'guest' ? (
                 <>
@@ -223,27 +259,9 @@ export default function LoginPage() {
                   </p>
                 </>
               ) : (
-                <>
-                  {/* TODO Phase 2: replace with role-based auth check — for now any Supabase user on staff toggle redirects to /admin */}
-                  <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
-                    Email:{' '}
-                    <code
-                      aria-label="Staff demo email address"
-                      className="text-[var(--text-secondary)] not-italic"
-                    >
-                      staff@stayscape-demo.com
-                    </code>
-                  </p>
-                  <p className="text-[12px] text-[var(--text-muted)]">
-                    Password:{' '}
-                    <code
-                      aria-label="Staff demo password"
-                      className="text-[var(--text-secondary)] not-italic"
-                    >
-                      Staff1234!
-                    </code>
-                  </p>
-                </>
+                <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
+                  Use the email and password from your Stayscape onboarding invite.
+                </p>
               )}
             </div>
           </div>
