@@ -34,6 +34,37 @@ const dmSans = DM_Sans({
 const HERO_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
+const CATEGORY_FALLBACKS: Record<string, string> = {
+  dining:
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
+  nature:
+    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+  culture:
+    'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
+  shopping:
+    'https://images.unsplash.com/photo-1555529771-7888783a18d3?w=800&q=80&auto=format&fit=crop',
+  nightlife:
+    'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=800&q=80&auto=format&fit=crop',
+  wellness:
+    'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
+  default:
+    'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80&auto=format&fit=crop',
+};
+
+function getPlaceImage(place: {
+  image_url?: string | null;
+  category?: string | null;
+}): string {
+  if (place.image_url) return place.image_url;
+  const key = (place.category ?? '').toLowerCase();
+  return CATEGORY_FALLBACKS[key] ?? CATEGORY_FALLBACKS.default;
+}
+
+function capitalizeFirst(s: string | null | undefined): string {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 type LoadState = 'loading' | 'ready' | 'error';
 
 /**
@@ -360,6 +391,17 @@ export default function HomeDashboard() {
       {/* Shimmer keyframes — scoped via a unique animation name */}
       <style>{`@keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}`}</style>
 
+      <div
+        style={{
+          maxWidth: 390,
+          margin: '0 auto',
+          width: '100%',
+          background: 'var(--background)',
+          minHeight: '100vh',
+          position: 'relative',
+          overflowX: 'hidden',
+        }}
+      >
       {/* SECTION 1 — HEADER */}
       <MountSection mounted={mounted} delay={0}>
         <div
@@ -442,6 +484,7 @@ export default function HomeDashboard() {
               backgroundImage: `url(${propertyImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
+              backgroundColor: 'var(--surface-raised)',
             }}
           >
             <div
@@ -449,7 +492,7 @@ export default function HomeDashboard() {
                 position: 'absolute',
                 inset: 0,
                 background:
-                  'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.7) 75%, var(--background) 100%)',
+                  'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
                 pointerEvents: 'none',
               }}
             />
@@ -794,6 +837,7 @@ export default function HomeDashboard() {
       </MountSection>
 
       {/* Bottom tab bar — unchanged */}
+      </div>
       <WarmBottomTabBar />
     </div>
   );
@@ -950,7 +994,7 @@ function PlaceCard({
         cursor: 'pointer',
         flex: 1,
         height,
-        backgroundImage: place.image_url ? `url(${place.image_url})` : undefined,
+        backgroundImage: `url(${getPlaceImage(place)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundColor: 'var(--surface-raised)',
@@ -1188,7 +1232,7 @@ function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
                   color: 'var(--text-muted)',
                 }}
               >
-                {place.distance ? place.distance : place.category}
+                {place.distance ? place.distance : capitalizeFirst(place.category)}
               </p>
             </div>
 
