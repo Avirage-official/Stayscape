@@ -62,17 +62,8 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
   const { addItem } = useItinerary();
   /* Keep region in a ref so initMap (stable callback) can read the latest value */
   const regionRef = useRef(region);
-  useEffect(() => {
-    if (!region) return;
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    map.flyTo({
-      center: [region.longitude, region.latitude],
-      zoom: 13,
-      duration: 1200,
-    });
-  }, [region]); // eslint-disable-line react-hooks/exhaustive-deps
-  
+  useEffect(() => { regionRef.current = region; }, [region]);
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const hotelMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -88,6 +79,20 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
   /* Keep a ref in sync with selectedPlaceId for use inside DOM event handlers */
   const selectedPlaceIdRef = useRef(selectedPlaceId);
   useEffect(() => { selectedPlaceIdRef.current = selectedPlaceId; }, [selectedPlaceId]);
+
+  /* ─── Re-center map when region changes after map is already initialized ─── */
+  /* Handles the case where setRegion() is called from the stay layout AFTER  */
+  /* the map has already mounted with a null/stale region.                    */
+  useEffect(() => {
+    if (!region) return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [region.longitude, region.latitude],
+      zoom: 13,
+      duration: 1200,
+    });
+  }, [region]);
 
   /* Track GeoJSON source state and hover/selected feature IDs */
   const sourceAddedRef = useRef(false);
