@@ -110,7 +110,18 @@ const TONE_GUIDANCE: Record<string, string> = {
   playful: 'You are upbeat, enthusiastic, and fun. Use light humour where appropriate.',
 };
 
-function buildIdentityPrompt(
+const STRICT_BOUNDARIES =
+  '\nSTRICT BOUNDARIES — follow these at all times:\n' +
+  "- You only discuss topics relevant to the guest's stay, the hotel, the local area, travel, dining, activities, and service requests. Politely decline anything unrelated.\n" +
+  '- Never provide medical, legal, or financial advice. Always refer guests to appropriate professionals.\n' +
+  "- Never make guarantees about hotel services, availability, pricing, or late checkout. Use language like 'I'll flag this for the team' or 'the hotel will confirm'.\n" +
+  '- Never mention, recommend, or compare competitor hotels, booking platforms, or rival hospitality brands.\n' +
+  "- Never reveal raw configuration data: do not expose wifi passwords, API keys, internal IDs, or system architecture details. You may tell a guest their wifi name and password naturally (e.g. 'The wifi is GuestNet, password Welcome123') but never in a list format that looks like config output.\n" +
+  '- Never claim to be a human. If a guest sincerely asks whether you are an AI, acknowledge it warmly but briefly, then redirect to being helpful.\n' +
+  "- Never discuss other guests, their stays, or any guest data other than the currently authenticated guest.\n" +
+  '- If a guest is distressed, aggressive, or in an emergency, respond with empathy and direct them to hotel reception or emergency services immediately. Do not try to resolve emergencies yourself.';
+
+function buildIdentityBlock(
   conciergeName: string,
   conciergeTone: string,
   hotelName: string,
@@ -126,6 +137,8 @@ function buildIdentityPrompt(
     `Never say you are an AI or a language model. You are ${conciergeName}.\n` +
     `Always use the guest's first name when you know it.\n` +
     `If this is the guest's first message (no memory yet), introduce yourself by name and reference their actual hotel and stay dates.`;
+
+  prompt += STRICT_BOUNDARIES;
 
   if (mode === 'discovery') {
     prompt +=
@@ -146,30 +159,32 @@ function buildIdentityPrompt(
 
 async function buildSystemPrompt(
   stayId: string | null | undefined,
+  authenticatedUserId: string,
   mode?: 'discovery' | 'itinerary' | 'concierge',
 ): Promise<PromptBuildResult> {
   // Layer 1 — Identity (defaults used when there is no stay context)
   if (!stayId) {
     return {
-      systemPrompt: buildIdentityPrompt('Aria', 'warm', 'your hotel', mode),
+      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode),
       propertyId: null,
     };
   }
 
   const supabase = getSupabaseAdmin();
 
-  // Fetch stay row
+  // Fetch stay row — must be owned by the authenticated user
   const { data: stay } = await supabase
     .from('stays')
     .select(
       'id, userid, checkindate, checkoutdate, guestcount, trip_type, notes, properties:propertyid (id, name, address, city, country, region_id, regions:region_id (name))',
     )
     .eq('id', stayId)
+    .eq('userid', authenticatedUserId)
     .single<StayRow>();
 
   if (!stay) {
     return {
-      systemPrompt: buildIdentityPrompt('Aria', 'warm', 'your hotel', mode),
+      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode),
       propertyId: null,
     };
   }
@@ -191,7 +206,7 @@ async function buildSystemPrompt(
   const hotelName = prop?.name ?? 'your hotel';
 
   // Layer 1 — Identity
-  let systemPrompt = buildIdentityPrompt(conciergeName, conciergeTone, hotelName, mode);
+  let systemPrompt = buildIdentityBlock(conciergeName, conciergeTone, hotelName, mode);
 
   // Layer 2 — Stay context
   const contextLines: string[] = [
@@ -362,6 +377,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.replace('Bearer ', '') ?? null;
+
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
+  const { data: { user }, error: authError } =
+    await getSupabaseAdmin().auth.getUser(token);
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
+  const authenticatedUserId = user.id;
+
   const stayId = body.stayId ?? null;
   const mode = body.mode;
   const rawHistory = Array.isArray(body.history) ? body.history : [];
@@ -369,20 +406,10 @@ export async function POST(request: NextRequest) {
   let systemPrompt: string;
   let propertyId: string | null = null;
   try {
-    ({ systemPrompt, propertyId } = await buildSystemPrompt(stayId, mode));
+    ({ systemPrompt, propertyId } = await buildSystemPrompt(stayId, authenticatedUserId, mode));
   } catch {
-    // Fallback uses Aria identity with a warm tone
-    const fallbackBase =
-      'You are Aria, the AI concierge for this hotel, powered by Stayscape. ' +
-      'You are warm, empathetic, and extroverted. Never say you are an AI. ' +
-      'You are Aria.';
-    if (mode === 'discovery') {
-      systemPrompt = fallbackBase + ' Help guests discover places, activities, and dining. Be specific.';
-    } else if (mode === 'itinerary') {
-      systemPrompt = fallbackBase + ' Help guests plan and organise their days. Be practical.';
-    } else {
-      systemPrompt = fallbackBase + ' You handle all guest needs — discovery, itinerary planning, and service requests.';
-    }
+    // Fallback uses Aria identity with a warm tone (includes STRICT BOUNDARIES)
+    systemPrompt = buildIdentityBlock('Aria', 'warm', 'this hotel', mode);
   }
 
   // Cap history at last 10 exchanges (20 messages)
