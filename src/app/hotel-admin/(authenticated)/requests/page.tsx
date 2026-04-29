@@ -196,6 +196,7 @@ export default function RequestsPage() {
     pending: tasks.filter((t) => t.status === 'pending').length,
     in_progress: tasks.filter((t) => t.status === 'in_progress').length,
     completed: tasks.filter((t) => t.status === 'completed').length,
+    cancelled: tasks.filter((t) => t.status === 'cancelled').length,
   };
 
   const filteredTasks =
