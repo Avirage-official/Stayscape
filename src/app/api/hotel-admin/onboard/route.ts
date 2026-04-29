@@ -119,21 +119,23 @@ export async function POST(request: NextRequest) {
   const lastName = spaceIndex === -1 ? null : trimmedName.slice(spaceIndex + 1);
 
   // Insert into public.users
-  const { error: usersInsertError } = await supabase.from('users').insert({
-    id: authUserId,
-    firstname: firstName,
-    lastname: lastName,
-    email: row.email,
-    role: 'guest',
-  });
+  // public.users row is auto-created from auth.users via DB trigger, so update it
+  const { error: usersUpdateError } = await supabase
+    .from('users')
+    .update({
+      firstname: firstName,
+      lastname: lastName,
+      email: row.email,
+    })
+    .eq('id', authUserId);
 
-  if (usersInsertError) {
+  if (usersUpdateError) {
     // Roll back the auth user to avoid an orphan
     const { error: authDeleteError } = await supabase.auth.admin.deleteUser(authUserId);
     if (authDeleteError) {
-      console.error('[onboard] Failed to roll back auth user after users insert failure:', authDeleteError);
+      console.error('[onboard] Failed to roll back auth user after users update failure:', authDeleteError);
     }
-    return NextResponse.json({ error: usersInsertError.message }, { status: 500 });
+    return NextResponse.json({ error: usersUpdateError.message }, { status: 500 });
   }
 
   // Mark the invite as active and link the auth user
@@ -150,11 +152,7 @@ export async function POST(request: NextRequest) {
     .eq('id', row.id);
 
   if (updateError) {
-    // Auth user and users row were created — delete both to avoid orphans
-    const { error: userDeleteError } = await supabase.from('users').delete().eq('id', authUserId);
-    if (userDeleteError) {
-      console.error('[onboard] Failed to roll back users row after hotel_admins update failure:', userDeleteError);
-    }
+    // Delete the auth user to avoid an orphan; public.users should be cleaned up by FK/trigger behavior
     const { error: authDeleteError } = await supabase.auth.admin.deleteUser(authUserId);
     if (authDeleteError) {
       console.error('[onboard] Failed to roll back auth user after hotel_admins update failure:', authDeleteError);
