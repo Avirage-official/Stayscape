@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { BedDouble } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
-import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { getHotelAdminToken } from '@/lib/hotel-admin-token';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -77,6 +77,7 @@ const TABS: { key: FilterTab; label: string }[] = [
   { key: 'vacant_dirty', label: 'Vacant Dirty' },
   { key: 'occupied', label: 'Occupied' },
   { key: 'maintenance', label: 'Maintenance' },
+  { key: 'out_of_order', label: 'Out of Order' },
 ];
 
 const SUMMARY_STATUSES: RoomStatus[] = [
@@ -98,10 +99,7 @@ export default function RoomsPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
 
   const fetchRooms = useCallback(async () => {
-    const supabase = getSupabaseBrowser();
-    const token = supabase
-      ? (await supabase.auth.getSession()).data.session?.access_token
-      : null;
+    const token = await getHotelAdminToken();
 
     if (!token) {
       setError('Session expired. Please sign in again.');
@@ -140,10 +138,7 @@ export default function RoomsPage() {
       prev.map((r) => (r.id === room.id ? { ...r, status: newStatus } : r)),
     );
 
-    const supabase = getSupabaseBrowser();
-    const token = supabase
-      ? (await supabase.auth.getSession()).data.session?.access_token
-      : null;
+    const token = await getHotelAdminToken();
 
     if (!token) return;
 

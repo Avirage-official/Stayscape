@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, BedDouble, Users, CheckSquare, LayoutGrid } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
-import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { getHotelAdminToken } from '@/lib/hotel-admin-token';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -21,19 +21,13 @@ export default function HotelAdminDashboardPage() {
 
   useEffect(() => {
     async function fetchStats() {
-      const supabase = getSupabaseBrowser();
-      const token = supabase
-        ? (await supabase.auth.getSession()).data.session?.access_token
-        : null;
+      const token = await getHotelAdminToken();
 
       if (!token) return;
 
       try {
-        const [pendingRes, inProgressRes, roomsRes] = await Promise.all([
-          fetch('/api/hotel-admin/requests?status=pending', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/hotel-admin/requests?status=in_progress', {
+        const [requestsRes, roomsRes] = await Promise.all([
+          fetch('/api/hotel-admin/requests', {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch('/api/hotel-admin/rooms', {
@@ -41,15 +35,12 @@ export default function HotelAdminDashboardPage() {
           }),
         ]);
 
-        if (pendingRes.ok && inProgressRes.ok) {
-          const [pendingData, inProgressData] = await Promise.all([
-            pendingRes.json() as Promise<{ tasks: unknown[] }>,
-            inProgressRes.json() as Promise<{ tasks: unknown[] }>,
-          ]);
-
-          setActiveRequestsCount(
-            (pendingData.tasks?.length ?? 0) + (inProgressData.tasks?.length ?? 0),
-          );
+        if (requestsRes.ok) {
+          const requestsData = (await requestsRes.json()) as { tasks: { status: string }[] };
+          const activeCount = (requestsData.tasks ?? []).filter(
+            (t) => t.status === 'pending' || t.status === 'in_progress',
+          ).length;
+          setActiveRequestsCount(activeCount);
         }
 
         if (roomsRes.ok) {
