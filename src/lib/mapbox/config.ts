@@ -19,14 +19,15 @@
  * Safe for client-side use — this is a public token.
  * Read directly from process.env so Next.js inlines the value at build time.
  */
-const _MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
+// Read at module level so Next.js/Turbopack inlines the value at build time
+const _TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
 export function getMapboxToken(): string {
-  return _MAPBOX_TOKEN;
+  return _TOKEN;
 }
 
 export function isMapboxAvailable(): boolean {
-  return _MAPBOX_TOKEN.length > 0;
+  return _TOKEN.length > 0;
 }
 
 /* ── Dark style (always used — per Stayscape design rules) ─ */
