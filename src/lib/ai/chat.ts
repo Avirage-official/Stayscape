@@ -10,7 +10,6 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 export async function sendChatMessage(
   message: string,
   stayId?: string | null,
-  history?: Array<{ role: 'user' | 'assistant'; text: string }>,
   mode?: 'discovery' | 'itinerary' | 'concierge',
 ): Promise<string> {
   const supabase = getSupabaseBrowser();
@@ -33,7 +32,6 @@ export async function sendChatMessage(
     body: JSON.stringify({
       message,
       stayId: stayId ?? null,
-      history,
       mode,
     }),
   });
@@ -42,4 +40,35 @@ export async function sendChatMessage(
   }
   const data = (await res.json()) as { reply?: string; error?: string };
   return data.reply ?? "I couldn't generate a response. Please try again.";
+}
+
+/**
+ * Load persisted conversation history for a stay.
+ * Used to rehydrate the chat UI on page load/refresh.
+ * Returns [] if not authenticated, on error, or if no history exists.
+ */
+export async function loadPersistedConversation(
+  stayId: string,
+): Promise<Array<{ role: 'user' | 'assistant'; text: string }>> {
+  const supabase = getSupabaseBrowser();
+  let token: string | null = null;
+  if (supabase) {
+    const { data: { session } } = await supabase.auth.getSession();
+    token = session?.access_token ?? null;
+  }
+  if (!token) return [];
+
+  try {
+    const res = await fetch(
+      `/api/ai/conversation?stayId=${encodeURIComponent(stayId)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    };
+    return (data.messages ?? []).map((m) => ({ role: m.role, text: m.content }));
+  } catch {
+    return [];
+  }
 }
