@@ -14,7 +14,7 @@ interface ServiceTaskStatusButtonProps {
 export default function ServiceTaskStatusButton({
   taskId,
   currentStatus,
-  propertyId: _propertyId,
+  propertyId,
 }: ServiceTaskStatusButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
