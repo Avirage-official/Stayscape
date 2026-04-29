@@ -730,7 +730,7 @@ export default function AddHotelPage() {
       if (!inviteRes.ok || !inviteJson.success) {
         // Hotel was created but invite failed — redirect with an error note in query param
         router.push(
-          `/admin/hotels?notice=created&warn=${encodeURIComponent(inviteJson.error ?? 'Invite could not be sent. You can retry from the hotel details page.')}`,
+          `/admin/hotels?notice=created&warn=${encodeURIComponent(inviteJson.error ?? 'Invite could not be sent. Please contact support.')}`,
         );
       } else {
         router.push(

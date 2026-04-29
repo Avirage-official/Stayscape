@@ -4,7 +4,9 @@
 
 /**
  * RFC 5321/5322 aligned email validation regex.
- * Validates the structure without being overly permissive.
+ * - Validates local part, domain labels, and TLD structure.
+ * - Requires TLD to be at least 2 alphabetic characters (covers .io, .co, .museum, etc.).
+ * - Does not support IP address literals or quoted strings in local parts.
  */
 const EMAIL_REGEX =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;

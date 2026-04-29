@@ -65,7 +65,7 @@ export async function POST(
   const hotelName = (propertyData as { name: string }).name;
 
   // Generate a secure invite token
-  const invite_token = randomBytes(32).toString('hex');
+  const inviteToken = randomBytes(32).toString('hex');
 
   // Insert into hotel_admins
   const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -74,7 +74,7 @@ export async function POST(
     name: admin_name.trim(),
     email: admin_email.trim().toLowerCase(),
     phone: admin_phone?.trim() || null,
-    invite_token,
+    invite_token: inviteToken,
     invite_expires_at: inviteExpiresAt,
     status: 'pending',
   });
@@ -86,7 +86,7 @@ export async function POST(
   // Send onboarding email via Resend
   const resendApiKey = process.env.RESEND_API_KEY;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  const onboardUrl = `${appUrl}/hotel-admin/onboard?token=${invite_token}`;
+  const onboardUrl = `${appUrl}/hotel-admin/onboard?token=${inviteToken}`;
 
   if (!resendApiKey) {
     console.warn('[invite-admin] RESEND_API_KEY not configured — skipping email send');
@@ -101,7 +101,7 @@ export async function POST(
     const resend = new Resend(resendApiKey);
 
     await resend.emails.send({
-      from: 'Stayscape <noreply@stayscape.io>',
+      from: process.env.RESEND_FROM_EMAIL ?? 'Stayscape <noreply@stayscape.io>',
       to: admin_email.trim(),
       subject: `You're invited to manage ${hotelName} on Stayscape`,
       html: `<!DOCTYPE html>
