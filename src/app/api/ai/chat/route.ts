@@ -562,30 +562,24 @@ export async function POST(request: NextRequest) {
       } else if (toolUseBlock.name === 'get_service_request_status') {
         try {
           const supabase = getSupabaseAdmin();
-          const { data: tasks } = await supabase
+          const { data: rawTasks } = await supabase
             .from('service_tasks')
-            .select('title, description, status, task_type, createdat')
+            .select('title, status, task_type, createdat')
             .eq('stayid', stayId)
             .order('createdat', { ascending: false })
-            .limit(10)
-            .returns<Array<{
-              title: string | null;
-              description: string | null;
-              status: string | null;
-              task_type: string | null;
-              createdat: string | null;
-            }>>();
+            .limit(10);
+
+          const tasks = rawTasks as Array<{
+            title: string | null;
+            status: string | null;
+            task_type: string | null;
+            createdat: string | null;
+          }> | null;
 
           if (!tasks || tasks.length === 0) {
             toolResultContent = 'No service requests found.';
           } else {
-            toolResultContent = (tasks as Array<{
-              title: string | null;
-              description: string | null;
-              status: string | null;
-              task_type: string | null;
-              createdat: string | null;
-            }>)
+            toolResultContent = tasks
               .map((t, i) => {
                 const title = t.title ?? 'Untitled request';
                 const type = t.task_type ?? 'other';
@@ -635,7 +629,7 @@ export async function POST(request: NextRequest) {
         const followUpText = followUpJson.content?.find((b) => b.type === 'text');
         reply =
           followUpText?.text ??
-          "I've passed that request to the hotel team. Is there anything else I can help with?";
+          "I've looked into that for you. Is there anything else I can help with?";
       } else {
         // Unknown tool name — fall through to plain-text response
         const textBlock = json.content?.find((b) => b.type === 'text');
