@@ -110,20 +110,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: createUserError.message }, { status: 500 });
   }
 
-  // Mark the invite as active
+  const authUserId = createdUser.user!.id;
+
+  // Parse name into first/last
+  const trimmedName = name.trim();
+  const spaceIndex = trimmedName.indexOf(' ');
+  const firstName = spaceIndex === -1 ? trimmedName : trimmedName.slice(0, spaceIndex);
+  const lastName = spaceIndex === -1 ? null : trimmedName.slice(spaceIndex + 1);
+
+  // Insert into public.users
+  const { error: usersInsertError } = await supabase.from('users').insert({
+    id: authUserId,
+    firstname: firstName,
+    lastname: lastName,
+    email: row.email,
+    role: 'guest',
+  });
+
+  if (usersInsertError) {
+    // Roll back the auth user to avoid an orphan
+    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(authUserId);
+    if (authDeleteError) {
+      console.error('[onboard] Failed to roll back auth user after users insert failure:', authDeleteError);
+    }
+    return NextResponse.json({ error: usersInsertError.message }, { status: 500 });
+  }
+
+  // Mark the invite as active and link the auth user
   const { error: updateError } = await supabase
     .from('hotel_admins')
     .update({
+      user_id: authUserId,
       status: 'active',
+      is_active: true,
+      accepted_at: new Date().toISOString(),
       onboarded_at: new Date().toISOString(),
-      name: name.trim(),
+      name: trimmedName,
     })
     .eq('id', row.id);
 
   if (updateError) {
-    // Auth user was created but DB update failed — delete the auth user to avoid orphan
-    if (createdUser?.user?.id) {
-      await supabase.auth.admin.deleteUser(createdUser.user.id);
+    // Auth user and users row were created — delete both to avoid orphans
+    const { error: userDeleteError } = await supabase.from('users').delete().eq('id', authUserId);
+    if (userDeleteError) {
+      console.error('[onboard] Failed to roll back users row after hotel_admins update failure:', userDeleteError);
+    }
+    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(authUserId);
+    if (authDeleteError) {
+      console.error('[onboard] Failed to roll back auth user after hotel_admins update failure:', authDeleteError);
     }
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
