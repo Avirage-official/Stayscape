@@ -17,9 +17,10 @@ const TABLE_HEADERS = ['Request', 'Room', 'Type', 'Status', 'Time'];
 export default function HotelAdminDashboardPage() {
   const { adminName } = useHotelAdmin();
   const [activeRequestsCount, setActiveRequestsCount] = useState(0);
+  const [roomsCount, setRoomsCount] = useState(0);
 
   useEffect(() => {
-    async function fetchActiveRequests() {
+    async function fetchStats() {
       const supabase = getSupabaseBrowser();
       const token = supabase
         ? (await supabase.auth.getSession()).data.session?.access_token
@@ -28,36 +29,44 @@ export default function HotelAdminDashboardPage() {
       if (!token) return;
 
       try {
-        const [pendingRes, inProgressRes] = await Promise.all([
+        const [pendingRes, inProgressRes, roomsRes] = await Promise.all([
           fetch('/api/hotel-admin/requests?status=pending', {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch('/api/hotel-admin/requests?status=in_progress', {
             headers: { Authorization: `Bearer ${token}` },
           }),
+          fetch('/api/hotel-admin/rooms', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
-        if (!pendingRes.ok || !inProgressRes.ok) return;
+        if (pendingRes.ok && inProgressRes.ok) {
+          const [pendingData, inProgressData] = await Promise.all([
+            pendingRes.json() as Promise<{ tasks: unknown[] }>,
+            inProgressRes.json() as Promise<{ tasks: unknown[] }>,
+          ]);
 
-        const [pendingData, inProgressData] = await Promise.all([
-          pendingRes.json() as Promise<{ tasks: unknown[] }>,
-          inProgressRes.json() as Promise<{ tasks: unknown[] }>,
-        ]);
+          setActiveRequestsCount(
+            (pendingData.tasks?.length ?? 0) + (inProgressData.tasks?.length ?? 0),
+          );
+        }
 
-        setActiveRequestsCount(
-          (pendingData.tasks?.length ?? 0) + (inProgressData.tasks?.length ?? 0),
-        );
+        if (roomsRes.ok) {
+          const roomsData = (await roomsRes.json()) as { rooms: unknown[] };
+          setRoomsCount(roomsData.rooms?.length ?? 0);
+        }
       } catch {
-        // silently fail — stat card stays at 0
+        // silently fail — stat cards stay at 0
       }
     }
 
-    void fetchActiveRequests();
+    void fetchStats();
   }, []);
 
   const STAT_CARDS = [
     { label: 'Active Requests', value: activeRequestsCount, icon: Bell },
-    { label: 'Rooms', value: 0, icon: BedDouble },
+    { label: 'Rooms', value: roomsCount, icon: BedDouble },
     { label: 'Guests Today', value: 0, icon: Users },
     { label: 'Pending Tasks', value: 0, icon: CheckSquare },
   ];
