@@ -6,6 +6,7 @@ import { Cormorant_Garamond } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isSameDay, differenceInCalendarDays } from 'date-fns';
 import { useItinerary } from '@/components/ItineraryContext';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 import type { GuestPreference, PreferenceType } from '@/types/pms';
 
 const cormorant = Cormorant_Garamond({
@@ -494,9 +495,21 @@ function SectionChat({ stayId }: { stayId?: string | null }) {
     setInput('');
     setIsTyping(true);
     try {
+      const supabase = getSupabaseBrowser();
+      let token: string | null = null;
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token ?? null;
+      }
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           message: msg, mode: 'discovery', stayId: stayId ?? null,
           history: messages.map((m) => ({ role: m.role, text: m.content })),
