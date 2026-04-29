@@ -208,12 +208,15 @@ export default function RoomsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 border-b border-white/[0.06]">
+      <div role="tablist" className="flex gap-1 border-b border-white/[0.06]">
         {TABS.map(({ key, label }) => {
           const isActive = activeTab === key;
           return (
             <button
               key={key}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls="rooms-grid"
               onClick={() => setActiveTab(key)}
               className={`relative px-4 py-2.5 text-[13px] font-medium transition-colors ${
                 isActive ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/60'
@@ -261,7 +264,7 @@ export default function RoomsPage() {
 
       {/* Room grid */}
       {!loading && filteredRooms.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div id="rooms-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {filteredRooms.map((room) => (
             <div
               key={room.id}
@@ -292,6 +295,7 @@ export default function RoomsPage() {
               {/* Status selector */}
               <select
                 value={room.status}
+                aria-label={`Change status for room ${room.room_number}`}
                 onChange={(e) => void handleStatusChange(room, e.target.value as RoomStatus)}
                 className="bg-[#1a1a1a] border border-white/10 text-[12px] text-white/60 rounded-lg px-2 py-1 w-full mt-3 cursor-pointer"
               >
