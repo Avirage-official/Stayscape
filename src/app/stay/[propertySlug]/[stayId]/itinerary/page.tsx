@@ -1,11 +1,18 @@
-'use client'
+'use client';
 import ItineraryExperience from '@/components/itinerary/ItineraryExperience';
 import { useStay } from '../stay-context';
 
 export default function ItineraryPage() {
   const { stay } = useStay();
   return (
-    <div style={{ minHeight: 'calc(100vh - 64px)' }}>
+    <div
+      style={{
+        height: 'calc(100dvh - 64px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       <ItineraryExperience
         stayId={stay.id}
         checkIn={stay.check_in ?? null}
