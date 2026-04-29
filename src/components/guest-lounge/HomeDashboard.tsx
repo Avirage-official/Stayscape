@@ -32,6 +32,32 @@ const dmSans = DM_Sans({
 const HERO_FALLBACK =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
 
+const CATEGORY_FALLBACKS: Record<string, string> = {
+  dining:
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
+  nature:
+    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+  culture:
+    'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
+  shopping:
+    'https://images.unsplash.com/photo-1555529771-7888783a18d3?w=800&q=80&auto=format&fit=crop',
+  nightlife:
+    'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=800&q=80&auto=format&fit=crop',
+  wellness:
+    'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
+  default:
+    'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80&auto=format&fit=crop',
+};
+
+function getPlaceImage(place: {
+  image_url?: string | null;
+  category?: string | null;
+}): string {
+  if (place.image_url) return place.image_url;
+  const key = (place.category ?? '').toLowerCase();
+  return CATEGORY_FALLBACKS[key] ?? CATEGORY_FALLBACKS.default;
+}
+
 
 
 type LoadState = 'loading' | 'ready' | 'error';
