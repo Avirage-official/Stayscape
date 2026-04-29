@@ -24,6 +24,19 @@ import { getHotelContext } from '@/lib/supabase/hotel-repository';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
+const MAX_TOKENS_INITIAL = 800;
+const MAX_TOKENS_FOLLOWUP = 400;
+
+const VALID_TASK_TYPES = [
+  'housekeeping',
+  'room_service',
+  'maintenance',
+  'concierge',
+  'breakfast',
+  'transport',
+  'other',
+] as const;
+type ValidTaskType = (typeof VALID_TASK_TYPES)[number];
 
 interface ClaudeResponse {
   content: Array<{
@@ -39,14 +52,7 @@ interface ClaudeResponse {
 interface LogServiceRequestInput {
   title: string;
   description: string;
-  task_type:
-    | 'housekeeping'
-    | 'room_service'
-    | 'maintenance'
-    | 'concierge'
-    | 'breakfast'
-    | 'transport'
-    | 'other';
+  task_type: ValidTaskType;
   // stay_id and property_id are filled in server-side, not by Claude
   stay_id?: string;
   property_id?: string;
@@ -107,7 +113,9 @@ function buildLayer1(
   hotelName: string,
   mode: 'discovery' | 'itinerary' | 'concierge' | undefined,
 ): string {
-  const toneLine = TONE_GUIDANCE[conciergeTone] ?? TONE_GUIDANCE.warm;
+  const toneLine =
+    TONE_GUIDANCE[conciergeTone] ??
+    'You are warm, empathetic, and conversational. Speak like a knowledgeable friend.';
 
   let prompt =
     `You are ${conciergeName}, the AI concierge for ${hotelName}, powered by Stayscape. You are warm, empathetic, and extroverted.\n` +
@@ -124,7 +132,10 @@ function buildLayer1(
       '\nYour focus is helping guests plan and organise their days. Be practical. Suggest timings. Reference their check-in and check-out dates.';
   } else {
     prompt +=
-      '\nYou handle all guest needs — discovery, itinerary planning, hotel information, and service requests. When a guest asks for something that requires hotel staff action (extra towels, housekeeping, wake-up calls, room service, maintenance, late checkout requests, luggage storage, taxi booking), you MUST use the log_service_request tool. Never just say you will pass it on — actually call the tool.';
+      '\nYou handle all guest needs — discovery, itinerary planning, hotel information, and service requests. ' +
+      'When a guest asks for something that requires hotel staff action (extra towels, housekeeping, wake-up calls, ' +
+      'room service, maintenance, late checkout requests, luggage storage, taxi booking), you MUST use the ' +
+      'log_service_request tool. Never just say you will pass it on — actually call the tool.';
   }
 
   return prompt;
@@ -389,7 +400,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 800,
+        max_tokens: MAX_TOKENS_INITIAL,
         system: systemPrompt,
         tools: [
           {
@@ -413,15 +424,7 @@ export async function POST(request: NextRequest) {
                 },
                 task_type: {
                   type: 'string',
-                  enum: [
-                    'housekeeping',
-                    'room_service',
-                    'maintenance',
-                    'concierge',
-                    'breakfast',
-                    'transport',
-                    'other',
-                  ],
+                  enum: [...VALID_TASK_TYPES],
                   description: 'Category of the service request',
                 },
               },
@@ -450,18 +453,8 @@ export async function POST(request: NextRequest) {
       const input = toolUseBlock.input as LogServiceRequestInput;
 
       try {
-        const validTaskTypes = [
-          'housekeeping',
-          'room_service',
-          'maintenance',
-          'concierge',
-          'breakfast',
-          'transport',
-          'other',
-        ] as const;
-        type ValidTaskType = (typeof validTaskTypes)[number];
         const isValidTaskType = (v: string): v is ValidTaskType =>
-          (validTaskTypes as readonly string[]).includes(v);
+          (VALID_TASK_TYPES as readonly string[]).includes(v);
 
         if (propertyId && isValidTaskType(input.task_type)) {
           const supabase = getSupabaseAdmin();
@@ -473,6 +466,11 @@ export async function POST(request: NextRequest) {
             description: input.description,
             status: 'pending',
             priority: 0,
+          });
+        } else {
+          console.error('[ai/chat] Service request skipped — validation failed:', {
+            propertyId,
+            task_type: input.task_type,
           });
         }
       } catch (toolErr) {
@@ -504,7 +502,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 400,
+          max_tokens: MAX_TOKENS_FOLLOWUP,
           system: systemPrompt,
           messages: toolResultMessages,
         }),
@@ -515,6 +513,10 @@ export async function POST(request: NextRequest) {
       reply =
         followUpText?.text ??
         "I've passed that request to the hotel team. Is there anything else I can help with?";
+    } else if (toolUseBlock && toolUseBlock.name === 'log_service_request' && !stayId) {
+      // Tool was called but there is no active stay — cannot log the request
+      reply =
+        "I'm sorry, I can't log that service request without an active stay on file. Please contact the hotel team directly.";
     } else {
       const textBlock = json.content?.find((b) => b.type === 'text');
       reply = textBlock?.text ?? "I couldn't generate a response. Please try again.";
