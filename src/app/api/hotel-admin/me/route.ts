@@ -30,15 +30,15 @@ export async function GET(request: NextRequest) {
     error: authError,
   } = await supabase.auth.getUser(token);
 
-  if (authError || !user?.email) {
+  if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { data, error } = await supabase
     .from('hotel_admins')
     .select('name, property_id, properties(name)')
-    .eq('email', user.email)
-    .eq('status', 'active')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
     .maybeSingle();
 
   if (error || !data) {

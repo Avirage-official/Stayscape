@@ -77,6 +77,9 @@ export async function POST(
     invite_token: inviteToken,
     invite_expires_at: inviteExpiresAt,
     status: 'pending',
+    role: 'hotel_admin',
+    is_active: false,
+    user_id: null, // set after onboarding
   });
 
   if (insertError) {
