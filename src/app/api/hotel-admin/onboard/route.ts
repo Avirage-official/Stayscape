@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { isTokenExpired } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     properties: { name: string } | null;
   };
 
-  if (row.status === 'pending' && row.invite_expires_at && new Date(row.invite_expires_at) < new Date()) {
+  if (row.status === 'pending' && isTokenExpired(row.invite_expires_at)) {
     return NextResponse.json({ error: 'Invite token has expired' }, { status: 410 });
   }
 
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
 
   const row = adminRow as { id: string; email: string; status: string; invite_expires_at: string | null };
 
-  if (row.invite_expires_at && new Date(row.invite_expires_at) < new Date()) {
+  if (isTokenExpired(row.invite_expires_at)) {
     return NextResponse.json({ error: 'Invite token has expired' }, { status: 410 });
   }
 

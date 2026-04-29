@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { isValidEmail } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,8 +45,7 @@ export async function POST(
   if (!admin_name?.trim()) {
     return NextResponse.json({ error: 'admin_name is required' }, { status: 400 });
   }
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-  if (!admin_email?.trim() || !emailRegex.test(admin_email.trim())) {
+  if (!admin_email?.trim() || !isValidEmail(admin_email)) {
     return NextResponse.json({ error: 'Valid admin_email is required' }, { status: 400 });
   }
 

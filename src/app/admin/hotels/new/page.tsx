@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { isValidEmail } from '@/lib/validation';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -646,8 +647,7 @@ export default function AddHotelPage() {
   function validateStep5(): boolean {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
     if (!form.admin_name.trim()) newErrors.admin_name = 'Admin name is required';
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-    if (!form.admin_email.trim() || !emailRegex.test(form.admin_email.trim())) {
+    if (!form.admin_email.trim() || !isValidEmail(form.admin_email)) {
       newErrors.admin_email = 'Valid admin email is required';
     }
     setErrors(newErrors);
@@ -730,7 +730,7 @@ export default function AddHotelPage() {
       if (!inviteRes.ok || !inviteJson.success) {
         // Hotel was created but invite failed — redirect with an error note in query param
         router.push(
-          `/admin/hotels?notice=created&warn=${encodeURIComponent(inviteJson.error ?? 'Invite could not be sent')}`,
+          `/admin/hotels?notice=created&warn=${encodeURIComponent(inviteJson.error ?? 'Invite could not be sent. You can retry from the hotel details page.')}`,
         );
       } else {
         router.push(
