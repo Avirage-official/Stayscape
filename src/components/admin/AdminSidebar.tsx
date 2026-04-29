@@ -12,6 +12,7 @@ interface AdminNavItem {
 const NAV_ITEMS: AdminNavItem[] = [
   { label: 'Overview', href: '/admin' },
   { label: 'Properties', href: '/admin/properties' },
+  { label: 'Hotels', href: '/admin/hotels' },
   { label: 'Regions', href: '/admin/regions' },
   { label: 'Places', href: '/admin/places' },
   { label: 'Stays', href: '/admin/stays' },
