@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Bell, Clock } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
-import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { getHotelAdminToken } from '@/lib/hotel-admin-token';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -109,10 +109,7 @@ export default function RequestsPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
 
   const fetchTasks = useCallback(async () => {
-    const supabase = getSupabaseBrowser();
-    const token = supabase
-      ? (await supabase.auth.getSession()).data.session?.access_token
-      : null;
+    const token = await getHotelAdminToken();
 
     if (!token) {
       setError('Session expired. Please sign in again.');
@@ -154,10 +151,7 @@ export default function RequestsPage() {
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)),
     );
 
-    const supabase = getSupabaseBrowser();
-    const token = supabase
-      ? (await supabase.auth.getSession()).data.session?.access_token
-      : null;
+    const token = await getHotelAdminToken();
 
     if (!token) return;
 
