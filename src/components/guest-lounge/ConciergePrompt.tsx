@@ -57,7 +57,6 @@ export default function ConciergePrompt({ firstName, hotelName, stayId }: Concie
       const response = await sendChatMessage(
         trimmed,
         stayId ?? null,
-        history,
         'discovery',
       );
 

@@ -20,6 +20,12 @@ import {
 } from '@/lib/supabase/ai-memory-repository';
 import type { MemoryItem } from '@/lib/supabase/ai-memory-repository';
 import { getHotelContext } from '@/lib/supabase/hotel-repository';
+import {
+  loadConversation,
+  appendToConversation,
+  capConversation,
+  type ConversationMessage,
+} from '@/lib/supabase/aria-conversation-repository';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
@@ -401,7 +407,6 @@ export async function POST(request: NextRequest) {
 
   const stayId = body.stayId ?? null;
   const mode = body.mode;
-  const rawHistory = Array.isArray(body.history) ? body.history : [];
 
   let systemPrompt: string;
   let propertyId: string | null = null;
@@ -412,11 +417,23 @@ export async function POST(request: NextRequest) {
     systemPrompt = buildIdentityBlock('Aria', 'warm', 'this hotel', mode);
   }
 
-  // Cap history at last 10 exchanges (20 messages)
-  const cappedHistory = rawHistory.slice(-20);
+  // Load persisted conversation from DB. Fall back to body.history when no stayId.
+  let conversationHistory: ConversationMessage[] = [];
+  if (stayId) {
+    conversationHistory = await loadConversation(stayId);
+  } else if (Array.isArray(body.history)) {
+    conversationHistory = body.history.map((h) => ({
+      role: h.role,
+      content: h.text,
+      timestamp: new Date().toISOString(),
+    }));
+  }
+
+  // Cap to last 40 messages (≈20 exchanges) for the Claude context window
+  const cappedHistory = conversationHistory.slice(-40);
 
   const messages: Array<{ role: 'user' | 'assistant'; content: unknown }> = [
-    ...cappedHistory.map((h) => ({ role: h.role, content: h.text })),
+    ...cappedHistory.map((h) => ({ role: h.role, content: h.content })),
     { role: 'user' as const, content: message },
   ];
 
@@ -548,6 +565,22 @@ export async function POST(request: NextRequest) {
     } else {
       const textBlock = json.content?.find((b) => b.type === 'text');
       reply = textBlock?.text ?? "I couldn't generate a response. Please try again.";
+    }
+
+    // Persist conversation turn to DB (fire-and-forget — never blocks response)
+    if (stayId && authenticatedUserId) {
+      void (async () => {
+        try {
+          const newMessages: ConversationMessage[] = [
+            { role: 'user', content: message, timestamp: new Date().toISOString() },
+            { role: 'assistant', content: reply, timestamp: new Date().toISOString() },
+          ];
+          await appendToConversation(stayId, authenticatedUserId, newMessages);
+          await capConversation(stayId, 100);
+        } catch (err) {
+          console.error('[ai/chat] Conversation persist failed:', err);
+        }
+      })();
     }
 
     // Fire-and-forget memory extraction — never blocks the response

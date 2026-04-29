@@ -69,9 +69,6 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
     const reply = await sendChatMessage(
       messageText,
       stayId,
-      messages
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .map((m) => ({ role: m.role as 'user' | 'assistant', text: m.text })),
       'discovery',
     );
 
