@@ -44,7 +44,8 @@ export async function POST(
   if (!admin_name?.trim()) {
     return NextResponse.json({ error: 'admin_name is required' }, { status: 400 });
   }
-  if (!admin_email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(admin_email)) {
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  if (!admin_email?.trim() || !emailRegex.test(admin_email.trim())) {
     return NextResponse.json({ error: 'Valid admin_email is required' }, { status: 400 });
   }
 
@@ -67,12 +68,14 @@ export async function POST(
   const invite_token = randomBytes(32).toString('hex');
 
   // Insert into hotel_admins
+  const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const { error: insertError } = await supabase.from('hotel_admins').insert({
     property_id: propertyId,
     name: admin_name.trim(),
     email: admin_email.trim().toLowerCase(),
     phone: admin_phone?.trim() || null,
     invite_token,
+    invite_expires_at: inviteExpiresAt,
     status: 'pending',
   });
 

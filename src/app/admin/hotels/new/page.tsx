@@ -611,7 +611,6 @@ export default function AddHotelPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Fetch regions on mount
   useEffect(() => {
@@ -647,7 +646,8 @@ export default function AddHotelPage() {
   function validateStep5(): boolean {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
     if (!form.admin_name.trim()) newErrors.admin_name = 'Admin name is required';
-    if (!form.admin_email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.admin_email)) {
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+    if (!form.admin_email.trim() || !emailRegex.test(form.admin_email.trim())) {
       newErrors.admin_email = 'Valid admin email is required';
     }
     setErrors(newErrors);
@@ -728,15 +728,15 @@ export default function AddHotelPage() {
       };
 
       if (!inviteRes.ok || !inviteJson.success) {
-        // Hotel was created — still redirect, but show error
-        setSuccessMessage(
-          `Hotel created. Invite could not be sent: ${inviteJson.error ?? 'Unknown error'}`,
+        // Hotel was created but invite failed — redirect with an error note in query param
+        router.push(
+          `/admin/hotels?notice=created&warn=${encodeURIComponent(inviteJson.error ?? 'Invite could not be sent')}`,
         );
       } else {
-        setSuccessMessage(`Hotel created and invite sent to ${form.admin_email}`);
+        router.push(
+          `/admin/hotels?notice=invited&email=${encodeURIComponent(form.admin_email)}`,
+        );
       }
-
-      router.push('/admin/hotels');
     } catch {
       setSubmitError('Network error — please try again');
     } finally {
@@ -780,11 +780,6 @@ export default function AddHotelPage() {
           {submitError && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">
               {submitError}
-            </div>
-          )}
-          {successMessage && (
-            <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-[13px] text-green-400">
-              {successMessage}
             </div>
           )}
         </>

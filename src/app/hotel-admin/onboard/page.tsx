@@ -48,10 +48,10 @@ function OnboardForm() {
     }
 
     fetch(`/api/hotel-admin/onboard?token=${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((json: TokenData & { error?: string }) => {
-        if (json.error) {
-          setTokenError(json.error);
+      .then(async (res) => {
+        const json = (await res.json()) as TokenData & { error?: string };
+        if (!res.ok || json.error) {
+          setTokenError(json.error ?? 'Failed to validate invite token.');
         } else {
           setTokenData(json);
           setName(json.admin_name);

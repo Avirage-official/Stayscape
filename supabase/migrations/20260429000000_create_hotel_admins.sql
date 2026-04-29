@@ -6,6 +6,7 @@ create table if not exists public.hotel_admins (
   phone text,
   invite_token text unique not null,
   invite_sent_at timestamptz default now(),
+  invite_expires_at timestamptz not null default (now() + interval '7 days'),
   onboarded_at timestamptz,
   status text not null default 'pending', -- pending | active
   created_at timestamptz default now()

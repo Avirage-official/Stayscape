@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('hotel_admins')
-    .select('name, email, property_id, status, properties(name)')
+    .select('name, email, property_id, status, invite_expires_at, properties(name)')
     .eq('invite_token', token)
     .maybeSingle();
 
@@ -34,8 +34,13 @@ export async function GET(request: NextRequest) {
     email: string;
     property_id: string;
     status: string;
+    invite_expires_at: string | null;
     properties: { name: string } | null;
   };
+
+  if (row.status === 'pending' && row.invite_expires_at && new Date(row.invite_expires_at) < new Date()) {
+    return NextResponse.json({ error: 'Invite token has expired' }, { status: 410 });
+  }
 
   return NextResponse.json({
     admin_name: row.name,
@@ -75,10 +80,10 @@ export async function POST(request: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  // Look up the pending invite
+  // Look up the pending invite (also check not expired)
   const { data: adminRow, error: lookupError } = await supabase
     .from('hotel_admins')
-    .select('id, email, status')
+    .select('id, email, status, invite_expires_at')
     .eq('invite_token', token)
     .eq('status', 'pending')
     .maybeSingle();
@@ -87,10 +92,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid or already used token' }, { status: 404 });
   }
 
-  const row = adminRow as { id: string; email: string; status: string };
+  const row = adminRow as { id: string; email: string; status: string; invite_expires_at: string | null };
+
+  if (row.invite_expires_at && new Date(row.invite_expires_at) < new Date()) {
+    return NextResponse.json({ error: 'Invite token has expired' }, { status: 410 });
+  }
 
   // Create Supabase Auth user
-  const { error: createUserError } = await supabase.auth.admin.createUser({
+  const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
     email: row.email,
     password,
     email_confirm: true,
@@ -111,6 +120,10 @@ export async function POST(request: NextRequest) {
     .eq('id', row.id);
 
   if (updateError) {
+    // Auth user was created but DB update failed — delete the auth user to avoid orphan
+    if (createdUser?.user?.id) {
+      await supabase.auth.admin.deleteUser(createdUser.user.id);
+    }
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
