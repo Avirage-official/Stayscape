@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { isValidEmail } from '@/lib/validation';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -42,6 +43,11 @@ interface FormData {
   pms_provider: string;
   webhook_secret: string;
   pms_is_active: boolean;
+
+  // Step 5
+  admin_name: string;
+  admin_email: string;
+  admin_phone: string;
 }
 
 const INITIAL_FORM: FormData = {
@@ -68,6 +74,9 @@ const INITIAL_FORM: FormData = {
   pms_provider: 'manual',
   webhook_secret: '',
   pms_is_active: false,
+  admin_name: '',
+  admin_email: '',
+  admin_phone: '',
 };
 
 /* ── Shared styles ─────────────────────────────────────────────── */
@@ -526,6 +535,72 @@ function Step4({
   );
 }
 
+/* ── Step 5 — Hotel Admin ───────────────────────────────────────── */
+
+function Step5({
+  data,
+  errors,
+  onChange,
+}: {
+  data: FormData;
+  errors: Partial<Record<keyof FormData, string>>;
+  onChange: (field: keyof FormData, value: string) => void;
+}) {
+  return (
+    <div className={cardClass}>
+      <h2 className={sectionHeaderClass}>Hotel Admin</h2>
+      <p className="text-[12px] text-white/40">
+        An onboarding email will be sent to this address after the hotel is created.
+      </p>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className={labelClass}>
+            Admin Full Name <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            className={inputClass}
+            value={data.admin_name}
+            onChange={(e) => onChange('admin_name', e.target.value)}
+            placeholder="Jane Smith"
+          />
+          {errors.admin_name && (
+            <p className="mt-1 text-[11px] text-red-400">{errors.admin_name}</p>
+          )}
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelClass}>
+            Admin Email <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="email"
+            className={inputClass}
+            value={data.admin_email}
+            onChange={(e) => onChange('admin_email', e.target.value)}
+            placeholder="jane@example.com"
+          />
+          {errors.admin_email && (
+            <p className="mt-1 text-[11px] text-red-400">{errors.admin_email}</p>
+          )}
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelClass}>Admin Phone</label>
+          <input
+            type="tel"
+            className={inputClass}
+            value={data.admin_phone}
+            onChange={(e) => onChange('admin_phone', e.target.value)}
+            placeholder="+1 555 000 0000"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main wizard ───────────────────────────────────────────────── */
 
 export default function AddHotelPage() {
@@ -569,6 +644,16 @@ export default function AddHotelPage() {
     return Object.keys(newErrors).length === 0;
   }
 
+  function validateStep5(): boolean {
+    const newErrors: Partial<Record<keyof FormData, string>> = {};
+    if (!form.admin_name.trim()) newErrors.admin_name = 'Admin name is required';
+    if (!form.admin_email.trim() || !isValidEmail(form.admin_email)) {
+      newErrors.admin_email = 'Valid admin email is required';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
   function handleNext() {
     if (step === 1 && !validateStep1()) return;
     setStep((s) => s + 1);
@@ -579,6 +664,8 @@ export default function AddHotelPage() {
   }
 
   async function handleSubmit() {
+    if (!validateStep5()) return;
+
     setSubmitError(null);
     setSubmitting(true);
 
@@ -620,7 +707,36 @@ export default function AddHotelPage() {
         return;
       }
 
-      router.push(`/admin/hotels/${json.propertyId}/edit`);
+      // Send hotel admin invite
+      const inviteRes = await fetch(
+        `/api/admin/hotels/${json.propertyId}/invite-admin`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            admin_name: form.admin_name,
+            admin_email: form.admin_email,
+            admin_phone: form.admin_phone || undefined,
+          }),
+        },
+      );
+
+      const inviteJson = (await inviteRes.json()) as {
+        success?: boolean;
+        warning?: string;
+        error?: string;
+      };
+
+      if (!inviteRes.ok || !inviteJson.success) {
+        // Hotel was created but invite failed — redirect with an error note in query param
+        router.push(
+          `/admin/hotels?notice=created&warn=${encodeURIComponent(inviteJson.error ?? 'Invite could not be sent. Please contact support.')}`,
+        );
+      } else {
+        router.push(
+          `/admin/hotels?notice=invited&email=${encodeURIComponent(form.admin_email)}`,
+        );
+      }
     } catch {
       setSubmitError('Network error — please try again');
     } finally {
@@ -639,7 +755,7 @@ export default function AddHotelPage() {
         </p>
       </div>
 
-      <StepIndicator current={step} total={4} />
+      <StepIndicator current={step} total={5} />
 
       {step === 1 && (
         <>
@@ -656,9 +772,11 @@ export default function AddHotelPage() {
 
       {step === 3 && <Step3 data={form} onChange={handleChange} />}
 
-      {step === 4 && (
+      {step === 4 && <Step4 data={form} onChange={handleChange} onToggle={handleToggle} />}
+
+      {step === 5 && (
         <>
-          <Step4 data={form} onChange={handleChange} onToggle={handleToggle} />
+          <Step5 data={form} errors={errors} onChange={handleChange} />
           {submitError && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">
               {submitError}
@@ -677,7 +795,7 @@ export default function AddHotelPage() {
           )}
         </div>
         <div>
-          {step < 4 ? (
+          {step < 5 ? (
             <button type="button" className={primaryBtn} onClick={handleNext}>
               Continue
             </button>

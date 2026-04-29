@@ -7,6 +7,7 @@
 import Link from 'next/link';
 import SectionHeader from '@/components/admin/SectionHeader';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import HotelsNoticeBanner from './HotelsNoticeBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,11 +58,17 @@ async function getHotels(): Promise<HotelRow[]> {
   }
 }
 
-export default async function AdminHotelsPage() {
+export default async function AdminHotelsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string; email?: string; warn?: string }>;
+}) {
   const hotels = await getHotels();
+  const params = await searchParams;
 
   return (
     <div className="space-y-6">
+      <HotelsNoticeBanner notice={params.notice} email={params.email} warn={params.warn} />
       <div className="flex items-start justify-between">
         <SectionHeader title="Hotels" />
         <Link
