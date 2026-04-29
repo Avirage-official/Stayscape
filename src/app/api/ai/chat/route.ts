@@ -265,10 +265,8 @@ async function buildSystemPrompt(
 
   // Layer 3b — Language preference
   const rawPreferredLanguage = prefRow?.preference_data?.preferred_language;
-  const preferredLanguage =
-    typeof rawPreferredLanguage === 'string' && rawPreferredLanguage.trim().length > 0
-      ? rawPreferredLanguage.trim()
-      : null;
+  const trimmedLanguage = typeof rawPreferredLanguage === 'string' ? rawPreferredLanguage.trim() : '';
+  const preferredLanguage = trimmedLanguage.length > 0 ? trimmedLanguage : null;
 
   if (preferredLanguage) {
     systemPrompt +=
