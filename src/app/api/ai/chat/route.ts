@@ -24,8 +24,8 @@ import { getHotelContext } from '@/lib/supabase/hotel-repository';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
-const MAX_TOKENS_INITIAL = 800;
-const MAX_TOKENS_FOLLOWUP = 400;
+const MAX_TOKENS_WITH_TOOLS = 800;
+const MAX_TOKENS_TOOL_RESPONSE = 400;
 
 const VALID_TASK_TYPES = [
   'housekeeping',
@@ -100,6 +100,9 @@ interface OnboardingPreferences {
   [key: string]: unknown;
 }
 
+const isValidTaskType = (v: string): v is ValidTaskType =>
+  (VALID_TASK_TYPES as readonly string[]).includes(v);
+
 const TONE_GUIDANCE: Record<string, string> = {
   warm: 'You are warm, empathetic, and conversational. Speak like a knowledgeable friend.',
   poetic: 'You are lyrical and evocative. Paint pictures with your words while staying practical.',
@@ -107,7 +110,7 @@ const TONE_GUIDANCE: Record<string, string> = {
   playful: 'You are upbeat, enthusiastic, and fun. Use light humour where appropriate.',
 };
 
-function buildLayer1(
+function buildIdentityPrompt(
   conciergeName: string,
   conciergeTone: string,
   hotelName: string,
@@ -148,7 +151,7 @@ async function buildSystemPrompt(
   // Layer 1 — Identity (defaults used when there is no stay context)
   if (!stayId) {
     return {
-      systemPrompt: buildLayer1('Aria', 'warm', 'your hotel', mode),
+      systemPrompt: buildIdentityPrompt('Aria', 'warm', 'your hotel', mode),
       propertyId: null,
     };
   }
@@ -166,7 +169,7 @@ async function buildSystemPrompt(
 
   if (!stay) {
     return {
-      systemPrompt: buildLayer1('Aria', 'warm', 'your hotel', mode),
+      systemPrompt: buildIdentityPrompt('Aria', 'warm', 'your hotel', mode),
       propertyId: null,
     };
   }
@@ -188,7 +191,7 @@ async function buildSystemPrompt(
   const hotelName = prop?.name ?? 'your hotel';
 
   // Layer 1 — Identity
-  let systemPrompt = buildLayer1(conciergeName, conciergeTone, hotelName, mode);
+  let systemPrompt = buildIdentityPrompt(conciergeName, conciergeTone, hotelName, mode);
 
   // Layer 2 — Stay context
   const contextLines: string[] = [
@@ -400,7 +403,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: MAX_TOKENS_INITIAL,
+        max_tokens: MAX_TOKENS_WITH_TOOLS,
         system: systemPrompt,
         tools: [
           {
@@ -447,15 +450,13 @@ export async function POST(request: NextRequest) {
     const json = (await claudeRes.json()) as ClaudeResponse;
 
     const toolUseBlock = json.content?.find((b) => b.type === 'tool_use');
+    const isServiceRequestTool = toolUseBlock?.name === 'log_service_request';
     let reply: string;
 
-    if (toolUseBlock && toolUseBlock.name === 'log_service_request' && stayId) {
+    if (toolUseBlock && isServiceRequestTool && stayId) {
       const input = toolUseBlock.input as LogServiceRequestInput;
 
       try {
-        const isValidTaskType = (v: string): v is ValidTaskType =>
-          (VALID_TASK_TYPES as readonly string[]).includes(v);
-
         if (propertyId && isValidTaskType(input.task_type)) {
           const supabase = getSupabaseAdmin();
           await supabase.from('service_tasks').insert({
@@ -502,7 +503,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: MAX_TOKENS_FOLLOWUP,
+          max_tokens: MAX_TOKENS_TOOL_RESPONSE,
           system: systemPrompt,
           messages: toolResultMessages,
         }),
@@ -513,7 +514,7 @@ export async function POST(request: NextRequest) {
       reply =
         followUpText?.text ??
         "I've passed that request to the hotel team. Is there anything else I can help with?";
-    } else if (toolUseBlock && toolUseBlock.name === 'log_service_request' && !stayId) {
+    } else if (toolUseBlock && isServiceRequestTool && !stayId) {
       // Tool was called but there is no active stay — cannot log the request
       reply =
         "I'm sorry, I can't log that service request without an active stay on file. Please contact the hotel team directly.";
