@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Bell, BedDouble, Users, CheckSquare, LayoutGrid } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -10,17 +12,55 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-const STAT_CARDS = [
-  { label: 'Active Requests', value: 0, icon: Bell },
-  { label: 'Rooms', value: 0, icon: BedDouble },
-  { label: 'Guests Today', value: 0, icon: Users },
-  { label: 'Pending Tasks', value: 0, icon: CheckSquare },
-];
-
 const TABLE_HEADERS = ['Request', 'Room', 'Type', 'Status', 'Time'];
 
 export default function HotelAdminDashboardPage() {
   const { adminName } = useHotelAdmin();
+  const [activeRequestsCount, setActiveRequestsCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchActiveRequests() {
+      const supabase = getSupabaseBrowser();
+      const token = supabase
+        ? (await supabase.auth.getSession()).data.session?.access_token
+        : null;
+
+      if (!token) return;
+
+      try {
+        const [pendingRes, inProgressRes] = await Promise.all([
+          fetch('/api/hotel-admin/requests?status=pending', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/hotel-admin/requests?status=in_progress', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (!pendingRes.ok || !inProgressRes.ok) return;
+
+        const [pendingData, inProgressData] = await Promise.all([
+          pendingRes.json() as Promise<{ tasks: unknown[] }>,
+          inProgressRes.json() as Promise<{ tasks: unknown[] }>,
+        ]);
+
+        setActiveRequestsCount(
+          (pendingData.tasks?.length ?? 0) + (inProgressData.tasks?.length ?? 0),
+        );
+      } catch {
+        // silently fail — stat card stays at 0
+      }
+    }
+
+    void fetchActiveRequests();
+  }, []);
+
+  const STAT_CARDS = [
+    { label: 'Active Requests', value: activeRequestsCount, icon: Bell },
+    { label: 'Rooms', value: 0, icon: BedDouble },
+    { label: 'Guests Today', value: 0, icon: Users },
+    { label: 'Pending Tasks', value: 0, icon: CheckSquare },
+  ];
 
   return (
     <div className="px-5 py-8 md:px-8 space-y-8">
