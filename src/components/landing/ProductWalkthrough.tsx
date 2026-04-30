@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import type { ReactElement } from 'react'
 
 const REVEAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -38,11 +39,7 @@ function AriaScreen() {
   ]
 
   return (
-    <div
-      className="flex h-full flex-col"
-      style={{ background: '#FAF8F5' }}
-    >
-      {/* App header */}
+    <div className="flex h-full flex-col" style={{ background: '#FAF8F5' }}>
       <div
         className="flex items-center gap-2.5 px-3 py-3"
         style={{ borderBottom: '1px solid #EDE8E1', background: '#FFFFFF' }}
@@ -54,50 +51,24 @@ function AriaScreen() {
           ✦
         </div>
         <div>
-          <p
-            className="text-[10px] font-semibold"
-            style={{ color: '#1C1A17' }}
-          >
-            Aria
-          </p>
-          <p
-            className="text-[8px]"
-            style={{ color: '#C17F3A' }}
-          >
-            Online · Room 412
-          </p>
+          <p className="text-[10px] font-semibold" style={{ color: '#1C1A17' }}>Aria</p>
+          <p className="text-[8px]" style={{ color: '#C17F3A' }}>Online · Room 412</p>
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: '#4A7C59' }}
-          />
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#4A7C59' }} />
           <span className="text-[8px]" style={{ color: '#9E9389' }}>Live</span>
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex flex-1 flex-col gap-2 overflow-hidden px-3 py-3">
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
               className="max-w-[82%] rounded-xl px-2.5 py-2 text-[9px] leading-[1.5]"
               style={
                 msg.role === 'user'
-                  ? {
-                      background: '#C17F3A',
-                      color: '#FAF8F5',
-                      borderBottomRightRadius: '3px',
-                    }
-                  : {
-                      background: '#FFFFFF',
-                      color: '#1C1A17',
-                      border: '1px solid #EDE8E1',
-                      borderBottomLeftRadius: '3px',
-                    }
+                  ? { background: '#C17F3A', color: '#FAF8F5', borderBottomRightRadius: '3px' }
+                  : { background: '#FFFFFF', color: '#1C1A17', border: '1px solid #EDE8E1', borderBottomLeftRadius: '3px' }
               }
             >
               {msg.text}
@@ -106,18 +77,10 @@ function AriaScreen() {
         ))}
       </div>
 
-      {/* Input bar */}
-      <div
-        className="flex items-center gap-2 px-3 pb-4 pt-2"
-        style={{ borderTop: '1px solid #EDE8E1' }}
-      >
+      <div className="flex items-center gap-2 px-3 pb-4 pt-2" style={{ borderTop: '1px solid #EDE8E1' }}>
         <div
           className="flex-1 rounded-lg px-2.5 py-2 text-[9px]"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #EDE8E1',
-            color: '#C4BBB2',
-          }}
+          style={{ background: '#FFFFFF', border: '1px solid #EDE8E1', color: '#C4BBB2' }}
         >
           Ask Aria anything…
         </div>
@@ -151,44 +114,25 @@ function RequestsScreen() {
 
   return (
     <div className="flex h-full flex-col" style={{ background: '#FAF8F5' }}>
-      {/* Header */}
-      <div
-        className="px-3 py-3"
-        style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}
-      >
-        <p className="text-[11px] font-semibold" style={{ color: '#1C1A17' }}>
-          My Requests
-        </p>
-        <p className="text-[9px]" style={{ color: '#9E9389' }}>
-          Room 412 · 4 requests
-        </p>
+      <div className="px-3 py-3" style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}>
+        <p className="text-[11px] font-semibold" style={{ color: '#1C1A17' }}>My Requests</p>
+        <p className="text-[9px]" style={{ color: '#9E9389' }}>Room 412 · 4 requests</p>
       </div>
 
-      {/* Request list */}
       <div className="flex flex-col gap-2 px-3 py-3">
         {requests.map((req, i) => (
           <div
             key={i}
             className="flex items-center gap-2 rounded-xl px-3 py-2.5"
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #EDE8E1',
-            }}
+            style={{ background: '#FFFFFF', border: '1px solid #EDE8E1' }}
           >
             <div className="flex-1">
-              <p className="text-[9px] font-medium" style={{ color: '#1C1A17' }}>
-                {req.label}
-              </p>
-              <p className="text-[8px]" style={{ color: '#9E9389' }}>
-                {req.time}
-              </p>
+              <p className="text-[9px] font-medium" style={{ color: '#1C1A17' }}>{req.label}</p>
+              <p className="text-[8px]" style={{ color: '#9E9389' }}>{req.time}</p>
             </div>
             <span
               className="rounded-full px-2 py-0.5 text-[8px] font-medium"
-              style={{
-                background: statusColor[req.status].bg,
-                color: statusColor[req.status].text,
-              }}
+              style={{ background: statusColor[req.status].bg, color: statusColor[req.status].text }}
             >
               {req.status}
             </span>
@@ -196,15 +140,9 @@ function RequestsScreen() {
         ))}
       </div>
 
-      {/* New request button */}
       <div className="mx-3 mt-auto mb-4">
-        <div
-          className="flex items-center justify-center rounded-xl py-2.5"
-          style={{ background: '#C17F3A' }}
-        >
-          <p className="text-[9px] font-semibold" style={{ color: '#FAF8F5' }}>
-            + New Request
-          </p>
+        <div className="flex items-center justify-center rounded-xl py-2.5" style={{ background: '#C17F3A' }}>
+          <p className="text-[9px] font-semibold" style={{ color: '#FAF8F5' }}>+ New Request</p>
         </div>
       </div>
     </div>
@@ -221,20 +159,11 @@ function DiscoverScreen() {
 
   return (
     <div className="flex h-full flex-col" style={{ background: '#FAF8F5' }}>
-      {/* Header */}
-      <div
-        className="px-3 py-3"
-        style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}
-      >
-        <p className="text-[11px] font-semibold" style={{ color: '#1C1A17' }}>
-          Discover
-        </p>
-        <p className="text-[9px]" style={{ color: '#9E9389' }}>
-          Near The Grand · Curated by Aria
-        </p>
+      <div className="px-3 py-3" style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}>
+        <p className="text-[11px] font-semibold" style={{ color: '#1C1A17' }}>Discover</p>
+        <p className="text-[9px]" style={{ color: '#9E9389' }}>Near The Grand · Curated by Aria</p>
       </div>
 
-      {/* Category chips */}
       <div className="flex gap-1.5 px-3 pt-3 pb-1">
         {['All', 'Dining', 'Experiences', 'Nightlife'].map((cat, i) => (
           <span
@@ -251,39 +180,24 @@ function DiscoverScreen() {
         ))}
       </div>
 
-      {/* Place cards */}
       <div className="flex flex-col gap-2 px-3 pt-2">
         {places.map((place, i) => (
           <div
             key={i}
             className="flex items-center gap-2.5 rounded-xl p-2.5"
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #EDE8E1',
-            }}
+            style={{ background: '#FFFFFF', border: '1px solid #EDE8E1' }}
           >
             <div
               className="h-10 w-10 flex-shrink-0 rounded-lg"
               style={{ background: `linear-gradient(135deg, ${place.color}, #E8C9A8)` }}
             />
             <div className="flex-1 min-w-0">
-              <p
-                className="truncate text-[9px] font-semibold"
-                style={{ color: '#1C1A17' }}
-              >
-                {place.name}
-              </p>
-              <p className="text-[8px]" style={{ color: '#9E9389' }}>
-                {place.tag}
-              </p>
+              <p className="truncate text-[9px] font-semibold" style={{ color: '#1C1A17' }}>{place.name}</p>
+              <p className="text-[8px]" style={{ color: '#9E9389' }}>{place.tag}</p>
             </div>
             <div
               className="flex-shrink-0 rounded-lg px-2 py-1 text-[8px] font-medium"
-              style={{
-                background: 'rgba(193,127,58,0.08)',
-                color: '#C17F3A',
-                border: '1px solid rgba(193,127,58,0.2)',
-              }}
+              style={{ background: 'rgba(193,127,58,0.08)', color: '#C17F3A', border: '1px solid rgba(193,127,58,0.2)' }}
             >
               Save
             </div>
@@ -294,7 +208,7 @@ function DiscoverScreen() {
   )
 }
 
-const SCREENS: Record<TabId, () => JSX.Element> = {
+const SCREENS: Record<TabId, () => ReactElement> = {
   aria: AriaScreen,
   requests: RequestsScreen,
   discover: DiscoverScreen,
@@ -320,19 +234,13 @@ function PhoneMockup({
         border: '2px solid #EDE8E1',
         background: '#FAF8F5',
         overflow: 'hidden',
-        boxShadow:
-          '0 24px 56px rgba(28,26,23,0.12), 0 4px 16px rgba(28,26,23,0.06)',
+        boxShadow: '0 24px 56px rgba(28,26,23,0.12), 0 4px 16px rgba(28,26,23,0.06)',
       }}
     >
       {/* Dynamic island */}
       <div
         className="absolute top-2.5 left-1/2 z-10 -translate-x-1/2"
-        style={{
-          width: 72,
-          height: 18,
-          borderRadius: 10,
-          background: '#1C1A17',
-        }}
+        style={{ width: 72, height: 18, borderRadius: 10, background: '#1C1A17' }}
       />
 
       {/* Screen content */}
@@ -343,9 +251,7 @@ function PhoneMockup({
           initial={reduced ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? undefined : { opacity: 0, y: -10 }}
-          transition={
-            reduced ? { duration: 0 } : { duration: 0.4, ease: REVEAL_EASE }
-          }
+          transition={reduced ? { duration: 0 } : { duration: 0.4, ease: REVEAL_EASE }}
         >
           <Screen />
         </motion.div>
@@ -409,10 +315,7 @@ export default function ProductWalkthrough() {
               onClick={() => setActiveTab(tab.id as TabId)}
               className="relative rounded-lg px-5 py-2.5 text-[13px] font-medium transition-colors duration-200"
               style={{
-                color:
-                  activeTab === tab.id
-                    ? 'var(--text-primary)'
-                    : 'var(--text-muted)',
+                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -422,10 +325,7 @@ export default function ProductWalkthrough() {
                 <motion.div
                   layoutId="tab-bg"
                   className="absolute inset-0 rounded-lg"
-                  style={{
-                    background: '#FFFFFF',
-                    boxShadow: '0 1px 4px rgba(28,26,23,0.08)',
-                  }}
+                  style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(28,26,23,0.08)' }}
                   transition={{ duration: 0.25, ease: REVEAL_EASE }}
                 />
               )}
@@ -445,9 +345,7 @@ export default function ProductWalkthrough() {
               initial={reduced ? false : { opacity: 0, x: -12 }}
               animate={{ opacity: 1, x: 0 }}
               exit={reduced ? undefined : { opacity: 0, x: -12 }}
-              transition={
-                reduced ? { duration: 0 } : { duration: 0.4, ease: REVEAL_EASE }
-              }
+              transition={reduced ? { duration: 0 } : { duration: 0.4, ease: REVEAL_EASE }}
             >
               <h3
                 className="mb-5 leading-[1.25] tracking-tight"
@@ -482,10 +380,7 @@ export default function ProductWalkthrough() {
                     className="h-1.5 rounded-full transition-all duration-300"
                     style={{
                       width: activeTab === tab.id ? '24px' : '6px',
-                      background:
-                        activeTab === tab.id
-                          ? 'var(--gold)'
-                          : 'var(--border)',
+                      background: activeTab === tab.id ? 'var(--gold)' : 'var(--border)',
                     }}
                   />
                 ))}
