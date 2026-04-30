@@ -1,56 +1,63 @@
-'use client';
-
 export default function LandingFooter() {
   return (
     <footer
+      className="px-6 py-6"
       style={{
-        background: '#0a0a09',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--background)',
+        borderTop: '1px solid var(--border)',
       }}
-      className="py-6 px-6"
     >
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+
         {/* Logo */}
-        <span className="text-sm font-medium" style={{ color: '#8a8580' }}>
+        <span
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'var(--text-primary)',
+            letterSpacing: '-0.01em',
+          }}
+        >
           Stayscape
         </span>
 
-        {/* Nav links */}
+        {/* Nav */}
         <nav className="flex items-center gap-6">
-          <a
-            href="#benefits"
-            className="text-sm transition-colors duration-200"
-            style={{ color: '#8a8580' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#e8e4dc')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#8a8580')}
-          >
-            For Hotels
-          </a>
-          <a
-            href="/dashboard"
-            className="text-sm transition-colors duration-200"
-            style={{ color: '#8a8580' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#e8e4dc')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#8a8580')}
-          >
-            The App
-          </a>
-          <a
-            href="mailto:hello@stayscape.app"
-            className="text-sm transition-colors duration-200"
-            style={{ color: '#8a8580' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#e8e4dc')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#8a8580')}
-          >
-            Contact
-          </a>
+          {[
+            { label: 'For Hotels', href: '#benefits' },
+            { label: 'The App',    href: '/dashboard' },
+            { label: 'Contact',    href: 'mailto:hello@stayscape.app' },
+          ].map(({ label, href }) => (
+            <a
+              key={label}
+              href={href}
+              className="footer-link text-[13px] transition-colors duration-200"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {label}
+            </a>
+          ))}
         </nav>
 
         {/* Copyright */}
-        <span className="text-xs" style={{ color: '#6b6560' }}>
-          © 2025 Stayscape
+        <span
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '12px',
+            color: 'var(--text-muted)',
+          }}
+        >
+          © 2026 Stayscape
         </span>
+
       </div>
+
+      <style jsx>{`
+        .footer-link:hover {
+          color: var(--text-primary);
+        }
+      `}</style>
     </footer>
-  );
+  )
 }
