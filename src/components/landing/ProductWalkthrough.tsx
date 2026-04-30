@@ -1,236 +1,291 @@
 'use client'
 
-import { useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useScrollProgress } from '@/hooks/useScrollProgress'
+import { useState } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 
 const REVEAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-const STEPS = [
+const TABS = [
   {
-    number: '01',
+    id: 'aria',
+    label: 'Ask Aria',
+    headline: 'Natural conversation. No menus, no forms.',
+    body: 'Aria knows your hotel, your room, and your stay context. Ask anything — from what time the restaurant opens, to getting extra pillows sent up — and it just happens.',
+  },
+  {
+    id: 'requests',
+    label: 'Service Requests',
+    headline: 'Track every request, from ask to done.',
+    body: 'Every request you make — towels, wake-up calls, room service — lives in one place. You can see what\'s pending, what\'s been fulfilled, and send new ones without picking up a phone.',
+  },
+  {
+    id: 'discover',
     label: 'Discover',
-    headline: 'A curated city, waiting.',
-    body: 'Guests open the Discover tab and see a cinematic, Netflix-style carousel of places and activities — not a list of Google Maps links.',
-  },
-  {
-    number: '02',
-    label: 'Explore',
-    headline: 'Every place, beautifully told.',
-    body: 'Tap any card and get a rich editorial detail view — what to bring, what to look out for, the story of the place.',
-  },
-  {
-    number: '03',
-    label: 'Plan',
-    headline: 'Built into their stay.',
-    body: 'Guests add activities to their itinerary, pick a date and time, and their whole trip takes shape — within their check-in to check-out window.',
-  },
-  {
-    number: '04',
-    label: 'Remember',
-    headline: 'Every day, beautifully organized.',
-    body: 'The Itinerary tab groups everything by day — clean, visual, with free-time awareness.',
+    headline: 'Curated places, right where you are.',
+    body: 'Every hotel unlocks a guide to what\'s around it — restaurants, experiences, hidden gems — surfaced by Aria and tailored to your trip, not just your location.',
   },
 ] as const
 
-/* ------------------------------------------------------------------ */
-/*  Phone screen placeholders                                         */
-/* ------------------------------------------------------------------ */
+type TabId = (typeof TABS)[number]['id']
 
-function DiscoverScreen() {
-  return (
-    <div className="flex h-full flex-col" style={{ background: '#0E0F14' }}>
-      {/* Search bar */}
-      <div className="px-4 pt-6 pb-3">
-        <div
-          className="flex items-center gap-2 rounded-xl px-3 py-2"
-          style={{ background: '#1D2030' }}
-        >
-          <div className="h-4 w-4 rounded-full" style={{ background: '#C8A85A' }} />
-          <div className="h-3 flex-1 rounded" style={{ background: '#2a2c3a' }} />
-        </div>
-      </div>
-      {/* Section label */}
-      <div className="px-4 pt-2 pb-3">
-        <div className="h-2 w-16 rounded" style={{ background: '#C8A85A', opacity: 0.5 }} />
-        <div className="mt-1.5 h-3 w-28 rounded" style={{ background: '#E8E6E1' }} />
-      </div>
-      {/* Horizontal scroll cards */}
-      <div className="flex gap-3 overflow-hidden px-4 pb-4">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="flex-shrink-0 overflow-hidden rounded-2xl"
-            style={{
-              width: 140,
-              height: 190,
-              background: `linear-gradient(180deg, #1D2030 0%, #151724 100%)`,
-            }}
-          >
-            <div
-              className="h-[60%] w-full"
-              style={{
-                background: `linear-gradient(135deg, ${
-                  ['#2a3040', '#302a3a', '#2a3530'][i]
-                }, #1D2030)`,
-              }}
-            />
-            <div className="p-2.5">
-              <div className="h-2 w-[70%] rounded" style={{ background: '#E8E6E1' }} />
-              <div className="mt-1.5 h-1.5 w-[50%] rounded" style={{ background: '#8a8580' }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      {/* Bottom nav */}
-      <div className="mt-auto flex justify-around px-4 py-3" style={{ borderTop: '1px solid #1D2030' }}>
-        {[true, false, false, false].map((active, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
-            <div
-              className="h-3 w-3 rounded-full"
-              style={{ background: active ? '#C8A85A' : '#2a2c3a' }}
-            />
-            <div className="h-1 w-5 rounded" style={{ background: active ? '#C8A85A' : '#2a2c3a' }} />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+/* ── Screen: Ask Aria ─────────────────────────────────────────────── */
+function AriaScreen() {
+  const messages = [
+    { role: 'user' as const, text: 'Can I get a late checkout tomorrow?' },
+    { role: 'aria' as const, text: 'Of course — I\'ve requested a 1 PM checkout for you. You\'ll get a confirmation shortly.' },
+    { role: 'user' as const, text: 'Perfect. And what\'s good for dinner nearby?' },
+    { role: 'aria' as const, text: 'Given you\'re here for the weekend, I\'d suggest Lola\'s — 5 min walk, great pasta, reservations available at 7:30 tonight.' },
+  ]
 
-function ExploreScreen() {
   return (
-    <div className="flex h-full flex-col" style={{ background: '#0E0F14' }}>
-      {/* Hero image */}
+    <div
+      className="flex h-full flex-col"
+      style={{ background: '#FAF8F5' }}
+    >
+      {/* App header */}
       <div
-        className="relative w-full"
-        style={{
-          height: '45%',
-          background: 'linear-gradient(135deg, #2a3040, #1D2030)',
-        }}
+        className="flex items-center gap-2.5 px-3 py-3"
+        style={{ borderBottom: '1px solid #EDE8E1', background: '#FFFFFF' }}
       >
         <div
-          className="absolute inset-x-0 bottom-0 h-1/2"
-          style={{ background: 'linear-gradient(to top, #0E0F14, transparent)' }}
-        />
-        {/* Back button */}
-        <div className="absolute top-4 left-4 flex h-7 w-7 items-center justify-center rounded-full" style={{ background: 'rgba(14,15,20,0.6)' }}>
-          <div className="h-2.5 w-2.5 rotate-45 border-b-2 border-l-2" style={{ borderColor: '#E8E6E1' }} />
+          className="flex h-7 w-7 items-center justify-center rounded-full text-[11px]"
+          style={{ background: 'rgba(193,127,58,0.10)', color: '#C17F3A' }}
+        >
+          ✦
+        </div>
+        <div>
+          <p
+            className="text-[10px] font-semibold"
+            style={{ color: '#1C1A17' }}
+          >
+            Aria
+          </p>
+          <p
+            className="text-[8px]"
+            style={{ color: '#C17F3A' }}
+          >
+            Online · Room 412
+          </p>
+        </div>
+        <div className="ml-auto flex items-center gap-1">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: '#4A7C59' }}
+          />
+          <span className="text-[8px]" style={{ color: '#9E9389' }}>Live</span>
         </div>
       </div>
-      {/* Content */}
-      <div className="flex flex-1 flex-col px-4 -mt-4 relative">
-        <div className="h-4 w-[80%] rounded" style={{ background: '#E8E6E1' }} />
-        <div className="mt-2 h-2 w-[60%] rounded" style={{ background: '#C8A85A', opacity: 0.6 }} />
-        <div className="mt-4 space-y-1.5">
-          <div className="h-1.5 w-full rounded" style={{ background: '#8a8580', opacity: 0.4 }} />
-          <div className="h-1.5 w-[90%] rounded" style={{ background: '#8a8580', opacity: 0.4 }} />
-          <div className="h-1.5 w-[70%] rounded" style={{ background: '#8a8580', opacity: 0.4 }} />
-        </div>
-        {/* CTA buttons */}
-        <div className="mt-auto flex gap-2 pb-6">
-          <div className="flex-1 rounded-xl py-2.5 text-center" style={{ background: '#C8A85A' }}>
-            <div className="mx-auto h-2 w-14 rounded" style={{ background: '#0E0F14' }} />
-          </div>
-          <div className="flex-1 rounded-xl py-2.5 text-center" style={{ border: '1px solid #C8A85A' }}>
-            <div className="mx-auto h-2 w-14 rounded" style={{ background: '#C8A85A' }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function PlanScreen() {
-  return (
-    <div className="flex h-full flex-col" style={{ background: '#0E0F14' }}>
-      <div className="px-4 pt-6 pb-3">
-        <div className="h-3 w-24 rounded" style={{ background: '#E8E6E1' }} />
-        <div className="mt-1 h-2 w-36 rounded" style={{ background: '#8a8580', opacity: 0.5 }} />
-      </div>
-      {/* Date picker */}
-      <div className="mx-4 rounded-xl p-3" style={{ background: '#1D2030' }}>
-        <div className="flex justify-between pb-2" style={{ borderBottom: '1px solid #2a2c3a' }}>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <span className="text-[8px]" style={{ color: '#8a8580' }}>{d}</span>
-              <div
-                className="flex h-5 w-5 items-center justify-center rounded-full text-[8px]"
-                style={{
-                  background: i === 2 ? '#C8A85A' : 'transparent',
-                  color: i === 2 ? '#0E0F14' : '#E8E6E1',
-                }}
-              >
-                {15 + i}
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Time slots */}
-        <div className="mt-3 space-y-2">
-          {['9:00 AM', '11:30 AM', '2:00 PM'].map((time, i) => (
-            <div key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5" style={{ background: i === 1 ? 'rgba(200,168,90,0.1)' : '#161825' }}>
-              <span className="text-[8px]" style={{ color: i === 1 ? '#C8A85A' : '#8a8580' }}>{time}</span>
-              <div className="h-1.5 flex-1 rounded" style={{ background: i === 1 ? '#C8A85A' : '#2a2c3a', opacity: i === 1 ? 0.4 : 1 }} />
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Add button */}
-      <div className="mx-4 mt-4">
-        <div className="flex items-center justify-center rounded-xl py-2.5" style={{ background: '#C8A85A' }}>
-          <div className="h-2 w-24 rounded" style={{ background: '#0E0F14' }} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ItineraryScreen() {
-  return (
-    <div className="flex h-full flex-col" style={{ background: '#0E0F14' }}>
-      <div className="px-4 pt-6 pb-3">
-        <div className="h-3 w-28 rounded" style={{ background: '#E8E6E1' }} />
-      </div>
-      {/* Day chips */}
-      <div className="flex gap-2 px-4 pb-3">
-        {['Day 1', 'Day 2', 'Day 3'].map((day, i) => (
+      {/* Messages */}
+      <div className="flex flex-1 flex-col gap-2 overflow-hidden px-3 py-3">
+        {messages.map((msg, i) => (
           <div
             key={i}
-            className="rounded-full px-3 py-1"
-            style={{
-              background: i === 0 ? '#C8A85A' : '#1D2030',
-              color: i === 0 ? '#0E0F14' : '#8a8580',
-              fontSize: 9,
-              fontWeight: i === 0 ? 600 : 400,
-            }}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            {day}
+            <div
+              className="max-w-[82%] rounded-xl px-2.5 py-2 text-[9px] leading-[1.5]"
+              style={
+                msg.role === 'user'
+                  ? {
+                      background: '#C17F3A',
+                      color: '#FAF8F5',
+                      borderBottomRightRadius: '3px',
+                    }
+                  : {
+                      background: '#FFFFFF',
+                      color: '#1C1A17',
+                      border: '1px solid #EDE8E1',
+                      borderBottomLeftRadius: '3px',
+                    }
+              }
+            >
+              {msg.text}
+            </div>
           </div>
         ))}
       </div>
-      {/* Activity cards */}
-      <div className="space-y-2.5 px-4">
-        {[
-          { time: '9:00 AM', title: 'Beach Walk', color: '#2a3530' },
-          { time: '12:30 PM', title: 'Lunch at Marina', color: '#302a3a' },
-          { time: '3:00 PM', title: 'Historic Tour', color: '#2a3040' },
-        ].map((item, i) => (
+
+      {/* Input bar */}
+      <div
+        className="flex items-center gap-2 px-3 pb-4 pt-2"
+        style={{ borderTop: '1px solid #EDE8E1' }}
+      >
+        <div
+          className="flex-1 rounded-lg px-2.5 py-2 text-[9px]"
+          style={{
+            background: '#FFFFFF',
+            border: '1px solid #EDE8E1',
+            color: '#C4BBB2',
+          }}
+        >
+          Ask Aria anything…
+        </div>
+        <div
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
+          style={{ background: '#C17F3A' }}
+        >
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FAF8F5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Screen: Service Requests ─────────────────────────────────────── */
+function RequestsScreen() {
+  const requests = [
+    { label: 'Extra towels × 2', status: 'Done', time: '2:14 PM' },
+    { label: 'Wake-up call at 7 AM', status: 'Confirmed', time: '2:18 PM' },
+    { label: 'Late checkout · 1 PM', status: 'Pending', time: '2:31 PM' },
+    { label: 'Dinner reservation · 7:30', status: 'Pending', time: '2:33 PM' },
+  ]
+
+  const statusColor: Record<string, { bg: string; text: string }> = {
+    Done:      { bg: 'rgba(74,124,89,0.12)',   text: '#4A7C59' },
+    Confirmed: { bg: 'rgba(193,127,58,0.12)',  text: '#C17F3A' },
+    Pending:   { bg: 'rgba(158,147,137,0.12)', text: '#9E9389' },
+  }
+
+  return (
+    <div className="flex h-full flex-col" style={{ background: '#FAF8F5' }}>
+      {/* Header */}
+      <div
+        className="px-3 py-3"
+        style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}
+      >
+        <p className="text-[11px] font-semibold" style={{ color: '#1C1A17' }}>
+          My Requests
+        </p>
+        <p className="text-[9px]" style={{ color: '#9E9389' }}>
+          Room 412 · 4 requests
+        </p>
+      </div>
+
+      {/* Request list */}
+      <div className="flex flex-col gap-2 px-3 py-3">
+        {requests.map((req, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 rounded-xl p-3"
-            style={{ background: '#1D2030' }}
+            className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #EDE8E1',
+            }}
+          >
+            <div className="flex-1">
+              <p className="text-[9px] font-medium" style={{ color: '#1C1A17' }}>
+                {req.label}
+              </p>
+              <p className="text-[8px]" style={{ color: '#9E9389' }}>
+                {req.time}
+              </p>
+            </div>
+            <span
+              className="rounded-full px-2 py-0.5 text-[8px] font-medium"
+              style={{
+                background: statusColor[req.status].bg,
+                color: statusColor[req.status].text,
+              }}
+            >
+              {req.status}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* New request button */}
+      <div className="mx-3 mt-auto mb-4">
+        <div
+          className="flex items-center justify-center rounded-xl py-2.5"
+          style={{ background: '#C17F3A' }}
+        >
+          <p className="text-[9px] font-semibold" style={{ color: '#FAF8F5' }}>
+            + New Request
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Screen: Discover ─────────────────────────────────────────────── */
+function DiscoverScreen() {
+  const places = [
+    { name: "Lola's Kitchen", tag: 'Italian · 5 min walk', color: '#D4956A' },
+    { name: 'The Harbour Bar', tag: 'Cocktails · 8 min', color: '#C17F3A' },
+    { name: 'Sunday Market', tag: 'Weekend · 12 min', color: '#B8956A' },
+  ]
+
+  return (
+    <div className="flex h-full flex-col" style={{ background: '#FAF8F5' }}>
+      {/* Header */}
+      <div
+        className="px-3 py-3"
+        style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}
+      >
+        <p className="text-[11px] font-semibold" style={{ color: '#1C1A17' }}>
+          Discover
+        </p>
+        <p className="text-[9px]" style={{ color: '#9E9389' }}>
+          Near The Grand · Curated by Aria
+        </p>
+      </div>
+
+      {/* Category chips */}
+      <div className="flex gap-1.5 px-3 pt-3 pb-1">
+        {['All', 'Dining', 'Experiences', 'Nightlife'].map((cat, i) => (
+          <span
+            key={cat}
+            className="rounded-full px-2 py-0.5 text-[8px] font-medium"
+            style={{
+              background: i === 0 ? '#C17F3A' : '#FFFFFF',
+              color: i === 0 ? '#FAF8F5' : '#9E9389',
+              border: i === 0 ? 'none' : '1px solid #EDE8E1',
+            }}
+          >
+            {cat}
+          </span>
+        ))}
+      </div>
+
+      {/* Place cards */}
+      <div className="flex flex-col gap-2 px-3 pt-2">
+        {places.map((place, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2.5 rounded-xl p-2.5"
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #EDE8E1',
+            }}
           >
             <div
               className="h-10 w-10 flex-shrink-0 rounded-lg"
-              style={{ background: item.color }}
+              style={{ background: `linear-gradient(135deg, ${place.color}, #E8C9A8)` }}
             />
-            <div className="flex-1">
-              <span className="block text-[8px]" style={{ color: '#C8A85A' }}>
-                {item.time}
-              </span>
-              <div className="mt-0.5 h-2 w-[70%] rounded" style={{ background: '#E8E6E1' }} />
-              <div className="mt-1 h-1.5 w-[50%] rounded" style={{ background: '#8a8580', opacity: 0.4 }} />
+            <div className="flex-1 min-w-0">
+              <p
+                className="truncate text-[9px] font-semibold"
+                style={{ color: '#1C1A17' }}
+              >
+                {place.name}
+              </p>
+              <p className="text-[8px]" style={{ color: '#9E9389' }}>
+                {place.tag}
+              </p>
+            </div>
+            <div
+              className="flex-shrink-0 rounded-lg px-2 py-1 text-[8px] font-medium"
+              style={{
+                background: 'rgba(193,127,58,0.08)',
+                color: '#C17F3A',
+                border: '1px solid rgba(193,127,58,0.2)',
+              }}
+            >
+              Save
             </div>
           </div>
         ))}
@@ -239,67 +294,57 @@ function ItineraryScreen() {
   )
 }
 
-const PHONE_SCREENS = [DiscoverScreen, ExploreScreen, PlanScreen, ItineraryScreen]
+const SCREENS: Record<TabId, () => JSX.Element> = {
+  aria: AriaScreen,
+  requests: RequestsScreen,
+  discover: DiscoverScreen,
+}
 
-/* ------------------------------------------------------------------ */
-/*  Phone mockup                                                       */
-/* ------------------------------------------------------------------ */
-
+/* ── Phone shell ──────────────────────────────────────────────────── */
 function PhoneMockup({
-  activeIndex,
-  prefersReducedMotion,
+  activeTab,
+  reduced,
 }: {
-  activeIndex: number
-  prefersReducedMotion: boolean | null
+  activeTab: TabId
+  reduced: boolean | null
 }) {
-  const clampedIndex = Math.min(Math.max(activeIndex, 0), PHONE_SCREENS.length - 1)
-  const Screen = PHONE_SCREENS[clampedIndex]
+  const Screen = SCREENS[activeTab]
 
   return (
     <div
       className="relative mx-auto"
       style={{
-        width: 280,
+        width: 260,
         aspectRatio: '9 / 19.5',
-        borderRadius: 40,
-        border: '3px solid #2a2a2a',
-        background: '#0E0F14',
+        borderRadius: 38,
+        border: '2px solid #EDE8E1',
+        background: '#FAF8F5',
         overflow: 'hidden',
         boxShadow:
-          '0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(201,169,110,0.08)',
+          '0 24px 56px rgba(28,26,23,0.12), 0 4px 16px rgba(28,26,23,0.06)',
       }}
     >
-      {/* Dynamic island / notch */}
+      {/* Dynamic island */}
       <div
-        className="absolute top-3 left-1/2 z-10 -translate-x-1/2"
+        className="absolute top-2.5 left-1/2 z-10 -translate-x-1/2"
         style={{
-          width: 80,
-          height: 22,
-          borderRadius: 12,
-          background: '#0E0F14',
-          border: '1px solid #1a1a1a',
+          width: 72,
+          height: 18,
+          borderRadius: 10,
+          background: '#1C1A17',
         }}
       />
+
       {/* Screen content */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeIndex}
+          key={activeTab}
           className="absolute inset-0"
-          initial={
-            prefersReducedMotion
-              ? false
-              : { opacity: 0, scale: 0.98 }
-          }
-          animate={{ opacity: 1, scale: 1 }}
-          exit={
-            prefersReducedMotion
-              ? undefined
-              : { opacity: 0, scale: 0.98 }
-          }
+          initial={reduced ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced ? undefined : { opacity: 0, y: -10 }}
           transition={
-            prefersReducedMotion
-              ? { duration: 0 }
-              : { duration: 0.5, ease: REVEAL_EASE }
+            reduced ? { duration: 0 } : { duration: 0.4, ease: REVEAL_EASE }
           }
         >
           <Screen />
@@ -309,179 +354,189 @@ function PhoneMockup({
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main component                                                     */
-/* ------------------------------------------------------------------ */
-
+/* ── Main component ───────────────────────────────────────────────── */
 export default function ProductWalkthrough() {
-  const containerRef = useRef<HTMLElement>(null)
-  const { activeIndex, prefersReducedMotion } = useScrollProgress({
-    containerRef,
-  })
+  const [activeTab, setActiveTab] = useState<TabId>('aria')
+  const reduced = useReducedMotion()
+
+  const activeData = TABS.find((t) => t.id === activeTab)!
 
   return (
     <section
       id="walkthrough"
-      ref={containerRef}
-      className="relative"
       style={{
-        minHeight: '300vh',
-        background: '#0f0e0d',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--background)',
+        paddingBlock: 'clamp(80px, 10vw, 140px)',
+        borderTop: '1px solid var(--border)',
       }}
     >
-      {/* Grain texture overlay */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          opacity: 0.04,
-          backgroundImage:
-            'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
-          backgroundRepeat: 'repeat',
-          backgroundSize: '128px 128px',
-        }}
-      />
+      <div className="mx-auto max-w-7xl px-6 sm:px-8">
 
-      {/* Section header */}
-      <div className="relative mx-auto max-w-7xl px-6 pt-20 pb-12 sm:px-12 md:px-20 lg:px-28">
-        <p
-          className="text-xs font-medium uppercase"
-          style={{
-            letterSpacing: '0.08em',
-            color: '#c9a96e',
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          The Product
-        </p>
-        <h2
-          className="mt-3 text-3xl font-bold md:text-4xl"
-          style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            color: '#e8e4dc',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          What Stayscape Does
-        </h2>
-      </div>
-
-      {/* Desktop layout */}
-      <div className="relative mx-auto hidden max-w-7xl px-6 sm:px-12 md:grid md:grid-cols-2 md:gap-12 md:px-20 lg:px-28">
-        {/* Left column — narrative steps */}
-        <div>
-          {STEPS.map((step, i) => {
-            const isActive = i === activeIndex
-            return (
-              <div
-                key={step.number}
-                className="flex flex-col justify-center"
-                style={{ minHeight: '75vh' }}
-              >
-                <motion.div
-                  animate={{ opacity: isActive ? 1 : 0.2 }}
-                  transition={
-                    prefersReducedMotion
-                      ? { duration: 0 }
-                      : { duration: 0.5, ease: REVEAL_EASE }
-                  }
-                >
-                  <p
-                    className="text-xs font-medium uppercase"
-                    style={{
-                      letterSpacing: '0.08em',
-                      color: '#c9a96e',
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    {step.number} — {step.label}
-                  </p>
-                  <h3
-                    className="mt-4 text-3xl font-bold md:text-4xl"
-                    style={{
-                      fontFamily: "'Playfair Display', Georgia, serif",
-                      color: '#e8e4dc',
-                      letterSpacing: '-0.02em',
-                    }}
-                  >
-                    {step.headline}
-                  </h3>
-                  <p
-                    className="mt-4 text-base leading-relaxed md:text-lg"
-                    style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      color: '#8a8580',
-                      maxWidth: 420,
-                      lineHeight: 1.7,
-                    }}
-                  >
-                    {step.body}
-                  </p>
-                </motion.div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Right column — sticky phone mockup */}
-        <div className="relative">
-          <div
-            className="flex items-center justify-center"
+        {/* Section header */}
+        <div className="mb-12">
+          <p
+            className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em]"
+            style={{ color: 'var(--gold)' }}
+          >
+            See it in action
+          </p>
+          <h2
+            className="max-w-[460px] leading-[1.2] tracking-tight"
             style={{
-              position: 'sticky',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: 'clamp(1.9rem, 3vw, 2.6rem)',
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.02em',
             }}
           >
-            <PhoneMockup
-              activeIndex={activeIndex}
-              prefersReducedMotion={prefersReducedMotion}
-            />
-          </div>
+            Everything your stay needs, in one conversation.
+          </h2>
         </div>
-      </div>
 
-      {/* Mobile layout */}
-      <div className="relative mx-auto max-w-7xl space-y-16 px-6 pb-20 md:hidden">
-        {STEPS.map((step, i) => (
-          <div key={step.number} className="space-y-8">
-            <div>
-              <p
-                className="text-xs font-medium uppercase"
-                style={{
-                  letterSpacing: '0.08em',
-                  color: '#c9a96e',
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                {step.number} — {step.label}
-              </p>
+        {/* Tab nav */}
+        <div
+          className="mb-12 flex gap-1 rounded-xl p-1 w-fit"
+          style={{ background: '#F5F2EE', border: '1px solid var(--border)' }}
+          role="tablist"
+          aria-label="Product features"
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              onClick={() => setActiveTab(tab.id as TabId)}
+              className="relative rounded-lg px-5 py-2.5 text-[13px] font-medium transition-colors duration-200"
+              style={{
+                color:
+                  activeTab === tab.id
+                    ? 'var(--text-primary)'
+                    : 'var(--text-muted)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="tab-bg"
+                  className="absolute inset-0 rounded-lg"
+                  style={{
+                    background: '#FFFFFF',
+                    boxShadow: '0 1px 4px rgba(28,26,23,0.08)',
+                  }}
+                  transition={{ duration: 0.25, ease: REVEAL_EASE }}
+                />
+              )}
+              <span className="relative z-10">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop: two-column */}
+        <div className="hidden items-center gap-16 lg:grid lg:grid-cols-2">
+          {/* Left: description */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              id={`panel-${activeTab}`}
+              role="tabpanel"
+              initial={reduced ? false : { opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reduced ? undefined : { opacity: 0, x: -12 }}
+              transition={
+                reduced ? { duration: 0 } : { duration: 0.4, ease: REVEAL_EASE }
+              }
+            >
               <h3
-                className="mt-4 text-3xl font-bold"
+                className="mb-5 leading-[1.25] tracking-tight"
                 style={{
                   fontFamily: "'Playfair Display', Georgia, serif",
-                  color: '#e8e4dc',
+                  fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)',
+                  color: 'var(--text-primary)',
                   letterSpacing: '-0.02em',
                 }}
               >
-                {step.headline}
+                {activeData.headline}
               </h3>
               <p
-                className="mt-4 text-base leading-relaxed"
+                className="leading-[1.8]"
                 style={{
                   fontFamily: "'DM Sans', sans-serif",
-                  color: '#8a8580',
-                  maxWidth: 420,
-                  lineHeight: 1.7,
+                  fontSize: '16px',
+                  color: 'var(--text-secondary)',
+                  maxWidth: '44ch',
                 }}
               >
-                {step.body}
+                {activeData.body}
               </p>
-            </div>
-            <PhoneMockup activeIndex={i} prefersReducedMotion={prefersReducedMotion} />
+
+              {/* Dot indicators */}
+              <div className="mt-10 flex gap-2">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabId)}
+                    aria-label={`View ${tab.label}`}
+                    className="h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      width: activeTab === tab.id ? '24px' : '6px',
+                      background:
+                        activeTab === tab.id
+                          ? 'var(--gold)'
+                          : 'var(--border)',
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Right: phone mockup */}
+          <div className="flex justify-center">
+            <PhoneMockup activeTab={activeTab} reduced={reduced} />
           </div>
-        ))}
+        </div>
+
+        {/* Mobile: stacked */}
+        <div className="space-y-12 lg:hidden">
+          {TABS.map((tab) => (
+            <div key={tab.id} className="space-y-8">
+              <div>
+                <p
+                  className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em]"
+                  style={{ color: 'var(--gold)' }}
+                >
+                  {tab.label}
+                </p>
+                <h3
+                  className="mb-4 leading-[1.25] tracking-tight"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 'clamp(1.6rem, 4vw, 2rem)',
+                    color: 'var(--text-primary)',
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  {tab.headline}
+                </h3>
+                <p
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '15px',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.75,
+                  }}
+                >
+                  {tab.body}
+                </p>
+              </div>
+              <PhoneMockup activeTab={tab.id as TabId} reduced={reduced} />
+            </div>
+          ))}
+        </div>
+
       </div>
     </section>
   )
