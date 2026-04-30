@@ -27,155 +27,146 @@ const STEPS = [
   },
 ] as const
 
-const NODE_DELAYS = [0.2, 0.5, 0.8, 1.1]
-const CONTENT_DELAYS = [0.35, 0.65, 0.95, 1.25]
+const NODE_DELAYS    = [0.2,  0.5,  0.8,  1.1 ] as const
+const CONTENT_DELAYS = [0.35, 0.65, 0.95, 1.25] as const
 
 export default function HowItWorks() {
-  const prefersReducedMotion = useReducedMotion()
+  const reduced = useReducedMotion()
+
+  const motionProps = (extra?: object) =>
+    reduced ? {} : extra
 
   return (
     <section
       id="how-it-works"
-      className="relative w-full overflow-hidden"
       style={{
-        backgroundColor: '#0f0e0d',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--background)',
+        borderTop: '1px solid var(--border)',
+        paddingBlock: 'clamp(80px, 10vw, 140px)',
       }}
     >
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&q=80)',
-        }}
-      />
-      {/* Dark overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(to bottom, rgba(15,14,13,0.93), rgba(15,14,13,0.88))',
-        }}
-      />
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12">
 
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
         {/* Section label + title */}
         <motion.div
           className="mb-16"
-          {...(prefersReducedMotion
-            ? {}
-            : {
-                initial: { opacity: 0, y: 12 },
-                whileInView: { opacity: 1, y: 0 },
-                transition: { duration: 0.7, ease: REVEAL_EASE },
-                viewport: { once: true },
-              })}
+          {...motionProps({
+            initial: { opacity: 0, y: 12 },
+            whileInView: { opacity: 1, y: 0 },
+            transition: { duration: 0.7, ease: REVEAL_EASE },
+            viewport: { once: true, margin: '-80px' },
+          })}
         >
           <p
-            className="mb-3 text-xs uppercase"
-            style={{ letterSpacing: '0.08em', color: '#c9a96e' }}
+            className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em]"
+            style={{ color: 'var(--gold)' }}
           >
             Onboarding
           </p>
           <h2
-            className="text-3xl font-bold md:text-4xl"
+            className="max-w-lg leading-[1.2] tracking-tight"
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
-              color: '#e8e4dc',
+              fontSize: 'clamp(1.9rem, 3vw, 2.6rem)',
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.02em',
             }}
           >
-            Tailored to Your Property
+            Tailored to your property.
           </h2>
         </motion.div>
 
         {/* Timeline */}
         <div className="relative ml-[5px] pl-10 md:ml-2 md:pl-14">
+
           {/* Vertical connector line */}
           <motion.div
-            className="absolute left-0 top-0 h-full w-[2px] origin-top md:left-[7px]"
-            style={{ backgroundColor: 'rgba(201, 169, 110, 0.3)' }}
-            {...(prefersReducedMotion
-              ? {}
-              : {
-                  initial: { scaleY: 0 },
-                  whileInView: { scaleY: 1 },
-                  transition: { duration: 1.5, ease: REVEAL_EASE },
-                  viewport: { once: true },
-                })}
+            className="absolute left-0 top-0 h-full w-px origin-top md:left-[7px]"
+            style={{ background: 'var(--gold)', opacity: 0.25 }}
+            {...motionProps({
+              initial: { scaleY: 0 },
+              whileInView: { scaleY: 1 },
+              transition: { duration: 1.5, ease: REVEAL_EASE },
+              viewport: { once: true, margin: '-80px' },
+            })}
           />
 
           {/* Steps */}
           <div className="space-y-16">
             {STEPS.map((step, i) => (
               <div key={step.number} className="relative">
-                {/* Node circle */}
+
+                {/* Node circle — bg matches section so it masks the line */}
                 <motion.div
                   className="absolute -left-10 top-1 md:-left-14"
                   style={{
-                    width: 12,
-                    height: 12,
+                    width: 13,
+                    height: 13,
                     borderRadius: '50%',
-                    border: '2px solid #c9a96e',
-                    backgroundColor: '#0f0e0d',
-                    /* Center the node on the line */
+                    border: '1.5px solid var(--gold)',
+                    background: 'var(--background)',
                     transform: 'translateX(-1px)',
                   }}
-                  {...(prefersReducedMotion
-                    ? {}
-                    : {
-                        initial: { scale: 0 },
-                        whileInView: { scale: 1 },
-                        transition: {
-                          duration: 0.4,
-                          ease: REVEAL_EASE,
-                          delay: NODE_DELAYS[i],
-                        },
-                        viewport: { once: true },
-                      })}
+                  {...motionProps({
+                    initial: { scale: 0 },
+                    whileInView: { scale: 1 },
+                    transition: {
+                      duration: 0.4,
+                      ease: REVEAL_EASE,
+                      delay: NODE_DELAYS[i],
+                    },
+                    viewport: { once: true, margin: '-80px' },
+                  })}
                 />
 
                 {/* Content */}
                 <motion.div
-                  {...(prefersReducedMotion
-                    ? {}
-                    : {
-                        initial: { opacity: 0, y: 8 },
-                        whileInView: { opacity: 1, y: 0 },
-                        transition: {
-                          duration: 0.6,
-                          ease: REVEAL_EASE,
-                          delay: CONTENT_DELAYS[i],
-                        },
-                        viewport: { once: true },
-                      })}
+                  {...motionProps({
+                    initial: { opacity: 0, y: 8 },
+                    whileInView: { opacity: 1, y: 0 },
+                    transition: {
+                      duration: 0.6,
+                      ease: REVEAL_EASE,
+                      delay: CONTENT_DELAYS[i],
+                    },
+                    viewport: { once: true, margin: '-80px' },
+                  })}
                 >
                   <span
-                    className="mb-2 block text-xs font-semibold"
-                    style={{ color: '#c9a96e' }}
+                    className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.15em]"
+                    style={{ color: 'var(--gold)' }}
                   >
                     {step.number}
                   </span>
                   <h3
-                    className="mb-2 text-lg font-semibold md:text-xl"
+                    className="mb-3 leading-[1.3] tracking-tight"
                     style={{
                       fontFamily: "'Playfair Display', Georgia, serif",
-                      color: '#e8e4dc',
+                      fontSize: 'clamp(1.1rem, 1.8vw, 1.35rem)',
+                      color: 'var(--text-primary)',
+                      letterSpacing: '-0.01em',
                     }}
                   >
                     {step.headline}
                   </h3>
                   <p
-                    className="max-w-[360px] text-sm md:text-base"
-                    style={{ color: '#8a8580', lineHeight: 1.6 }}
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '15px',
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.75,
+                      maxWidth: '44ch',
+                    }}
                   >
                     {step.body}
                   </p>
                 </motion.div>
+
               </div>
             ))}
           </div>
         </div>
+
       </div>
     </section>
   )
