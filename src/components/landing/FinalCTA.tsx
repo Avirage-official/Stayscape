@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 
 const EASE = [0.16, 1, 0.3, 1] as const
+const DEMO_EMAIL = 'hello@stayscape.co' // ← replace with your real email
 
 export default function FinalCTA() {
   const reduced = useReducedMotion()
@@ -29,7 +30,7 @@ export default function FinalCTA() {
 
   return (
     <section
-      id="cta"
+      id="final-cta"
       className="flex min-h-screen items-center justify-center"
       style={{
         background: '#F5F2EE',
@@ -83,7 +84,7 @@ export default function FinalCTA() {
           }}
           {...fadeIn(0.4)}
         >
-          Stayscape is now accepting early hotel partners. Let&apos;s set up
+          StayScape is now accepting early hotel partners. Let&apos;s set up
           your property.
         </motion.p>
 
@@ -92,8 +93,9 @@ export default function FinalCTA() {
           className="flex flex-wrap items-center justify-center gap-3"
           {...fadeIn(0.6)}
         >
-          <button
-            type="button"
+          {/* Primary — mailto opens email client; swap for a /contact route when ready */}
+          <motion.a
+            href={`mailto:${DEMO_EMAIL}?subject=StayScape%20Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20a%20demo%20for%20my%20property.`}
             style={{
               background: 'var(--gold)',
               color: '#FAF8F5',
@@ -102,32 +104,41 @@ export default function FinalCTA() {
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '14px',
               fontWeight: 600,
-              border: 'none',
-              cursor: 'pointer',
-              letterSpacing: '0.01em',
-            }}
-          >
-            Get Early Access
-          </button>
-
-          <Link
-            href="/login"
-            style={{
-              border: '1.5px solid var(--border-strong, #C4BBB2)',
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              borderRadius: '8px',
-              padding: '12px 28px',
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '14px',
-              fontWeight: 500,
               display: 'inline-block',
               textDecoration: 'none',
               letterSpacing: '0.01em',
             }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 16 }}
           >
-            Try the App
-          </Link>
+            Request a Demo
+          </motion.a>
+
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 16 }}
+          >
+            <Link
+              href="/login"
+              style={{
+                border: '1.5px solid var(--border-strong, #C4BBB2)',
+                background: 'transparent',
+                color: 'var(--text-primary)',
+                borderRadius: '8px',
+                padding: '12px 28px',
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '14px',
+                fontWeight: 500,
+                display: 'inline-block',
+                textDecoration: 'none',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Try the App
+            </Link>
+          </motion.div>
         </motion.div>
 
         {/* Demo note */}
@@ -139,7 +150,7 @@ export default function FinalCTA() {
           }}
           {...fadeIn(0.8)}
         >
-          Use the demo credentials on the login page to explore Stayscape.
+          Use the demo credentials on the login page to explore StayScape.
         </motion.p>
 
       </div>
