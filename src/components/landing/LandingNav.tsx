@@ -11,7 +11,6 @@ const NAV_LINKS = [
   { label: 'Try It Out',       href: '#final-cta' },
 ]
 
-// Magnetic effect — cursor gently pulls element toward pointer
 function useMagnetic(strength = 0.35) {
   const ref = useRef<HTMLAnchorElement>(null)
   const x = useMotionValue(0)
@@ -33,7 +32,6 @@ function useMagnetic(strength = 0.35) {
   return { ref, sx, sy, onMove, onLeave }
 }
 
-// Nav link with ink-sweep underline
 function NavLink({ label, href, delay }: { label: string; href: string; delay: number }) {
   const [hovered, setHovered] = useState(false)
 
@@ -50,7 +48,6 @@ function NavLink({ label, href, delay }: { label: string; href: string; delay: n
       whileHover={{ color: 'var(--text-primary)' } as never}
     >
       {label}
-      {/* Gold ink sweep underline */}
       <motion.span
         className="absolute bottom-0 left-0 h-[1.5px] rounded-full"
         style={{ background: 'var(--gold)', originX: 0 }}
@@ -74,7 +71,6 @@ export default function LandingNav() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Lock body scroll when mobile menu is open
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
@@ -96,7 +92,6 @@ export default function LandingNav() {
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
 
-          {/* ── Logo ── */}
           <motion.a
             href="/"
             className="flex items-center gap-2.5"
@@ -105,7 +100,6 @@ export default function LandingNav() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Icon tilts + scales on hover; inner square breathes on loop */}
             <motion.svg
               width="26" height="26" viewBox="0 0 26 26"
               fill="none" xmlns="http://www.w3.org/2000/svg"
@@ -113,10 +107,8 @@ export default function LandingNav() {
               whileHover={{ rotate: 8, scale: 1.08 }}
               transition={{ type: 'spring', stiffness: 260, damping: 14 }}
             >
-              <rect
-                x="1.5" y="1.5" width="23" height="23" rx="5"
-                stroke="var(--gold)" strokeWidth="1.75"
-              />
+              <rect x="1.5" y="1.5" width="23" height="23" rx="5"
+                stroke="var(--gold)" strokeWidth="1.75" />
               <motion.rect
                 x="7" y="7" width="12" height="12" rx="2.5"
                 fill="var(--gold)"
@@ -125,7 +117,6 @@ export default function LandingNav() {
               />
             </motion.svg>
 
-            {/* "Scape" slides up & turns gold on mount */}
             <span
               className="text-[17px] font-semibold tracking-tight"
               style={{ color: 'var(--text-primary)', fontFamily: "'DM Sans', sans-serif" }}
@@ -142,14 +133,12 @@ export default function LandingNav() {
             </span>
           </motion.a>
 
-          {/* ── Desktop links ── */}
           <div className="hidden items-center gap-7 sm:flex">
             {NAV_LINKS.map((link, i) => (
               <NavLink key={link.href} {...link} delay={0.08 + i * 0.06} />
             ))}
           </div>
 
-          {/* ── Sign In + hamburger ── */}
           <div className="flex items-center gap-4">
             <motion.a
               ref={magnetic.ref}
@@ -175,7 +164,6 @@ export default function LandingNav() {
               Sign In
             </motion.a>
 
-            {/* Hamburger — mobile only */}
             <motion.button
               className="flex sm:hidden flex-col justify-center items-center gap-[5px] w-9 h-9"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -208,7 +196,6 @@ export default function LandingNav() {
         </nav>
       </motion.header>
 
-      {/* ── Mobile fullscreen menu ── */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div

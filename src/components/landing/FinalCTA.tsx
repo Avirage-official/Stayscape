@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 
 const EASE = [0.16, 1, 0.3, 1] as const
-const DEMO_EMAIL = 'hello@stayscape.co' // ← replace with your real email
+const DEMO_EMAIL = 'hello@stayscape.app'
 
 export default function FinalCTA() {
   const reduced = useReducedMotion()
@@ -40,7 +40,6 @@ export default function FinalCTA() {
     >
       <div className="mx-auto max-w-3xl px-6 text-center sm:px-8">
 
-        {/* Eyebrow */}
         <motion.p
           className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em]"
           style={{ color: 'var(--gold)' }}
@@ -49,14 +48,12 @@ export default function FinalCTA() {
           Early Access
         </motion.p>
 
-        {/* Gold rule */}
         <motion.div
           className="mx-auto mb-8"
           style={{ width: 36, height: '1px', background: 'var(--gold)' }}
           {...fadeIn(0.1)}
         />
 
-        {/* Headline */}
         <div className="overflow-hidden mb-8">
           <motion.h2
             className="leading-[1.1] tracking-tight"
@@ -72,7 +69,6 @@ export default function FinalCTA() {
           </motion.h2>
         </div>
 
-        {/* Body */}
         <motion.p
           className="mx-auto mb-10"
           style={{
@@ -88,12 +84,10 @@ export default function FinalCTA() {
           your property.
         </motion.p>
 
-        {/* CTAs */}
         <motion.div
           className="flex flex-wrap items-center justify-center gap-3"
           {...fadeIn(0.6)}
         >
-          {/* Primary — mailto opens email client; swap for a /contact route when ready */}
           <motion.a
             href={`mailto:${DEMO_EMAIL}?subject=StayScape%20Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20a%20demo%20for%20my%20property.`}
             style={{
@@ -141,7 +135,6 @@ export default function FinalCTA() {
           </motion.div>
         </motion.div>
 
-        {/* Demo note */}
         <motion.p
           className="mt-6 text-[13px] italic"
           style={{
