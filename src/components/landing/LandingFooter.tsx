@@ -29,7 +29,7 @@ export default function LandingFooter() {
           {[
             { label: 'For Hotels', href: '#for-hotels' },
             { label: 'The App',    href: '/dashboard' },
-            { label: 'Contact',    href: 'mailto:hello@stayscape.app' },
+            { label: 'Contact',    href: 'mailto:Obajews@hotmail.com' },
           ].map(({ label, href }) => (
             <a
               key={label}
@@ -46,7 +46,7 @@ export default function LandingFooter() {
         <div className="flex items-center gap-4">
           {/* LinkedIn */}
           <a
-            href="https://www.linkedin.com/company/stayscape"
+            href="https://www.linkedin.com/company/yourstayscape"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="StayScape on LinkedIn"
