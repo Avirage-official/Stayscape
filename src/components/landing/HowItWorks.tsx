@@ -18,12 +18,12 @@ const STEPS = [
   {
     number: '03',
     headline: 'We adapt the product to your needs',
-    body: 'We configure Stayscape around your workflows, guest touchpoints, and the details that matter most to your team.',
+    body: 'We configure StayScape around your workflows, guest touchpoints, and the details that matter most — from room service hours to local partnerships.',
   },
   {
     number: '04',
     headline: 'We refine it through real usage',
-    body: 'We improve the experience over time using guest behavior, engagement patterns, and operational feedback.',
+    body: 'Aria learns from every interaction. Guest behavior, request patterns, and staff feedback shape an experience that gets sharper over time.',
   },
 ] as const
 
@@ -38,7 +38,7 @@ export default function HowItWorks() {
 
   return (
     <section
-      id="how-it-works"
+      id="how-we-work"
       style={{
         background: 'var(--background)',
         borderTop: '1px solid var(--border)',
@@ -96,7 +96,7 @@ export default function HowItWorks() {
             {STEPS.map((step, i) => (
               <div key={step.number} className="relative">
 
-                {/* Node circle — bg matches section so it masks the line */}
+                {/* Node circle */}
                 <motion.div
                   className="absolute -left-10 top-1 md:-left-14"
                   style={{
