@@ -17,7 +17,7 @@ function revealVariants(reduced: boolean | null) {
 const CARDS = [
   {
     title: 'Brand differentiation',
-    body: 'Hotels using Stayscape earn a reputation for curation and care — not just accommodation.',
+    body: 'Hotels using StayScape earn a reputation for curation and care — not just accommodation.',
   },
   {
     title: 'Data-driven insight',
@@ -31,7 +31,7 @@ export default function BenefitSection() {
 
   return (
     <section
-      id="benefits"
+      id="for-hotels"
       style={{
         background: '#F5F2EE',
         paddingBlock: 'clamp(80px, 10vw, 140px)',
@@ -205,7 +205,6 @@ export default function BenefitSection() {
               border: '1px solid var(--border)',
             }}
           >
-            {/* Gold rule above */}
             <div
               className="mb-7"
               style={{
