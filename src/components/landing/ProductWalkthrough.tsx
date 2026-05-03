@@ -269,7 +269,7 @@ export default function ProductWalkthrough() {
 
   return (
     <section
-      id="walkthrough"
+      id="product-walkthrough"
       style={{
         background: 'var(--background)',
         paddingBlock: 'clamp(80px, 10vw, 140px)',
