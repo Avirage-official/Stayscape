@@ -96,9 +96,10 @@ export default function Testimonials() {
             }}
             {...primaryReveal(prefersReducedMotion)}
           >
-            &ldquo;Great hospitality doesn&rsquo;t end at the lobby.
-            The best hotels guide their guests through the entire stay —
-            not just the check-in.&rdquo;
+            &ldquo;The brands winning today are the ones creating experiences
+            guests can&rsquo;t stop talking about — going beyond the
+            transactional, crafting moments that resonate and interactions
+            so attuned to the individual that guests feel genuinely seen.&rdquo;
           </motion.blockquote>
 
           <motion.p
@@ -106,7 +107,15 @@ export default function Testimonials() {
             style={{ color: '#8a8580' }}
             {...cardFade(prefersReducedMotion, 0.3)}
           >
-            — A principle behind every Stayscape partnership
+            — Dr. Suzanne Godfrey, Independent Brand Consultant ·{' '}
+            <a
+              href="https://hospitalityinsights.ehl.edu/guest-experience"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#8a8580', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+            >
+              EHL Hospitality Insights
+            </a>
           </motion.p>
         </div>
 
@@ -122,12 +131,20 @@ export default function Testimonials() {
             {...cardFade(prefersReducedMotion, 0)}
           >
             <p className="text-lg" style={{ color: '#e8e4dc' }}>
-              &ldquo;Guests don&rsquo;t need more options — they need better
-              guidance. When a hotel curates the journey, confidence goes up,
-              planning friction goes down, and on-property spend follows.&rdquo;
+              &ldquo;Data-driven personalization is no longer optional.
+              Guests expect it, technology enables it, and the brands that
+              ignore it will quickly fall behind.&rdquo;
             </p>
             <p className="mt-4 text-sm" style={{ color: '#8a8580' }}>
-              — On personalization and guest spend
+              — Saurabh Goel, VP of Delivery, Astound Digital ·{' '}
+              <a
+                href="https://www.hoteldive.com/news/hyper-personalization-technology-hospitality/814218/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#8a8580', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+              >
+                Hotel Dive, 2026
+              </a>
             </p>
           </motion.div>
 
@@ -141,13 +158,21 @@ export default function Testimonials() {
             {...cardFade(prefersReducedMotion, 0.12)}
           >
             <p className="text-lg" style={{ color: '#e8e4dc' }}>
-              &ldquo;Every hotel sits in a destination worth exploring.
-              The ones that own that narrative — instead of losing it to
-              search engines and travel apps — build deeper guest
-              loyalty.&rdquo;
+              &ldquo;Scaling personalization is less a question of size and
+              more a question of intention. Technology earns its place not by
+              replacing human connection, but by giving teams the information
+              they need to approximate it.&rdquo;
             </p>
             <p className="mt-4 text-sm" style={{ color: '#8a8580' }}>
-              — On owning the guest journey
+              — Dr. Suzanne Godfrey, Independent Brand Consultant ·{' '}
+              <a
+                href="https://hospitalityinsights.ehl.edu/guest-experience"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#8a8580', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+              >
+                EHL Hospitality Insights
+              </a>
             </p>
           </motion.div>
         </div>
