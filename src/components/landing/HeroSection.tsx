@@ -68,13 +68,13 @@ export default function HeroSection() {
         />
       </motion.div>
 
-      {/* Warm parchment overlay — The Hoxton effect */}
+      {/* Warm parchment overlay */}
       <div
         className="absolute inset-0 z-[1]"
         style={{ background: 'rgba(250,248,245,0.60)' }}
       />
 
-      {/* Bottom gradient — bleeds into the page below */}
+      {/* Bottom gradient */}
       <div
         aria-hidden="true"
         className="absolute inset-x-0 bottom-0 z-[2] h-[50%]"
@@ -89,7 +89,7 @@ export default function HeroSection() {
         <div className="mx-auto w-full max-w-7xl">
           <div className="grid items-end gap-10 lg:grid-cols-12 lg:gap-16">
 
-            {/* ── Left: Text ─────────────────────────────────────── */}
+            {/* ── Left: Text ── */}
             <div className="lg:col-span-6">
 
               {/* Eyebrow */}
@@ -111,7 +111,7 @@ export default function HeroSection() {
                 Your stay, reimagined
               </motion.span>
 
-              {/* Headline — clip-path line reveal */}
+              {/* Headline */}
               <div className="mb-5 overflow-hidden">
                 <motion.h1
                   className="block leading-[1.08] tracking-tight"
@@ -126,7 +126,7 @@ export default function HeroSection() {
                   initial={reduced ? 'visible' : 'hidden'}
                   animate="visible"
                 >
-                  Less managing.
+                  Elevate the experience.
                 </motion.h1>
                 <motion.h1
                   className="block leading-[1.08] tracking-tight"
@@ -142,7 +142,7 @@ export default function HeroSection() {
                   initial={reduced ? 'visible' : 'hidden'}
                   animate="visible"
                 >
-                  More living.
+                  Automate the routine.
                 </motion.h1>
               </div>
 
@@ -165,8 +165,9 @@ export default function HeroSection() {
                 className="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
                 {...fadeIn(1.05)}
               >
+                {/* Primary — scrolls to product demo */}
                 <a
-                  href="/login"
+                  href="#product-walkthrough"
                   className="inline-flex h-11 items-center rounded-lg text-[13px] font-semibold tracking-wide transition-all duration-200"
                   style={{
                     background: 'var(--gold)',
@@ -185,10 +186,12 @@ export default function HeroSection() {
                     el.style.boxShadow = '0 4px 16px rgba(193,127,58,0.32)'
                   }}
                 >
-                  Sign In to Your Stay
+                  Explore Your Stay
                 </a>
+
+                {/* Secondary — also scrolls to in-action demo */}
                 <a
-                  href="#how-it-works"
+                  href="#product-walkthrough"
                   className="inline-flex h-11 items-center rounded-lg text-[13px] font-medium transition-all duration-200"
                   style={{
                     border: '1px solid rgba(193,127,58,0.35)',
@@ -207,7 +210,7 @@ export default function HeroSection() {
                     el.style.color = 'var(--text-secondary)'
                   }}
                 >
-                  How it works ↓
+                  See it in action ↓
                 </a>
               </motion.div>
 
@@ -221,7 +224,7 @@ export default function HeroSection() {
               </motion.p>
             </div>
 
-            {/* ── Right: Aria chat card ───────────────────────────── */}
+            {/* ── Right: Aria chat card ── */}
             <motion.div
               className="hidden lg:col-span-5 lg:col-start-8 lg:block lg:pb-2"
               initial={
@@ -274,7 +277,6 @@ export default function HeroSection() {
                       Your concierge · Online
                     </p>
                   </div>
-                  {/* Live indicator */}
                   <div className="ml-auto flex items-center gap-1.5">
                     <span
                       className="h-2 w-2 rounded-full animate-gentle-pulse"
