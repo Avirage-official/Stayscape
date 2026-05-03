@@ -7,27 +7,28 @@ const REVEAL_EASE = [0.16, 1, 0.3, 1] as const
 
 const STATS = [
   {
-    end: 73,
+    end: 23,
     decimals: 0,
     suffix: '%',
     prefix: '',
-    description: 'of guests never ask the concierge for recommendations',
+    description:
+      'of hotel guests report experiencing high levels of personalisation during their stay.',
   },
   {
-    end: 4.2,
-    decimals: 1,
-    suffix: '×',
+    end: 61,
+    decimals: 0,
+    suffix: '%',
     prefix: '',
     description:
-      'more likely to leave a 5-star review after a personalized experience',
+      'of guests are willing to spend more with hotels that offer a personalised experience.',
   },
   {
-    end: 140,
+    end: 156,
     decimals: 0,
     suffix: '',
     prefix: '$',
     description:
-      'average additional spend per stay when guests discover curated local activities',
+      'average ancillary revenue generated per concierge interaction at properties with optimised guest services.',
   },
 ] as const
 
@@ -101,19 +102,19 @@ export default function PainPointStats() {
       }}
     >
       <div className="mx-auto max-w-7xl px-6 py-24 sm:px-12 md:px-20 md:py-32 lg:px-28">
-        {/* Staggered stat layout — NOT a symmetrical 3-col grid */}
         <div className="grid grid-cols-1 gap-20 md:grid-cols-12 md:gap-y-28">
-          {/* Stat 1 — full-width on mobile, left on desktop */}
+
+          {/* Stat 1 */}
           <div className="md:col-span-6 lg:col-span-5">
             <StatBlock {...STATS[0]} index={0} disabled={disabled} />
           </div>
 
-          {/* Stat 2 — offset right on desktop */}
+          {/* Stat 2 — offset right */}
           <div className="md:col-start-6 md:col-span-6 lg:col-start-7 lg:col-span-5">
             <StatBlock {...STATS[1]} index={1} disabled={disabled} />
           </div>
 
-          {/* Pull quote — spans full width */}
+          {/* Pull quote */}
           <div className="md:col-span-12">
             <motion.blockquote
               className="max-w-2xl"
@@ -144,11 +145,26 @@ export default function PainPointStats() {
             </motion.blockquote>
           </div>
 
-          {/* Stat 3 — left-aligned again */}
+          {/* Stat 3 */}
           <div className="md:col-span-7 lg:col-span-5">
             <StatBlock {...STATS[2]} index={2} disabled={disabled} />
           </div>
+
         </div>
+
+        {/* Source attribution */}
+        <p
+          className="mt-20 text-[11px]"
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            color: 'rgba(255,255,255,0.22)',
+            lineHeight: 1.6,
+          }}
+        >
+          Sources: Medallia Hotel Personalization Study, 2024 (1,749 hotel guests) ·
+          Vynta Hospitality Benchmarks, 2025
+        </p>
+
       </div>
     </section>
   )
