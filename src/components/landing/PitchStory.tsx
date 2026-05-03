@@ -30,7 +30,7 @@ export default function PitchStory() {
 
   return (
     <section
-      id="story"
+      id="our-belief"
       ref={ref}
       style={{
         background: '#F5F2EE',
@@ -48,7 +48,7 @@ export default function PitchStory() {
           Our belief
         </motion.p>
 
-        {/* Headline — two lines, clip-path reveal */}
+        {/* Headline */}
         <div className="mb-10 overflow-hidden space-y-1">
           <motion.h2
             className="block leading-[1.15] tracking-tight"
@@ -116,12 +116,12 @@ export default function PitchStory() {
           }}
           {...fadeUp(0.7)}
         >
-          Being closer to your stay means being closer to what the trip is
-          actually for — a quiet dinner for two, a day out with the kids,
-          something new with friends. Stayscape brings it together: an AI
-          that knows your hotel, your context, and what you need — backed
-          by a concierge layer that makes sure nothing falls through the
-          cracks. So every part of the trip is looked after, not left to chance.
+          StayScape gives hotels an AI concierge that knows the property,
+          anticipates guest needs, and handles the routine — so staff spend
+          less time fielding repeat questions and more time delivering the
+          moments that matter. For guests, it means answers in seconds,
+          requests that actually land, and a stay that feels tailored from
+          check-in to checkout.
         </motion.p>
 
       </div>
