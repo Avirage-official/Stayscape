@@ -152,7 +152,7 @@ export default function BenefitSection() {
 
               {/* Source link */}
               
-                href={stat.sourceUrl}
+              href={stat.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -162,8 +162,7 @@ export default function BenefitSection() {
                   textDecoration: 'underline',
                   textUnderlineOffset: '3px',
                   width: 'fit-content',
-                }}
-              >
+                }}>
                 Source: {stat.source}
               </a>
             </div>
