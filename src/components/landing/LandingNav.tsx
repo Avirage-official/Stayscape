@@ -141,30 +141,28 @@ export default function LandingNav() {
 
           <div className="flex items-center gap-4">
             {/* THE FIX: motion.span wraps the <a> so sx/sy MotionValues are valid */}
-            <motion.span
-              style={{ x: magnetic.sx, y: magnetic.sy, display: 'inline-block' }}
+                       <motion.a
+              href="/login"
+              className="text-[13px] font-semibold"
+              style={{
+                background: 'var(--gold)',
+                color: '#FAF8F5',
+                borderRadius: '6px',
+                padding: '8px 20px',
+                display: 'inline-block',
+                x: magnetic.sx,
+                y: magnetic.sy,
+              } as React.CSSProperties}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onMouseMove={magnetic.onMove}
+              onMouseLeave={magnetic.onLeave}
             >
-              
-                ref={magnetic.ref}
-                href="/login"
-                className="text-[13px] font-semibold"
-                style={{
-                  background: 'var(--gold)',
-                  color: '#FAF8F5',
-                  borderRadius: '6px',
-                  padding: '8px 20px',
-                  display: 'inline-block',
-                }}
-                onMouseMove={magnetic.onMove}
-                onMouseLeave={magnetic.onLeave}
-              >
-                Sign In
-              </a>
-            
-            </motion.span>
+              Sign In
+            </motion.a>
 
             <motion.button
               className="flex sm:hidden flex-col justify-center items-center gap-[5px] w-9 h-9"
