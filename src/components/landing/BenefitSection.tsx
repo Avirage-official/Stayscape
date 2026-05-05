@@ -106,20 +106,16 @@ function StatCard({ stat }: { stat: typeof STATS[number] }) {
 }
 
 function SourceLink({ href, label }: { href: string; label: string }) {
+  const linkStyle = {
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: '11px' as const,
+    color: 'var(--text-muted)',
+    textDecoration: 'underline' as const,
+    textUnderlineOffset: '3px',
+    width: 'fit-content' as const,
+  }
   return (
-    
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        fontFamily: "'DM Sans', sans-serif",
-        fontSize: '11px',
-        color: 'var(--text-muted)',
-        textDecoration: 'underline',
-        textUnderlineOffset: '3px',
-        width: 'fit-content',
-      }}
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" style={linkStyle}>
       Source: {label}
     </a>
   )
