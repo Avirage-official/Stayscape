@@ -49,6 +49,82 @@ function revealProps(reduced: boolean | null, delay = 0) {
   }
 }
 
+function StatCard({ stat }: { stat: typeof STATS[number] }) {
+  return (
+    <div
+      style={{
+        background: '#FFFFFF',
+        padding: 'clamp(24px, 4vw, 40px)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+      }}
+    >
+      <p
+        style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: 'clamp(2.8rem, 4vw, 4rem)',
+          fontWeight: 700,
+          color: 'var(--gold)',
+          lineHeight: 1,
+          letterSpacing: '-0.03em',
+        }}
+      >
+        {stat.value}
+      </p>
+
+      <p
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '11px',
+          fontWeight: 600,
+          textTransform: 'uppercase' as const,
+          letterSpacing: '0.15em',
+          color: 'var(--text-primary)',
+        }}
+      >
+        {stat.label}
+      </p>
+
+      <div style={{ height: '1px', background: 'var(--border)', width: '32px' }} />
+
+      <p
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '14px',
+          color: 'var(--text-secondary)',
+          lineHeight: 1.7,
+          flex: 1,
+        }}
+      >
+        {stat.description}
+      </p>
+
+      <SourceLink href={stat.sourceUrl} label={stat.source} />
+    </div>
+  )
+}
+
+function SourceLink({ href, label }: { href: string; label: string }) {
+  return (
+    
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: '11px',
+        color: 'var(--text-muted)',
+        textDecoration: 'underline',
+        textUnderlineOffset: '3px',
+        width: 'fit-content',
+      }}
+    >
+      Source: {label}
+    </a>
+  )
+}
+
 export default function BenefitSection() {
   const reduced = useReducedMotion()
 
@@ -63,7 +139,6 @@ export default function BenefitSection() {
     >
       <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12">
 
-        {/* Section label + title */}
         <motion.div className="mb-16" {...revealProps(reduced)}>
           <p
             className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em]"
@@ -84,7 +159,7 @@ export default function BenefitSection() {
           </h2>
         </motion.div>
 
-        {/* ── Three-column stat block ── */}
+        {/* Three-column stat block */}
         <motion.div
           className="mb-20 grid grid-cols-1 gap-px sm:grid-cols-3"
           style={{
@@ -95,77 +170,8 @@ export default function BenefitSection() {
           }}
           {...revealProps(reduced, 0.1)}
         >
-          {STATS.map((stat, i) => (
-            <div
-              key={stat.label}
-              style={{
-                background: '#FFFFFF',
-                padding: 'clamp(24px, 4vw, 40px)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}
-            >
-              {/* Value */}
-              <p
-                style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  fontSize: 'clamp(2.8rem, 4vw, 4rem)',
-                  fontWeight: 700,
-                  color: 'var(--gold)',
-                  lineHeight: 1,
-                  letterSpacing: '-0.03em',
-                }}
-              >
-                {stat.value}
-              </p>
-
-              {/* Label */}
-              <p
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.15em',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                {stat.label}
-              </p>
-
-              {/* Divider */}
-              <div style={{ height: '1px', background: 'var(--border)', width: '32px' }} />
-
-              {/* Description + source */}
-              <p
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '14px',
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.7,
-                  flex: 1,
-                }}
-              >
-                {stat.description}
-              </p>
-
-              {/* Source link */}
-              
-              href={stat.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: '3px',
-                  width: 'fit-content',
-                }}>
-                Source: {stat.source}
-              </a>
-            </div>
+          {STATS.map((stat) => (
+            <StatCard key={stat.label} stat={stat} />
           ))}
         </motion.div>
 
