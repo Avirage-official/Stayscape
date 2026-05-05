@@ -10,7 +10,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'light',
+  theme: 'dark',
   toggleTheme: () => {},
 });
 
@@ -19,9 +19,9 @@ export function useTheme() {
 }
 
 function getInitialTheme(): Theme {
-  // Always default to light. The dark scheme is reserved for the map/discover
-  // surfaces which set data-theme="dark" locally on their own containers.
-  return 'light';
+  // Default to dark — the espresso palette is the active design.
+  // The light scheme is preserved in globals.css for any future toggle.
+  return 'dark';
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
