@@ -6,6 +6,7 @@ import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
+import AddStayDialog from '@/components/guest-lounge/AddStayDialog';
 
 /* ─── Fonts ─── */
 
@@ -140,6 +141,7 @@ export default function HomeDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [mounted, setMounted] = useState(false);
+  const [addStayOpen, setAddStayOpen] = useState(false);
 
   // Mount animation trigger
   useEffect(() => {
@@ -147,7 +149,20 @@ export default function HomeDashboard() {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Dashboard fetch
+  // Reusable dashboard fetcher (used for initial load + after AddStayDialog success)
+  const loadDashboard = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/customer/dashboard', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Failed to load dashboard');
+      const json = (await res.json()) as DashboardData;
+      setData(json);
+      setLoadState('ready');
+    } catch {
+      setLoadState('error');
+    }
+  }, []);
+
+  // Initial dashboard fetch
   useEffect(() => {
     let cancelled = false;
     fetch('/api/customer/dashboard', { credentials: 'same-origin' })
@@ -862,10 +877,67 @@ export default function HomeDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Add booking reference — secondary action */}
+              <button
+                type="button"
+                onClick={() => setAddStayOpen(true)}
+                className={dmSans.className}
+                style={{
+                  marginTop: 4,
+                  width: '100%',
+                  height: 44,
+                  borderRadius: 14,
+                  border: '1px solid rgba(253, 249, 242, 0.18)',
+                  background: 'rgba(253, 249, 242, 0.06)',
+                  color: 'rgba(253, 249, 242, 0.85)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  letterSpacing: '0.02em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(253, 249, 242, 0.12)';
+                  e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.32)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(253, 249, 242, 0.06)';
+                  e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.18)';
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                {stay ? 'Add another stay' : 'Add booking reference'}
+              </button>
             </div>
           </MountSection>
         </div>
       </div>
+
+      {/* ── ADD STAY DIALOG ── */}
+      <AddStayDialog
+        open={addStayOpen}
+        onOpenChange={setAddStayOpen}
+        userId={user?.id}
+        onActivated={loadDashboard}
+      />
     </div>
   );
 }
