@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 
 const NAV_LINKS = [
@@ -10,27 +10,6 @@ const NAV_LINKS = [
   { label: 'How We Work',      href: '#how-it-works' },
   { label: 'Try It Out',       href: '#final-cta' },
 ]
-
-function useMagnetic(strength = 0.35) {
-  const ref = useRef<HTMLAnchorElement>(null)
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const sx = useSpring(x, { stiffness: 220, damping: 18 })
-  const sy = useSpring(y, { stiffness: 220, damping: 18 })
-
-  const onMove = (e: React.MouseEvent) => {
-    const el = ref.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const cx = rect.left + rect.width / 2
-    const cy = rect.top + rect.height / 2
-    x.set((e.clientX - cx) * strength)
-    y.set((e.clientY - cy) * strength)
-  }
-  const onLeave = () => { x.set(0); y.set(0) }
-
-  return { ref, sx, sy, onMove, onLeave }
-}
 
 function NavLink({ label, href, delay }: { label: string; href: string; delay: number }) {
   const [hovered, setHovered] = useState(false)
@@ -62,7 +41,6 @@ function NavLink({ label, href, delay }: { label: string; href: string; delay: n
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const magnetic = useMagnetic(0.28)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40)
@@ -140,29 +118,29 @@ export default function LandingNav() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* THE FIX: motion.span wraps the <a> so sx/sy MotionValues are valid */}
-                       <motion.a
-              href="/login"
-              className="text-[13px] font-semibold"
-              style={{
-                background: 'var(--gold)',
-                color: '#FAF8F5',
-                borderRadius: '6px',
-                padding: '8px 20px',
-                display: 'inline-block',
-                x: magnetic.sx,
-                y: magnetic.sy,
-              } as React.CSSProperties}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              onMouseMove={magnetic.onMove}
-              onMouseLeave={magnetic.onLeave}
-            >
-              Sign In
-            </motion.a>
+           <motion.a
+  href="/login"
+  ref={magnetic.ref}
+  className="text-[13px] font-semibold"
+  style={{
+    background: 'var(--gold)',
+    color: '#FAF8F5',
+    borderRadius: '6px',
+    padding: '8px 20px',
+    display: 'inline-block',
+    x: magnetic.sx,
+    y: magnetic.sy,
+  }}
+  initial={{ opacity: 0, scale: 0.9 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
+  whileHover={{ scale: 1.04 }}
+  whileTap={{ scale: 0.97 }}
+  onMouseMove={magnetic.onMove}
+  onMouseLeave={magnetic.onLeave}
+>
+  Sign In
+</motion.a>
 
             <motion.button
               className="flex sm:hidden flex-col justify-center items-center gap-[5px] w-9 h-9"
