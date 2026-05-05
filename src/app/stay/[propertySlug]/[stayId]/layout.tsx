@@ -17,23 +17,172 @@ async function fetchStayApi(userId: string, stayId: string): Promise<CustomerSta
     `/api/customer/stays/${encodeURIComponent(stayId)}?userId=${encodeURIComponent(userId)}`,
   );
   if (!res.ok) throw new Error('Failed to load stay');
-  const json = await res.json() as { stay: CustomerStay };
+  const json = (await res.json()) as { stay: CustomerStay };
   return json.stay;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TAB_LABEL_STYLE = { fontSize: 10, fontWeight: 500, letterSpacing: '0.05em', fontFamily: 'DM Sans, sans-serif' } as const;
+
+type StayTab = 'concierge' | 'home' | 'discover' | 'itinerary';
 
 function getActiveTab(
   pathname: string,
   propertySlug: string,
   stayId: string,
-): 'concierge' | 'discover' | 'itinerary' | null {
+): StayTab | null {
   if (pathname === `/stay/${propertySlug}/${stayId}`) return 'concierge';
+  if (pathname.endsWith('/home')) return 'home';
   if (pathname.endsWith('/discover')) return 'discover';
   if (pathname.endsWith('/itinerary')) return 'itinerary';
   return null;
 }
+
+/* ─── Inline icons ─── */
+
+function iconProps(active: boolean) {
+  return {
+    width: 22,
+    height: 22,
+    viewBox: '0 0 24 24',
+    fill: 'none' as const,
+    stroke: 'currentColor',
+    strokeWidth: active ? 2 : 1.5,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+}
+
+function IconAria(active: boolean) {
+  return (
+    <svg {...iconProps(active)}>
+      <path d="M21 12a8 8 0 01-12.6 6.5L3 20l1.5-5.4A8 8 0 1121 12z" />
+    </svg>
+  );
+}
+function IconHome(active: boolean) {
+  return (
+    <svg {...iconProps(active)}>
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+function IconDiscover(active: boolean) {
+  return (
+    <svg {...iconProps(active)}>
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+      <line x1="8" y1="2" x2="8" y2="18" />
+      <line x1="16" y1="6" x2="16" y2="22" />
+    </svg>
+  );
+}
+function IconItinerary(active: boolean) {
+  return (
+    <svg {...iconProps(active)}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+function IconMenu() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  );
+}
+function IconClose() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+/* ─── Side nav rendering ─── */
+
+interface NavItem {
+  id: StayTab;
+  label: string;
+  href: string;
+  icon: (active: boolean) => React.ReactNode;
+}
+
+function SideNav({
+  items,
+  activeTab,
+  onItemClick,
+  variant,
+}: {
+  items: NavItem[];
+  activeTab: StayTab | null;
+  onItemClick?: () => void;
+  variant: 'desktop' | 'drawer';
+}) {
+  const isDrawer = variant === 'drawer';
+  return (
+    <nav
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        padding: isDrawer ? '20px 16px' : '24px 14px',
+        height: '100%',
+      }}
+      aria-label="Stay navigation"
+    >
+      {items.map((item) => {
+        const active = item.id === activeTab;
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            onClick={onItemClick}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              padding: isDrawer ? '14px 14px' : '12px 12px',
+              borderRadius: 12,
+              textDecoration: 'none',
+              color: active ? 'var(--gold)' : 'var(--text-muted)',
+              background: active ? 'rgba(201, 168, 76, 0.08)' : 'transparent',
+              fontWeight: active ? 600 : 500,
+              fontSize: 13,
+              transition: 'background 0.15s ease, color 0.15s ease',
+              fontFamily: 'DM Sans, sans-serif',
+            }}
+          >
+            <span
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: active ? 'rgba(201, 168, 76, 0.12)' : 'transparent',
+                flexShrink: 0,
+              }}
+            >
+              {item.icon(active)}
+            </span>
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ─── Layout ─── */
 
 export default function StayLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -59,6 +208,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   const [stay, setStay] = useState<CustomerStay | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready'>('loading');
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Auth redirect
   useEffect(() => {
@@ -84,7 +234,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
     }
   }, [loadState, stay, propertySlug, router]);
 
-  // Fetch stay + update root region context so the map centers on this hotel's region
+  // Fetch stay + push region context
   useEffect(() => {
     if (!user) return;
     if (!UUID_REGEX.test(stayId)) return;
@@ -92,8 +242,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       .then((found) => {
         setStay(found);
         setLoadState('ready');
-        // Push the stay's region into the root RegionContext so all
-        // children (including the map) automatically center on this hotel.
         const stayRegion = getStaySelectedRegion(found);
         if (stayRegion) setRegion(stayRegion);
       })
@@ -102,26 +250,19 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       });
   }, [user, stayId, router, setRegion]);
 
+  // Close drawer on route change
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
   if (isLoading) return <GuestArrivalSkeleton />;
-
-  if (!user) {
-    return null;
-  }
-
-  if (!UUID_REGEX.test(stayId)) {
-    return null;
-  }
-
+  if (!user) return null;
+  if (!UUID_REGEX.test(stayId)) return null;
   if (loadState === 'loading') return <GuestArrivalSkeleton />;
-
-  if (!stay) {
-    return null;
-  }
+  if (!stay) return null;
 
   const dbSlug = stay.property?.slug ?? null;
-  if (dbSlug === null || dbSlug !== propertySlug) {
-    return null;
-  }
+  if (dbSlug === null || dbSlug !== propertySlug) return null;
 
   if (!stay.onboarding_completed && !onboardingCompleted) {
     return (
@@ -134,152 +275,212 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   }
 
   const activeTab = getActiveTab(pathname, propertySlug, stayId);
-  const isConciergeActive = activeTab === 'concierge';
-  const isDiscoverActive = activeTab === 'discover';
-  const isItineraryActive = activeTab === 'itinerary';
 
-  const tabBar = (
-    <>
-      <div style={{ height: 64 }} aria-hidden="true" />
-      <nav
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 64,
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)',
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'stretch',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        {/* Concierge tab */}
-        <Link
-          href={`/stay/${propertySlug}/${stayId}`}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 3,
-            textDecoration: 'none',
-            position: 'relative',
-            color: isConciergeActive ? 'var(--gold)' : 'var(--text-muted)',
-          }}
-        >
-          {isConciergeActive && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: '25%',
-                right: '25%',
-                height: 3,
-                borderRadius: 2,
-                background: 'var(--gold)',
-              }}
-            />
-          )}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth={isConciergeActive ? 2 : 1.5}
-            strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <span style={TAB_LABEL_STYLE}>Concierge</span>
-        </Link>
-
-        {/* Discover tab */}
-        <Link
-          href={`/stay/${propertySlug}/${stayId}/discover`}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 3,
-            textDecoration: 'none',
-            position: 'relative',
-            color: isDiscoverActive ? 'var(--gold)' : 'var(--text-muted)',
-          }}
-        >
-          {isDiscoverActive && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: '25%',
-                right: '25%',
-                height: 3,
-                borderRadius: 2,
-                background: 'var(--gold)',
-              }}
-            />
-          )}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth={isDiscoverActive ? 2 : 1.5}
-            strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-            <line x1="8" y1="2" x2="8" y2="18" />
-            <line x1="16" y1="6" x2="16" y2="22" />
-          </svg>
-          <span style={TAB_LABEL_STYLE}>Discover</span>
-        </Link>
-
-        {/* Itinerary tab */}
-        <Link
-          href={`/stay/${propertySlug}/${stayId}/itinerary`}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 3,
-            textDecoration: 'none',
-            position: 'relative',
-            color: isItineraryActive ? 'var(--gold)' : 'var(--text-muted)',
-          }}
-        >
-          {isItineraryActive && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: '25%',
-                right: '25%',
-                height: 3,
-                borderRadius: 2,
-                background: 'var(--gold)',
-              }}
-            />
-          )}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth={isItineraryActive ? 2 : 1.5}
-            strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-          <span style={TAB_LABEL_STYLE}>Itinerary</span>
-        </Link>
-      </nav>
-    </>
-  );
+  const navItems: NavItem[] = [
+    {
+      id: 'concierge',
+      label: 'Ask Aria',
+      href: `/stay/${propertySlug}/${stayId}`,
+      icon: IconAria,
+    },
+    {
+      id: 'home',
+      label: 'Home',
+      href: `/stay/${propertySlug}/${stayId}/home`,
+      icon: IconHome,
+    },
+    {
+      id: 'discover',
+      label: 'Discover',
+      href: `/stay/${propertySlug}/${stayId}/discover`,
+      icon: IconDiscover,
+    },
+    {
+      id: 'itinerary',
+      label: 'Itinerary',
+      href: `/stay/${propertySlug}/${stayId}/itinerary`,
+      icon: IconItinerary,
+    },
+  ];
 
   return (
     <StayContext.Provider value={{ stay, userId: user.id }}>
       <ItineraryProvider stayId={stay.id}>
-        <Suspense fallback={<GuestArrivalSkeleton />}>
-          {children}
-        </Suspense>
-        {tabBar}
+        <style>{`
+          .stay-shell { min-height: 100vh; background: var(--background); }
+          .stay-side-nav-desktop { display: none; }
+          .stay-mobile-bar { display: flex; }
+          .stay-content { padding-bottom: 16px; }
+
+          @media (min-width: 900px) {
+            .stay-shell {
+              display: grid;
+              grid-template-columns: 240px minmax(0, 1fr);
+            }
+            .stay-side-nav-desktop {
+              display: block;
+              position: sticky;
+              top: 0;
+              height: 100vh;
+              border-right: 1px solid var(--border);
+              background: var(--surface);
+            }
+            .stay-mobile-bar { display: none; }
+            .stay-content { padding-bottom: 0; }
+          }
+
+          .stay-drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 16, 12, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 80;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+          }
+          .stay-drawer-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+          }
+          .stay-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 260px;
+            max-width: 80vw;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            z-index: 90;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+            display: flex;
+            flex-direction: column;
+          }
+          .stay-drawer.open { transform: translateX(0); }
+        `}</style>
+
+        <div className="stay-shell">
+          {/* Desktop side nav */}
+          <aside className="stay-side-nav-desktop">
+            <div
+              style={{
+                padding: '24px 18px 12px',
+                fontFamily: 'Cormorant Garamond, serif',
+                fontSize: 20,
+                color: 'var(--gold)',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Stayscape
+            </div>
+            <SideNav items={navItems} activeTab={activeTab} variant="desktop" />
+          </aside>
+
+          {/* Mobile top bar */}
+          <div
+            className="stay-mobile-bar"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 60,
+              height: 52,
+              background: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
+              padding: '0 16px',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <IconMenu />
+            </button>
+            <span
+              style={{
+                fontFamily: 'Cormorant Garamond, serif',
+                fontSize: 18,
+                color: 'var(--gold)',
+              }}
+            >
+              Stayscape
+            </span>
+            <span style={{ width: 40 }} />
+          </div>
+
+          {/* Mobile drawer */}
+          <div
+            className={`stay-drawer-overlay ${drawerOpen ? 'open' : ''}`}
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <aside className={`stay-drawer ${drawerOpen ? 'open' : ''}`} aria-hidden={!drawerOpen}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 18px 6px',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'Cormorant Garamond, serif',
+                  fontSize: 20,
+                  color: 'var(--gold)',
+                }}
+              >
+                Stayscape
+              </span>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconClose />
+              </button>
+            </div>
+            <SideNav
+              items={navItems}
+              activeTab={activeTab}
+              onItemClick={() => setDrawerOpen(false)}
+              variant="drawer"
+            />
+          </aside>
+
+          {/* Main content */}
+          <div className="stay-content">
+            <Suspense fallback={<GuestArrivalSkeleton />}>{children}</Suspense>
+          </div>
+        </div>
       </ItineraryProvider>
     </StayContext.Provider>
   );
