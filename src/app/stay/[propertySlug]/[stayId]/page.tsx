@@ -186,7 +186,7 @@ export default function StayConciergePage() {
           font-size: 14px;
           line-height: 1.55;
           font-weight: 400;
-          animation: aria-fade-up 0.28s ease;
+          animation: aria-fade-up 0.32s cubic-bezier(0.16, 1, 0.3, 1);
           word-wrap: break-word;
           white-space: pre-wrap;
         }
@@ -194,35 +194,25 @@ export default function StayConciergePage() {
           .aria-bubble { max-width: 64%; padding: 14px 18px; font-size: 15px; }
         }
         .aria-bubble-user {
-          background: var(--gold);
+          background:
+            linear-gradient(180deg, var(--gold-soft) 0%, var(--gold) 100%);
           color: var(--background);
           border-radius: 22px 22px 6px 22px;
-          box-shadow: 0 4px 14px rgba(201, 168, 117, 0.18);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.25),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+            0 6px 20px rgba(201, 168, 117, 0.30);
         }
         .aria-bubble-assistant {
-          background: var(--surface);
+          background:
+            linear-gradient(180deg, rgba(245, 230, 204, 0.05) 0%, rgba(245, 230, 204, 0) 60%),
+            var(--surface);
           color: var(--text-primary);
           border: 1px solid var(--border);
           border-radius: 22px 22px 22px 6px;
-          box-shadow: 0 4px 14px rgba(28, 22, 16, 0.04);
-        }
-        .aria-suggestion-pill {
-          padding: 10px 16px;
-          border-radius: 999px;
-          border: 1px solid var(--border);
-          background: var(--surface);
-          color: var(--text-primary);
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.18s ease;
-          white-space: nowrap;
-        }
-        .aria-suggestion-pill:hover {
-          border-color: rgba(201, 168, 117, 0.4);
-          color: var(--gold);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 14px rgba(28, 22, 16, 0.06);
+          box-shadow:
+            inset 0 1px 0 rgba(245, 230, 204, 0.06),
+            0 6px 20px rgba(0, 0, 0, 0.30);
         }
       `}</style>
 
@@ -261,13 +251,14 @@ export default function StayConciergePage() {
             >
               {/* Sparkle / Aria mark */}
               <div
+                className="ss-breathe"
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
                   background:
-                    'linear-gradient(135deg, rgba(201, 168, 117, 0.18) 0%, rgba(201, 168, 117, 0.06) 100%)',
-                  border: '1px solid rgba(201, 168, 117, 0.25)',
+                    'radial-gradient(120% 100% at 50% 0%, rgba(201, 168, 117, 0.28) 0%, rgba(201, 168, 117, 0.08) 100%)',
+                  border: '1px solid rgba(201, 168, 117, 0.30)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -308,6 +299,7 @@ export default function StayConciergePage() {
 
               {/* Suggestion pills */}
               <div
+                className="ss-stagger"
                 style={{
                   display: 'flex',
                   flexWrap: 'wrap',
@@ -320,7 +312,8 @@ export default function StayConciergePage() {
                   <button
                     key={s}
                     type="button"
-                    className={`aria-suggestion-pill ${dmSans.className}`}
+                    className={`ss-pill ${dmSans.className}`}
+                    style={{ padding: '10px 18px', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}
                     onClick={() => handleSuggestion(s)}
                   >
                     {s}
@@ -443,29 +436,24 @@ export default function StayConciergePage() {
             onClick={() => void sendMessage()}
             disabled={!input.trim() || isTyping}
             aria-label="Send message"
+            className={input.trim() && !isTyping ? 'ss-gold-btn' : ''}
             style={{
-              width: 40,
-              height: 40,
+              width: 42,
+              height: 42,
               borderRadius: '50%',
-              border: 'none',
               flexShrink: 0,
-              background:
-                input.trim() && !isTyping ? 'var(--gold)' : 'var(--border)',
-              color: input.trim() && !isTyping ? 'var(--background)' : 'var(--text-muted)',
-              cursor:
-                input.trim() && !isTyping ? 'pointer' : 'not-allowed',
+              ...(input.trim() && !isTyping
+                ? {}
+                : {
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface-raised)',
+                    color: 'var(--text-muted)',
+                    cursor: 'not-allowed',
+                    boxShadow: 'none',
+                  }),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'background 0.18s ease, transform 0.18s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (input.trim() && !isTyping) {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
             <svg
