@@ -13,17 +13,22 @@ import { useAuth } from '@/lib/context/auth-context';
 
 export interface ItineraryItem {
   id: string;
-  /** Maps to itineraryitems.discoveritemid in the DB. */
+  /** Maps to itineraryitems.place_id (FK → places.id). */
   placeId: string;
-  /** Maps to itineraryitems.titleoverride in the DB. */
+  /** Display name — either titleoverride, the cached `name` column, or places.name. */
   name: string;
-  /** UI-only display field — not persisted to the DB. */
+  /** Display category — cached on item, or from places.category. */
   category: string;
-  /** UI-only display field — not persisted to the DB. */
+  /** Display image — cached on item, or from places.image_url. */
   image: string;
+  /** Optional coordinates (from joined places row) — used for map preview. */
+  lat?: number | null;
+  lng?: number | null;
   date: Date;
   time: string;
   durationHours: number;
+  /** Optional per-item note. */
+  notes?: string | null;
 }
 
 interface ItineraryContextType {
@@ -42,7 +47,13 @@ export function useItinerary() {
   return ctx;
 }
 
-export function ItineraryProvider({ children, stayId }: { children: React.ReactNode; stayId?: string | null }) {
+export function ItineraryProvider({
+  children,
+  stayId,
+}: {
+  children: React.ReactNode;
+  stayId?: string | null;
+}) {
   const { user } = useAuth();
   const counterRef = useRef(0);
   const dbLoadedRef = useRef<boolean | null>(null);
@@ -55,13 +66,20 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
             id: row.id,
-            placeId: row.discoveritemid ?? '',
-            name: row.titleoverride ?? '',
-            category: '',
-            image: '',
+            placeId: row.place_id ?? '',
+            name:
+              row.titleoverride ??
+              row.name ??
+              row.places?.name ??
+              '',
+            category: row.category ?? row.places?.category ?? '',
+            image: row.image ?? row.places?.image_url ?? '',
+            lat: row.places?.latitude ?? null,
+            lng: row.places?.longitude ?? null,
             date: new Date(row.scheduleddate),
             time: row.starttime ?? '',
             durationHours: row.durationhours ?? 1,
+            notes: row.notes ?? null,
           }));
           setItems(mapped);
         }
@@ -71,72 +89,79 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
       });
   }, [user, stayId]);
 
-  // Load from DB on first render (using null-check pattern for eslint refs rule)
+  // Load from DB on first render
   if (dbLoadedRef.current == null) {
     dbLoadedRef.current = true;
     loadFromDb();
   }
 
-  const addItem = useCallback((item: Omit<ItineraryItem, 'id'>) => {
-    counterRef.current += 1;
-    const localId = `itin-${counterRef.current}-${item.placeId}`;
-    const newItem: ItineraryItem = { ...item, id: localId };
+  const addItem = useCallback(
+    (item: Omit<ItineraryItem, 'id'>) => {
+      counterRef.current += 1;
+      const localId = `itin-${counterRef.current}-${item.placeId}`;
+      const newItem: ItineraryItem = { ...item, id: localId };
 
-    // Optimistically add to local state
-    setItems((prev) => [...prev, newItem]);
+      // Optimistically add
+      setItems((prev) => [...prev, newItem]);
 
-    if (!user) return;
+      if (!user) return;
 
-    // Persist to Supabase in the background
-    getOrCreateItinerary(user.id, stayId ?? undefined)
-      .then((itineraryId) => {
-        if (!itineraryId) return;
-        return insertItineraryItem(itineraryId, {
-          discoveritemid: item.placeId || null,
-          titleoverride: item.name || null,
-          scheduleddate: format(item.date, 'yyyy-MM-dd'),
-          starttime: item.time,
-          durationhours: item.durationHours,
-        });
-      })
-      .then((dbId) => {
-        if (dbId) {
-          // Replace local id with real DB id
-          setItems((prev) =>
-            prev.map((i) => (i.id === localId ? { ...i, id: dbId } : i)),
-          );
-        }
-      })
-      .catch(() => {
-        // Write failed — local state still has the item
-      });
-  }, [user, stayId]);
-
-  const updateItem = useCallback((id: string, updates: Partial<Omit<ItineraryItem, 'id'>>) => {
-    // Optimistically update local state
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
-    );
-
-    // Persist to Supabase in the background
-    const dbUpdates: Record<string, unknown> = {};
-    if (updates.date) dbUpdates.scheduleddate = format(updates.date, 'yyyy-MM-dd');
-    if (updates.time) dbUpdates.starttime = updates.time;
-    if (updates.durationHours != null) dbUpdates.durationhours = updates.durationHours;
-
-    if (Object.keys(dbUpdates).length > 0) {
-      dbUpdateItem(id, dbUpdates as { scheduleddate?: string; starttime?: string; durationhours?: number })
+      getOrCreateItinerary(user.id, stayId ?? undefined)
+        .then((itineraryId) => {
+          if (!itineraryId) return;
+          return insertItineraryItem(itineraryId, {
+            place_id: item.placeId || null,
+            titleoverride: item.name || null,
+            scheduleddate: format(item.date, 'yyyy-MM-dd'),
+            starttime: item.time,
+            durationhours: item.durationHours,
+            name: item.name || null,
+            category: item.category || null,
+            image: item.image || null,
+          });
+        })
+        .then((dbId) => {
+          if (dbId) {
+            setItems((prev) =>
+              prev.map((i) => (i.id === localId ? { ...i, id: dbId } : i)),
+            );
+          }
+        })
         .catch(() => {
-          // Write failed — local state is still updated
+          // Write failed — local state still has the item
         });
-    }
-  }, []);
+    },
+    [user, stayId],
+  );
+
+  const updateItem = useCallback(
+    (id: string, updates: Partial<Omit<ItineraryItem, 'id'>>) => {
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+      );
+
+      const dbUpdates: {
+        scheduleddate?: string;
+        starttime?: string;
+        durationhours?: number;
+        notes?: string;
+      } = {};
+      if (updates.date) dbUpdates.scheduleddate = format(updates.date, 'yyyy-MM-dd');
+      if (updates.time) dbUpdates.starttime = updates.time;
+      if (updates.durationHours != null) dbUpdates.durationhours = updates.durationHours;
+      if (updates.notes != null) dbUpdates.notes = updates.notes;
+
+      if (Object.keys(dbUpdates).length > 0) {
+        dbUpdateItem(id, dbUpdates).catch(() => {
+          // Write failed — local state already updated
+        });
+      }
+    },
+    [],
+  );
 
   const removeItem = useCallback((id: string) => {
-    // Optimistically remove from local state
     setItems((prev) => prev.filter((i) => i.id !== id));
-
-    // Remove from Supabase in the background
     dbRemoveItem(id).catch(() => {
       // Delete failed — item already removed from UI
     });
@@ -147,9 +172,5 @@ export function ItineraryProvider({ children, stayId }: { children: React.ReactN
     [items, addItem, updateItem, removeItem, loadFromDb],
   );
 
-  return (
-    <ItineraryContext value={value}>
-      {children}
-    </ItineraryContext>
-  );
+  return <ItineraryContext value={value}>{children}</ItineraryContext>;
 }
