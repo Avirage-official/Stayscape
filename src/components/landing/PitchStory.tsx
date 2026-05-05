@@ -99,10 +99,11 @@ export default function PitchStory() {
           }}
           {...fadeUp(0.55)}
         >
-          The best stays aren't remembered for the thread count or the view —
-          they're remembered because someone made you feel looked after.
-          A recommendation that felt right. A request that just happened.
-          A moment that felt effortless.
+          Great hospitality has always been about people — the way a stay feels, not just how it runs. 
+          But as expectations grow and teams get busier, it becomes harder to keep that same level of care 
+          consistent in every moment. The opportunity isn't to change what hospitality is, 
+          but to support it — making it easier for teams to deliver thoughtful, 
+          seamless experiences while building a stronger connection with every guest.
         </motion.p>
 
         {/* Body — paragraph 2 */}
@@ -116,12 +117,10 @@ export default function PitchStory() {
           }}
           {...fadeUp(0.7)}
         >
-          StayScape gives hotels an AI concierge that knows the property,
-          anticipates guest needs, and handles the routine — so staff spend
-          less time fielding repeat questions and more time delivering the
-          moments that matter. For guests, it means answers in seconds,
-          requests that actually land, and a stay that feels tailored from
-          check-in to checkout.
+         StayScape gives hotels an AI concierge that knows the property, learns what each guest actually needs, 
+         and handles the routine quietly — so staff spend less time fielding the same questions and more time 
+         creating the moments that matter. For guests, it means answers when they need them, 
+         requests that actually land, and a stay that feels considered from the moment they arrive.
         </motion.p>
 
       </div>
