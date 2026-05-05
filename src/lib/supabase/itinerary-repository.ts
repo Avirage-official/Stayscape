@@ -1,18 +1,24 @@
 /**
  * Supabase data-access layer for Itinerary operations.
  *
- * Handles real database reads/writes to the itineraries and
- * itineraryitems tables. Falls back gracefully when the tables
- * are missing or the Supabase client is unavailable.
+ * Schema notes (source of truth: live Supabase):
+ *   itineraries.stayid    — uuid NOT NULL UNIQUE (one itinerary per stay)
+ *   itineraries.userid    — uuid NOT NULL
+ *   itineraries.title     — varchar (nullable)
+ *   itineraries.status    — itinerarystatus enum, default 'active'
  *
- * Schema notes (source of truth: Supabase):
- *   itineraries.stayid  — uuid NOT NULL UNIQUE (one itinerary per stay)
- *   itineraries.userid  — uuid NOT NULL
- *   itineraries.title   — varchar (nullable)
- *   itineraries.status  — itinerarystatus enum, default 'active'
+ *   itineraryitems.place_id      — uuid → places(id)  ← CORRECT column name
+ *   itineraryitems.titleoverride — optional name override
+ *   itineraryitems.name          — varchar (display)
+ *   itineraryitems.category      — varchar (display)
+ *   itineraryitems.image         — text (display)
+ *   itineraryitems.notes         — text
+ *   itineraryitems.status        — itineraryitemstatus enum, default 'planned'
+ *   itineraryitems.source        — itemsource enum, default 'discover'
  *
- *   itineraryitems.status — itineraryitemstatus enum, default 'planned'
- *   itineraryitems.source — itemsource enum, default 'discover'
+ * Previous code used `discoveritemid` which DOES NOT EXIST in the live
+ * schema — it was a leftover from a prior migration. All references now
+ * use `place_id`.
  */
 
 import { getSupabaseBrowser } from '@/lib/supabase/client';
@@ -27,12 +33,9 @@ import type {
 /** Matches the real Supabase `itineraries` table. */
 export interface DbItinerary {
   id: string;
-  /** NOT NULL UNIQUE — every itinerary belongs to exactly one stay. */
   stayid: string;
-  /** NOT NULL — the owning user. */
   userid: string;
   title: string | null;
-  /** itinerarystatus enum — default 'active'. */
   status: ItineraryStatus;
   createdat: string;
   updatedat: string;
@@ -42,33 +45,45 @@ export interface DbItinerary {
 export interface DbItineraryItem {
   id: string;
   itineraryid: string;
-  /** UUID of the discover item — maps to discoveritems.id. */
-  discoveritemid: string | null;
+  /** UUID of the places row — maps to places.id. */
+  place_id: string | null;
   scheduleddate: string;
   starttime: string | null;
   durationhours: number | null;
   endtime: string | null;
   titleoverride: string | null;
   notes: string | null;
-  /** itineraryitemstatus enum, default 'planned'. */
   status: ItineraryItemStatus;
-  /** itemsource enum, default 'discover'. */
   source: ItemSource;
   createdat: string;
   updatedat: string;
+  /** Display columns directly on itineraryitems. */
+  name: string | null;
+  category: string | null;
+  image: string | null;
+}
+
+/**
+ * Enriched row returned by fetchItineraryItems — includes the joined
+ * place data so the UI can render coords/category/image without a
+ * second round-trip.
+ */
+export interface DbItineraryItemEnriched extends DbItineraryItem {
+  places: {
+    id: string;
+    name: string;
+    category: string | null;
+    latitude: number;
+    longitude: number;
+    image_url: string | null;
+  } | null;
 }
 
 /* ── Itinerary helpers ──────────────────────────────────── */
 
 /**
  * Get or create the itinerary for the authenticated user's stay.
- *
- * The real Supabase schema requires `itineraries.stayid` to be NOT NULL
- * and UNIQUE (one itinerary per stay). Both userId and stayId are mandatory.
- *
- * Returns the itinerary id, or null if:
- *  - Supabase is unavailable, or
- *  - the insert/lookup fails.
+ * stayid is NOT NULL UNIQUE in the schema — one itinerary per stay.
  */
 export async function getOrCreateItinerary(
   userId: string,
@@ -77,11 +92,10 @@ export async function getOrCreateItinerary(
   const sb = getSupabaseBrowser();
   if (!sb) return null;
 
-  // Guard: the real schema enforces stayid NOT NULL.
-  // If callers don't have a stayId yet we cannot safely create an itinerary.
   if (!stayId) {
-    console.warn('[itinerary] getOrCreateItinerary called without stayId — cannot insert (stayid is NOT NULL in schema).');
-    // Still attempt to find an existing itinerary for this user as a read-only fallback
+    console.warn(
+      '[itinerary] getOrCreateItinerary called without stayId — cannot insert (stayid is NOT NULL).',
+    );
     const { data: fallback } = await sb
       .from('itineraries')
       .select('id')
@@ -102,7 +116,7 @@ export async function getOrCreateItinerary(
   if (findErr) return null;
   if (existing) return existing.id as string;
 
-  // Create a new itinerary — stayid is always provided here
+  // Create a new itinerary
   const { data: created, error: createErr } = await sb
     .from('itineraries')
     .insert({
@@ -119,21 +133,21 @@ export async function getOrCreateItinerary(
 /**
  * Insert a new item into the itinerary.
  * Returns the created row id, or null on failure.
- *
- * Field names deliberately match the real DB column names (all-lowercase,
- * no camelCase) so they map directly onto the INSERT statement without
- * transformation — consistent with scheduleddate, starttime, durationhours.
  */
 export async function insertItineraryItem(
   itineraryId: string,
   item: {
-    /** itineraryitems.discoveritemid — UUID of the discover item. */
-    discoveritemid: string | null;
-    /** itineraryitems.titleoverride — optional display name override. */
+    /** itineraryitems.place_id — UUID of the place. */
+    place_id: string | null;
+    /** itineraryitems.titleoverride — optional display override. */
     titleoverride: string | null;
     scheduleddate: string; // 'YYYY-MM-DD'
     starttime: string;     // 'HH:mm'
     durationhours: number;
+    /** Display fields cached on the item itself. */
+    name?: string | null;
+    category?: string | null;
+    image?: string | null;
   },
 ): Promise<string | null> {
   const sb = getSupabaseBrowser();
@@ -143,22 +157,27 @@ export async function insertItineraryItem(
     .from('itineraryitems')
     .insert({
       itineraryid: itineraryId,
-      discoveritemid: item.discoveritemid,
+      place_id: item.place_id,
       titleoverride: item.titleoverride,
       scheduleddate: item.scheduleddate,
       starttime: item.starttime,
       durationhours: item.durationhours,
+      name: item.name ?? null,
+      category: item.category ?? null,
+      image: item.image ?? null,
     })
     .select('id')
     .single();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    console.warn('[itinerary] insertItineraryItem failed:', error?.message);
+    return null;
+  }
   return data.id as string;
 }
 
 /**
  * Update an existing itinerary item.
- * Returns true on success, false on failure.
  */
 export async function updateItineraryItem(
   itemId: string,
@@ -166,6 +185,7 @@ export async function updateItineraryItem(
     scheduleddate?: string;
     starttime?: string;
     durationhours?: number;
+    notes?: string;
   },
 ): Promise<boolean> {
   const sb = getSupabaseBrowser();
@@ -181,7 +201,6 @@ export async function updateItineraryItem(
 
 /**
  * Remove an itinerary item.
- * Returns true on success, false on failure.
  */
 export async function removeItineraryItem(itemId: string): Promise<boolean> {
   const sb = getSupabaseBrowser();
@@ -196,17 +215,18 @@ export async function removeItineraryItem(itemId: string): Promise<boolean> {
 }
 
 /**
- * Fetch all itinerary items for the authenticated user's (optional) stay.
- * Returns null if Supabase is unavailable or the table is missing.
+ * Fetch all itinerary items for the user's stay, with the joined
+ * `places` row inline (coords, image, category).
  *
- * When stayId is provided, lookup is via the UNIQUE stayid constraint
- * (preferred). Falls back to userid-only lookup for read paths where
- * stayId may not yet be available.
+ * The select uses Supabase's relational embed syntax:
+ *   place_id → places(...)
+ *
+ * The FK fk_itinerary_items_place makes this work directly.
  */
 export async function fetchItineraryItems(
   userId: string,
   stayId?: string,
-): Promise<DbItineraryItem[] | null> {
+): Promise<DbItineraryItemEnriched[] | null> {
   const sb = getSupabaseBrowser();
   if (!sb) return null;
 
@@ -229,17 +249,26 @@ export async function fetchItineraryItems(
   }
 
   const { data: itin, error: itinErr } = await itinQuery;
-
   if (itinErr || !itin) return null;
 
   const { data, error } = await sb
     .from('itineraryitems')
-    .select('*')
+    .select(`
+      *,
+      places (
+        id,
+        name,
+        category,
+        latitude,
+        longitude,
+        image_url
+      )
+    `)
     .eq('itineraryid', itin.id)
     .order('scheduleddate', { ascending: true })
     .order('starttime', { ascending: true });
 
   if (error || !data) return null;
 
-  return data as DbItineraryItem[];
+  return data as unknown as DbItineraryItemEnriched[];
 }
