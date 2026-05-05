@@ -163,6 +163,7 @@ export default function LandingNav() {
               >
                 Sign In
               </a>
+            
             </motion.span>
 
             <motion.button
