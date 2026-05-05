@@ -195,9 +195,9 @@ export default function StayConciergePage() {
         }
         .aria-bubble-user {
           background: var(--gold);
-          color: #fdf9f2;
+          color: var(--background);
           border-radius: 22px 22px 6px 22px;
-          box-shadow: 0 4px 14px rgba(193, 127, 58, 0.18);
+          box-shadow: 0 4px 14px rgba(201, 168, 117, 0.18);
         }
         .aria-bubble-assistant {
           background: var(--surface);
@@ -219,7 +219,7 @@ export default function StayConciergePage() {
           white-space: nowrap;
         }
         .aria-suggestion-pill:hover {
-          border-color: rgba(201, 168, 76, 0.4);
+          border-color: rgba(201, 168, 117, 0.4);
           color: var(--gold);
           transform: translateY(-1px);
           box-shadow: 0 4px 14px rgba(28, 22, 16, 0.06);
@@ -266,8 +266,8 @@ export default function StayConciergePage() {
                   height: 56,
                   borderRadius: 18,
                   background:
-                    'linear-gradient(135deg, rgba(201, 168, 76, 0.18) 0%, rgba(201, 168, 76, 0.06) 100%)',
-                  border: '1px solid rgba(201, 168, 76, 0.25)',
+                    'linear-gradient(135deg, rgba(201, 168, 117, 0.18) 0%, rgba(201, 168, 117, 0.06) 100%)',
+                  border: '1px solid rgba(201, 168, 117, 0.25)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -406,9 +406,9 @@ export default function StayConciergePage() {
             transition: 'border-color 0.18s ease, box-shadow 0.18s ease',
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(201, 168, 76, 0.45)';
+            e.currentTarget.style.borderColor = 'rgba(201, 168, 117, 0.45)';
             e.currentTarget.style.boxShadow =
-              '0 4px 22px rgba(193, 127, 58, 0.12)';
+              '0 4px 22px rgba(201, 168, 117, 0.12)';
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderColor = 'var(--border)';
@@ -451,7 +451,7 @@ export default function StayConciergePage() {
               flexShrink: 0,
               background:
                 input.trim() && !isTyping ? 'var(--gold)' : 'var(--border)',
-              color: input.trim() && !isTyping ? '#fdf9f2' : 'var(--text-muted)',
+              color: input.trim() && !isTyping ? 'var(--background)' : 'var(--text-muted)',
               cursor:
                 input.trim() && !isTyping ? 'pointer' : 'not-allowed',
               display: 'flex',
