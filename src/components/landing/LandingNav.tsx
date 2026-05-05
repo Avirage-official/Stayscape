@@ -182,7 +182,7 @@ export default function LandingNav() {
                 display: 'inline-block',
                 x: magnetic.sx,
                 y: magnetic.sy,
-              } as React.CSSProperties}
+              }}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
