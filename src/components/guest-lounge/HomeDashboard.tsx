@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
 import { useAuth } from '@/lib/context/auth-context';
-import {
-  fetchItineraryItems,
-  type DbItineraryItem,
-} from '@/lib/supabase/itinerary-repository';
 import type { DashboardData } from '@/types/customer';
-import type { DiscoveryPlaceCard } from '@/types/database';
 
 /* ─── Fonts ─── */
 
@@ -30,47 +25,11 @@ const dmSans = DM_Sans({
 /* ─── Constants ─── */
 
 const HERO_FALLBACK =
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format&fit=crop';
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80&auto=format&fit=crop';
 
-const CATEGORY_FALLBACKS: Record<string, string> = {
-  dining:
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80&auto=format&fit=crop',
-  nature:
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
-  culture:
-    'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=800&q=80&auto=format&fit=crop',
-  shopping:
-    'https://images.unsplash.com/photo-1555529771-7888783a18d3?w=800&q=80&auto=format&fit=crop',
-  nightlife:
-    'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=800&q=80&auto=format&fit=crop',
-  wellness:
-    'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80&auto=format&fit=crop',
-  default:
-    'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80&auto=format&fit=crop',
-};
-
-function getPlaceImage(place: {
-  image_url?: string | null;
-  category?: string | null;
-}): string {
-  if (place.image_url) return place.image_url;
-  const key = (place.category ?? '').toLowerCase();
-  return CATEGORY_FALLBACKS[key] ?? CATEGORY_FALLBACKS.default;
-}
-
-
+const VIDEO_SRC = '/videos/postlogin.mp4';
 
 type LoadState = 'loading' | 'ready' | 'error';
-
-/**
- * DbItineraryItem has name/category as VARCHAR columns in the schema.
- * fetchItineraryItems uses select('*') so they come back from the DB.
- * We extend here with explicit optionals for type safety.
- */
-type ItineraryItemDisplay = DbItineraryItem & {
-  name?: string | null;
-  category?: string | null;
-};
 
 /* ─── Date helpers ─── */
 
@@ -85,56 +44,14 @@ function formatDayMonth(dateStr: string | null): string {
     .toUpperCase();
 }
 
-function formatDayNumber(dateStr: string): string {
-  return String(parseLocalDate(dateStr).getDate());
-}
-
-function formatMonthShort(dateStr: string): string {
-  return parseLocalDate(dateStr)
-    .toLocaleDateString('en-GB', { month: 'short' })
-    .toUpperCase();
-}
-
-function isSameLocalDay(dateStr: string, today: Date): boolean {
-  const d = parseLocalDate(dateStr);
-  return (
-    d.getFullYear() === today.getFullYear() &&
-    d.getMonth() === today.getMonth() &&
-    d.getDate() === today.getDate()
-  );
-}
-
-function weekdayShort(dateStr: string): string {
-  return parseLocalDate(dateStr).toLocaleDateString('en-GB', { weekday: 'short' });
-}
-
-function getGreeting(): 'GOOD MORNING' | 'GOOD AFTERNOON' | 'GOOD EVENING' {
+function getGreeting(): 'Good morning' | 'Good afternoon' | 'Good evening' {
   const hour = new Date().getHours();
-  if (hour < 12) return 'GOOD MORNING';
-  if (hour < 17) return 'GOOD AFTERNOON';
-  return 'GOOD EVENING';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 /* ─── Inline SVG icons ─── */
-
-function IconSearch() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--text-muted)"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
 
 function IconAirplane() {
   return (
@@ -143,7 +60,7 @@ function IconAirplane() {
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="var(--text-muted)"
+      stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -161,7 +78,7 @@ function IconArrow() {
       height="14"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="var(--text-muted)"
+      stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -173,78 +90,20 @@ function IconArrow() {
   );
 }
 
-function CategoryIcon({ category }: { category?: string | null }) {
-  const c = (category ?? '').toLowerCase();
-  const common = {
-    width: 14,
-    height: 14,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'var(--text-muted)',
-    strokeWidth: 1.5,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-
-  if (c === 'dining' || c === 'food') {
-    return (
-      <svg {...common}>
-        <path d="M7 2v20" />
-        <path d="M5 2v6a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V2" />
-        <path d="M17 2c-1.5 0-3 1.5-3 4v5h3v11" />
-      </svg>
-    );
-  }
-  if (c === 'nature' || c === 'park') {
-    return (
-      <svg {...common}>
-        <path d="M12 22V12" />
-        <path d="M12 12c0-5 3-9 8-9 0 5-3 9-8 9z" />
-        <path d="M12 14c0-3-2-6-6-6 0 3 2 6 6 6z" />
-      </svg>
-    );
-  }
-  if (c === 'culture' || c === 'museum') {
-    return (
-      <svg {...common}>
-        <path d="M3 21h18" />
-        <path d="M5 21V10l7-5 7 5v11" />
-        <path d="M9 21v-6h6v6" />
-      </svg>
-    );
-  }
-  if (c === 'shopping') {
-    return (
-      <svg {...common}>
-        <path d="M5 7h14l-1.5 13a2 2 0 0 1-2 1.8h-7a2 2 0 0 1-2-1.8z" />
-        <path d="M9 7V5a3 3 0 0 1 6 0v2" />
-      </svg>
-    );
-  }
-  return (
-    <svg {...common}>
-      <path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z" />
-      <circle cx="12" cy="9" r="2.5" />
-    </svg>
-  );
-}
-
-/* ─── Shimmer block ─── */
+/* ─── Shimmer & section wrapper ─── */
 
 function Shimmer({ style }: { style?: CSSProperties }) {
   return (
     <div
       style={{
-        background: 'var(--surface-raised)',
+        background: 'rgba(255, 255, 255, 0.18)',
         animation: 'hd-shimmer 1.6s ease-in-out infinite',
+        borderRadius: 8,
         ...style,
       }}
     />
   );
 }
-
-/* ─── Section wrapper that animates on mount ─── */
 
 function MountSection({
   mounted,
@@ -262,7 +121,7 @@ function MountSection({
       style={{
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'translateY(0)' : 'translateY(14px)',
-        transition: 'opacity 0.45s ease, transform 0.45s ease',
+        transition: 'opacity 0.6s ease, transform 0.6s ease',
         transitionDelay: `${delay}ms`,
         ...style,
       }}
@@ -280,8 +139,6 @@ export default function HomeDashboard() {
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [places, setPlaces] = useState<DiscoveryPlaceCard[]>([]);
-  const [itineraryItems, setItineraryItems] = useState<ItineraryItemDisplay[]>([]);
   const [mounted, setMounted] = useState(false);
 
   // Mount animation trigger
@@ -307,7 +164,9 @@ export default function HomeDashboard() {
         if (cancelled) return;
         setLoadState('error');
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Derived stay values
@@ -317,7 +176,6 @@ export default function HomeDashboard() {
   const propertyCity = stay?.property?.city ?? '';
   const propertyCountry = stay?.property?.country ?? '';
   const propertyImage = stay?.property?.image_url ?? HERO_FALLBACK;
-  const regionId = stay?.property?.region_id ?? null;
   const checkIn = stay?.check_in ?? null;
   const checkOut = stay?.check_out ?? null;
   const guestCount = stay?.guests ?? null;
@@ -331,41 +189,15 @@ export default function HomeDashboard() {
   const checkOutFormatted = checkOut ? formatDayMonth(checkOut) : null;
   const greeting = getGreeting();
 
-  // Places fetch — fires once regionId is available
-  useEffect(() => {
-    if (!regionId) return;
-    let cancelled = false;
-    fetch(`/api/discovery/places?region_id=${regionId}&limit=6`)
-      .then((r) => r.json())
-      .then((body: { data?: DiscoveryPlaceCard[] }) => {
-        if (cancelled) return;
-        setPlaces(body?.data ?? []);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [regionId]);
+  // All stays (current + upcoming) for the "other stays" row
+  const allStays = useMemo(() => {
+    const current = data?.currentStays ?? [];
+    const upcoming = data?.upcomingStays ?? [];
+    return [...current, ...upcoming];
+  }, [data]);
 
-  // Itinerary fetch — fires once user.id and stayId are available
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    fetchItineraryItems(user.id, stayId ?? undefined)
-      .then((items: DbItineraryItem[] | null) => {
-        if (cancelled) return;
-        setItineraryItems((items as ItineraryItemDisplay[] | null) ?? []);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [user?.id, stayId]);
-
-  // Next 3 upcoming itinerary items from today onwards
-  const upcomingItems = useMemo(
-    () =>
-      itineraryItems
-        .filter((i) => parseLocalDate(i.scheduleddate) >= today)
-        .slice(0, 3),
-    [itineraryItems, today],
-  );
+  const otherStays = allStays.slice(1);
+  const hasOtherStays = otherStays.length > 0;
 
   /* ─── Render ─── */
 
@@ -373,1127 +205,667 @@ export default function HomeDashboard() {
     <div
       className={`${dmSans.className} hd-body`}
       style={{
-        background: 'var(--background)',
+        position: 'relative',
         minHeight: '100vh',
         width: '100%',
-        position: 'relative',
         overflowX: 'hidden',
+        color: 'var(--text-primary)',
       }}
     >
-      {/* Shimmer keyframe + responsive grid — scoped to hd- prefix */}
       <style>{`
-        @keyframes hd-shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
-        .hd-body{max-width:100%;width:100%;}
-        .hd-main-grid{display:flex;flex-direction:column;}
-        .hd-left{width:100%;}
-        .hd-center{width:100%;}
-        .hd-right{width:100%;}
-        @media(min-width:768px){
-          .hd-main-grid{flex-direction:row;align-items:flex-start;gap:20px;padding:0 20px;}
-          .hd-left{width:30%;flex-shrink:0;}
-          .hd-center{flex:1;min-width:0;}
-          .hd-right{width:28%;flex-shrink:0;}
+        @keyframes hd-shimmer {
+          0% { opacity: 0.5 }
+          50% { opacity: 1 }
+          100% { opacity: 0.5 }
         }
-        @media(min-width:1024px){
-          .hd-main-grid{gap:28px;padding:0 32px;}
-          .hd-left{width:28%;}
-          .hd-right{width:26%;}
+        @keyframes hd-fade-in {
+          from { opacity: 0 }
+          to { opacity: 1 }
+        }
+
+        .hd-body { max-width: 100%; }
+
+        /* Video background */
+        .hd-video-wrap {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          overflow: hidden;
+        }
+        .hd-video-wrap video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        /* Soft warm linen tint over the video for legibility */
+        .hd-video-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(180deg, rgba(28, 22, 16, 0.35) 0%, rgba(28, 22, 16, 0.55) 100%),
+            rgba(245, 236, 224, 0.18);
+          backdrop-filter: blur(0.5px);
+        }
+
+        /* Content layer above the video */
+        .hd-content {
+          position: relative;
+          z-index: 1;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Top bar */
+        .hd-topbar {
+          padding: 22px 36px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        /* Two-column grid */
+        .hd-grid {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 24px;
+          padding: 0 24px 32px;
+          min-height: 0;
+        }
+
+        @media (min-width: 900px) {
+          .hd-grid {
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+            gap: 28px;
+            padding: 8px 36px 36px;
+          }
+        }
+
+        @media (min-width: 1280px) {
+          .hd-grid {
+            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+            padding: 8px 48px 48px;
+          }
+        }
+
+        /* Left zone — editorial */
+        .hd-left {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 32px;
+          color: #fdf9f2;
+        }
+
+        .hd-greeting-eyebrow {
+          font-size: 13px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.78);
+          margin: 0 0 14px;
+          font-weight: 400;
+        }
+
+        .hd-greeting-name {
+          margin: 0;
+          font-size: clamp(56px, 9vw, 132px);
+          line-height: 0.95;
+          font-weight: 300;
+          letter-spacing: -0.01em;
+          color: #fdf9f2;
+        }
+
+        .hd-greeting-property {
+          margin: 18px 0 0;
+          font-size: clamp(15px, 1.3vw, 18px);
+          color: rgba(253, 249, 242, 0.82);
+          max-width: 520px;
+          line-height: 1.5;
+          font-weight: 300;
+        }
+
+        /* Stats strip — sits on video, no card */
+        .hd-stats {
+          display: flex;
+          align-items: stretch;
+          gap: 0;
+          margin-top: 24px;
+          max-width: 560px;
+        }
+        .hd-stat {
+          flex: 1;
+          padding: 18px 0;
+          border-left: 1px solid rgba(253, 249, 242, 0.22);
+        }
+        .hd-stat:first-child { border-left: none; padding-left: 0; }
+        .hd-stat:not(:first-child) { padding-left: 22px; }
+        .hd-stat-value {
+          margin: 0;
+          font-size: 38px;
+          line-height: 1;
+          font-weight: 300;
+          color: #fdf9f2;
+        }
+        .hd-stat-label {
+          margin: 8px 0 0;
+          font-size: 10px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.7);
+          font-weight: 500;
+        }
+
+        /* Right zone — dark rounded panel */
+        .hd-right {
+          background: rgba(20, 16, 12, 0.72);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(253, 249, 242, 0.08);
+          border-radius: 28px;
+          padding: 28px;
+          color: #fdf9f2;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          min-height: 480px;
+        }
+
+        @media (min-width: 900px) {
+          .hd-right { min-height: auto; }
+        }
+
+        .hd-right-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .hd-right-title {
+          margin: 0;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(253, 249, 242, 0.7);
+          letter-spacing: 0.04em;
+        }
+
+        .hd-countdown-num {
+          margin: 6px 0 0;
+          font-size: 56px;
+          line-height: 1;
+          font-weight: 300;
+          color: #fdf9f2;
+          letter-spacing: -0.01em;
+        }
+
+        .hd-countdown-sub {
+          margin: 6px 0 0;
+          font-size: 13px;
+          color: rgba(253, 249, 242, 0.65);
+          font-weight: 300;
+        }
+
+        .hd-arrow-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          border: 1px solid rgba(253, 249, 242, 0.22);
+          background: transparent;
+          color: rgba(253, 249, 242, 0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .hd-arrow-btn:hover {
+          background: rgba(253, 249, 242, 0.08);
+          border-color: rgba(253, 249, 242, 0.4);
+        }
+
+        /* Property image inside right panel */
+        .hd-property-card {
+          position: relative;
+          flex: 1;
+          min-height: 240px;
+          border-radius: 22px;
+          overflow: hidden;
+          cursor: pointer;
+          background: rgba(253, 249, 242, 0.05);
+          transition: transform 0.4s ease;
+        }
+        .hd-property-card:hover { transform: translateY(-2px); }
+        .hd-property-card-img {
+          position: absolute;
+          inset: 0;
+          background-size: cover;
+          background-position: center;
+        }
+        .hd-property-card-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, transparent 50%, rgba(20, 16, 12, 0.85) 100%);
+        }
+        .hd-property-card-meta {
+          position: absolute;
+          left: 22px;
+          right: 22px;
+          bottom: 20px;
+          color: #fdf9f2;
+        }
+
+        /* Bookings & multi-stays — soft glass strips on video */
+        .hd-soft-card {
+          background: rgba(253, 249, 242, 0.1);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(253, 249, 242, 0.18);
+          border-radius: 20px;
+          padding: 18px 20px;
+          color: #fdf9f2;
+        }
+
+        .hd-other-stays-row {
+          display: flex;
+          gap: 12px;
+          overflow-x: auto;
+          padding-bottom: 4px;
+          scrollbar-width: none;
+        }
+        .hd-other-stays-row::-webkit-scrollbar { display: none; }
+
+        .hd-other-stay {
+          flex: 0 0 240px;
+          background: rgba(253, 249, 242, 0.1);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(253, 249, 242, 0.18);
+          border-radius: 18px;
+          padding: 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          color: #fdf9f2;
+          cursor: pointer;
+          transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .hd-other-stay:hover {
+          transform: translateY(-2px);
+          background: rgba(253, 249, 242, 0.15);
         }
       `}</style>
 
-      {/* ── SECTION 1: HEADER ── */}
-      <MountSection mounted={mounted} delay={0}>
-        <div
-          style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 40,
-            height: 52,
-            background: 'var(--surface)',
-            borderBottom: '1px solid var(--border)',
-            padding: '0 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span
-            className={cormorant.className}
-            style={{ fontSize: 18, fontWeight: 400, color: 'var(--gold)', lineHeight: 1 }}
-          >
-            Stayscape
-          </span>
+      {/* ── VIDEO BACKGROUND ── */}
+      <div className="hd-video-wrap" aria-hidden="true">
+        <video
+          src={VIDEO_SRC}
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={propertyImage}
+        />
+        <div className="hd-video-overlay" />
+      </div>
 
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard');
-              }
-            }}
-            style={{
-              flex: 1,
-              margin: '0 12px',
-              height: 34,
-              background: 'var(--surface-raised)',
-              border: '1px solid var(--border)',
-              borderRadius: 17,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '0 12px',
-              cursor: 'pointer',
-            }}
-          >
-            <IconSearch />
-            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-faint)' }}>
-              Search places, hotels...
+      {/* ── CONTENT LAYER ── */}
+      <div className="hd-content">
+        {/* TOP BAR */}
+        <MountSection mounted={mounted} delay={0}>
+          <div className="hd-topbar">
+            <span
+              className={cormorant.className}
+              style={{
+                fontSize: 22,
+                fontWeight: 400,
+                color: '#fdf9f2',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Stayscape
             </span>
+            <span style={{ width: 22 }} />
           </div>
+        </MountSection>
 
-          {/* Right side reserved for future avatar */}
-          <div style={{ width: 0 }} aria-hidden="true" />
-        </div>
-      </MountSection>
+        {/* MAIN GRID */}
+        <div className="hd-grid">
+          {/* LEFT ZONE — editorial */}
+          <div className="hd-left">
+            <MountSection mounted={mounted} delay={120}>
+              <div>
+                <p className={`${dmSans.className} hd-greeting-eyebrow`}>
+                  {greeting}
+                </p>
+                {loadState === 'loading' ? (
+                  <Shimmer style={{ height: 96, width: '60%', borderRadius: 12 }} />
+                ) : (
+                  <h1 className={cormorant.className + ' hd-greeting-name'}>
+                    {firstName}.
+                  </h1>
+                )}
+                {propertyName ? (
+                  <p className={`${dmSans.className} hd-greeting-property`}>
+                    Welcome to <em style={{ fontStyle: 'italic' }}>{propertyName}</em>
+                    {propertyCity ? ` — ${[propertyCity, propertyCountry].filter(Boolean).join(', ')}` : ''}.
+                  </p>
+                ) : (
+                  <p className={`${dmSans.className} hd-greeting-property`}>
+                    Add a booking reference to begin your stay.
+                  </p>
+                )}
+              </div>
+            </MountSection>
 
-      {/* ── SECTION: YOUR STAYS ── */}
-      {(() => {
-        const allStays = [
-          ...(data?.currentStays ?? []),
-          ...(data?.upcomingStays ?? []),
-        ];
-        if (allStays.length === 0) return null;
-        return (
-          <MountSection mounted={mounted} delay={140}>
-            <div style={{ padding: '24px 20px 12px' }}>
-              <p
-                className={cormorant.className}
-                style={{
-                  margin: 0,
-                  fontSize: 20,
-                  fontWeight: 400,
-                  fontStyle: 'italic',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Your Stays
-              </p>
-            </div>
-            {allStays.map((s) => {
-              const img = s.property?.image_url ?? null;
-              const name = s.property?.name ?? 'Your stay';
-              const city = s.property?.city ?? '';
-              const country = s.property?.country ?? '';
-              const ci = s.check_in
-                ? new Date(s.check_in + 'T00:00:00').toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                  })
-                : '';
-              const co = s.check_out
-                ? new Date(s.check_out + 'T00:00:00').toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                  })
-                : '';
-              return (
+            {/* Bottom block: stats + bookings + multi-stays */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Stats strip */}
+              <MountSection mounted={mounted} delay={220}>
+                <div className="hd-stats">
+                  {[
+                    { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'Nights' },
+                    { value: guestCount !== null ? String(guestCount) : '—', label: 'Guests' },
+                    { value: checkOutFormatted ?? '—', label: 'Checkout' },
+                  ].map((col) => (
+                    <div key={col.label} className="hd-stat">
+                      <p className={cormorant.className + ' hd-stat-value'}>
+                        {col.value}
+                      </p>
+                      <p className={`${dmSans.className} hd-stat-label`}>{col.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </MountSection>
+
+              {/* Bookings & Reservations */}
+              <MountSection mounted={mounted} delay={300}>
                 <div
-                  key={s.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => s.property?.slug ? router.push(`/stay/${s.property.slug}/${s.id}`) : router.push('/dashboard')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      s.property?.slug ? router.push(`/stay/${s.property.slug}/${s.id}`) : router.push('/dashboard');
-                    }
-                  }}
+                  className="hd-soft-card"
                   style={{
-                    margin: '0 20px 8px',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 16,
-                    padding: 16,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 12,
-                    cursor: 'pointer',
+                    justifyContent: 'space-between',
+                    gap: 16,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 10,
-                      backgroundImage: img ? `url(${img})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundColor: 'var(--surface-raised)',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div>
                     <p
                       style={{
                         margin: 0,
                         fontSize: 13,
                         fontWeight: 500,
-                        color: 'var(--text-primary)',
+                        color: '#fdf9f2',
                       }}
                     >
-                      {name}
+                      Bookings &amp; Reservations
                     </p>
                     <p
                       style={{
-                        margin: '2px 0 0',
-                        fontSize: 11,
-                        color: 'var(--text-muted)',
+                        margin: '4px 0 0',
+                        fontSize: 12,
+                        color: 'rgba(253, 249, 242, 0.7)',
+                        fontWeight: 300,
                       }}
                     >
-                      {[city, country].filter(Boolean).join(', ')}
-                    </p>
-                    <p
-                      style={{
-                        margin: '2px 0 0',
-                        fontSize: 11,
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      {ci} – {co}
-                    </p>
-                  </div>
-                  <div style={{ flexShrink: 0 }}>
-                    <IconArrow />
-                  </div>
-                </div>
-              );
-            })}
-          </MountSection>
-        );
-      })()}
-
-      {/* ── SECTION: COUNTDOWN ── */}
-      {(() => {
-        const upcoming = data?.upcomingStays?.[0] ?? null;
-        if (!upcoming?.check_in) return null;
-        const ciDate = parseLocalDate(upcoming.check_in);
-        if (ciDate.getTime() <= today.getTime() - 86400000) return null;
-        const daysUntil = Math.max(
-          0,
-          Math.ceil((ciDate.getTime() - today.getTime()) / 86400000),
-        );
-        const label =
-          daysUntil === 0
-            ? "You're here ✦"
-            : daysUntil === 1
-              ? 'Tomorrow'
-              : `${daysUntil} days away`;
-        const rightDotColor =
-          daysUntil === 0 ? 'var(--gold)' : 'var(--border-subtle)';
-        return (
-          <MountSection mounted={mounted} delay={160}>
-            <div style={{ padding: '0 20px', marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: 'var(--gold)',
-                    flexShrink: 0,
-                  }}
-                />
-                <div
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    background: 'var(--border)',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      background: 'var(--background)',
-                      padding: '0 6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--gold)',
-                    }}
-                  >
-                    <svg
-                      width={14}
-                      height={14}
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
-                    </svg>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: rightDotColor,
-                    flexShrink: 0,
-                  }}
-                />
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginTop: 6,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                  }}
-                >
-                  Today
-                </span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: 'var(--gold)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                  }}
-                >
-                  {formatDayMonth(upcoming.check_in)}
-                </span>
-              </div>
-              <p
-                className={cormorant.className}
-                style={{
-                  margin: '8px 0 0',
-                  textAlign: 'center',
-                  fontSize: 18,
-                  fontStyle: 'italic',
-                  color: 'var(--gold)',
-                  fontWeight: 400,
-                }}
-              >
-                {label}
-              </p>
-            </div>
-          </MountSection>
-        );
-      })()}
-
-      {/* ── RESPONSIVE MAIN GRID ── */}
-      {/* Mobile: single column | Tablet 768px+: 2col | Desktop 1024px+: 3col */}
-      <div className="hd-main-grid">
-
-        {/* LEFT COLUMN: Hero + Bookings */}
-        <div className="hd-left">
-
-          {/* ── SECTION 2: HERO ── */}
-          <MountSection mounted={mounted} delay={60}>
-            {loadState === 'loading' ? (
-              <Shimmer style={{ width: '100%', height: 'min(52vw, 240px)' }} />
-            ) : (
-              <div
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: 'min(52vw, 240px)',
-                  backgroundImage: propertyImage ? `url(${propertyImage})` : undefined,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundColor: 'var(--surface-raised)',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background:
-                      'linear-gradient(to bottom, rgba(250,248,245,0.1) 0%, rgba(250,248,245,0.0) 25%, rgba(250,248,245,0.75) 78%, var(--background) 100%)',
-                    pointerEvents: 'none',
-                  }}
-                />
-                <div style={{ position: 'absolute', top: 16, left: 20 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 9,
-                      fontWeight: 500,
-                      letterSpacing: '0.22em',
-                      color: 'var(--gold)',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {greeting}
-                  </p>
-                  <p
-                    className={cormorant.className}
-                    style={{
-                      margin: '4px 0 0',
-                      fontSize: 20,
-                      fontWeight: 400,
-                      lineHeight: 1.1,
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {firstName}
-                  </p>
-                </div>
-                <div style={{ position: 'absolute', bottom: 14, left: 20, right: 20 }}>
-                  {propertyName ? (
-                    <p
-                      className={cormorant.className}
-                      style={{
-                        margin: 0,
-                        fontSize: 24,
-                        fontWeight: 400,
-                        lineHeight: 1.1,
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      {propertyName}
-                    </p>
-                  ) : null}
-                  {(propertyCity || propertyCountry) ? (
-                    <p
-                      style={{
-                        margin: '3px 0 0',
-                        fontSize: 10,
-                        fontWeight: 400,
-                        letterSpacing: '0.18em',
-                        color: 'var(--text-muted)',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </MountSection>
-
-          {/* ── SECTION 3: STAY STATS (boarding pass) ── */}
-          <MountSection mounted={mounted} delay={120}>
-            {loadState === 'loading' ? (
-              <div
-                style={{
-                  display: 'flex',
-                  borderTop: '1px solid var(--border)',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              >
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '20px 0',
-                      gap: 6,
-                      borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
-                    }}
-                  >
-                    <Shimmer style={{ width: 40, height: 10 }} />
-                    <Shimmer style={{ width: 24, height: 6 }} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  borderTop: '1px solid var(--border)',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              >
-                {[
-                  { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'NIGHTS' },
-                  { value: guestCount !== null ? String(guestCount) : '—', label: 'GUESTS' },
-                  { value: checkOutFormatted ?? '—', label: 'CHECKOUT' },
-                ].map((col, i) => (
-                  <div
-                    key={col.label}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '20px 0',
-                      borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
-                    }}
-                  >
-                    <p
-                      className={cormorant.className}
-                      style={{
-                        margin: 0,
-                        fontSize: 32,
-                        fontWeight: 400,
-                        lineHeight: 1,
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      {col.value}
-                    </p>
-                    <p
-                      style={{
-                        margin: '5px 0 0',
-                        fontSize: 9,
-                        fontWeight: 500,
-                        letterSpacing: '0.18em',
-                        color: 'var(--text-muted)',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {col.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </MountSection>
-
-          {/* ── SECTION 4: BOOKINGS & RESERVATIONS ── */}
-          <MountSection mounted={mounted} delay={180}>
-            <div
-              style={{
-                margin: '20px 20px 0',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 16,
-                padding: 16,
-                boxShadow: 'var(--card-shadow)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 14,
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  Bookings &amp; Reservations
-                </p>
-                <IconAirplane />
-              </div>
-              {loadState === 'loading' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '10px 0',
-                        borderBottom: i === 2 ? 'none' : '1px solid var(--border-subtle)',
-                        gap: 12,
-                      }}
-                    >
-                      <Shimmer style={{ width: 44, height: 32 }} />
-                      <Shimmer style={{ flex: 1, height: 14 }} />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {checkIn ? (
-                    <TimelineRow
-                      dateStr={checkIn}
-                      today={today}
-                      title={`Stay at ${propertyName || 'your hotel'}`}
-                      subtitle={`${formatDayMonth(checkIn)} – ${formatDayMonth(checkOut)}`}
-                      onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}`) : router.push('/dashboard')}
-                      isLast={upcomingItems.length === 0}
-                      cormorantClass={cormorant.className}
-                    />
-                  ) : null}
-                  {upcomingItems.map((item, idx) => (
-                    <TimelineRow
-                      key={item.id}
-                      dateStr={item.scheduleddate}
-                      today={today}
-                      title={item.name ?? item.category ?? 'Activity'}
-                      subtitle={item.starttime ?? formatDayMonth(item.scheduleddate)}
-                      onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/itinerary`) : router.push('/dashboard')}
-                      isLast={idx === upcomingItems.length - 1}
-                      cormorantClass={cormorant.className}
-                    />
-                  ))}
-                  {!checkIn && upcomingItems.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
                       No upcoming bookings.
                     </p>
-                  ) : null}
+                  </div>
+                  <div style={{ color: 'rgba(253, 249, 242, 0.7)' }}>
+                    <IconAirplane />
+                  </div>
                 </div>
+              </MountSection>
+
+              {/* Multiple stays row */}
+              {hasOtherStays && (
+                <MountSection mounted={mounted} delay={380}>
+                  <div className="hd-other-stays-row">
+                    {otherStays.map((s) => {
+                      const name = s.property?.name ?? 'Stay';
+                      const city = s.property?.city ?? '';
+                      const country = s.property?.country ?? '';
+                      const img = s.property?.image_url ?? HERO_FALLBACK;
+                      return (
+                        <div
+                          key={s.id}
+                          className="hd-other-stay"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            s.property?.slug
+                              ? router.push(`/stay/${s.property.slug}/${s.id}`)
+                              : router.push('/dashboard')
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              s.property?.slug
+                                ? router.push(`/stay/${s.property.slug}/${s.id}`)
+                                : router.push('/dashboard');
+                            }
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              backgroundImage: `url(${img})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 13,
+                                fontWeight: 500,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {name}
+                            </p>
+                            <p
+                              style={{
+                                margin: '2px 0 0',
+                                fontSize: 11,
+                                color: 'rgba(253, 249, 242, 0.65)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {[city, country].filter(Boolean).join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </MountSection>
               )}
             </div>
-          </MountSection>
+          </div>
 
-        </div>{/* end hd-left */}
+          {/* RIGHT ZONE — dark rounded panel */}
+          <MountSection mounted={mounted} delay={200}>
+            <div className="hd-right">
+              <div className="hd-right-header">
+                <div>
+                  <p className={`${dmSans.className} hd-right-title`}>
+                    {nightsLeft !== null && nightsLeft > 0 ? 'Nights remaining' : 'Your next stay'}
+                  </p>
+                  {loadState === 'loading' ? (
+                    <Shimmer style={{ height: 56, width: 100, marginTop: 6 }} />
+                  ) : (
+                    <>
+                      <p className={cormorant.className + ' hd-countdown-num'}>
+                        {nightsLeft !== null ? nightsLeft : '—'}
+                      </p>
+                      {checkOutFormatted ? (
+                        <p className={`${dmSans.className} hd-countdown-sub`}>
+                          Until checkout · {checkOutFormatted}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
 
-        {/* CENTER COLUMN: Places to Explore */}
-        <div className="hd-center">
-          <MountSection mounted={mounted} delay={240} style={{ marginTop: 20 }}>
-            <div
-              style={{
-                padding: '0 20px 12px',
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-              }}
-            >
-              <p
-                className={cormorant.className}
-                style={{
-                  margin: 0,
-                  fontSize: 20,
-                  fontWeight: 400,
-                  fontStyle: 'italic',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Places to Explore
-              </p>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
+                {hasOtherStays && (
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      className="hd-arrow-btn"
+                      aria-label="Previous stay"
+                      style={{ transform: 'scaleX(-1)' }}
+                    >
+                      <IconArrow />
+                    </button>
+                    <button
+                      type="button"
+                      className="hd-arrow-btn"
+                      aria-label="Next stay"
+                    >
+                      <IconArrow />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Property image card */}
+              <div
+                className="hd-property-card"
+                role={stay?.property?.slug && stayId ? 'button' : undefined}
+                tabIndex={stay?.property?.slug && stayId ? 0 : -1}
+                onClick={() =>
+                  stay?.property?.slug && stayId
+                    ? router.push(`/stay/${stay.property.slug}/${stayId}`)
+                    : undefined
+                }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (
+                    (e.key === 'Enter' || e.key === ' ') &&
+                    stay?.property?.slug &&
+                    stayId
+                  ) {
                     e.preventDefault();
-                    stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard');
+                    router.push(`/stay/${stay.property.slug}/${stayId}`);
                   }
                 }}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 500,
-                  letterSpacing: '0.12em',
-                  color: 'var(--gold)',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                }}
               >
-                See all →
-              </span>
-            </div>
-            {loadState === 'loading' ? (
-              <PlacesSkeleton />
-            ) : (
-              <PlacesGrid
-                places={places}
-                onSelect={() => stay?.property?.slug && stayId ? router.push(`/stay/${stay.property.slug}/${stayId}/discover`) : router.push('/dashboard')}
-              />
-            )}
-          </MountSection>
-        </div>{/* end hd-center */}
-
-        {/* RIGHT COLUMN: Activities Near You */}
-        <div className="hd-right">
-          <MountSection mounted={mounted} delay={300}>
-            <div
-              style={{
-                margin: '20px 20px 0',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 16,
-                padding: 16,
-                boxShadow: 'var(--card-shadow)',
-              }}
-            >
-              <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                Activities Near You
-              </p>
-              {loadState === 'loading' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {[0, 1, 2, 3].map((i) => (
+                {loadState === 'loading' ? (
+                  <Shimmer style={{ position: 'absolute', inset: 0, borderRadius: 22 }} />
+                ) : (
+                  <>
                     <div
-                      key={i}
+                      className="hd-property-card-img"
+                      style={{ backgroundImage: `url(${propertyImage})` }}
+                    />
+                    <div className="hd-property-card-overlay" />
+                    <div className="hd-property-card-meta">
+                      <p
+                        className={cormorant.className}
+                        style={{
+                          margin: 0,
+                          fontSize: 22,
+                          fontWeight: 400,
+                          fontStyle: propertyName ? 'normal' : 'italic',
+                          color: '#fdf9f2',
+                          lineHeight: 1.15,
+                        }}
+                      >
+                        {propertyName || 'No active stay'}
+                      </p>
+                      {propertyCity ? (
+                        <p
+                          style={{
+                            margin: '4px 0 0',
+                            fontSize: 12,
+                            letterSpacing: '0.16em',
+                            textTransform: 'uppercase',
+                            color: 'rgba(253, 249, 242, 0.78)',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {[propertyCity, propertyCountry].filter(Boolean).join(' · ')}
+                        </p>
+                      ) : null}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Check-in / check-out footer */}
+              {(checkIn || checkOut) && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    paddingTop: 4,
+                    borderTop: '1px solid rgba(253, 249, 242, 0.1)',
+                  }}
+                >
+                  <div>
+                    <p
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '11px 0',
-                        borderBottom: i === 3 ? 'none' : '1px solid var(--border-subtle)',
-                        gap: 10,
+                        margin: 0,
+                        fontSize: 10,
+                        letterSpacing: '0.2em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(253, 249, 242, 0.6)',
+                        fontWeight: 500,
                       }}
                     >
-                      <Shimmer style={{ width: 32, height: 32, borderRadius: 8 }} />
-                      <Shimmer style={{ flex: 1, height: 12 }} />
-                    </div>
-                  ))}
+                      Check-in
+                    </p>
+                    <p
+                      className={cormorant.className}
+                      style={{
+                        margin: '6px 0 0',
+                        fontSize: 18,
+                        fontWeight: 400,
+                        color: '#fdf9f2',
+                      }}
+                    >
+                      {formatDayMonth(checkIn)}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 10,
+                        letterSpacing: '0.2em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(253, 249, 242, 0.6)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Checkout
+                    </p>
+                    <p
+                      className={cormorant.className}
+                      style={{
+                        margin: '6px 0 0',
+                        fontSize: 18,
+                        fontWeight: 400,
+                        color: '#fdf9f2',
+                      }}
+                    >
+                      {formatDayMonth(checkOut)}
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <ActivitiesList places={places.slice(0, 5)} />
               )}
             </div>
           </MountSection>
-        </div>{/* end hd-right */}
-
-      </div>{/* end hd-main-grid */}
-
-      {/* Bottom spacer so last card isn't hidden behind tab bar */}
-      <div style={{ height: 20 }} aria-hidden="true" />
-
-      {/* Spacer above the home indicator */}
-      <div style={{ height: 80 }} aria-hidden="true" />
-
-      {/* Minimal single-tab home indicator (replaces WarmBottomTabBar) */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 64,
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 3,
-            color: 'var(--gold)',
-          }}
-        >
-          <svg
-            width={22}
-            height={22}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.05em' }}>
-            Home
-          </span>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ─── Sub-components ─── */
-
-function TimelineRow({
-  dateStr,
-  today,
-  title,
-  subtitle,
-  onClick,
-  isLast,
-  cormorantClass,
-}: {
-  dateStr: string;
-  today: Date;
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-  isLast: boolean;
-  cormorantClass: string;
-}) {
-  const dayLabel = isSameLocalDay(dateStr, today) ? 'Today' : weekdayShort(dateStr);
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '10px 0',
-        borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
-        cursor: 'pointer',
-      }}
-    >
-      {/* Date badge */}
-      <div style={{ width: 44, flexShrink: 0, textAlign: 'center' }}>
-        <p
-          className={cormorantClass}
-          style={{ margin: 0, fontSize: 22, fontWeight: 400, lineHeight: 1, color: 'var(--text-primary)' }}
-        >
-          {formatDayNumber(dateStr)}
-        </p>
-        <p
-          style={{
-            margin: '1px 0 0',
-            fontSize: 9,
-            fontWeight: 500,
-            letterSpacing: '0.1em',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-          }}
-        >
-          {formatMonthShort(dateStr)}
-        </p>
-      </div>
-
-      {/* Vertical divider */}
-      <div
-        style={{
-          width: 1,
-          height: 32,
-          background: 'var(--border)',
-          margin: '0 12px',
-          flexShrink: 0,
-        }}
-      />
-
-      {/* Day label */}
-      <div
-        style={{
-          width: 52,
-          flexShrink: 0,
-          fontSize: 10,
-          fontWeight: 400,
-          color: 'var(--text-muted)',
-        }}
-      >
-        {dayLabel}
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-          {title}
-        </p>
-        <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>
-          {subtitle}
-        </p>
-      </div>
-
-      {/* Arrow */}
-      <div style={{ flexShrink: 0, marginLeft: 8 }}>
-        <IconArrow />
-      </div>
-    </div>
-  );
-}
-
-function PlaceCard({
-  place,
-  height,
-  nameSize,
-  onClick,
-}: {
-  place: DiscoveryPlaceCard;
-  height: number;
-  nameSize: number;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        cursor: 'pointer',
-        // width: 100% ensures full-width cards actually fill the column
-        // flex: 1 ensures side-by-side cards share space equally
-        width: '100%',
-        flex: 1,
-        height,
-        backgroundImage: `url(${getPlaceImage(place)})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundColor: 'var(--surface-raised)',
-      }}
-    >
-      {/* Scrim */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
-        }}
-      />
-
-      {/* Rating — top right */}
-      {place.rating !== null && place.rating !== undefined ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            fontSize: 11,
-            fontWeight: 400,
-            color: 'rgba(255,255,255,0.9)',
-          }}
-        >
-          ★ {place.rating.toFixed(1)}
-        </div>
-      ) : null}
-
-      {/* Category + name — bottom left */}
-      <div style={{ position: 'absolute', bottom: 12, left: 12, right: 28 }}>
-        {place.category ? (
-          <p
-            style={{
-              margin: '0 0 3px',
-              fontSize: 9,
-              fontWeight: 500,
-              letterSpacing: '0.14em',
-              color: 'rgba(255,255,255,0.6)',
-              textTransform: 'uppercase',
-            }}
-          >
-            {place.category}
-          </p>
-        ) : null}
-        <p
-          style={{
-            margin: 0,
-            fontSize: nameSize,
-            fontWeight: 500,
-            color: 'rgba(255,255,255,1)',
-            lineHeight: 1.2,
-          }}
-        >
-          {place.name}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function PlacesGrid({
-  places,
-  onSelect,
-}: {
-  places: DiscoveryPlaceCard[];
-  onSelect: () => void;
-}) {
-  if (places.length === 0) {
-    return (
-      <div
-        style={{
-          padding: '0 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-        }}
-      >
-        <PlacesSkeleton dim />
-      </div>
-    );
-  }
-
-  const elements: ReactNode[] = [];
-
-  // Card 0 — full width tall
-  if (places[0]) {
-    elements.push(
-      <PlaceCard
-        key={places[0].id}
-        place={places[0]}
-        height={220}
-        nameSize={14}
-        onClick={onSelect}
-      />,
-    );
-  }
-
-  // Cards 1 + 2 — side by side
-  if (places[1] || places[2]) {
-    elements.push(
-      <div key="row-1-2" style={{ display: 'flex', gap: 4, width: '100%' }}>
-        {places[1] ? (
-          <PlaceCard place={places[1]} height={150} nameSize={12} onClick={onSelect} />
-        ) : null}
-        {places[2] ? (
-          <PlaceCard place={places[2]} height={150} nameSize={12} onClick={onSelect} />
-        ) : null}
-      </div>,
-    );
-  }
-
-  // Card 3 — full width
-  if (places[3]) {
-    elements.push(
-      <PlaceCard
-        key={places[3].id}
-        place={places[3]}
-        height={200}
-        nameSize={14}
-        onClick={onSelect}
-      />,
-    );
-  }
-
-  // Cards 4+ — full width
-  for (let i = 4; i < places.length; i++) {
-    elements.push(
-      <PlaceCard
-        key={places[i].id}
-        place={places[i]}
-        height={180}
-        nameSize={14}
-        onClick={onSelect}
-      />,
-    );
-  }
-
-  return (
-    <div
-      style={{
-        padding: '0 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}
-    >
-      {elements}
-    </div>
-  );
-}
-
-function PlacesSkeleton({ dim }: { dim?: boolean }) {
-  return (
-    <div
-      style={{
-        padding: '0 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        opacity: dim ? 0.4 : 1,
-      }}
-    >
-      <Shimmer style={{ width: '100%', height: 220 }} />
-      <div style={{ display: 'flex', gap: 4, width: '100%' }}>
-        <Shimmer style={{ flex: 1, height: 150 }} />
-        <Shimmer style={{ flex: 1, height: 150 }} />
-      </div>
-      <Shimmer style={{ width: '100%', height: 200 }} />
-    </div>
-  );
-}
-
-function ActivitiesList({ places }: { places: DiscoveryPlaceCard[] }) {
-  if (places.length === 0) {
-    return (
-      <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>
-        No nearby activities yet.
-      </p>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {places.map((place, idx) => {
-        const isLast = idx === places.length - 1;
-        const subtitle = place.distance
-          ? place.distance
-          : place.category
-            ? place.category.charAt(0).toUpperCase() + place.category.slice(1)
-            : '';
-
-        return (
-          <div
-            key={place.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '11px 0',
-              borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
-            }}
-          >
-            {/* Category icon */}
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                flexShrink: 0,
-                borderRadius: 8,
-                background: 'var(--surface-raised)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <CategoryIcon category={place.category} />
-            </div>
-
-            {/* Name + subtitle */}
-            <div style={{ flex: 1, marginLeft: 10 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}>
-                {place.name}
-              </p>
-              {subtitle ? (
-                <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>
-                  {subtitle}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Rating */}
-            {place.rating !== null && place.rating !== undefined ? (
-              <div
-                style={{
-                  flexShrink: 0,
-                  marginLeft: 8,
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: 'var(--text-muted)',
-                }}
-              >
-                ★ {place.rating.toFixed(1)}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
     </div>
   );
 }
