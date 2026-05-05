@@ -3,6 +3,11 @@
 
 @config "../../tailwind.config.ts";
 
+/* ════════════════════════════════════════════════════════════════
+   LIGHT THEME — kept for any future toggle. Currently NOT active.
+   The root HTML uses data-theme="dark" (see app/layout.tsx).
+   ════════════════════════════════════════════════════════════════ */
+
 :root,
 [data-theme="light"] {
   /* Core */
@@ -96,66 +101,117 @@
   --tab-hover: #F5F2EE;
 }
 
-/* Dark mode — ONLY used for map and discover sections */
+/* ════════════════════════════════════════════════════════════════
+   DARK THEME — DEEP ESPRESSO (the active palette).
+   Cozy + premium + futuristic. Warm browns, soft cream text, gold
+   stays as the editorial accent.
+
+   Palette anchors:
+     #14100D   nearly black, warm undertone (background)
+     #1E1814   deep espresso (surface base)
+     #2A2218   raised espresso (cards)
+     #3A2E22   warm walnut border tone
+     #C9A875   refined antique gold (accent)
+     #F5E6CC   warm ivory cream (text)
+     #B8A088   tan caramel (secondary text)
+     #80715E   dim caramel (muted)
+   ════════════════════════════════════════════════════════════════ */
+
 [data-theme="dark"] {
-  --background: #FAF8F5;
-  --foreground: #1C1A17;
-  --gold: #C17F3A;
-  --gold-soft: #D4956A;
-  --gold-muted: #E8C9A8;
-  --surface: #FFFFFF;
-  --surface-raised: #F5F2EE;
-  --border: #EDE8E1;
-  --border-subtle: #F2EEE8;
-  --header-bg: #FFFFFF;
-  --header-border: #EDE8E1;
-  --panel-bg: #FAF8F5;
-  --card-bg: #FFFFFF;
-  --card-border: #EDE8E1;
-  --input-bg: #FFFFFF;
-  --text-primary: #1C1A17;
-  --text-secondary: #6B6158;
-  --text-muted: #9E9389;
-  --text-faint: #C4BBB2;
-  --text-dim: #D8D2CB;
-  --dashboard-bg: #FAF8F5;
-  --dashboard-card-bg: #FFFFFF;
-  --dashboard-card-border: #EDE8E1;
-  --dashboard-surface-raised: #F5F2EE;
-  --dashboard-header-bg: #FFFFFF;
-  --dashboard-header-border: #EDE8E1;
-  --dashboard-text-primary: #1C1A17;
-  --dashboard-text-secondary: #6B6158;
-  --dashboard-text-muted: #9E9389;
-  --dashboard-text-faint: #C4BBB2;
-  --dashboard-text-dim: #D8D2CB;
-  --dashboard-border-subtle: #F2EEE8;
-  --dashboard-input-bg: #FFFFFF;
-  --map-bg: #0F0E0C;
-  --map-label-bg: #1A1714;
-  --map-zoom-bg: #1A1714;
-  --map-zoom-border: #2A2520;
-  --discover-bg:           #FAF8F5;
-  --discover-surface:      #FFFFFF;
-  --discover-card:         #FFFFFF;
-  --discover-border:       #EDE8E1;
-  --discover-gold:         #C17F3A;
-  --discover-title:        #1C1A17;
-  --discover-body:         #6B6158;
-  --discover-gold-5:       rgba(193,127,58,0.05);
-  --discover-gold-8:       rgba(193,127,58,0.08);
-  --discover-gold-12:      rgba(193,127,58,0.12);
-  --discover-gold-15:      rgba(193,127,58,0.15);
-  --discover-gold-20:      rgba(193,127,58,0.20);
-  --discover-gold-25:      rgba(193,127,58,0.25);
-  --discover-bg-overlay:   rgba(250,248,245,0.92);
-  --discover-active-card:  rgba(193,127,58,0.08);
-  --tab-bg: #FFFFFF;
-  --tab-border: #EDE8E1;
-  --tab-active: #C17F3A;
-  --tab-inactive: #9E9389;
-  --tab-hover: #F5F2EE;
+  /* Core */
+  --background: #14100D;
+  --foreground: #F5E6CC;
+  --gold: #C9A875;
+  --gold-soft: #D9BC92;
+  --gold-muted: #8B7654;
+  --gold-subtle: rgba(201, 168, 117, 0.12);
+
+  /* Surfaces */
+  --surface: #1E1814;
+  --surface-raised: #2A2218;
+  --charcoal: #251D17;
+  --charcoal-light: #2F261D;
+
+  /* Borders */
+  --border: rgba(245, 230, 204, 0.10);
+  --border-subtle: rgba(245, 230, 204, 0.06);
+
+  /* Header */
+  --header-bg: rgba(20, 16, 13, 0.85);
+  --header-border: rgba(245, 230, 204, 0.08);
+
+  /* Panels & Cards */
+  --panel-bg: #14100D;
+  --card-bg: #1E1814;
+  --card-border: rgba(245, 230, 204, 0.10);
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(245, 230, 204, 0.02);
+  --card-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201, 168, 117, 0.15);
+
+  /* Inputs */
+  --input-bg: #1E1814;
+  --input-border: rgba(245, 230, 204, 0.12);
+  --input-focus-ring: rgba(201, 168, 117, 0.22);
+
+  /* Text */
+  --text-primary: #F5E6CC;
+  --text-secondary: #B8A088;
+  --text-muted: #80715E;
+  --text-faint: #5C4F40;
+  --text-dim: #423829;
+
+  /* Dashboard */
+  --dashboard-bg: #14100D;
+  --dashboard-card-bg: #1E1814;
+  --dashboard-card-border: rgba(245, 230, 204, 0.10);
+  --dashboard-surface-raised: #2A2218;
+  --dashboard-header-bg: rgba(20, 16, 13, 0.85);
+  --dashboard-header-border: rgba(245, 230, 204, 0.08);
+  --dashboard-text-primary: #F5E6CC;
+  --dashboard-text-secondary: #B8A088;
+  --dashboard-text-muted: #80715E;
+  --dashboard-text-faint: #5C4F40;
+  --dashboard-text-dim: #423829;
+  --dashboard-border-subtle: rgba(245, 230, 204, 0.06);
+  --dashboard-input-bg: #1E1814;
+
+  /* Map (kept dark) */
+  --map-bg: #0F0C0A;
+  --map-label-bg: #1A1612;
+  --map-zoom-bg: #1A1612;
+  --map-zoom-border: #2A2218;
+
+  /* Discover — espresso variants */
+  --discover-bg:           #14100D;
+  --discover-surface:      #1E1814;
+  --discover-card:         #1E1814;
+  --discover-border:       rgba(245, 230, 204, 0.10);
+  --discover-gold:         #C9A875;
+  --discover-title:        #F5E6CC;
+  --discover-body:         #B8A088;
+  --discover-gold-5:       rgba(201, 168, 117, 0.05);
+  --discover-gold-8:       rgba(201, 168, 117, 0.08);
+  --discover-gold-12:      rgba(201, 168, 117, 0.12);
+  --discover-gold-15:      rgba(201, 168, 117, 0.15);
+  --discover-gold-20:      rgba(201, 168, 117, 0.20);
+  --discover-gold-25:      rgba(201, 168, 117, 0.25);
+  --discover-bg-overlay:   rgba(20, 16, 13, 0.92);
+  --discover-active-card:  rgba(201, 168, 117, 0.10);
+
+  /* Status */
+  --success: #7AAE89;
+  --error: #E07B6B;
+
+  /* Tab bar */
+  --tab-bg: rgba(20, 16, 13, 0.92);
+  --tab-border: rgba(245, 230, 204, 0.08);
+  --tab-active: #C9A875;
+  --tab-inactive: #80715E;
+  --tab-hover: #2A2218;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   BASE
+   ════════════════════════════════════════════════════════════════ */
 
 body {
   background: var(--background);
@@ -172,16 +228,13 @@ body {
   display: none;
 }
 
-/* Editorial panel animations */
+/* ════════════════════════════════════════════════════════════════
+   ANIMATIONS — kept identical in motion, recoloured for espresso
+   ════════════════════════════════════════════════════════════════ */
+
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeIn {
@@ -190,25 +243,13 @@ body {
 }
 
 @keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes gentlePulse {
@@ -216,36 +257,20 @@ body {
   50% { opacity: 0.7; }
 }
 
-/* Animation utility classes */
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out both;
-}
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out both; }
+.animate-fade-in { animation: fadeIn 0.4s ease-out both; }
+.animate-slide-in-left { animation: slideInLeft 0.45s ease-out both; }
+.animate-slide-in-right { animation: slideInRight 0.45s ease-out both; }
+.animate-gentle-pulse { animation: gentlePulse 3s ease-in-out infinite; }
 
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out both;
-}
-
-.animate-slide-in-left {
-  animation: slideInLeft 0.45s ease-out both;
-}
-
-.animate-slide-in-right {
-  animation: slideInRight 0.45s ease-out both;
-}
-
-.animate-gentle-pulse {
-  animation: gentlePulse 3s ease-in-out infinite;
-}
-
-/* Stagger delays for sequential panel items */
 .stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.10s; }
 .stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
+.stagger-4 { animation-delay: 0.20s; }
 .stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.3s; }
+.stagger-6 { animation-delay: 0.30s; }
 
-/* Warm shimmer skeleton */
+/* Espresso shimmer skeleton — replaces warmShimmer */
 @keyframes warmShimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
@@ -253,51 +278,48 @@ body {
 .skeleton-warm {
   background: linear-gradient(
     90deg,
-    #F5F2EE 25%,
-    #EDE8E1 50%,
-    #F5F2EE 75%
+    #1E1814 25%,
+    #2A2218 50%,
+    #1E1814 75%
   );
   background-size: 200% 100%;
   animation: warmShimmer 1.8s ease-in-out infinite;
 }
 
-/* Booking reference input attention glow */
+/* Booking reference input attention glow — gold-tinted */
 @keyframes referenceGlow {
-  0%   { box-shadow: 0 0 0 0   rgba(193,127,58,0); }
-  40%  { box-shadow: 0 0 0 8px rgba(193,127,58,0.18); }
-  100% { box-shadow: 0 0 0 0   rgba(193,127,58,0); }
+  0%   { box-shadow: 0 0 0 0   rgba(201, 168, 117, 0); }
+  40%  { box-shadow: 0 0 0 8px rgba(201, 168, 117, 0.20); }
+  100% { box-shadow: 0 0 0 0   rgba(201, 168, 117, 0); }
 }
 .reference-glow {
   animation: referenceGlow 1.2s ease-out 2.5s both;
 }
 
-/* Tab indicator slide-in */
 @keyframes tabIndicator {
   from { transform: scaleX(0); }
   to   { transform: scaleX(1); }
 }
 
-/* Gold check pulse for preference update confirmation */
 @keyframes goldCheckPulse {
-  0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.25); }
-  50% { box-shadow: 0 0 6px 2px rgba(201, 168, 76, 0.15); }
-  100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(201, 168, 117, 0.30); }
+  50%  { box-shadow: 0 0 6px 2px rgba(201, 168, 117, 0.18); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 168, 117, 0); }
 }
-
 .gold-check-pulse {
   animation: goldCheckPulse 1.2s ease-in-out 1;
 }
 
-/* Hover lift effect */
+/* Hover lift */
 .hover-lift {
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .hover-lift:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* Discover panel — 4px hover lift, no shadow blur */
+/* Discover panel — 4px hover lift */
 .discover-hover-lift {
   transition: transform 0.25s ease;
 }
@@ -305,84 +327,56 @@ body {
   transform: translateY(-4px);
 }
 
-/* Discover panel — card fade-in on load */
 @keyframes discoverCardFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .discover-card-fade-in {
   animation: discoverCardFadeIn 0.4s ease-out both;
 }
 
-/* Discover panel — category row horizontal slide */
 @keyframes discoverSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 .discover-slide-in {
   animation: discoverSlideIn 0.4s ease-out both;
 }
 
-/* ── Map UI — Glassmorphism utility ─────────────────────── */
+/* Glass utility — espresso-tinted */
 .glass-dark {
   background: var(--dashboard-card-bg);
   border: 1px solid var(--dashboard-card-border);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
 }
 
-/* ── Map UI — Animations ────────────────────────────────── */
-
-/* User location blue dot pulse */
+/* Map UI animations — colours kept (map stays dark) */
 @keyframes userDotPulse {
   0%   { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0.55); }
   70%  { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
   100% { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0); }
 }
-.animate-user-dot-pulse {
-  animation: userDotPulse 2s ease-in-out infinite;
-}
+.animate-user-dot-pulse { animation: userDotPulse 2s ease-in-out infinite; }
 
-/* User location outer halo */
 @keyframes userHaloPulse {
   0%, 100% { opacity: 0.25; transform: scale(1); }
   50%       { opacity: 0.5;  transform: scale(1.15); }
 }
-.animate-user-halo-pulse {
-  animation: userHaloPulse 2.4s ease-in-out infinite;
-}
+.animate-user-halo-pulse { animation: userHaloPulse 2.4s ease-in-out infinite; }
 
-/* Selected marker gold ring pulse */
 @keyframes markerRingPulse {
-  0%   { box-shadow: 0 0 0 0   rgba(201, 168, 76, 0.45); }
-  70%  { box-shadow: 0 0 0 8px rgba(201, 168, 76, 0); }
-  100% { box-shadow: 0 0 0 0   rgba(201, 168, 76, 0); }
+  0%   { box-shadow: 0 0 0 0   rgba(201, 168, 117, 0.50); }
+  70%  { box-shadow: 0 0 0 8px rgba(201, 168, 117, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(201, 168, 117, 0); }
 }
-.animate-marker-ring-pulse {
-  animation: markerRingPulse 1.6s ease-out infinite;
-}
+.animate-marker-ring-pulse { animation: markerRingPulse 1.6s ease-out infinite; }
 
-/* Place info card entrance */
 @keyframes cardEntrance {
   from { opacity: 0; transform: scale(0.94) translateY(6px); }
   to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
-.animate-card-entrance {
-  animation: cardEntrance 0.22s ease-out both;
-}
+.animate-card-entrance { animation: cardEntrance 0.22s ease-out both; }
 
-/* Aurora hero gradient shift — NoBookingState hero */
 @keyframes auroraShift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
@@ -393,49 +387,35 @@ body {
 .region-pill-btn:not([data-selected="true"]):hover {
   border-color: var(--gold) !important;
   color: var(--text-primary) !important;
-  box-shadow: 0 2px 8px rgba(193,127,58,0.12) !important;
+  box-shadow: 0 2px 8px rgba(201, 168, 117, 0.15) !important;
 }
 
-/* Booking reference discovery input focus */
+/* Discovery booking ref input focus */
 .discovery-ref-input:focus {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 0 3px rgba(193,127,58,0.12) !important;
-  background: white !important;
+  box-shadow: 0 0 0 3px rgba(201, 168, 117, 0.15) !important;
+  background: var(--surface) !important;
   outline: none;
 }
 
-/* ── Dashboard — layered background & soft motion ────────── */
+/* Dashboard background motion */
 @keyframes dashboardDrift {
   0%   { transform: translate(0, 0) scale(1); }
   50%  { transform: translate(-12px, 8px) scale(1.02); }
   100% { transform: translate(0, 0) scale(1); }
 }
-
-.dashboard-bg-drift {
-  animation: dashboardDrift 30s ease-in-out infinite;
-}
+.dashboard-bg-drift { animation: dashboardDrift 30s ease-in-out infinite; }
 
 @keyframes dashboardGlow {
-  0%, 100% { opacity: 0.035; }
-  50%      { opacity: 0.065; }
+  0%, 100% { opacity: 0.04; }
+  50%      { opacity: 0.08; }
 }
-
-.dashboard-bg-glow {
-  animation: dashboardGlow 8s ease-in-out infinite;
-}
+.dashboard-bg-glow { animation: dashboardGlow 8s ease-in-out infinite; }
 
 @keyframes appSpin {
   to { transform: rotate(360deg); }
 }
+.app-spin { animation: appSpin 0.8s linear infinite; }
 
-.app-spin {
-  animation: appSpin 0.8s linear infinite;
-}
-
-.app-discover-link {
-  transition: opacity 0.15s;
-}
-
-.app-discover-link:hover {
-  opacity: 0.75;
-}
+.app-discover-link { transition: opacity 0.15s; }
+.app-discover-link:hover { opacity: 0.75; }
