@@ -311,7 +311,7 @@ export default function StayHomePage() {
           }
           .tile:hover {
             transform: translateY(-2px);
-            border-color: rgba(201, 168, 76, 0.4);
+            border-color: rgba(201, 168, 117, 0.4);
             box-shadow: 0 8px 24px rgba(20, 16, 12, 0.08);
           }
           .tile-label {
@@ -325,7 +325,7 @@ export default function StayHomePage() {
             width: 38px;
             height: 38px;
             border-radius: 12px;
-            background: rgba(201, 168, 76, 0.1);
+            background: rgba(201, 168, 117, 0.1);
             color: var(--gold);
             display: flex;
             align-items: center;
@@ -402,7 +402,7 @@ export default function StayHomePage() {
                   width: 48,
                   height: 48,
                   borderRadius: 14,
-                  background: 'rgba(201, 168, 76, 0.1)',
+                  background: 'rgba(201, 168, 117, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -611,7 +611,7 @@ export default function StayHomePage() {
                 width: 48,
                 height: 48,
                 borderRadius: 14,
-                background: 'rgba(201, 168, 76, 0.12)',
+                background: 'rgba(201, 168, 117, 0.12)',
                 color: 'var(--gold)',
                 display: 'flex',
                 alignItems: 'center',
@@ -677,7 +677,7 @@ export default function StayHomePage() {
                     borderRadius: 12,
                     border: 'none',
                     background: 'var(--gold)',
-                    color: '#1a1410',
+                    color: '#14100D',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: submitting ? 'wait' : 'pointer',
