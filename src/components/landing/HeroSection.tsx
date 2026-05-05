@@ -126,7 +126,7 @@ export default function HeroSection() {
                   initial={reduced ? 'visible' : 'hidden'}
                   animate="visible"
                 >
-                  Elevate the experience.
+                  The concierge your guests deserved..
                 </motion.h1>
                 <motion.h1
                   className="block leading-[1.08] tracking-tight"
@@ -142,7 +142,7 @@ export default function HeroSection() {
                   initial={reduced ? 'visible' : 'hidden'}
                   animate="visible"
                 >
-                  Automate the routine.
+                  Now built into every room.
                 </motion.h1>
               </div>
 
