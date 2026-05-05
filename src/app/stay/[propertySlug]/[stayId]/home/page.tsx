@@ -293,40 +293,28 @@ export default function StayHomePage() {
           @media (min-width: 900px) {
             .tile-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
           }
+          /* .tile uses the global .ss-tile utility — only layout/sizing here */
           .tile {
             aspect-ratio: 1;
-            border-radius: 18px;
-            background: var(--surface);
-            border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 10px;
             padding: 12px;
-            cursor: pointer;
-            transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-            box-shadow: var(--card-shadow);
             color: var(--text-primary);
-          }
-          .tile:hover {
-            transform: translateY(-2px);
-            border-color: rgba(201, 168, 117, 0.4);
-            box-shadow: 0 8px 24px rgba(20, 16, 12, 0.08);
           }
           .tile-label {
             font-size: 11px;
             font-weight: 500;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             text-align: center;
             line-height: 1.3;
+            letter-spacing: 0.01em;
           }
           .tile-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            background: rgba(201, 168, 117, 0.1);
-            color: var(--gold);
+            width: 42px;
+            height: 42px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -340,24 +328,18 @@ export default function StayHomePage() {
             .amenity-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
           }
           .amenity-card {
-            border-radius: 18px;
             overflow: hidden;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            cursor: pointer;
-            transition: transform 0.2s ease;
           }
-          .amenity-card:hover { transform: translateY(-2px); }
           @keyframes hd-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
 
         {/* LEFT: tiles */}
         <div>
-          <div className="tile-grid">
+          <div className="tile-grid ss-stagger">
             {TILES.map((tile) => (
               <div
                 key={tile.id}
-                className="tile"
+                className="tile ss-tile"
                 role="button"
                 tabIndex={0}
                 onClick={() => setActiveTile(tile)}
@@ -368,7 +350,7 @@ export default function StayHomePage() {
                   }
                 }}
               >
-                <div className="tile-icon">{tile.icon}</div>
+                <div className="tile-icon ss-icon-chip">{tile.icon}</div>
                 <p className="tile-label">{tile.label}</p>
               </div>
             ))}
@@ -388,25 +370,20 @@ export default function StayHomePage() {
             Weather Today
           </p>
           <div
+            className="ss-card-raised"
             style={{
-              borderRadius: 20,
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
               padding: 22,
-              boxShadow: 'var(--card-shadow)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div
+                className="ss-icon-chip"
                 style={{
                   width: 48,
                   height: 48,
-                  borderRadius: 14,
-                  background: 'rgba(201, 168, 117, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--gold)',
                 }}
               >
                 <IconCloud />
@@ -442,17 +419,14 @@ export default function StayHomePage() {
             onClick={() =>
               router.push(`/stay/${propertySlug}/${stayId}/discover`)
             }
+            className="ss-pill"
             style={{
               marginTop: 14,
               width: '100%',
-              height: 44,
+              height: 48,
               borderRadius: 14,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--text-primary)',
               fontSize: 13,
               fontWeight: 500,
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -518,7 +492,7 @@ export default function StayHomePage() {
               return (
                 <div
                   key={p.id}
-                  className="amenity-card"
+                  className="amenity-card ss-card-raised"
                   role="button"
                   tabIndex={0}
                   onClick={() =>
@@ -651,16 +625,13 @@ export default function StayHomePage() {
                 type="button"
                 onClick={closeDialog}
                 disabled={submitting}
+                className="ss-pill"
                 style={{
                   flex: 1,
-                  height: 44,
-                  borderRadius: 12,
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
+                  height: 46,
+                  borderRadius: 14,
                   fontSize: 13,
                   fontWeight: 500,
-                  cursor: submitting ? 'not-allowed' : 'pointer',
                   opacity: submitting ? 0.5 : 1,
                 }}
               >
@@ -671,17 +642,13 @@ export default function StayHomePage() {
                   type="button"
                   onClick={() => submitRequest(activeTile)}
                   disabled={submitting}
+                  className="ss-gold-btn"
                   style={{
                     flex: 1,
-                    height: 44,
-                    borderRadius: 12,
-                    border: 'none',
-                    background: 'var(--gold)',
-                    color: '#14100D',
+                    height: 46,
+                    borderRadius: 14,
                     fontSize: 13,
                     fontWeight: 600,
-                    cursor: submitting ? 'wait' : 'pointer',
-                    opacity: submitting ? 0.7 : 1,
                   }}
                 >
                   {submitting ? 'Sending…' : 'Send request'}
