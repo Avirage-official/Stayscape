@@ -1,5 +1,6 @@
 'use client';
-
+import { createRoot, type Root } from 'react-dom/client';
+import MapMarker from './map/MapMarker';
 import type mapboxgl from 'mapbox-gl';
 import { useRef, useCallback, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import {
@@ -130,6 +131,10 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
   const [filterOpen, setFilterOpen] = useState(false);
   const filterOpenRef = useRef(false);
   useEffect(() => { filterOpenRef.current = filterOpen; }, [filterOpen]);
+
+  /* ─── Custom HTML markers for unclustered points ─── */
+  const htmlMarkersRef = useRef<Map<string, { marker: mapboxgl.Marker; root: Root; container: HTMLDivElement }>>(new Map());
+  const selectedHtmlIdRef = useRef<string | null>(null);
 
   /* ─── Fetch recommended_places curations when stayId changes ─── */
   useEffect(() => {
@@ -430,6 +435,7 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
             source: SOURCE_ID,
             filter: ['has', 'point_count'],
             paint: {
+              'circle-opacity': 1.0,
               'circle-color': 'rgba(10,14,19,0.75)',
               'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 26],
               'circle-stroke-width': 1.5,
@@ -525,45 +531,6 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
             });
           });
 
-          /* ── Individual place/event click: show info card ── */
-          m.on('click', UNCLUSTERED_LAYER, (e) => {
-            const feature = e.features?.[0];
-            if (!feature) return;
-            e.originalEvent.stopPropagation();
-            const itemId = feature.properties?.id as string;
-            const isEventDot = feature.properties?.isEvent as boolean;
-            if (isEventDot) {
-              const event = eventsRef.current.find((ev) => ev.id === itemId);
-              if (event) setActiveEventRef.current(event);
-            } else {
-              const place = placesRef.current.find((p) => p.id === itemId);
-              if (place) {
-                onSelectPlaceRef.current?.(place);
-                setActiveEventRef.current(null); /* clear event card when place is clicked */
-              }
-            }
-          });
-
-          /* ── Hover: pointer cursor + glow ── */
-          m.on('mousemove', UNCLUSTERED_LAYER, (e) => {
-            const feature = e.features?.[0];
-            const fid = feature?.id as number | undefined;
-            if (hoveredIdRef.current !== null && hoveredIdRef.current !== fid) {
-              try { m.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
-            }
-            if (fid !== undefined && fid !== hoveredIdRef.current) {
-              try { m.setFeatureState({ source: SOURCE_ID, id: fid }, { hovered: true }); } catch { /* ignore */ }
-              hoveredIdRef.current = fid;
-            }
-            m.getCanvas().style.cursor = 'pointer';
-          });
-          m.on('mouseleave', UNCLUSTERED_LAYER, () => {
-            if (hoveredIdRef.current !== null) {
-              try { m.setFeatureState({ source: SOURCE_ID, id: hoveredIdRef.current }, { hovered: false }); } catch { /* ignore */ }
-              hoveredIdRef.current = null;
-            }
-            m.getCanvas().style.cursor = '';
-          });
 
           /* ── Cluster hover: pointer cursor ── */
           m.on('mouseenter', CLUSTER_LAYER, () => { m.getCanvas().style.cursor = 'pointer'; });
