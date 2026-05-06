@@ -1,14 +1,28 @@
 'use client';
 
+/**
+ * DiscoverPanel — redesigned shell.
+ *
+ * Layout (matches reference):
+ *   Desktop: cards sidebar (left, ~380px) + map (right, flex)
+ *   Mobile:  map on top (30vh) + cards stacked below
+ *
+ * Reuses untouched:
+ *   - useDiscoverCategories / useDiscoverPlaces / useDiscoverEvents / useCurations / useLocalInsights
+ *   - MapPlaceholder (all map behaviors preserved)
+ *   - PlaceDetailDialog / EventDetailDialog / AddToDayDialog / AddUnknownPlaceDialog
+ *   - SuccessToast / SyncUpdateToast
+ *   - useItinerary / region context
+ *
+ * Dropped from old version:
+ *   - Inline AI chat section (Aria is in side nav)
+ *   - Mobile explore/map tab toggle (stack works)
+ *   - Hardcoded light-theme colours (now uses CSS vars)
+ */
+
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
+
 import PlaceDetailDialog from '@/components/PlaceDetailDialog';
 import EventDetailDialog from '@/components/EventDetailDialog';
 import {
@@ -31,7 +45,25 @@ import { useItinerary } from '@/components/ItineraryContext';
 import SuccessToast from '@/components/discover/SuccessToast';
 import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
 import MapPlaceholder from '@/components/MapPlaceholder';
-import { sendChatMessage } from '@/lib/ai/chat';
+import DiscoverCard from '@/components/discover/DiscoverCard';
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '400', '600'],
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+});
+
+/* ─── Constants ─── */
+
+const PLACES_PAGE_SIZE = 10;
+const MAX_DISCOVER_PLACES = 20;
+const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
 
 /* ─── Inline error component ─── */
 
@@ -43,136 +75,36 @@ function InlineError({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-red-500/20 bg-red-500/5">
-      <div className="flex items-center gap-2">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <circle cx="6" cy="6" r="5" stroke="#ef4444" strokeWidth="1.2" strokeOpacity="0.6" />
-          <path d="M6 3.5V6.5M6 8H6.01" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.8" />
-        </svg>
-        <span className="text-[10px] text-red-400/80">{message}</span>
-      </div>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 14px',
+        borderRadius: 12,
+        border: '1px solid rgba(224, 123, 107, 0.20)',
+        background: 'rgba(224, 123, 107, 0.05)',
+      }}
+    >
+      <span
+        style={{ fontSize: 11, color: 'var(--error)', opacity: 0.85 }}
+      >
+        {message}
+      </span>
       <button
         type="button"
         onClick={onRetry}
-        className="text-[10px] text-white/50 hover:text-white/80 border border-white/15 hover:border-white/30 px-2 py-1 rounded-lg transition-colors cursor-pointer ml-3 flex-shrink-0"
+        className="ss-pill"
+        style={{
+          padding: '4px 10px',
+          fontSize: 11,
+          marginLeft: 12,
+          flexShrink: 0,
+        }}
       >
         Retry
       </button>
     </div>
-  );
-}
-
-/* ─── Place row card (compact, left-panel style) ─── */
-
-function PlaceRowCard({
-  place,
-  idx,
-  onClick,
-}: {
-  place: PlaceCard;
-  idx: number;
-  onClick: () => void;
-}) {
-  const [imgError, setImgError] = useState(false);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
-      style={{
-        padding: '12px 20px',
-        borderBottom: '1px solid #EDE8E1',
-        display: 'flex',
-        gap: 12,
-        alignItems: 'flex-start',
-        cursor: 'pointer',
-        transition: 'background 0.15s ease',
-      }}
-      whileHover={{ backgroundColor: '#F5F2EE' }}
-    >
-      {/* Thumbnail */}
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          flexShrink: 0,
-          borderRadius: 10,
-          overflow: 'hidden',
-          background: '#F5F2EE',
-          position: 'relative',
-        }}
-      >
-        {place.image && !imgError ? (
-          <Image
-            src={place.image}
-            alt={place.name}
-            fill
-            sizes="64px"
-            style={{ objectFit: 'cover' }}
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 20,
-              color: '#9E9389',
-            }}
-          >
-            {place.category.charAt(0).toUpperCase()}
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#1C1A17',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            marginBottom: 3,
-          }}
-        >
-          {place.name}
-        </p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: '#6B6158' }}>
-          <span style={{ textTransform: 'capitalize' }}>{place.category}</span>
-          {place.rating > 0 && (
-            <>
-              <span>·</span>
-              <span style={{ color: '#C17F3A' }}>★ {place.rating.toFixed(1)}</span>
-            </>
-          )}
-        </div>
-        {place.description && (
-          <p
-            style={{
-              fontSize: 12,
-              color: '#9E9389',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              marginTop: 4,
-            }}
-          >
-            {place.description}
-          </p>
-        )}
-      </div>
-    </motion.div>
   );
 }
 
@@ -187,99 +119,92 @@ function CategoryPill({
   active: boolean;
   onClick: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
-
-  const style: import('react').CSSProperties = {
-    height: 30,
-    padding: '0 14px',
-    borderRadius: 999,
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
-    cursor: 'pointer',
-    flexShrink: 0,
-    transition: 'all 0.18s ease',
-    display: 'flex',
-    alignItems: 'center',
-    ...(active
-      ? {
-          background: 'rgba(193,127,58,0.10)',
-          border: '1px solid rgba(193,127,58,0.40)',
-          color: '#C17F3A',
-        }
-      : hovered
-        ? {
-            background: '#F5F2EE',
-            border: '1px solid #EDE8E1',
-            color: '#1C1A17',
-          }
-        : {
-            background: '#FFFFFF',
-            border: '1px solid #EDE8E1',
-            color: '#6B6158',
-          }),
-  };
-
   return (
     <button
       type="button"
       onClick={onClick}
-      style={style}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={dmSans.className}
+      style={{
+        padding: '8px 14px',
+        borderRadius: 999,
+        border: active
+          ? '1px solid var(--gold)'
+          : '1px solid var(--border)',
+        background: active
+          ? 'linear-gradient(180deg, rgba(201, 168, 117, 0.18) 0%, rgba(201, 168, 117, 0.10) 100%)'
+          : 'var(--surface)',
+        color: active ? 'var(--gold)' : 'var(--text-secondary)',
+        fontSize: 12,
+        fontWeight: active ? 600 : 500,
+        letterSpacing: '0.01em',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        boxShadow: active
+          ? 'inset 0 1px 0 rgba(245, 230, 204, 0.10), 0 0 14px rgba(201, 168, 117, 0.18)'
+          : 'inset 0 1px 0 rgba(245, 230, 204, 0.04)',
+        transition:
+          'background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.2s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
     >
-      {cat.icon && <span style={{ fontSize: 12, marginRight: 6 }}>{cat.icon}</span>}
+      {cat.icon && <span style={{ fontSize: 12 }}>{cat.icon}</span>}
       {cat.label}
     </button>
   );
 }
 
-/* ─── Main DiscoverPanel component ─── */
+/* ─── Main component ─── */
 
 interface DiscoverPanelProps {
   stayId?: string | null;
   guestName?: string;
 }
 
-const MAX_ASSISTANT_MESSAGES = 8;
-const MAX_VISIBLE_CHAT_MESSAGES = 3;
-const PLACES_PAGE_SIZE = 10;
-const MAX_DISCOVER_PLACES = 20;
-const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
-
-export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelProps) {
+export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: DiscoverPanelProps) {
   const { region } = useRegion();
+  const { addItem } = useItinerary();
+
   const [activeCategory, setActiveCategory] = useState<string>('top-places');
   const [activePlacesCategory, setActivePlacesCategory] = useState<string | null | undefined>(undefined);
+
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingPlace, setAddingPlace] = useState<PlaceCard | null>(null);
-  const [successToast, setSuccessToast] = useState<{ placeName: string; dayValue: string; bookingUrl: string } | null>(null);
+
+  const [successToast, setSuccessToast] = useState<{
+    placeName: string;
+    dayValue: string;
+    bookingUrl: string;
+  } | null>(null);
   const [showSyncUpdateToast, setShowSyncUpdateToast] = useState(false);
+
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailPlace, setDetailPlace] = useState<PlaceCard | null>(null);
+
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
   const [detailEvent, _setDetailEvent] = useState<EventCard | null>(null);
-  const [mobileDiscoverTab, setMobileDiscoverTab] = useState<'explore' | 'map'>('explore');
-  const [assistantInput, setAssistantInput] = useState('');
-  const [assistantMessages, setAssistantMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
-  const [isAssistantLoading, setIsAssistantLoading] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [unknownPlace, _setUnknownPlace] = useState<{
-    name: string; address: string; lat: number; lng: number;
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
   } | null>(null);
   const [addUnknownPlaceOpen, setAddUnknownPlaceOpen] = useState(false);
-  // New UI states
-  const [chatExpanded, setChatExpanded] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
-  const carouselRef = useRef<HTMLDivElement>(null);
   const dataLoadedRef = useRef<boolean | null>(null);
   const regionLoadedRef = useRef<string | null>(null);
-  const assistantIdRef = useRef(0);
 
-  // DB-first hooks with dummy fallback
+  /* Existing data hooks (UNTOUCHED) */
   const {
     categories,
     error: categoriesError,
@@ -292,46 +217,77 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
     error: placesError,
     refetch: refetchPlaces,
   } = useDiscoverPlaces();
-  const { insights: _insights, refetch: refetchInsights } = useLocalInsights();
+  const { refetch: refetchInsights } = useLocalInsights();
   const {
-    events: _events,
     error: _eventsError,
     refetch: refetchEvents,
   } = useDiscoverEvents();
-  const { curations: _curations } = useCurations(stayId);
-  const { addItem } = useItinerary();
+  useCurations(stayId);
 
-  // Trigger initial data load once (using null-check pattern for eslint refs rule)
+  /* Initial load */
   if (dataLoadedRef.current == null) {
     dataLoadedRef.current = true;
     refetchCategories();
     refetchInsights();
-    refetchPlaces('top-places', 'Top Places', { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id });
+    refetchPlaces('top-places', 'Top Places', {
+      limit: PLACES_PAGE_SIZE,
+      offset: 0,
+      regionId: region?.id,
+    });
     if (region?.id) refetchEvents(region.id);
   }
 
-  // Re-load places when region becomes available after initial render
+  /* Reload when region becomes available */
   if (region?.id && regionLoadedRef.current !== region.id) {
     regionLoadedRef.current = region.id;
-    refetchPlaces('top-places', 'Top Places', { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region.id });
+    refetchPlaces('top-places', 'Top Places', {
+      limit: PLACES_PAGE_SIZE,
+      offset: 0,
+      regionId: region.id,
+    });
     refetchEvents(region.id);
   }
 
-  // Use DB places if available, otherwise fall back to hardcoded
+  /* DB places with fallback */
   const places = useMemo(
-    () => dbPlaces.length > 0 ? dbPlaces : (FALLBACK_PLACES_BY_CATEGORY[activeCategory] ?? []),
+    () =>
+      dbPlaces.length > 0
+        ? dbPlaces
+        : FALLBACK_PLACES_BY_CATEGORY[activeCategory] ?? [],
     [dbPlaces, activeCategory],
   );
 
-  const handleCategoryClick = useCallback((item: CategoryItem) => {
-    setActiveCategory(item.id);
-    setActivePlacesCategory(item.placesCategory);
-    refetchPlaces(item.id, item.label, { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id, placesCategory: item.placesCategory });
-  }, [refetchPlaces, region?.id]);
+  /* Filtered list (search) */
+  const visiblePlaces = useMemo(() => {
+    if (!searchQuery.trim()) return places;
+    const q = searchQuery.toLowerCase();
+    return places.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q),
+    );
+  }, [places, searchQuery]);
+
+  /* Handlers */
+
+  const handleCategoryClick = useCallback(
+    (item: CategoryItem) => {
+      setActiveCategory(item.id);
+      setActivePlacesCategory(item.placesCategory);
+      refetchPlaces(item.id, item.label, {
+        limit: PLACES_PAGE_SIZE,
+        offset: 0,
+        regionId: region?.id,
+        placesCategory: item.placesCategory,
+      });
+    },
+    [refetchPlaces, region?.id],
+  );
 
   const handleShowMorePlaces = useCallback(() => {
     if (places.length >= MAX_DISCOVER_PLACES) return;
-    const activeLabel = categories.find((c) => c.id === activeCategory)?.label ?? 'Places';
+    const activeLabel =
+      categories.find((c) => c.id === activeCategory)?.label ?? 'Places';
     refetchPlaces(activeCategory, activeLabel, {
       limit: PLACES_PAGE_SIZE,
       offset: places.length,
@@ -339,51 +295,76 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
       regionId: region?.id,
       placesCategory: activePlacesCategory,
     });
-  }, [places.length, categories, activeCategory, refetchPlaces, region?.id, activePlacesCategory]);
+  }, [
+    places.length,
+    categories,
+    activeCategory,
+    refetchPlaces,
+    region?.id,
+    activePlacesCategory,
+  ]);
 
   const handleRetryPlaces = useCallback(() => {
     refetchPlaces(
       activeCategory,
       categories.find((c) => c.id === activeCategory)?.label ?? 'Places',
-      { limit: PLACES_PAGE_SIZE, offset: 0, regionId: region?.id, placesCategory: activePlacesCategory },
+      {
+        limit: PLACES_PAGE_SIZE,
+        offset: 0,
+        regionId: region?.id,
+        placesCategory: activePlacesCategory,
+      },
     );
-  }, [refetchPlaces, activeCategory, categories, region?.id, activePlacesCategory]);
+  }, [
+    refetchPlaces,
+    activeCategory,
+    categories,
+    region?.id,
+    activePlacesCategory,
+  ]);
 
   const handleCardClick = useCallback((place: PlaceCard) => {
     setDetailPlace(place);
     setDetailDialogOpen(true);
   }, []);
 
-  const handleConfirmAdd = useCallback((placeId: string, day: string) => {
-    const place = places.find((p) => p.id === placeId) ?? addingPlace;
-    if (place) {
-      const date = day && !isNaN(Date.parse(day)) ? new Date(day) : new Date();
-      addItem({
-        placeId: place.id,
-        name: place.name,
-        category: place.category,
-        image: place.image,
-        date,
-        time: '10:00',
-        durationHours: 2,
-      });
-      setSuccessToast({ placeName: place.name, dayValue: day, bookingUrl: place.bookingUrl });
-    }
-    setAddDialogOpen(false);
-    setAddingPlace(null);
-  }, [places, addingPlace, addItem]);
+  const handleConfirmAdd = useCallback(
+    (placeId: string, day: string) => {
+      const place =
+        places.find((p) => p.id === placeId) ?? addingPlace;
+      if (place) {
+        const date =
+          day && !isNaN(Date.parse(day)) ? new Date(day) : new Date();
+        addItem({
+          placeId: place.id,
+          name: place.name,
+          category: place.category,
+          image: place.image,
+          date,
+          time: '10:00',
+          durationHours: 2,
+        });
+        setSuccessToast({
+          placeName: place.name,
+          dayValue: day,
+          bookingUrl: place.bookingUrl,
+        });
+      }
+      setAddDialogOpen(false);
+      setAddingPlace(null);
+    },
+    [places, addingPlace, addItem],
+  );
 
-  const handleDismissToast = useCallback(() => {
-    setSuccessToast(null);
-  }, []);
+  const handleDismissToast = useCallback(() => setSuccessToast(null), []);
+  const handleDismissSyncUpdateToast = useCallback(
+    () => setShowSyncUpdateToast(false),
+    [],
+  );
 
-  const handleDismissSyncUpdateToast = useCallback(() => {
-    setShowSyncUpdateToast(false);
-  }, []);
-
+  /* Sync update toast */
   useEffect(() => {
     if (!region?.id) return;
-
     const storageKey = `${DISCOVER_VISITED_KEY_PREFIX}${region.id}`;
     const currentVisitTimestamp = Date.now();
     setShowSyncUpdateToast(false);
@@ -394,634 +375,295 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
           `/api/discovery/region-sync-status?regionId=${encodeURIComponent(region.id)}`,
         );
         if (!response.ok) return;
-
         const body = (await response.json()) as { last_synced_at?: string | null };
         const lastSyncedAt = body.last_synced_at;
         const lastVisitRaw = window.localStorage.getItem(storageKey);
-        const lastVisitMs = lastVisitRaw ? Number(lastVisitRaw) : null;
-
-        if (lastSyncedAt) {
-          const syncedAtMs = new Date(lastSyncedAt).getTime();
-          if (
-            Number.isFinite(syncedAtMs)
-            && syncedAtMs > (lastVisitMs ?? 0)
-          ) {
-            setShowSyncUpdateToast(true);
-          }
+        const lastVisitMs = lastVisitRaw ? Number(lastVisitRaw) : 0;
+        if (lastSyncedAt && new Date(lastSyncedAt).getTime() > lastVisitMs) {
+          setShowSyncUpdateToast(true);
         }
+      } catch {
+        // silent
       } finally {
         window.localStorage.setItem(storageKey, String(currentVisitTimestamp));
       }
     };
-
     void fetchSyncStatus();
   }, [region?.id]);
 
-  const sendAssistantMessage = useCallback(async (text?: string) => {
-    const messageText = (text ?? assistantInput).trim();
-    if (!messageText || isAssistantLoading) return;
+  /* Render */
 
-    const userMessageId = `discover-user-${assistantIdRef.current + 1}`;
-    assistantIdRef.current += 1;
-
-    const userMessage = {
-      id: userMessageId,
-      role: 'user' as const,
-      text: messageText,
-    };
-    setAssistantMessages((prev) =>
-      [...prev, userMessage].slice(-MAX_ASSISTANT_MESSAGES)
-    );
-    setAssistantInput('');
-    setIsAssistantLoading(true);
-
-    const reply = await sendChatMessage(
-      messageText,
-      stayId,
-      'discovery',
-    );
-
-    const assistantMessageId = `discover-assistant-${assistantIdRef.current + 1}`;
-    assistantIdRef.current += 1;
-
-    const assistantMessage = {
-      id: assistantMessageId,
-      role: 'assistant' as const,
-      text: reply,
-    };
-    setAssistantMessages((prev) =>
-      [...prev, assistantMessage].slice(-MAX_ASSISTANT_MESSAGES)
-    );
-    setIsAssistantLoading(false);
-  }, [assistantInput, assistantMessages, isAssistantLoading, stayId]);
-
-  // Scroll chat messages to bottom when new messages arrive
-  useEffect(() => {
-    if (chatExpanded && chatMessagesRef.current) {
-      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-    }
-  }, [assistantMessages, chatExpanded]);
+  const sidebarHeading = `${visiblePlaces.length} ${
+    visiblePlaces.length === 1 ? 'place' : 'places'
+  } near you`;
 
   return (
-    <TooltipProvider>
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Mobile sub-tabs — pill style, hidden on lg+ */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-2 px-4 h-11" style={{ background: '#FFFFFF', borderBottom: '1px solid #EDE8E1' }}>
-          {(['explore', 'map'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setMobileDiscoverTab(tab)}
-              className="h-6 px-3.5 rounded-full text-[10px] font-medium uppercase tracking-[0.12em] transition-all duration-200 cursor-pointer border"
-              style={
-                mobileDiscoverTab === tab
-                  ? {
-                      background: 'rgba(193,127,58,0.10)',
-                      color: '#C17F3A',
-                      borderColor: 'rgba(193,127,58,0.40)',
-                    }
-                  : {
-                      background: 'transparent',
-                      color: '#6B6158',
-                      borderColor: '#EDE8E1',
-                    }
-              }
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
+    <>
+      <style>{`
+        .discover-shell {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          background: var(--background);
+          color: var(--text-primary);
+          overflow: hidden;
+        }
+        .discover-grid {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+        @media (min-width: 900px) {
+          .discover-grid {
+            flex-direction: row;
+            min-height: 0;
+          }
+          .discover-sidebar {
+            width: 380px;
+            max-width: 380px;
+            flex-shrink: 0;
+            height: 100%;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
+          .discover-map-wrap {
+            flex: 1;
+            height: 100%;
+            min-height: 0;
+            min-width: 0;
+          }
+        }
+        @media (max-width: 899px) {
+          .discover-sidebar {
+            width: 100%;
+            order: 2;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+          }
+          .discover-map-wrap {
+            order: 1;
+            height: 32vh;
+            width: 100%;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border);
+          }
+        }
+        .discover-sidebar-header {
+          padding: 20px 18px 14px;
+          flex-shrink: 0;
+          border-bottom: 1px solid var(--border-subtle);
+        }
+        .discover-categories-row {
+          padding: 12px 18px;
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          flex-shrink: 0;
+          scrollbar-width: none;
+          border-bottom: 1px solid var(--border-subtle);
+        }
+        .discover-categories-row::-webkit-scrollbar { display: none; }
+        .discover-list {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          padding: 14px 14px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .discover-search-input {
+          width: 100%;
+          height: 40px;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--text-primary);
+          padding: 0 14px 0 38px;
+          font-family: inherit;
+          font-size: 13px;
+          outline: none;
+          transition: border-color 0.18s ease, box-shadow 0.18s ease;
+          box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.04);
+        }
+        .discover-search-input::placeholder {
+          color: var(--text-muted);
+        }
+        .discover-search-input:focus {
+          border-color: rgba(201, 168, 117, 0.45);
+          box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.06), 0 0 0 3px rgba(201, 168, 117, 0.12);
+        }
+      `}</style>
 
-        {/* Content: panel left + map right */}
-        <div
-          className="flex-1 flex overflow-hidden"
-          style={{ background: 'var(--discover-bg)' }}
-        >
-          {/* ───── LEFT PANEL ───── */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className={`flex-col h-full ${
-              mobileDiscoverTab === 'explore' ? 'flex' : 'hidden'
-            } lg:flex`}
-            style={{
-              width: 340,
-              flexShrink: 0,
-              background: '#FFFFFF',
-              borderRight: '1px solid #EDE8E1',
-              overflow: 'hidden',
-            }}
-          >
-            {/* A. HEADER */}
-            <div
-              style={{
-                height: 56,
-                flexShrink: 0,
-                padding: '0 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                borderBottom: '1px solid #EDE8E1',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span
-                  style={{
-                    fontFamily: '"Playfair Display", serif',
-                    fontSize: 15,
-                    fontStyle: 'italic',
-                    fontWeight: 500,
-                    color: '#1C1A17',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {region?.name ?? (guestName ? `${guestName}'s Stay` : 'Your Stay')}
-                </span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.2em',
-                    color: 'var(--gold)',
-                    marginTop: 2,
-                  }}
-                >
-                  Discover
-                </span>
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => { setSearchOpen((v) => !v); setSearchQuery(''); }}
-                    style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 4 }}
-                    aria-label="Toggle search"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#9E9389"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.35-4.35" />
-                    </svg>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent><p>Search places</p></TooltipContent>
-              </Tooltip>
-            </div>
-
-            {/* Search input (slides down when searchOpen) */}
-            <AnimatePresence>
-              {searchOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 44, opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  style={{
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                    borderBottom: '1px solid #EDE8E1',
-                    padding: '0 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search places…"
-                    autoFocus
-                    style={{
-                      flex: 1,
-                      height: 32,
-                      borderRadius: 8,
-                      background: '#F5F2EE',
-                      border: '1px solid #EDE8E1',
-                      padding: '0 12px',
-                      fontSize: 13,
-                      color: '#1C1A17',
-                      outline: 'none',
-                    }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* B. CATEGORIES STRIP */}
-            <div
-              style={{
-                flexShrink: 0,
-                padding: '14px 20px 12px',
-                borderBottom: '1px solid #EDE8E1',
-              }}
-            >
-              {categoriesError && (
-                <InlineError message="Couldn't load categories" onRetry={refetchCategories} />
-              )}
-              <div
-                ref={carouselRef}
-                className="scrollbar-hide"
+      <div className="discover-shell">
+        <div className="discover-grid">
+          {/* ── SIDEBAR ── */}
+          <aside className="discover-sidebar">
+            {/* Header */}
+            <div className="discover-sidebar-header">
+              <p
                 style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: 8,
-                  overflowX: 'auto',
+                  margin: 0,
+                  fontSize: 11,
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  fontWeight: 500,
                 }}
               >
+                Discover
+              </p>
+              <h2
+                className={cormorant.className}
+                style={{
+                  margin: '6px 0 14px',
+                  fontSize: 22,
+                  fontWeight: 500,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {sidebarHeading}
+              </h2>
+
+              {/* Search */}
+              <div style={{ position: 'relative' }}>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    position: 'absolute',
+                    left: 14,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-muted)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  className="discover-search-input"
+                  placeholder="Search places…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Categories */}
+            {categories.length > 0 && (
+              <div className="discover-categories-row">
                 {categories.map((cat) => (
                   <CategoryPill
                     key={cat.id}
                     cat={cat}
-                    active={activeCategory === cat.id}
+                    active={cat.id === activeCategory}
                     onClick={() => handleCategoryClick(cat)}
                   />
                 ))}
               </div>
-            </div>
+            )}
 
-            {/* C. PLACES LIST */}
-            <div
-              className="scrollbar-hide"
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                padding: 0,
-              }}
-            >
-              {/* Count line */}
-              <div
-                style={{
-                  padding: '14px 20px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.14em',
-                    color: '#9E9389',
-                  }}
-                >
-                  {categories.find((c) => c.id === activeCategory)?.label ?? 'Places'}
-                </span>
-                <span style={{ fontSize: 11, color: '#C4BBB2' }}>
-                  {places.length} {places.length === 1 ? 'place' : 'places'}
-                </span>
-              </div>
-
-              {/* Error */}
-              {placesError && (
-                <div style={{ padding: '0 20px 10px' }}>
+            {/* Errors */}
+            {(categoriesError || placesError) && (
+              <div style={{ padding: '8px 14px', flexShrink: 0 }}>
+                {categoriesError && (
                   <InlineError
-                    message="Couldn't load places right now"
+                    message="Could not load categories"
+                    onRetry={refetchCategories}
+                  />
+                )}
+                {placesError && !categoriesError && (
+                  <InlineError
+                    message="Could not load places"
                     onRetry={handleRetryPlaces}
                   />
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {/* Loading skeleton */}
-              {placesLoading && places.length === 0 && (
-                <>
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '12px 20px',
-                        borderBottom: '1px solid #EDE8E1',
-                        display: 'flex',
-                        gap: 12,
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div
-                        className="animate-pulse"
-                        style={{
-                          width: 64,
-                          height: 64,
-                          flexShrink: 0,
-                          borderRadius: 10,
-                          background: '#F5F2EE',
-                        }}
-                      />
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div className="animate-pulse" style={{ height: 14, borderRadius: 4, background: '#F5F2EE', width: '70%' }} />
-                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: '#F5F2EE', width: '50%' }} />
-                        <div className="animate-pulse" style={{ height: 11, borderRadius: 4, background: '#F5F2EE', width: '85%' }} />
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {/* Place cards */}
-              {(searchQuery.trim()
-                ? places.filter((p) =>
-                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.category.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                : places
-              ).map((place, idx) => (
-                <PlaceRowCard
+            {/* Card list */}
+            <div className="discover-list ss-stagger">
+              {visiblePlaces.map((place) => (
+                <DiscoverCard
                   key={place.id}
                   place={place}
-                  idx={idx}
                   onClick={() => handleCardClick(place)}
                 />
               ))}
 
-              {/* Show more */}
-              {hasMorePlaces && places.length < MAX_DISCOVER_PLACES && (
-                <button
-                  type="button"
-                  onClick={handleShowMorePlaces}
+              {visiblePlaces.length === 0 && !placesLoading && (
+                <div
                   style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '14px 20px',
                     textAlign: 'center',
-                    fontSize: 11,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    color: '#9E9389',
-                    cursor: 'pointer',
-                    border: 'none',
-                    background: 'none',
-                    transition: 'color 0.15s ease',
+                    padding: '40px 20px',
+                    color: 'var(--text-muted)',
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#9E9389'; }}
                 >
-                  Load more places
-                </button>
-              )}
-            </div>
-
-            {/* D. AI CHAT SECTION */}
-            <motion.div
-              layout
-              transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              style={{
-                flexShrink: 0,
-                borderTop: '1px solid #EDE8E1',
-                background: '#F5F2EE',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {/* Chat header row */}
-              <div
-                style={{
-                  height: 40,
-                  padding: '0 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderBottom: '1px solid #EDE8E1',
-                  flexShrink: 0,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <div
+                  <p
+                    className={cormorant.className}
                     style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 999,
-                      background: 'var(--gold)',
-                      marginRight: 8,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.14em',
-                      color: '#6B6158',
+                      margin: 0,
+                      fontSize: 18,
+                      color: 'var(--text-primary)',
                     }}
                   >
-                    AI Concierge
-                  </span>
+                    No places found
+                  </p>
+                  <p style={{ margin: '6px 0 0', fontSize: 12 }}>
+                    {searchQuery
+                      ? 'Try a different search term'
+                      : 'Try a different category'}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setChatExpanded((v) => !v)}
-                  style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}
-                  aria-label={chatExpanded ? 'Collapse chat' : 'Expand chat'}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#9E9389"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              )}
+
+              {/* Load more */}
+              {hasMorePlaces &&
+                places.length < MAX_DISCOVER_PLACES &&
+                !searchQuery && (
+                  <button
+                    type="button"
+                    onClick={handleShowMorePlaces}
+                    className="ss-pill"
                     style={{
-                      transform: chatExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease',
+                      width: '100%',
+                      padding: '12px 18px',
+                      fontSize: 11,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.12em',
+                      color: 'var(--text-muted)',
+                      marginTop: 4,
                     }}
                   >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Messages area (expanded only) */}
-              <AnimatePresence>
-                {chatExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 160, opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                    style={{ overflow: 'hidden', flexShrink: 0 }}
-                  >
-                    <div
-                      ref={chatMessagesRef}
-                      className="scrollbar-hide"
-                      style={{
-                        height: 160,
-                        overflowY: 'auto',
-                        padding: '12px 16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 10,
-                      }}
-                    >
-                      {assistantMessages.length === 0 && (
-                        <p style={{ fontSize: 11, color: '#9E9389', alignSelf: 'center', marginTop: 'auto' }}>
-                          Ask about this area...
-                        </p>
-                      )}
-                      {assistantMessages.slice(-MAX_VISIBLE_CHAT_MESSAGES).map((message) => (
-                        <div
-                          key={message.id}
-                          style={{
-                            ...(message.role === 'user'
-                              ? {
-                                  alignSelf: 'flex-end',
-                                  maxWidth: '75%',
-                                  background: 'rgba(193,127,58,0.12)',
-                                  border: '1px solid rgba(193,127,58,0.30)',
-                                  borderRadius: '12px 12px 2px 12px',
-                                }
-                              : {
-                                  alignSelf: 'flex-start',
-                                  maxWidth: '85%',
-                                  background: '#FFFFFF',
-                                  border: '1px solid #EDE8E1',
-                                  borderRadius: '2px 12px 12px 12px',
-                                }),
-                            padding: '8px 12px',
-                            fontSize: 13,
-                            color: '#1C1A17',
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {message.text}
-                        </div>
-                      ))}
-                      {isAssistantLoading && (
-                        <div
-                          style={{
-                            alignSelf: 'flex-start',
-                            display: 'flex',
-                            gap: 4,
-                            padding: '10px 12px',
-                          }}
-                        >
-                          {[0, 1, 2].map((i) => (
-                            <div
-                              key={i}
-                              className="animate-bounce"
-                              style={{
-                                width: 5,
-                                height: 5,
-                                borderRadius: 999,
-                                background: '#C4BBB2',
-                                animationDelay: `${i * 0.15}s`,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
+                    Load more
+                  </button>
                 )}
-              </AnimatePresence>
+            </div>
+          </aside>
 
-              {/* Input row */}
-              <div
-                style={{
-                  height: 48,
-                  padding: '0 16px',
-                  display: 'flex',
-                  gap: 10,
-                  alignItems: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <input
-                  type="text"
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void sendAssistantMessage();
-                    }
-                  }}
-                  onFocus={() => setChatExpanded(true)}
-                  placeholder="Ask about this area..."
-                  aria-label="Ask discover assistant"
-                  style={{
-                    flex: 1,
-                    height: 34,
-                    borderRadius: 8,
-                    background: '#FFFFFF',
-                    border: '1px solid #EDE8E1',
-                    padding: '0 12px',
-                    fontSize: 13,
-                    color: '#1C1A17',
-                    outline: 'none',
-                    transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
-                  }}
-                  onFocusCapture={(e) => {
-                    (e.target as HTMLInputElement).style.borderColor = 'rgba(193,127,58,0.40)';
-                    (e.target as HTMLInputElement).style.background = '#FFFFFF';
-                    (e.target as HTMLInputElement).style.boxShadow = '0 0 0 2px rgba(193,127,58,0.10)';
-                  }}
-                  onBlurCapture={(e) => {
-                    (e.target as HTMLInputElement).style.borderColor = '#EDE8E1';
-                    (e.target as HTMLInputElement).style.background = '#FFFFFF';
-                    (e.target as HTMLInputElement).style.boxShadow = 'none';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => void sendAssistantMessage()}
-                  disabled={isAssistantLoading}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 8,
-                    background: 'rgba(193,127,58,0.12)',
-                    border: '1px solid rgba(193,127,58,0.30)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.20)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(193,127,58,0.12)'; }}
-                  aria-label="Send message"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="var(--gold)"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          {/* ───── MAP AREA ───── */}
-          <div
-            className={`relative overflow-hidden ${
-              mobileDiscoverTab === 'map' ? 'flex flex-1' : 'hidden lg:flex'
-            } lg:flex-1`}
-            style={{ height: '100%' }}
-          >
+          {/* ── MAP ── */}
+          <div className="discover-map-wrap">
             <MapPlaceholder stayId={stayId ?? null} />
           </div>
         </div>
 
-        {/* ── Add-to-day dialog ── */}
+        {/* Add-to-day dialog */}
         <AddToDayDialog
           open={addDialogOpen}
           onOpenChange={setAddDialogOpen}
@@ -1029,28 +671,28 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
           onConfirm={handleConfirmAdd}
         />
 
-        {/* ── Place detail dialog ── */}
+        {/* Place detail dialog */}
         <PlaceDetailDialog
           open={detailDialogOpen}
           onOpenChange={setDetailDialogOpen}
           place={detailPlace}
         />
 
-        {/* ── Event detail dialog ── */}
+        {/* Event detail dialog */}
         <EventDetailDialog
           open={eventDetailOpen}
           onOpenChange={setEventDetailOpen}
           event={detailEvent}
         />
 
-        {/* ── Add unknown place dialog ── */}
+        {/* Add unknown place dialog */}
         <AddUnknownPlaceDialog
           open={addUnknownPlaceOpen}
           onOpenChange={setAddUnknownPlaceOpen}
           place={unknownPlace}
         />
 
-        {/* ── Success toast ── */}
+        {/* Toasts */}
         {successToast && (
           <SuccessToast
             placeName={successToast.placeName}
@@ -1064,6 +706,6 @@ export default function DiscoverPanel({ stayId, guestName = '' }: DiscoverPanelP
           <SyncUpdateToast onDismiss={handleDismissSyncUpdateToast} />
         )}
       </div>
-    </TooltipProvider>
+    </>
   );
 }
