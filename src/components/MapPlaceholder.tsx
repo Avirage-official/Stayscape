@@ -896,6 +896,12 @@ m.on('sourcedata', (e) => {
     const fetchDebounce = fetchDebounceRef;
     const curatedMarkers = curatedMarkersRef;
     return () => {
+      /* Tear down all HTML markers */
+      htmlMarkersRef.current.forEach((entry) => {
+        entry.root.unmount();
+        entry.marker.remove();
+      });
+      htmlMarkersRef.current.clear();
       hotelMarker.current?.remove();
       hotelMarker.current = null;
       userMarker.current?.remove();
