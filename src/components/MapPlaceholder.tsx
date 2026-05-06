@@ -531,6 +531,114 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
           /* ── Cluster hover: pointer cursor ── */
           m.on('mouseenter', CLUSTER_LAYER, () => { m.getCanvas().style.cursor = 'pointer'; });
           m.on('mouseleave', CLUSTER_LAYER, () => { m.getCanvas().style.cursor = ''; });
+          /* ─── HTML Markers: sync with unclustered features in viewport ─── */
+          const syncHtmlMarkers = () => {
+            if (!sourceAddedRef.current) return;
+
+            let features: GeoJSON.Feature[] = [];
+            try {
+              features = m.querySourceFeatures(SOURCE_ID, {
+                filter: ['!', ['has', 'point_count']],
+              }) as GeoJSON.Feature[];
+            } catch {
+              return;
+            }
+
+            const seen = new Set<string>();
+            const uniqueFeatures = features.filter((f) => {
+              const id = (f.properties as { id?: string } | null)?.id;
+              if (!id || seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            });
+
+            const currentIds = new Set(uniqueFeatures.map((f) => (f.properties as { id: string }).id));
+
+            htmlMarkersRef.current.forEach((entry, id) => {
+              if (!currentIds.has(id)) {
+                entry.root.unmount();
+                entry.marker.remove();
+                htmlMarkersRef.current.delete(id);
+              }
+            });
+
+            uniqueFeatures.forEach((feature) => {
+              const props = feature.properties as { id: string; name: string; category: string; isEvent: boolean } | null;
+              if (!props) return;
+              const geom = feature.geometry as GeoJSON.Point;
+              const [lng, lat] = geom.coordinates;
+
+              const existing = htmlMarkersRef.current.get(props.id);
+              if (existing) {
+                existing.marker.setLngLat([lng, lat]);
+                existing.root.render(
+                  <MapMarker
+                    id={props.id}
+                    name={props.name}
+                    category={props.category}
+                    isEvent={props.isEvent}
+                    selected={selectedHtmlIdRef.current === props.id}
+                    onClick={() => {
+                      if (props.isEvent) {
+                        const event = eventsRef.current.find((ev) => ev.id === props.id);
+                        if (event) setActiveEventRef.current(event);
+                      } else {
+                        const place = placesRef.current.find((p) => p.id === props.id);
+                        if (place) {
+                          onSelectPlaceRef.current?.(place);
+                          setActiveEventRef.current(null);
+                        }
+                      }
+                    }}
+                  />
+                );
+                return;
+              }
+
+              const container = document.createElement('div');
+              container.style.cssText = 'pointer-events:auto;';
+              import('react-dom/client').then(({ createRoot }) => {
+                const root = createRoot(container);
+                root.render(
+                  <MapMarker
+                    id={props.id}
+                    name={props.name}
+                    category={props.category}
+                    isEvent={props.isEvent}
+                    selected={selectedHtmlIdRef.current === props.id}
+                    onClick={() => {
+                      if (props.isEvent) {
+                        const event = eventsRef.current.find((ev) => ev.id === props.id);
+                        if (event) setActiveEventRef.current(event);
+                      } else {
+                        const place = placesRef.current.find((p) => p.id === props.id);
+                        if (place) {
+                          onSelectPlaceRef.current?.(place);
+                          setActiveEventRef.current(null);
+                        }
+                      }
+                    }}
+                  />
+                );
+
+                import('mapbox-gl').then((mapboxgl) => {
+                  const marker = new mapboxgl.default.Marker({ element: container, anchor: 'center' })
+                    .setLngLat([lng, lat])
+                    .addTo(m);
+                  htmlMarkersRef.current.set(props.id, { marker, root, container });
+                });
+              });
+            });
+          };
+
+          m.on('idle', syncHtmlMarkers);
+          m.on('moveend', syncHtmlMarkers);
+          m.on('zoomend', syncHtmlMarkers);
+          m.on('sourcedata', (e) => {
+            if (e.sourceId === SOURCE_ID && e.isSourceLoaded) {
+              syncHtmlMarkers();
+            }
+          });
         };
 
         /* ── Update map source data; add layers on first call ── */
@@ -567,118 +675,6 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
           reconcileCuratedMarkers(m);
         };
 
-        /* ─── HTML Markers: sync with unclustered features in viewport ─── */
-const syncHtmlMarkers = (m: mapboxgl.Map) => {
-  if (!sourceAddedRef.current) return;
-
-  /* Query all rendered unclustered features in the current viewport */
-  let features: GeoJSON.Feature[] = [];
-  try {
-    features = m.querySourceFeatures(SOURCE_ID, {
-      filter: ['!', ['has', 'point_count']],
-    }) as GeoJSON.Feature[];
-  } catch {
-    return;
-  }
-
-  /* Deduplicate by id (querySourceFeatures can return duplicates across tiles) */
-  const seen = new Set<string>();
-  const uniqueFeatures = features.filter((f) => {
-    const id = (f.properties as { id?: string } | null)?.id;
-    if (!id || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-
-  const currentIds = new Set(uniqueFeatures.map((f) => (f.properties as { id: string }).id));
-
-  /* Remove markers that are no longer visible */
-  htmlMarkersRef.current.forEach((entry, id) => {
-    if (!currentIds.has(id)) {
-      entry.root.unmount();
-      entry.marker.remove();
-      htmlMarkersRef.current.delete(id);
-    }
-  });
-
-  /* Add or update markers for visible features */
-  uniqueFeatures.forEach((feature) => {
-    const props = feature.properties as { id: string; name: string; category: string; isEvent: boolean } | null;
-    if (!props) return;
-    const geom = feature.geometry as GeoJSON.Point;
-    const [lng, lat] = geom.coordinates;
-
-    const existing = htmlMarkersRef.current.get(props.id);
-    if (existing) {
-      existing.marker.setLngLat([lng, lat]);
-      existing.root.render(
-        <MapMarker
-          id={props.id}
-          name={props.name}
-          category={props.category}
-          isEvent={props.isEvent}
-          selected={selectedHtmlIdRef.current === props.id}
-          onClick={() => {
-            if (props.isEvent) {
-              const event = eventsRef.current.find((ev) => ev.id === props.id);
-              if (event) setActiveEventRef.current(event);
-            } else {
-              const place = placesRef.current.find((p) => p.id === props.id);
-              if (place) {
-                onSelectPlaceRef.current?.(place);
-                setActiveEventRef.current(null);
-              }
-            }
-          }}
-        />
-      );
-      return;
-    }
-
-    /* Create new container + marker + root */
-    const container = document.createElement('div');
-    container.style.cssText = 'pointer-events:auto;';
-    const root = createRoot(container);
-
-    root.render(
-      <MapMarker
-        id={props.id}
-        name={props.name}
-        category={props.category}
-        isEvent={props.isEvent}
-        selected={selectedHtmlIdRef.current === props.id}
-        onClick={() => {
-          if (props.isEvent) {
-            const event = eventsRef.current.find((ev) => ev.id === props.id);
-            if (event) setActiveEventRef.current(event);
-          } else {
-            const place = placesRef.current.find((p) => p.id === props.id);
-            if (place) {
-              onSelectPlaceRef.current?.(place);
-              setActiveEventRef.current(null);
-            }
-          }
-        }}
-      />
-    );
-
-    const marker = new mapboxgl.default.Marker({ element: container, anchor: 'center' })
-      .setLngLat([lng, lat])
-      .addTo(m);
-
-    htmlMarkersRef.current.set(props.id, { marker, root, container });
-  });
-};
-
-/* Trigger initial sync after layers added */
-m.on('idle', () => syncHtmlMarkers(m));
-m.on('moveend', () => syncHtmlMarkers(m));
-m.on('zoomend', () => syncHtmlMarkers(m));
-m.on('sourcedata', (e) => {
-  if (e.sourceId === SOURCE_ID && e.isSourceLoaded) {
-    syncHtmlMarkers(m);
-  }
-});
 
         /* ── Curated place gold-star markers ── */
         const reconcileCuratedMarkers = (m: mapboxgl.Map) => {
