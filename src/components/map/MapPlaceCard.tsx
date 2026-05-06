@@ -150,7 +150,7 @@ export default function MapPlaceCard({ place, region, userLocation, itinAdded, o
           </button>
 
           {/* Get Directions button */}
-          
+          <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}&travelmode=walking`}
             target="_blank"
             rel="noopener noreferrer"
