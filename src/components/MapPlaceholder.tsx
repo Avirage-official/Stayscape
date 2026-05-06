@@ -756,7 +756,7 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
             if (!activeRegionId) return;
             fetch(`/api/discovery/events?region_id=${encodeURIComponent(activeRegionId)}&limit=100`)
               .then((res) => res.json())
-              .then((body: { data?: Array<{ id: string; name: string; category: string; description: string; editorial_summary: string | null; venue_name: string | null; latitude: number | null; [...]
+              .then((body: { data?: Array<{ id: string; name: string; category: string; description: string; editorial_summary: string | null; venue_name: string | null; latitude: number | null; longitude: number | null; image_url: string | null; ticket_url: string | null; price_min: number | null; price_max: number | null; currency: string | null; start_date: string; end_date: string | null; start_time: string | null }> ; error?: string }) => {
                 if (body.error) {
                   console.warn('[Stayscape Map] Events API error:', body.error);
                   return;
