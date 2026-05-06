@@ -26,11 +26,8 @@ import {
   SOURCE_ID,
   CLUSTER_LAYER,
   CLUSTER_COUNT_LAYER,
-  UNCLUSTERED_LAYER,
-  LABEL_LAYER,
   MARKER_COLOR_GREEN,
   MARKER_COLOR_PINK,
-  SELECTED_DOT_COLOR,
   ANIMATION_GREEN,
   VIEWPORT_FETCH_LIMIT,
   BUILDINGS_3D_COLOR,
@@ -457,61 +454,6 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
             },
           });
 
-          /* ── Individual place dots — bright green, bold, visible; pink for events ── */
-          m.addLayer({
-            id: UNCLUSTERED_LAYER,
-            type: 'circle',
-            source: SOURCE_ID,
-            filter: ['!', ['has', 'point_count']],
-            paint: {
-              'circle-color': [
-                'case',
-                ['boolean', ['feature-state', 'selected'], false], SELECTED_DOT_COLOR,
-                ['boolean', ['get', 'isEvent'], false], MARKER_COLOR_PINK,
-                MARKER_COLOR_GREEN,
-              ],
-              'circle-radius': [
-                'interpolate', ['linear'], ['zoom'],
-                10, 6, 13, 8, 16, 10,
-              ],
-              'circle-stroke-width': 1.5,
-              'circle-stroke-color': [
-                'case',
-                ['boolean', ['feature-state', 'selected'], false], 'rgba(255,255,255,0.9)',
-                'rgba(255,255,255,0.5)',
-              ],
-              'circle-blur': [
-                'case',
-                ['boolean', ['feature-state', 'selected'], false], 0.15,
-                0,
-              ],
-              'circle-opacity': 1.0,
-            },
-          });
-
-          /* ── Place name labels at high zoom ── */
-          m.addLayer({
-            id: LABEL_LAYER,
-            type: 'symbol',
-            source: SOURCE_ID,
-            filter: ['!', ['has', 'point_count']],
-            minzoom: 16,
-            layout: {
-              'text-field': ['get', 'name'],
-              'text-size': 9,
-              'text-offset': [0, 1.2],
-              'text-anchor': 'top',
-              'text-max-width': 8,
-              'text-allow-overlap': false,
-              'text-optional': true,
-            },
-            paint: {
-              'text-color': 'rgba(232,230,225,0.65)',
-              'text-halo-color': 'rgba(10,14,19,0.9)',
-              'text-halo-width': 0.8,
-            },
-          });
-
           sourceAddedRef.current = true;
 
           /* ── Cluster click: zoom in ── */
@@ -794,7 +736,7 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
             '    <span style="position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(201,168,76,0.07);animation:gentlePulse 3s ease-in-out infinite;"></span>',
             '    <span style="position:absolute;width:30px;height:30px;border-radius:50%;border:1px solid rgba(201,168,76,0.18);"></span>',
             '    <span style="position:absolute;width:20px;height:20px;border-radius:50%;border:1px solid rgba(201,168,76,0.28);"></span>',
-            '    <div style="position:relative;width:13px;height:13px;border-radius:50%;background:#C9A84C;box-shadow:0 0 14px rgba(201,168,76,0.6),0 0 5px rgba(201,168,76,0.9);z-index:1;"></div>',
+            '    <div style="position:relative;width:13px;height:13px;border-radius:50%;background:#C9A84C;box-shadow:0 0 14px rgba(201,168,76,0.6),0 0 5px rgba(201,168,76,0.9);z-index:1;"></div>[...]',
             '  </div>',
             '  <div style="background:#141418;border:1px solid rgba(201,168,76,0.2);border-radius:5px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">',
                 `    <span style="font-size:10px;font-family:system-ui,sans-serif;color:#E8E6E1;letter-spacing:0.04em;font-weight:500;">${regionLabel}</span>`,
@@ -814,7 +756,7 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
             if (!activeRegionId) return;
             fetch(`/api/discovery/events?region_id=${encodeURIComponent(activeRegionId)}&limit=100`)
               .then((res) => res.json())
-              .then((body: { data?: Array<{ id: string; name: string; category: string; description: string; editorial_summary: string | null; venue_name: string | null; latitude: number | null; longitude: number | null; image_url: string | null; start_date: string; end_date: string | null; start_time: string | null; price_min: number | null; price_max: number | null; currency: string | null; ticket_url: string | null }>; error?: string }) => {
+              .then((body: { data?: Array<{ id: string; name: string; category: string; description: string; editorial_summary: string | null; venue_name: string | null; latitude: number | null; [...]
                 if (body.error) {
                   console.warn('[Stayscape Map] Events API error:', body.error);
                   return;
