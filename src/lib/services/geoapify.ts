@@ -20,7 +20,7 @@ const GEOAPIFY_BASE = 'https://api.geoapify.com/v2';
  * Each entry maps to a Stayscape category in GEOAPIFY_TO_STAYSCAPE_CATEGORY below.
  */
 const DEFAULT_CATEGORIES = [
-  /* Dining — proper sit-down places only */
+  /* Dining */
   'catering.restaurant',
   'catering.cafe',
   /* Nightlife */
@@ -37,21 +37,26 @@ const DEFAULT_CATEGORIES = [
   'entertainment.museum',
   'entertainment.theme_park',
   'entertainment.activity_park',
+  'entertainment.water_park',
+  'entertainment.escape_game',
+  'entertainment.bowling_alley',
   'entertainment.culture',
   'entertainment.zoo',
   'entertainment.aquarium',
-  /* Family-friendly handled within entertainment */
   /* Nature & outdoor */
   'leisure.park',
+  'leisure.spa',
   'natural.water',
   'natural.forest',
-  /* Shopping — malls only, not random shops */
+  'natural.mountain.peak',
+  'beach',
+  /* Shopping */
   'commercial.shopping_mall',
   /* Wellness */
   'sport.fitness',
   'service.beauty',
-  /* Religion (temples, churches, etc.) */
-  'religion',
+  /* Religion */
+  'religion.place_of_worship',
 ];
 
 /* ── Category mapping ────────────────────────────────────── */
