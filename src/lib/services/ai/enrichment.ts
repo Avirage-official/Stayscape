@@ -14,6 +14,8 @@
  * - AI output is editable/overridable (source = 'ai')
  * - Does NOT run on every user request — batched after sync
  * - Confidence scores are tracked for each generated tag
+ * - Quality gate: AI scores each place 1-10, low-quality places are
+ *   marked is_active=false and never shown to guests
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -43,6 +45,9 @@ export interface EnrichmentResult {
     tag_type: TagType;
     confidence: number;
   }>;
+  /* Quality gate fields — populated by Claude provider */
+  quality_score?: number;
+  rejection_reason?: string;
 }
 
 export interface AIEnrichmentProvider {
@@ -102,9 +107,10 @@ export function setAIProvider(provider: AIEnrichmentProvider): void {
  * Pipeline:
  * 1. Fetch fresh structured data from Geoapify Place Details (website, phone)
  * 2. Update the place record with Geoapify data
- * 3. Call the AI provider with the enriched place context
- * 4. Write editorial_summary, booking_url, website back to the place record
- * 5. Upsert vibe/best_for tags into place_tags
+ * 3. Call the AI provider — which returns a quality_score (1-10)
+ * 4. If score < 5 → mark place as is_active=false (hidden from guests)
+ * 5. Otherwise: write editorial_summary, vibes, etc. back to the place
+ * 6. Upsert vibe/best_for tags into place_tags
  */
 export async function enrichPlace(
   supabase: SupabaseClient,
@@ -146,9 +152,32 @@ export async function enrichPlace(
 
   // Step 2 – Call AI provider
   const result = await getActiveProvider().enrichPlace(enrichedPlace);
+
+  // Step 3 – Quality gate: reject low-quality places
+  const QUALITY_THRESHOLD = 5;
+  if (
+    typeof result.quality_score === 'number' &&
+    result.quality_score < QUALITY_THRESHOLD
+  ) {
+    await supabase
+      .from('places')
+      .update({
+        is_active: false,
+        ai_enriched_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', place.id);
+
+    console.log(
+      `[enrichPlace] Rejected "${place.name}" — score ${result.quality_score} — ${result.rejection_reason ?? 'no reason given'}`,
+    );
+    return;
+  }
+
+  // Step 4 – Bail out if AI returned nothing useful
   if (!result.editorial_summary && result.tags.length === 0) return;
 
-  // Step 3 – Write AI results back to the place record
+  // Step 5 – Write AI results back to the place record
   const { error } = await supabase
     .from('places')
     .update({
@@ -166,7 +195,7 @@ export async function enrichPlace(
     throw new Error(`enrichPlace update failed: ${error.message}`);
   }
 
-  // Step 4 – Upsert AI-generated tags
+  // Step 6 – Upsert AI-generated tags
   if (result.tags.length > 0) {
     const tagRows: Omit<PlaceTag, 'id' | 'created_at'>[] = result.tags.map(
       (t) => ({
