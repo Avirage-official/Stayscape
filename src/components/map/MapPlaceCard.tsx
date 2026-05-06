@@ -103,7 +103,7 @@ export default function MapPlaceCard({ place, region, userLocation, itinAdded, o
         <div className="mt-2.5 pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {/* Book button */}
           {(place.booking_url || place.website) ? (
-            
+             <a
               href={(place.booking_url || place.website) as string}
               target="_blank"
               rel="noopener noreferrer"
