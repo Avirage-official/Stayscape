@@ -6,7 +6,7 @@
  * via the internal API layer.
  *
  * Rules:
- * - Dark map styling in BOTH light and dark app modes
+ * - Custom illustrated map style ("Sage & Stone") used in BOTH light/dark app modes
  * - Token read from environment variable
  * - Support markers for places and events
  * - Support viewport bounds extraction for nearby queries
@@ -30,25 +30,34 @@ export function isMapboxAvailable(): boolean {
   return _TOKEN.length > 0;
 }
 
-/* ── Dark style (always used — per Stayscape design rules) ─ */
+/* ── Map style ───────────────────────────────────────────── */
 
 /**
- * Mapbox style URL. Always dark, regardless of app theme.
- * This preserves the Stayscape design rule that the map stays dark
- * in both light and dark mode.
+ * Stayscape's custom Mapbox style URL.
+ *
+ * "Sage & Stone" — illustrated, complementary palette to the espresso UI.
+ * Warm taupe land, muted sage parks, soft slate water, cream roads,
+ * dark-warm-brown italic city labels.
+ *
+ * Style was uploaded as JSON to Mapbox Studio and published.
+ * Source JSON lives in /public/mapbox-styles/stayscape-sage-stone.style.json.
+ *
+ * The constant name `MAPBOX_DARK_STYLE` is kept for backwards-compatibility —
+ * everywhere in the codebase that imports it now resolves to the new style
+ * with no further changes needed.
  */
-export const MAPBOX_DARK_STYLE = 'mapbox://styles/benobaj/cmnihne6s006s01se1eqtedtm';
+export const MAPBOX_DARK_STYLE = 'mapbox://styles/benobaj/cmotgvak6008201r83sb92yw9';
 
 /**
- * Fallback dark style from Mapbox's public gallery.
- * Used automatically if the custom style above fails to load.
+ * Fallback style if the custom style above fails to load.
+ * Stock Mapbox Light — closest visual match to "Sage & Stone" out of the box.
  */
-export const MAPBOX_DARK_STYLE_FALLBACK = 'mapbox://styles/mapbox/dark-v11';
+export const MAPBOX_DARK_STYLE_FALLBACK = 'mapbox://styles/mapbox/light-v11';
 
 /**
  * Stayscape gold color for map markers — matches the design system.
  */
-export const MARKER_COLOR_GOLD = '#C9A84C';
+export const MARKER_COLOR_GOLD = '#C9A875';
 
 /**
  * Category-specific marker colors for the premium place markers.
@@ -66,7 +75,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   events: '#EC4899',
   local_spots: '#84CC16',
   fun_places: '#14B8A6',
-  top_places: '#C9A84C',
+  top_places: '#C9A875',
   /* Legacy display-name categories (kept for backwards compatibility) */
   'Restaurants': '#F59E0B',
   'Bars & Drinks': '#8B5CF6',
@@ -90,5 +99,3 @@ export const GEOLOCATION_FLY_DURATION = 1800;
 export const GEOLOCATION_RECENTER_DURATION = 1200;
 /** Distance threshold (in degrees ~0.003° ≈ 300 m) above which the re-center button appears. */
 export const GEOLOCATION_RECENTER_THRESHOLD = 0.003;
-/** Delay (ms) before auto-requesting geolocation on map load, so the map renders first. */
-export const GEOLOCATION_AUTO_REQUEST_DELAY = 1000;
