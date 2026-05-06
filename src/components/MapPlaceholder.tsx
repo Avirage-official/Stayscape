@@ -293,24 +293,25 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
     const map = mapInstanceRef.current;
     if (!map) return;
     if (activePlace) {
-  /* Fly camera to the selected place */
-  map.flyTo({
-    center: [activePlace.longitude, activePlace.latitude],
-    zoom: 16,
-    pitch: 45,
-    bearing: -15,
-    duration: 1200,
-  });
-  /* HTML markers handle their own selected/dimmed state via React props */
-} else {
-  /* Restore camera */
-  if (!filterOpenRef.current) {
-    map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
-  }
-}
+      /* Fly camera to the selected place */
+      map.flyTo({
+        center: [activePlace.longitude, activePlace.latitude],
+        zoom: 16,
+        pitch: 45,
+        bearing: -15,
+        duration: 1200,
+      });
+      /* HTML markers handle their own selected/dimmed state via React props */
+    } else {
+      /* Restore camera */
+      if (!filterOpenRef.current) {
+        map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+      }
+    }
+  }, [activePlace]);
 
- /* ─── Update selected marker — drives HTML marker re-render via ref ─── */
-useEffect(() => {
+  /* ─── Update selected marker — drives HTML marker re-render via ref ─── */
+  useEffect(() => {
   selectedHtmlIdRef.current = selectedPlaceId ?? null;
   const map = mapInstanceRef.current;
   if (!map || !sourceAddedRef.current) return;
