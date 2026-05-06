@@ -9,11 +9,23 @@ import { getCategoryColor } from './map-utils';
 interface MapPlaceCardProps {
   place: MapPlace;
   region: SelectedRegion | null;
+  userLocation: { lat: number; lng: number } | null;
   itinAdded: string | null;
   onAddToItinerary: () => void;
 }
 
-export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerary }: MapPlaceCardProps) {
+export default function MapPlaceCard({ place, region, userLocation, itinAdded, onAddToItinerary }: MapPlaceCardProps) {
+  /* Prefer user location over region for distance — user-anchored experience */
+  const distanceAnchor = userLocation
+    ? { lat: userLocation.lat, lng: userLocation.lng, label: 'from you' }
+    : region
+      ? { lat: region.latitude, lng: region.longitude, label: 'from centre' }
+      : null;
+
+  const distanceMetres = distanceAnchor
+    ? haversineMetres(distanceAnchor.lat, distanceAnchor.lng, place.latitude, place.longitude)
+    : null;
+
   return (
     <div
       key={place.id}
@@ -70,18 +82,18 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
             </div>
           )}
 
-          {region && place.rating != null && (
+          {distanceMetres != null && place.rating != null && (
             <span className="text-[var(--text-dim)] text-[9px]">·</span>
           )}
 
-          {region && (
-            <div className="flex items-center gap-1">
+          {distanceMetres != null && (
+            <div className="flex items-center gap-1" title={distanceAnchor?.label ?? ''}>
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
               <span className="text-[9.5px] text-[var(--text-muted)]">
-                {formatDistanceDisplay(haversineMetres(region.latitude, region.longitude, place.latitude, place.longitude))}
+                {formatDistanceDisplay(distanceMetres)}
               </span>
             </div>
           )}
@@ -91,7 +103,7 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
         <div className="mt-2.5 pt-2 flex items-center gap-1.5 flex-wrap" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {/* Book button */}
           {(place.booking_url || place.website) ? (
-            <a
+            
               href={(place.booking_url || place.website) as string}
               target="_blank"
               rel="noopener noreferrer"
@@ -138,7 +150,7 @@ export default function MapPlaceCard({ place, region, itinAdded, onAddToItinerar
           </button>
 
           {/* Get Directions button */}
-          <a
+          
             href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}&travelmode=walking`}
             target="_blank"
             rel="noopener noreferrer"
