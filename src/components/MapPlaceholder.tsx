@@ -293,56 +293,51 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
     const map = mapInstanceRef.current;
     if (!map) return;
     if (activePlace) {
-      /* Fly camera to the selected place */
-      map.flyTo({
-        center: [activePlace.longitude, activePlace.latitude],
-        zoom: 16,
-        pitch: 45,
-        bearing: -15,
-        duration: 1200,
-      });
-      /* Dim all other dots */
-      if (sourceAddedRef.current) {
-        try {
-          map.setPaintProperty(UNCLUSTERED_LAYER, 'circle-opacity', [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false], 1.0,
-            0.3,
-          ]);
-        } catch { /* layer may not exist yet */ }
-      }
-    } else {
-      /* Restore full opacity and settle camera */
-      if (sourceAddedRef.current) {
-        try {
-          map.setPaintProperty(UNCLUSTERED_LAYER, 'circle-opacity', 1.0);
-        } catch { /* ignore */ }
-      }
-      if (!filterOpenRef.current) {
-        map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
-      }
-    }
-  }, [activePlace]);
+  /* Fly camera to the selected place */
+  map.flyTo({
+    center: [activePlace.longitude, activePlace.latitude],
+    zoom: 16,
+    pitch: 45,
+    bearing: -15,
+    duration: 1200,
+  });
+  /* HTML markers handle their own selected/dimmed state via React props */
+} else {
+  /* Restore camera */
+  if (!filterOpenRef.current) {
+    map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+  }
+}
 
-  /* ─── Update selected marker via Mapbox feature state ─── */
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !sourceAddedRef.current) return;
-    if (prevSelectedIdRef.current !== null) {
-      try { map.setFeatureState({ source: SOURCE_ID, id: prevSelectedIdRef.current }, { selected: false }); } catch { /* source may have reset */ }
-    }
-    if (selectedPlaceId) {
-      const numericId = uuidToFeatureIdRef.current.get(selectedPlaceId);
-      if (numericId !== undefined) {
-        try { map.setFeatureState({ source: SOURCE_ID, id: numericId }, { selected: true }); } catch { /* source may have reset */ }
-        prevSelectedIdRef.current = numericId;
-      } else {
-        prevSelectedIdRef.current = null;
-      }
-    } else {
-      prevSelectedIdRef.current = null;
-    }
-  }, [selectedPlaceId]);
+ /* ─── Update selected marker — drives HTML marker re-render via ref ─── */
+useEffect(() => {
+  selectedHtmlIdRef.current = selectedPlaceId ?? null;
+  const map = mapInstanceRef.current;
+  if (!map || !sourceAddedRef.current) return;
+  /* Force re-render of all HTML markers so they pick up the new selected state */
+  htmlMarkersRef.current.forEach((entry, id) => {
+    const place = placesRef.current.find((p) => p.id === id);
+    const event = eventsRef.current.find((ev) => ev.id === id);
+    const item = place ?? event;
+    if (!item) return;
+    entry.root.render(
+      <MapMarker
+        id={id}
+        name={item.name}
+        category={item.category}
+        isEvent={Boolean(event)}
+        selected={selectedHtmlIdRef.current === id}
+        onClick={() => {
+          if (event) setActiveEventRef.current(event);
+          else if (place) {
+            onSelectPlaceRef.current?.(place);
+            setActiveEventRef.current(null);
+          }
+        }}
+      />
+    );
+  });
+}, [selectedPlaceId]);
 
   /* ─── Update source data when category filter changes ─── */
   useEffect(() => {
@@ -570,6 +565,119 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
           /* Reconcile curated markers after source update */
           reconcileCuratedMarkers(m);
         };
+
+        /* ─── HTML Markers: sync with unclustered features in viewport ─── */
+const syncHtmlMarkers = (m: mapboxgl.Map) => {
+  if (!sourceAddedRef.current) return;
+
+  /* Query all rendered unclustered features in the current viewport */
+  let features: GeoJSON.Feature[] = [];
+  try {
+    features = m.querySourceFeatures(SOURCE_ID, {
+      filter: ['!', ['has', 'point_count']],
+    }) as GeoJSON.Feature[];
+  } catch {
+    return;
+  }
+
+  /* Deduplicate by id (querySourceFeatures can return duplicates across tiles) */
+  const seen = new Set<string>();
+  const uniqueFeatures = features.filter((f) => {
+    const id = (f.properties as { id?: string } | null)?.id;
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  const currentIds = new Set(uniqueFeatures.map((f) => (f.properties as { id: string }).id));
+
+  /* Remove markers that are no longer visible */
+  htmlMarkersRef.current.forEach((entry, id) => {
+    if (!currentIds.has(id)) {
+      entry.root.unmount();
+      entry.marker.remove();
+      htmlMarkersRef.current.delete(id);
+    }
+  });
+
+  /* Add or update markers for visible features */
+  uniqueFeatures.forEach((feature) => {
+    const props = feature.properties as { id: string; name: string; category: string; isEvent: boolean } | null;
+    if (!props) return;
+    const geom = feature.geometry as GeoJSON.Point;
+    const [lng, lat] = geom.coordinates;
+
+    const existing = htmlMarkersRef.current.get(props.id);
+    if (existing) {
+      existing.marker.setLngLat([lng, lat]);
+      existing.root.render(
+        <MapMarker
+          id={props.id}
+          name={props.name}
+          category={props.category}
+          isEvent={props.isEvent}
+          selected={selectedHtmlIdRef.current === props.id}
+          onClick={() => {
+            if (props.isEvent) {
+              const event = eventsRef.current.find((ev) => ev.id === props.id);
+              if (event) setActiveEventRef.current(event);
+            } else {
+              const place = placesRef.current.find((p) => p.id === props.id);
+              if (place) {
+                onSelectPlaceRef.current?.(place);
+                setActiveEventRef.current(null);
+              }
+            }
+          }}
+        />
+      );
+      return;
+    }
+
+    /* Create new container + marker + root */
+    const container = document.createElement('div');
+    container.style.cssText = 'pointer-events:auto;';
+    const root = createRoot(container);
+
+    root.render(
+      <MapMarker
+        id={props.id}
+        name={props.name}
+        category={props.category}
+        isEvent={props.isEvent}
+        selected={selectedHtmlIdRef.current === props.id}
+        onClick={() => {
+          if (props.isEvent) {
+            const event = eventsRef.current.find((ev) => ev.id === props.id);
+            if (event) setActiveEventRef.current(event);
+          } else {
+            const place = placesRef.current.find((p) => p.id === props.id);
+            if (place) {
+              onSelectPlaceRef.current?.(place);
+              setActiveEventRef.current(null);
+            }
+          }
+        }}
+      />
+    );
+
+    const marker = new mapboxgl.default.Marker({ element: container, anchor: 'center' })
+      .setLngLat([lng, lat])
+      .addTo(m);
+
+    htmlMarkersRef.current.set(props.id, { marker, root, container });
+  });
+};
+
+/* Trigger initial sync after layers added */
+m.on('idle', () => syncHtmlMarkers(m));
+m.on('moveend', () => syncHtmlMarkers(m));
+m.on('zoomend', () => syncHtmlMarkers(m));
+m.on('sourcedata', (e) => {
+  if (e.sourceId === SOURCE_ID && e.isSourceLoaded) {
+    syncHtmlMarkers(m);
+  }
+});
 
         /* ── Curated place gold-star markers ── */
         const reconcileCuratedMarkers = (m: mapboxgl.Map) => {
