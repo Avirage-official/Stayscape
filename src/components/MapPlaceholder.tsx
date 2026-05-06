@@ -1058,6 +1058,7 @@ function MapPlaceholder({ onSelectPlace, selectedPlaceId, stayId }: MapPlacehold
         <MapPlaceCard
           place={activePlace}
           region={region}
+          userLocation={userLocationRef.current}
           itinAdded={itinAdded}
           onAddToItinerary={() => {
             addItem({
