@@ -11,6 +11,49 @@ import type { PlaceUpsertInput } from '@/lib/supabase/places-repository';
 
 const GEOAPIFY_BASE = 'https://api.geoapify.com/v2';
 
+/* ── Default categories ──────────────────────────────────── */
+
+/**
+ * Curated list of Geoapify sub-categories to fetch.
+ * Avoids broad parent buckets (e.g. 'commercial', 'catering') that
+ * pull in junk like phone repair shops, fast food, generic chains.
+ * Each entry maps to a Stayscape category in GEOAPIFY_TO_STAYSCAPE_CATEGORY below.
+ */
+const DEFAULT_CATEGORIES = [
+  /* Dining — proper sit-down places only */
+  'catering.restaurant',
+  'catering.cafe',
+  /* Nightlife */
+  'catering.bar',
+  'catering.pub',
+  /* Tourism & sights */
+  'tourism.sights',
+  'tourism.attraction',
+  'tourism.information',
+  /* Heritage */
+  'heritage',
+  /* Entertainment */
+  'entertainment.cinema',
+  'entertainment.museum',
+  'entertainment.theme_park',
+  'entertainment.activity_park',
+  'entertainment.culture',
+  'entertainment.zoo',
+  'entertainment.aquarium',
+  /* Family-friendly handled within entertainment */
+  /* Nature & outdoor */
+  'leisure.park',
+  'natural.water',
+  'natural.forest',
+  /* Shopping — malls only, not random shops */
+  'commercial.shopping_mall',
+  /* Wellness */
+  'sport.fitness',
+  'service.beauty',
+  /* Religion (temples, churches, etc.) */
+  'religion',
+];
+
 /* ── Category mapping ────────────────────────────────────── */
 
 const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
@@ -22,6 +65,7 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
   'entertainment': 'fun_places',
   'entertainment.cinema': 'fun_places',
   'entertainment.theme_park': 'fun_places',
+  'entertainment.activity_park': 'fun_places',
   'entertainment.zoo': 'family',
   'entertainment.aquarium': 'family',
   'entertainment.museum': 'historical',
@@ -36,6 +80,7 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
   'tourism.information': 'top_places',
   'heritage': 'historical',
   'heritage.unesco': 'historical',
+  'religion': 'historical',
   'commercial.shopping_mall': 'shopping',
   'commercial': 'shopping',
   'sport.fitness': 'wellness',
@@ -114,15 +159,17 @@ export async function searchPlaces(
     latitude,
     longitude,
     radius_meters = 5000,
-    categories = ['catering', 'tourism', 'entertainment', 'leisure', 'commercial'],
+    categories = DEFAULT_CATEGORIES,
     limit = 50,
   } = params;
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
   url.searchParams.set('categories', categories.join(','));
+  url.searchParams.set('conditions', 'named');
   url.searchParams.set('filter', `circle:${longitude},${latitude},${radius_meters}`);
   url.searchParams.set('bias', `proximity:${longitude},${latitude}`);
   url.searchParams.set('limit', String(limit));
+  url.searchParams.set('lang', 'en');
   url.searchParams.set('apiKey', apiKey);
 
   const res = await fetch(url.toString());
@@ -150,14 +197,16 @@ export async function searchPlacesByBounds(params: {
   const apiKey = getGeoapifyApiKey();
   const {
     north, south, east, west,
-    categories = ['catering', 'tourism', 'entertainment', 'leisure', 'commercial'],
+    categories = DEFAULT_CATEGORIES,
     limit = 50,
   } = params;
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
   url.searchParams.set('categories', categories.join(','));
+  url.searchParams.set('conditions', 'named');
   url.searchParams.set('filter', `rect:${west},${south},${east},${north}`);
   url.searchParams.set('limit', String(limit));
+  url.searchParams.set('lang', 'en');
   url.searchParams.set('apiKey', apiKey);
 
   const res = await fetch(url.toString());
@@ -180,6 +229,7 @@ export async function getPlaceDetails(
   const apiKey = getGeoapifyApiKey();
   const url = new URL(`${GEOAPIFY_BASE}/place-details`);
   url.searchParams.set('id', placeId);
+  url.searchParams.set('lang', 'en');
   url.searchParams.set('apiKey', apiKey);
 
   const res = await fetch(url.toString());
