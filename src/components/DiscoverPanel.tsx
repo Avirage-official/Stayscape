@@ -171,7 +171,8 @@ interface DiscoverPanelProps {
 export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: DiscoverPanelProps) {
   const { region } = useRegion();
   const { addItem } = useItinerary();
-
+  
+  const [selectedMapPlaceId, setSelectedMapPlaceId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('top-places');
   const [activePlacesCategory, setActivePlacesCategory] = useState<string | null | undefined>(undefined);
 
@@ -659,7 +660,12 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
 
           {/* ── MAP ── */}
           <div className="discover-map-wrap">
-            <MapPlaceholder stayId={stayId ?? null} />
+            <MapPlaceholder <MapPlaceholder 
+             stayId={stayId ?? null}
+             onSelectPlace={(place) => setSelectedMapPlaceId(place.id)}
+             selectedPlaceId={selectedMapPlaceId}
+          />
+            stayId={stayId ?? null} />
           </div>
         </div>
 
