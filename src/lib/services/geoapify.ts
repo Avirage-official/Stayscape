@@ -170,7 +170,6 @@ export async function searchPlaces(
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
   url.searchParams.set('categories', categories.join(','));
-  url.searchParams.set('conditions', 'named');
   url.searchParams.set('filter', `circle:${longitude},${latitude},${radius_meters}`);
   url.searchParams.set('bias', `proximity:${longitude},${latitude}`);
   url.searchParams.set('limit', String(limit));
@@ -208,7 +207,6 @@ export async function searchPlacesByBounds(params: {
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
   url.searchParams.set('categories', categories.join(','));
-  url.searchParams.set('conditions', 'named');
   url.searchParams.set('filter', `rect:${west},${south},${east},${north}`);
   url.searchParams.set('limit', String(limit));
   url.searchParams.set('lang', 'en');
