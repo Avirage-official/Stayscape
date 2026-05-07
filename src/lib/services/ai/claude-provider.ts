@@ -100,29 +100,36 @@ export class ClaudeProvider implements AIEnrichmentProvider {
 function buildPlacePrompt(place: InternalPlace): string {
   return `You are a luxury travel editor for Stayscape, a premium hospitality platform. Your job has two parts:
 
-PART 1 — QUALITY ASSESSMENT
-First, score this place from 1 to 10 based on whether it deserves a spot in a premium hotel guest's recommendations.
+PART 1 — QUALITY GATE
+Decide if this place should be hidden from guests. The default answer is YES, this place should be shown. Only reject when you have ACTIVE EVIDENCE that the place is unsuitable.
 
-Score 1-4 (REJECT — set quality_score and provide rejection_reason, leave other fields empty):
-- The place is closed, defunct, or you have no reliable knowledge of it
-- It's a generic chain (e.g. McDonald's, 7-Eleven, generic phone shop)
-- It's irrelevant to travellers (e.g. dental clinic, hardware store, government office)
-- It's poorly rated or has a bad reputation
-- It's a duplicate or low-effort listing
+REJECT (score 1-3) ONLY when at least one of these is clearly true:
+- The place is permanently closed, defunct, or demolished (you have specific knowledge of this)
+- It is a generic global fast-food chain (McDonald's, Burger King, KFC, Subway, Starbucks, 7-Eleven, Pizza Hut, Domino's, Dunkin')
+- It is clearly NOT a hospitality-relevant venue (e.g. dental clinic, hardware store, government office, car dealership, post office, bank)
+- It has well-documented major safety, legal, or reputational issues
 
-Score 5-7 (ACCEPT but standard):
-- Legitimate, operating, decent quality
-- Worth knowing about but not exceptional
+ACCEPT (score 4-10) — this is the DEFAULT. Use this when:
+- The place is named, located, and looks like a normal operating venue, even if you have never heard of it
+- It is an independent, local, or boutique establishment (most hidden gems fall here — UNFAMILIARITY IS NOT A REJECTION REASON)
+- It is a legitimate tourist site, restaurant, bar, café, museum, park, or shop
 
-Score 8-10 (ACCEPT — premium-worthy):
-- Well-known, highly-rated, or genuinely interesting
-- The kind of place a premium guest would be glad to discover
-- Iconic landmarks, top restaurants, must-visit attractions
+Within ACCEPT, scale the score by how confidently premium-worthy you find it:
+- 4-5: Likely legitimate but limited information — write a careful, generic-but-accurate summary
+- 6-7: Solid, recognisable, decent reputation
+- 8-10: Iconic, highly-rated, must-visit — these are the standouts
 
-PART 2 — ENRICHMENT (only if score >= 5)
-If the place passes the quality bar, write a luxury editorial entry. Use your training knowledge of how this place is documented on Google Maps, TripAdvisor, Yelp, Booking.com, and the official website.
+CRITICAL RULE: If you do not recognise the place, score it 4-5 and write a SAFE editorial summary based on its name, category, address, and the surrounding city/neighbourhood context. DO NOT reject it just because you have no detailed knowledge.
 
-Write specific, premium content — never generic. Mention what makes this place actually unique.
+PART 2 — ENRICHMENT (always required if score >= 4)
+Write a luxury editorial entry. If you have specific knowledge of the place from Google Maps, TripAdvisor, Yelp, or its website, use it. If you don't, write a SAFE summary that:
+- Describes its category and neighbourhood truthfully
+- Avoids inventing specific details (no fake awards, no fake quotes, no fake history)
+- Captures the likely vibe based on the area and category
+- Sounds genuinely editorial, not generic
+
+Example of a SAFE summary for an unfamiliar place:
+"This intimate neighbourhood spot in [actual neighbourhood] offers [category-appropriate experience] in one of [city]'s [authentic / atmospheric / lively] historic quarters. A solid choice for travellers wanting to step away from the main tourist circuit."
 
 Place details:
 Name: ${place.name}
@@ -137,12 +144,12 @@ Rating: ${place.rating ?? 'N/A'}
 Respond with a single JSON object only — no markdown, no extra text:
 {
   "quality_score": <number 1-10>,
-  "rejection_reason": "<short reason if score < 5, otherwise empty string>",
-  "editorial_summary": "<2-3 sentences in a premium hospitality tone, only if score >= 5, otherwise empty string>",
-  "recommended_duration": "<e.g. 1-2 hours, Half day, Full day, 30 minutes — only if score >= 5>",
-  "best_time_to_go": "<e.g. Evening, Morning, Weekday afternoons, Sunset — only if score >= 5>",
-  "vibes": [<3-5 atmosphere words if score >= 5, otherwise empty array>],
-  "best_for": [<3-5 visitor types if score >= 5, otherwise empty array>]
+  "rejection_reason": "<short reason if score < 4, otherwise empty string>",
+  "editorial_summary": "<2-3 sentences in a premium hospitality tone, required if score >= 4>",
+  "recommended_duration": "<e.g. 1-2 hours, Half day, Full day, 30 minutes — required if score >= 4>",
+  "best_time_to_go": "<e.g. Evening, Morning, Weekday afternoons, Sunset — required if score >= 4>",
+  "vibes": [<3-5 atmosphere words if score >= 4, otherwise empty array>],
+  "best_for": [<3-5 visitor types if score >= 4, otherwise empty array>]
 }`;
 }
 
@@ -196,7 +203,7 @@ function toNumberOrNull(value: unknown): number | null {
   return null;
 }
 
-const QUALITY_THRESHOLD = 5;
+const QUALITY_THRESHOLD = 4;
 
 function parsePlaceResponse(raw: string): EnrichmentResult {
   const parsed = safeParseJSON(raw) as ClaudePlaceEnrichment | null;
@@ -206,7 +213,7 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
 
   const qualityScore = toNumberOrNull(parsed.quality_score);
 
-  /* ── Quality gate: reject if score below threshold ── */
+  /* ── Quality gate: reject only when AI is actively confident the place is unsuitable ── */
   if (qualityScore !== null && qualityScore < QUALITY_THRESHOLD) {
     return {
       editorial_summary: '',
