@@ -660,7 +660,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
 
           {/* ── MAP ── */}
           <div className="discover-map-wrap">
-            <MapPlaceholder <MapPlaceholder 
+            <MapPlaceholder 
              stayId={stayId ?? null}
              onSelectPlace={(place) => setSelectedMapPlaceId(place.id)}
              selectedPlaceId={selectedMapPlaceId}
