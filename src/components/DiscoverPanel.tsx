@@ -664,8 +664,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
              stayId={stayId ?? null}
              onSelectPlace={(place) => setSelectedMapPlaceId(place.id)}
              selectedPlaceId={selectedMapPlaceId}
-          />
-            stayId={stayId ?? null} />
+            />
           </div>
         </div>
 
