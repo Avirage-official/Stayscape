@@ -19,6 +19,15 @@ export default function MapCategoryFilter({
 }: MapCategoryFilterProps) {
   const filterPanelRef = useRef<HTMLDivElement>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  /* ─── Detect mobile viewport (matches DiscoverPanel breakpoint) ─── */
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 900);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   /* ─── Dismiss on outside click ─── */
   useEffect(() => {
@@ -32,9 +41,13 @@ export default function MapCategoryFilter({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [filterOpen, onFilterOpenChange]);
 
-  /* ─── Compass geometry ─── */
-  const COMPASS_SIZE = 240;
-  const RADIUS = 88;
+  /* ─── Compass geometry — responsive ─── */
+  const COMPASS_SIZE = isMobile ? 184 : 240;
+  const RADIUS = isMobile ? 66 : 88;
+  const HUB_SIZE = isMobile ? 56 : 72;
+  const DOT_SIZE = isMobile ? 24 : 28;
+  const LABEL_RADIUS_OFFSET = isMobile ? 22 : 28;
+  const LABEL_FONT_SIZE = isMobile ? 8.5 : 9.5;
   const CENTER = COMPASS_SIZE / 2;
   const itemCount = CATEGORY_FILTERS.length;
 
@@ -67,7 +80,6 @@ export default function MapCategoryFilter({
           transition: 'all 0.18s ease',
         }}
       >
-        {/* Compass-rose icon, replacing the old hamburger */}
         <svg
           width="16"
           height="16"
@@ -88,17 +100,20 @@ export default function MapCategoryFilter({
         </svg>
       </button>
 
-      {/* ── Compass dial ── */}
+      {/* ── Compass dial — anchored to RIGHT on mobile, LEFT on desktop ── */}
       {filterOpen && (
         <div
           style={{
             position: 'absolute',
-            left: 0,
-            top: 'calc(100% + 12px)',
+            /* Mobile: anchor to right edge of toggle (toggle is right-aligned) */
+            /* Desktop: anchor to left edge of toggle (toggle is left-aligned) */
+            ...(isMobile
+              ? { right: 0, top: 'calc(100% + 12px)' }
+              : { left: 0, top: 'calc(100% + 12px)' }),
             width: COMPASS_SIZE,
             height: COMPASS_SIZE,
             animation: 'compassFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            transformOrigin: 'top left',
+            transformOrigin: isMobile ? 'top right' : 'top left',
           }}
         >
           {/* Outer glow halo */}
@@ -140,11 +155,10 @@ export default function MapCategoryFilter({
               animationPlayState: hoveredKey ? 'paused' : 'running',
             }}
           >
-            {/* Outer tick marks — 36 ticks (every 10°) */}
             {Array.from({ length: 36 }).map((_, i) => {
               const angle = (i * 360) / 36;
               const isMajor = i % 9 === 0;
-              const r1 = RADIUS + 18;
+              const r1 = RADIUS + (isMobile ? 12 : 18);
               const r2 = isMajor ? r1 + 6 : r1 + 3;
               const rad = ((angle - 90) * Math.PI) / 180;
               return (
@@ -177,7 +191,7 @@ export default function MapCategoryFilter({
 
           {/* Category dots arranged around circle */}
           {CATEGORY_FILTERS.map((cat, i) => {
-            const angle = (i * 360) / itemCount - 90; /* -90 puts first item at top */
+            const angle = (i * 360) / itemCount - 90;
             const rad = (angle * Math.PI) / 180;
             const x = CENTER + Math.cos(rad) * RADIUS;
             const y = CENTER + Math.sin(rad) * RADIUS;
@@ -187,12 +201,10 @@ export default function MapCategoryFilter({
             const dotColor =
               cat.key === 'all' ? MARKER_COLOR_GREEN : getCategoryColor(cat.key);
 
-            /* Label position — pushed further out from the dot */
-            const labelRadius = RADIUS + 28;
+            const labelRadius = RADIUS + LABEL_RADIUS_OFFSET;
             const lx = CENTER + Math.cos(rad) * labelRadius;
             const ly = CENTER + Math.sin(rad) * labelRadius;
 
-            /* Determine label alignment by angle */
             const cosA = Math.cos(rad);
             let textAlign: 'left' | 'center' | 'right' = 'center';
             if (cosA > 0.3) textAlign = 'left';
@@ -212,10 +224,10 @@ export default function MapCategoryFilter({
                   position: 'absolute',
                   left: x,
                   top: y,
-                  width: 28,
-                  height: 28,
-                  marginLeft: -14,
-                  marginTop: -14,
+                  width: DOT_SIZE,
+                  height: DOT_SIZE,
+                  marginLeft: -DOT_SIZE / 2,
+                  marginTop: -DOT_SIZE / 2,
                   borderRadius: '50%',
                   background: 'transparent',
                   border: 'none',
@@ -226,12 +238,11 @@ export default function MapCategoryFilter({
                 }}
                 aria-label={cat.label}
               >
-                {/* Dot core */}
                 <span
                   aria-hidden="true"
                   style={{
                     position: 'absolute',
-                    inset: isActive ? 4 : 8,
+                    inset: isActive ? 4 : 7,
                     borderRadius: '50%',
                     background: dotColor,
                     boxShadow: isActive
@@ -242,7 +253,6 @@ export default function MapCategoryFilter({
                     transition: 'inset 0.28s ease, box-shadow 0.28s ease',
                   }}
                 />
-                {/* Active gold ring */}
                 {isActive && (
                   <span
                     aria-hidden="true"
@@ -256,14 +266,13 @@ export default function MapCategoryFilter({
                   />
                 )}
 
-                {/* Floating label */}
                 <span
                   style={{
                     position: 'absolute',
                     left: lx - x,
                     top: ly - y,
                     transform: 'translate(-50%, -50%)',
-                    fontSize: 9.5,
+                    fontSize: LABEL_FONT_SIZE,
                     fontFamily: 'system-ui, sans-serif',
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
@@ -290,10 +299,10 @@ export default function MapCategoryFilter({
           <div
             style={{
               position: 'absolute',
-              left: CENTER - 36,
-              top: CENTER - 36,
-              width: 72,
-              height: 72,
+              left: CENTER - HUB_SIZE / 2,
+              top: CENTER - HUB_SIZE / 2,
+              width: HUB_SIZE,
+              height: HUB_SIZE,
               borderRadius: '50%',
               background: 'radial-gradient(circle at 30% 25%, #2a2218 0%, #15110d 80%)',
               border: '1px solid rgba(201,168,117,0.35)',
@@ -312,7 +321,7 @@ export default function MapCategoryFilter({
           >
             <span
               style={{
-                fontSize: 7,
+                fontSize: isMobile ? 6.5 : 7,
                 letterSpacing: '0.22em',
                 color: 'rgba(201,168,117,0.6)',
                 textTransform: 'uppercase',
@@ -323,7 +332,7 @@ export default function MapCategoryFilter({
             </span>
             <span
               style={{
-                fontSize: 11,
+                fontSize: isMobile ? 10 : 11,
                 color: '#E8DCC4',
                 fontFamily: 'system-ui, sans-serif',
                 fontWeight: 500,
@@ -337,7 +346,6 @@ export default function MapCategoryFilter({
         </div>
       )}
 
-      {/* Inline keyframes — local to component */}
       <style>{`
         @keyframes compassFadeIn {
           0% {
