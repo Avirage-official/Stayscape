@@ -449,7 +449,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
           }
           .discover-map-wrap {
             order: 1;
-            height: 32vh;
+            height: 52vh;
             width: 100%;
             flex-shrink: 0;
             border-bottom: 1px solid var(--border);
