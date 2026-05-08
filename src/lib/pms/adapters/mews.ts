@@ -256,10 +256,10 @@ export class MewsAdapter implements PmsAdapter {
 
     return reservations;
   }
-
+  
   private async callMews<T>(
-    endpoint: string,
-    body: Record<string, unknown>,
+  endpoint: string,
+  body: object,
   ): Promise<T> {
     const url = `${this.platformAddress}${endpoint}`;
     const fullBody = { ...this.auth, ...body };
