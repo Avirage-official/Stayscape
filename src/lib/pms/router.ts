@@ -12,7 +12,7 @@
  *   4. Done — the rest of the codebase requires no changes.
  */
 
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase/client';
 import type { PmsAdapter, PmsAdapterConfig } from './types';
 import { MewsAdapter } from './adapters/mews';
 
@@ -140,26 +140,23 @@ export class PmsRouterError extends Error {
    ────────────────────────────────────────────────────────────────── */
 
 async function loadPmsConfig(propertyId: string): Promise<PmsConfigRow> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('pms_config')
     .select('property_id, provider, api_endpoint, api_key_encrypted, webhook_secret, is_active')
     .eq('property_id', propertyId)
     .maybeSingle();
-
   if (error) {
     throw new PmsRouterError(
       `Failed to load PMS config for ${propertyId}: ${error.message}`,
     );
   }
-
   if (!data) {
     throw new PmsRouterError(
       `No PMS config found for property ${propertyId}. ` +
         `Hotel must configure their PMS before sync can run.`,
     );
   }
-
   return data as PmsConfigRow;
 }
 
