@@ -22,6 +22,7 @@ const NAV_LINKS = [
   { href: '/hotel-admin/dashboard', label: 'Dashboard', icon: LayoutGrid },
   { href: '/hotel-admin/requests', label: 'Requests', icon: Bell },
   { href: '/hotel-admin/rooms', label: 'Rooms', icon: BedDouble },
+  { href: '/hotel-admin/stays',     label: 'Stays',     icon: CalendarDays },
   { href: '/hotel-admin/guests', label: 'Guests', icon: Users },
   { href: '/hotel-admin/settings', label: 'Settings', icon: Settings },
 ];
