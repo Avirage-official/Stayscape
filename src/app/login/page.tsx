@@ -206,6 +206,7 @@ export default function LoginPage() {
 
           {/* Brand */}
           <div className="anim-brand text-center mb-10">
+            <a href="/admin" style={{ textDecoration: 'none' }}>
             <h1 style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: '2rem',
@@ -216,6 +217,7 @@ export default function LoginPage() {
             }}>
               StayScape
             </h1>
+          </a>
             <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               {mode === 'guest' ? 'Guest Access' : 'Hotel Admin Portal'}
             </p>
