@@ -107,10 +107,16 @@ export type MewsReservationState = (typeof MEWS_RESERVATION_STATES)[number];
  * Translate Mews state → Stayscape internal stay status.
  * Adapter MUST go through this map; do not hand-roll comparisons.
  */
-export const MEWS_STATE_TO_STAYSCAPE: Record
-  MewsReservationState,
-  'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'held' | 'waitlist'
-> = {
+type StayStatusValue =
+  | 'pending'
+  | 'confirmed'
+  | 'checked_in'
+  | 'checked_out'
+  | 'cancelled'
+  | 'held'
+  | 'waitlist';
+
+export const MEWS_STATE_TO_STAYSCAPE: Record<MewsReservationState, StayStatusValue> = {
   Inquired: 'pending',
   Confirmed: 'confirmed',
   Started: 'checked_in',
