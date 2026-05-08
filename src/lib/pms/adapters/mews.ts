@@ -1,144 +1,409 @@
 /**
- * Stayscape PMS Adapter Contract & Internal Data Model
+ * Mews Connector API Adapter
  *
- * Every PMS integration (Mews, Cloudbeds, Apaleo, etc.) must implement
- * the PmsAdapter interface. This file is the rulebook.
+ * Translates between Mews's Connector API and Stayscape's internal data
+ * model. Implements the PmsAdapter contract from ../types.ts.
  *
- * The InternalStay type is Stayscape's normalised stay format.
- * Adapters convert their PMS's native format INTO this shape.
+ * Field names, enums, and types are sourced from ./mews-schema.ts —
+ * the single source of truth. If Mews's API changes, update the schema
+ * file first; the adapter follows.
+ *
+ * Reference:
+ *   https://docs.mews.com/connector-api
+ *   ./mews-schema.ts
  */
 
+import type {
+  PmsAdapter,
+  PmsAdapterConfig,
+  PmsWebhookEvent,
+  InternalStay,
+} from '../types';
+
+import {
+  MEWS_ENDPOINTS,
+  MEWS_STATE_TO_STAYSCAPE,
+  type MewsAuthEnvelope,
+  type MewsReservation,
+  type MewsReservationsGetAllRequest,
+  type MewsReservationsGetAllResponse,
+  type MewsReservationState,
+  type MewsPersonCount,
+} from './mews-schema';
+
 /* ──────────────────────────────────────────────────────────────────
-   CONFIGURATION
+   ADAPTER
    ────────────────────────────────────────────────────────────────── */
 
-export interface PmsAdapterConfig {
-  /** Stayscape property UUID (links to properties table). */
-  propertyId: string;
-  /** PMS-specific base URL — set per hotel during onboarding. */
-  apiEndpoint: string;
-  /** Decrypted API credentials. May be a JSON blob for multi-token auth (e.g. Mews). */
-  apiKey: string;
-  /** Used to verify inbound webhook signatures. */
-  webhookSecret?: string;
-}
+export class MewsAdapter implements PmsAdapter {
+  readonly providerName = 'Mews';
 
-/* ──────────────────────────────────────────────────────────────────
-   THE CONTRACT — every adapter implements this
-   ────────────────────────────────────────────────────────────────── */
+  private readonly platformAddress: string;
+  private readonly auth: MewsAuthEnvelope;
+  private readonly webhookSecret: string | null;
 
-export interface PmsAdapter {
-  /** Human-readable provider name. */
-  readonly providerName: string;
+  constructor(config: PmsAdapterConfig) {
+    /**
+     * Mews requires three auth fields, but our PmsAdapterConfig only
+     * exposes one `apiKey`. We pack ClientToken + AccessToken into it
+     * as a JSON-encoded blob: { "ClientToken": "...", "AccessToken": "..." }
+     * The hotel onboarding wizard handles this packing.
+     */
+    let parsed: { ClientToken?: string; AccessToken?: string };
+    try {
+      parsed = JSON.parse(config.apiKey);
+    } catch {
+      throw new Error(
+        'MewsAdapter: apiKey must be JSON with ClientToken and AccessToken',
+      );
+    }
 
-  /**
-   * Pull all reservations updated within a date range.
-   * Adapter handles pagination and date-range chunking internally.
-   */
-  pullReservations(params: {
+    if (!parsed.ClientToken || !parsed.AccessToken) {
+      throw new Error('MewsAdapter: missing ClientToken or AccessToken');
+    }
+
+    this.platformAddress = config.apiEndpoint.replace(/\/$/, '');
+    this.auth = {
+      ClientToken: parsed.ClientToken,
+      AccessToken: parsed.AccessToken,
+      Client: 'Stayscape 1.0.0',
+    };
+    this.webhookSecret = config.webhookSecret ?? null;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     PUBLIC METHODS — required by PmsAdapter contract
+     ────────────────────────────────────────────────────────────── */
+
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.callMews(MEWS_ENDPOINTS.configurationGet, {});
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  async pullReservations(params: {
     fromDate: Date;
     toDate: Date;
-  }): Promise<InternalStay[]>;
+  }): Promise<InternalStay[]> {
+    /**
+     * Mews caps date ranges at 3 months. If a caller asks for more,
+     * we split into 3-month chunks and concat results.
+     */
+    const chunks = splitDateRange(params.fromDate, params.toDate, 90);
+    const allReservations: MewsReservation[] = [];
 
-  /** Pull a single reservation by its PMS-side ID. Used by webhooks. */
-  pullReservationById(externalId: string): Promise<InternalStay | null>;
+    for (const chunk of chunks) {
+      const reservations = await this.fetchReservationsInRange(
+        chunk.from,
+        chunk.to,
+      );
+      allReservations.push(...reservations);
+    }
 
-  /**
-   * Push a service request from Stayscape into the PMS.
-   * Returns the PMS-side ID so we can correlate later.
-   */
-  pushServiceRequest(task: {
+    return allReservations.map((r) => translateReservation(r));
+  }
+
+  async pullReservationById(externalId: string): Promise<InternalStay | null> {
+    const body: Partial<MewsReservationsGetAllRequest> = {
+      ReservationIds: [externalId],
+      States: [
+        'Inquired',
+        'Confirmed',
+        'Started',
+        'Processed',
+        'Canceled',
+        'Optional',
+        'Requested',
+      ],
+      Limitation: { Count: 1 },
+    };
+
+    const response = await this.callMews<MewsReservationsGetAllResponse>(
+      MEWS_ENDPOINTS.reservationsGetAll,
+      body,
+    );
+
+    const reservation = response.Reservations[0];
+    return reservation ? translateReservation(reservation) : null;
+  }
+
+  async pushServiceRequest(task: {
     externalReservationId: string;
     description: string;
-  }): Promise<{ externalId: string }>;
+  }): Promise<{ externalId: string }> {
+    /**
+     * Mews doesn't have a first-class "service request" concept on the
+     * Connector API; the cleanest equivalent is attaching a note to the
+     * reservation that hotel staff can see in Mews Operations.
+     */
+    const response = await this.callMews<{ Id: string }>(
+      MEWS_ENDPOINTS.serviceOrderNotesAdd,
+      {
+        ServiceOrderId: task.externalReservationId,
+        Text: task.description,
+      },
+    );
 
-  /** Push guest preferences into the PMS (if supported). May be a no-op. */
-  pushGuestPreferences(preferences: GuestPreference[]): Promise<void>;
+    return { externalId: response.Id };
+  }
 
-  /**
-   * Verify a webhook payload genuinely came from this PMS.
-   * Each PMS uses a different signing scheme.
-   */
-  verifyWebhookSignature(payload: string, signature: string): boolean;
+  async pushGuestPreferences(): Promise<void> {
+    /**
+     * Phase 2: write guest preferences (allergies, room prefs, etc.)
+     * back to Mews customer notes. Skipping in v1 — preferences live
+     * in Stayscape only for now and Aria reads them from there.
+     */
+    return;
+  }
 
-  /** Translate a webhook payload into a list of internal events. */
-  parseWebhookEvent(payload: unknown): PmsWebhookEvent[];
+  verifyWebhookSignature(payload: string, signature: string): boolean {
+    if (!this.webhookSecret) {
+      console.warn('[MewsAdapter] No webhook secret configured; signature unverified');
+      return false;
+    }
+    /**
+     * Mews signs webhooks with HMAC-SHA256 of the raw payload using the
+     * webhook secret. The signature comes through in the
+     * `X-Mews-Signature` header, hex-encoded.
+     */
+    const expected = hmacSha256Hex(this.webhookSecret, payload);
+    return timingSafeEqual(expected, signature);
+  }
 
-  /** Health check — used by admin dashboard and drift canary. */
-  testConnection(): Promise<{ ok: boolean; error?: string }>;
+  parseWebhookEvent(payload: unknown): PmsWebhookEvent[] {
+    if (!isMewsWebhookPayload(payload)) {
+      console.warn('[MewsAdapter] Webhook payload did not match expected shape');
+      return [];
+    }
+
+    const events: PmsWebhookEvent[] = [];
+
+    for (const event of payload.Events) {
+      switch (event.Type) {
+        case 'ReservationCreated':
+          events.push({ type: 'stay.created', externalId: event.Reservation.Id });
+          break;
+        case 'ReservationUpdated':
+          /* Drill into specific transitions where possible */
+          if (event.Reservation.State === 'Started') {
+            events.push({ type: 'stay.checked_in', externalId: event.Reservation.Id });
+          } else if (event.Reservation.State === 'Processed') {
+            events.push({ type: 'stay.checked_out', externalId: event.Reservation.Id });
+          } else if (event.Reservation.State === 'Canceled') {
+            events.push({ type: 'stay.cancelled', externalId: event.Reservation.Id });
+          } else {
+            events.push({ type: 'stay.updated', externalId: event.Reservation.Id });
+          }
+          break;
+        case 'ResourceStatusChanged':
+          events.push({
+            type: 'room.status_changed',
+            roomNumber: event.Resource.Number ?? event.Resource.Id,
+            status: event.Resource.State ?? 'unknown',
+          });
+          break;
+        default:
+          /* Unknown event type — ignore but don't crash */
+          break;
+      }
+    }
+
+    return events;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     INTERNAL HELPERS
+     ────────────────────────────────────────────────────────────── */
+
+  private async fetchReservationsInRange(
+    from: Date,
+    to: Date,
+  ): Promise<MewsReservation[]> {
+    const reservations: MewsReservation[] = [];
+    let cursor: string | undefined;
+
+    /**
+     * Pagination loop: keep calling until the cursor is null.
+     * Hard cap at 50 pages = 50,000 reservations to prevent runaway.
+     */
+    for (let page = 0; page < 50; page++) {
+      const body: MewsReservationsGetAllRequest = {
+        ...this.auth,
+        UpdatedUtc: {
+          StartUtc: from.toISOString(),
+          EndUtc: to.toISOString(),
+        },
+        States: ['Inquired', 'Confirmed', 'Started', 'Processed', 'Canceled'],
+        Limitation: {
+          Count: 1000,
+          ...(cursor ? { Cursor: cursor } : {}),
+        },
+      };
+
+      const response = await this.callMews<MewsReservationsGetAllResponse>(
+        MEWS_ENDPOINTS.reservationsGetAll,
+        body,
+      );
+
+      reservations.push(...response.Reservations);
+
+      if (!response.Cursor || response.Reservations.length === 0) break;
+      cursor = response.Cursor;
+    }
+
+    return reservations;
+  }
+
+  private async callMews<T>(
+    endpoint: string,
+    body: Record<string, unknown>,
+  ): Promise<T> {
+    const url = `${this.platformAddress}${endpoint}`;
+    const fullBody = { ...this.auth, ...body };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fullBody),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`Mews API ${res.status} at ${endpoint}: ${errText}`);
+    }
+
+    /* Mews returns 204 No Content for empty results when Prefer header is set */
+    if (res.status === 204) {
+      return {} as T;
+    }
+
+    return (await res.json()) as T;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   INTERNAL DATA MODEL — Stayscape's normalised types
+   TRANSLATION — Mews reservation → Stayscape InternalStay
    ──────────────────────────────────────────────────────────────────
-   These match the Supabase schema. Adapters return data in this shape.
+   Pure function. No side effects. Easy to unit test.
    ────────────────────────────────────────────────────────────────── */
 
-export type StayStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'checked_in'
-  | 'checked_out'
-  | 'cancelled'
-  | 'held'
-  | 'waitlist';
+export function translateReservation(r: MewsReservation): InternalStay {
+  const status = MEWS_STATE_TO_STAYSCAPE[r.State as MewsReservationState];
 
-export interface InternalStay {
-  /* Identity */
-  external_id: string;
-  confirmation_number: string;
+  return {
+    /* Identity */
+    external_id: r.Id,
+    confirmation_number: r.Number,
 
-  /* Status */
-  status: StayStatus;
+    /* Status */
+    status,
 
-  /* Schedule (ISO 8601 strings) */
-  check_in: string;
-  check_out: string;
-  actual_check_in: string | null;
-  actual_check_out: string | null;
+    /* Schedule */
+    check_in: r.ScheduledStartUtc,
+    check_out: r.ScheduledEndUtc,
+    actual_check_in: r.ActualStartUtc,
+    actual_check_out: r.ActualEndUtc,
 
-  /* People */
-  external_guest_id: string;
-  guest_count: number;
+    /* People */
+    external_guest_id: r.AccountId,
+    guest_count: sumPersonCounts(r.PersonCounts),
 
-  /* Room */
-  external_room_id: string | null;
-  requested_category_id: string | null;
+    /* Room */
+    external_room_id: r.AssignedResourceId,
+    requested_category_id: r.RequestedResourceCategoryId,
 
-  /* Provenance */
-  booking_source: string;
-  ota_confirmation_number: string | null;
-  trip_purpose: string | null;
+    /* Provenance */
+    booking_source: r.Origin,
+    ota_confirmation_number: r.ChannelNumber,
+    trip_purpose: r.Purpose,
 
-  /* Lifecycle timestamps from PMS */
-  external_created_at: string;
-  external_updated_at: string;
-  cancelled_at: string | null;
-  cancellation_reason: string | null;
+    /* Lifecycle timestamps from PMS */
+    external_created_at: r.CreatedUtc,
+    external_updated_at: r.UpdatedUtc,
+    cancelled_at: r.CancelledUtc,
+    cancellation_reason: r.CancellationReason,
 
-  /* Live state flags */
-  checkin_flags: {
-    owner_checked_in: boolean;
-    all_companions_checked_in: boolean;
-    any_companion_checked_in: boolean;
-    connector_check_in: boolean;
+    /* Live state flags */
+    checkin_flags: {
+      owner_checked_in: r.Options.OwnerCheckedIn,
+      all_companions_checked_in: r.Options.AllCompanionsCheckedIn,
+      any_companion_checked_in: r.Options.AnyCompanionCheckedIn,
+      connector_check_in: r.Options.ConnectorCheckIn,
+    },
   };
 }
 
-export interface GuestPreference {
-  category: string;       // e.g. "allergy", "room_preference", "breakfast_time"
-  value: string;
-  notes?: string;
+function sumPersonCounts(counts: MewsPersonCount[]): number {
+  return counts.reduce((sum, c) => sum + c.Count, 0);
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   WEBHOOK EVENTS — normalised across all PMSs
+   UTILITIES
    ────────────────────────────────────────────────────────────────── */
 
-export type PmsWebhookEvent =
-  | { type: 'stay.created'; externalId: string }
-  | { type: 'stay.updated'; externalId: string }
-  | { type: 'stay.cancelled'; externalId: string }
-  | { type: 'stay.checked_in'; externalId: string }
-  | { type: 'stay.checked_out'; externalId: string }
-  | { type: 'room.status_changed'; roomNumber: string; status: string };
+function splitDateRange(
+  from: Date,
+  to: Date,
+  maxDays: number,
+): Array<{ from: Date; to: Date }> {
+  const chunks: Array<{ from: Date; to: Date }> = [];
+  const msPerDay = 24 * 60 * 60 * 1000;
+  let cursor = new Date(from);
+
+  while (cursor < to) {
+    const next = new Date(Math.min(cursor.getTime() + maxDays * msPerDay, to.getTime()));
+    chunks.push({ from: new Date(cursor), to: next });
+    cursor = next;
+  }
+
+  return chunks;
+}
+
+function hmacSha256Hex(secret: string, payload: string): string {
+  /**
+   * Web Crypto API equivalent — works in Node 18+ and Edge runtimes.
+   * Done synchronously via a small wrapper using crypto module fallback.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createHmac } = require('node:crypto');
+  return createHmac('sha256', secret).update(payload).digest('hex');
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   WEBHOOK PAYLOAD TYPE GUARD
+   ──────────────────────────────────────────────────────────────────
+   Mews's webhook envelope shape — we only need a minimal type guard.
+   ────────────────────────────────────────────────────────────────── */
+
+interface MewsWebhookPayload {
+  Events: Array<{
+    Type: string;
+    Reservation: {
+      Id: string;
+      State: MewsReservationState;
+    };
+    Resource: {
+      Id: string;
+      Number?: string;
+      State?: string;
+    };
+  }>;
+}
+
+function isMewsWebhookPayload(p: unknown): p is MewsWebhookPayload {
+  if (!p || typeof p !== 'object') return false;
+  const obj = p as { Events?: unknown };
+  return Array.isArray(obj.Events);
+}
