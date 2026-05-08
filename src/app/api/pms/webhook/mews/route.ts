@@ -33,12 +33,9 @@ import type { MewsAdapter } from '@/lib/pms/adapters/mews';
    IMPORTANT — raw body required for signature verification
    Next.js must NOT parse the body before we read it.
    ───────────────────────────────────────────────────────────────── */
-export const config = {
-  api: { bodyParser: false },
-};
 
 export async function POST(request: NextRequest) {
-  const rateLimit = await applyRateLimit(request, 'webhook');
+  const rateLimit = await applyRateLimit(request, 'default');
   if (!rateLimit.success) {
     return NextResponse.json(
       { error: 'Too many requests' },
