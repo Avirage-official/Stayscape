@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
 
   // Block unauthenticated access to /admin routes
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login') && pathname !== '/api/admin/login') {
     // Check for the sa_session cookie set on successful staff login.
     const saSession = request.cookies.get('sa_session');
     if (!saSession?.value) {
