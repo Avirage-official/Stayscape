@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Bell,
   BedDouble,
+  CalendarDays,
   Users,
   Settings,
   LogOut,
