@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
@@ -177,6 +178,25 @@ export default function LoginPage() {
           font-size: 12px;
           animation: fieldIn 0.3s ease both;
         }
+
+        .signup-link {
+          text-align: center;
+          margin-top: 20px;
+          animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0.45s both;
+        }
+
+        .signup-link a {
+          color: #C17F3A;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 500;
+          letter-spacing: 0.05em;
+          transition: color 0.2s;
+        }
+
+        .signup-link a:hover {
+          color: #D6A252;
+        }
       `}</style>
 
       <div className="relative min-h-screen flex items-center justify-center px-4">
@@ -322,6 +342,18 @@ export default function LoginPage() {
               </div>
             </form>
           </div>
+
+          {/* Hotel signup CTA */}
+          {mode === 'hotel' && (
+            <div className="signup-link">
+              <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', marginBottom: '8px' }}>
+                New to Stayscape?
+              </p>
+              <Link href="/hotel/signup">
+                Sign up your hotel
+              </Link>
+            </div>
+          )}
 
           {/* Demo box */}
           <div className="demo-box">
