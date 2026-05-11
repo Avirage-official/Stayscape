@@ -34,7 +34,7 @@ export default function FinalCTA() {
       className="flex min-h-screen items-center justify-center"
       style={{
         background: '#F5F2EE',
-        borderTop: '1px solid var(--border)',
+        borderTop: '1px solid #EDE8E1',
         paddingBlock: 'clamp(80px, 10vw, 120px)',
       }}
     >
@@ -60,7 +60,7 @@ export default function FinalCTA() {
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: 'clamp(2.6rem, 5.5vw, 5rem)',
-              color: 'var(--text-primary)',
+              color: '#1C1A17',
               letterSpacing: '-0.03em',
             }}
             {...clipReveal}
@@ -74,7 +74,7 @@ export default function FinalCTA() {
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '17px',
-            color: 'var(--text-secondary)',
+            color: '#6B6158',
             lineHeight: 1.8,
             maxWidth: '46ch',
           }}
@@ -117,9 +117,9 @@ export default function FinalCTA() {
             <Link
               href="/login"
               style={{
-                border: '1.5px solid var(--border-strong, #C4BBB2)',
+                border: '1.5px solid #C4BBB2',
                 background: 'transparent',
-                color: 'var(--text-primary)',
+                color: '#1C1A17',
                 borderRadius: '8px',
                 padding: '12px 28px',
                 fontFamily: "'DM Sans', sans-serif",
@@ -138,7 +138,7 @@ export default function FinalCTA() {
         <motion.p
           className="mt-6 text-[13px] italic"
           style={{
-            color: 'var(--text-muted)',
+            color: '#9E9389',
             fontFamily: "'DM Sans', sans-serif",
           }}
           {...fadeIn(0.8)}
