@@ -369,7 +369,7 @@ export default function LoginPage() {
                   Password: <code style={{ color: 'rgba(250,248,245,0.7)', fontFamily: 'monospace' }}>Demo1234!</code>
                 </p>
               </div>
-            ) : (
+           ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6 }}>
                   Use the credentials from your Stayscape onboarding invite, or sign up your hotel.
