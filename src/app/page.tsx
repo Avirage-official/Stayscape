@@ -6,14 +6,9 @@ import BenefitSection from '@/components/landing/BenefitSection'
 import HowItWorks from '@/components/landing/HowItWorks'
 import FinalCTA from '@/components/landing/FinalCTA'
 import LandingFooter from '@/components/landing/LandingFooter'
-
 export default function LandingPage() {
   return (
-    <div
-      data-theme="light"
-      className="min-h-screen"
-      style={{ background: 'var(--background)' }}
-    >
+    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
       <LandingNav />
       <main>
         <HeroSection />
