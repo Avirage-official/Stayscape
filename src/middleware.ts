@@ -60,8 +60,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Block unauthenticated access to hotel-admin routes (requires Supabase JWT)
-  if (pathname.startsWith('/hotel-admin')) {
+ // Block unauthenticated access to hotel-admin routes (requires Supabase JWT)
+  // EXCEPT the public onboarding page — it's reached via an invite token
+  // and must work for users who don't yet have an account.
+  if (pathname.startsWith('/hotel-admin') && !pathname.startsWith('/hotel-admin/onboard')) {
     if (!user) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
