@@ -370,9 +370,30 @@ export default function LoginPage() {
                 </p>
               </div>
             ) : (
-              <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6 }}>
-                Use the credentials from your Stayscape onboarding invite.
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6 }}>
+                  Use the credentials from your Stayscape onboarding invite, or sign up your hotel.
+                </p>
+                
+                  href="/hotel/signup"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    letterSpacing: '0.06em',
+                    color: '#C17F3A',
+                    textDecoration: 'none',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#D6A252')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#C17F3A')}
+                >
+                  Sign up your hotel
+                  <span style={{ fontSize: '14px', lineHeight: 1 }}>→</span>
+                </a>
+              </div>
             )}
           </div>
 
