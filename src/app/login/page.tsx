@@ -184,7 +184,11 @@ export default function LoginPage() {
           margin-top: 20px;
           animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0.45s both;
         }
-
+        .signup-link p {
+          font-size: 12px;
+          color: rgba(250,248,245,0.45);
+          margin-bottom: 8px;
+        }
         .signup-link a {
           color: #C17F3A;
           text-decoration: none;
@@ -193,7 +197,6 @@ export default function LoginPage() {
           letter-spacing: 0.05em;
           transition: color 0.2s;
         }
-
         .signup-link a:hover {
           color: #D6A252;
         }
@@ -227,17 +230,17 @@ export default function LoginPage() {
           {/* Brand */}
           <div className="anim-brand text-center mb-10">
             <a href="/admin" style={{ textDecoration: 'none' }}>
-            <h1 style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: '2rem',
-              color: '#C17F3A',
-              letterSpacing: '0.06em',
-              fontWeight: 400,
-              margin: '0 0 6px',
-            }}>
-              StayScape
-            </h1>
-          </a>
+              <h1 style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: '2rem',
+                color: '#C17F3A',
+                letterSpacing: '0.06em',
+                fontWeight: 400,
+                margin: '0 0 6px',
+              }}>
+                StayScape
+              </h1>
+            </a>
             <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               {mode === 'guest' ? 'Guest Access' : 'Hotel Admin Portal'}
             </p>
@@ -343,14 +346,12 @@ export default function LoginPage() {
             </form>
           </div>
 
-          {/* Hotel signup CTA */}
+          {/* Hotel signup CTA — only in Hotel mode */}
           {mode === 'hotel' && (
             <div className="signup-link">
-              <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', marginBottom: '8px' }}>
-                New to Stayscape?
-              </p>
+              <p>New to Stayscape?</p>
               <Link href="/hotel/signup">
-                Sign up your hotel
+                Sign up your hotel →
               </Link>
             </div>
           )}
@@ -369,31 +370,10 @@ export default function LoginPage() {
                   Password: <code style={{ color: 'rgba(250,248,245,0.7)', fontFamily: 'monospace' }}>Demo1234!</code>
                 </p>
               </div>
-           ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6 }}>
-                  Use the credentials from your Stayscape onboarding invite, or sign up your hotel.
-                </p>
-                
-                  href="/hotel/signup"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    letterSpacing: '0.06em',
-                    color: '#C17F3A',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#D6A252')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#C17F3A')}
-                >
-                  Sign up your hotel
-                  <span style={{ fontSize: '14px', lineHeight: 1 }}>→</span>
-                </a>
-              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6 }}>
+                Use the credentials from your Stayscape onboarding invite.
+              </p>
             )}
           </div>
 
