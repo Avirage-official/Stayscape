@@ -3,6 +3,18 @@
     {
       "path": "/api/cron/pms-drift-check",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-places",
+      "schedule": "0 2 * * 1"
+    },
+    {
+      "path": "/api/cron/sync-events",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/enrich-pending",
+      "schedule": "0 4 * * *"
     }
   ]
 }
