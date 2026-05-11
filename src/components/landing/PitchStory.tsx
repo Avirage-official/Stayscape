@@ -55,7 +55,7 @@ export default function PitchStory() {
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: 'clamp(2rem, 3.8vw, 3.2rem)',
-              color: 'var(--text-primary)',
+              color: '#1C1A17',
               letterSpacing: '-0.02em',
             }}
             {...lineReveal(0.1)}
@@ -67,7 +67,7 @@ export default function PitchStory() {
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: 'clamp(2rem, 3.8vw, 3.2rem)',
-              color: 'var(--text-primary)',
+              color: '#1C1A17',
               letterSpacing: '-0.02em',
               fontStyle: 'italic',
             }}
@@ -94,7 +94,7 @@ export default function PitchStory() {
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '17px',
-            color: 'var(--text-secondary)',
+            color: '#6B6158',
             maxWidth: '62ch',
           }}
           {...fadeUp(0.55)}
@@ -112,7 +112,7 @@ export default function PitchStory() {
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '17px',
-            color: 'var(--text-secondary)',
+            color: '#6B6158',
             maxWidth: '62ch',
           }}
           {...fadeUp(0.7)}
