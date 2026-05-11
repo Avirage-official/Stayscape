@@ -42,7 +42,7 @@ function SourceLink({ href, label }: { href: string; label: string }) {
   const linkStyle = {
     fontFamily: "'DM Sans', sans-serif",
     fontSize: '11px' as const,
-    color: 'var(--text-muted)',
+    color: '#9E9389',
     textDecoration: 'underline' as const,
     textUnderlineOffset: '3px',
     width: 'fit-content' as const,
@@ -85,19 +85,19 @@ function StatCard({ stat }: { stat: typeof STATS[number] }) {
           fontWeight: 600,
           textTransform: 'uppercase' as const,
           letterSpacing: '0.15em',
-          color: 'var(--text-primary)',
+          color: '#1C1A17',
         }}
       >
         {stat.label}
       </p>
 
-      <div style={{ height: '1px', background: 'var(--border)', width: '32px' }} />
+      <div style={{ height: '1px', background: '#EDE8E1', width: '32px' }} />
 
       <p
         style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '14px',
-          color: 'var(--text-secondary)',
+          color: '#6B6158',
           lineHeight: 1.7,
           flex: 1,
         }}
@@ -119,7 +119,7 @@ export default function BenefitSection() {
       style={{
         background: '#F5F2EE',
         paddingBlock: 'clamp(80px, 10vw, 140px)',
-        borderTop: '1px solid var(--border)',
+        borderTop: '1px solid #EDE8E1',
       }}
     >
       <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12">
@@ -136,7 +136,7 @@ export default function BenefitSection() {
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: 'clamp(1.9rem, 3vw, 2.6rem)',
-              color: 'var(--text-primary)',
+              color: '#1C1A17',
               letterSpacing: '-0.02em',
             }}
           >
@@ -147,8 +147,8 @@ export default function BenefitSection() {
         <motion.div
           className="grid grid-cols-1 gap-px sm:grid-cols-3"
           style={{
-            background: 'var(--border)',
-            border: '1px solid var(--border)',
+            background: '#EDE8E1',
+            border: '1px solid #EDE8E1',
             borderRadius: '16px',
             overflow: 'hidden',
           }}
