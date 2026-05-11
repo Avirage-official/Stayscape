@@ -9,7 +9,11 @@ import LandingFooter from '@/components/landing/LandingFooter'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
+    <div
+      data-theme="light"
+      className="min-h-screen"
+      style={{ background: 'var(--background)' }}
+    >
       <LandingNav />
       <main>
         <HeroSection />
