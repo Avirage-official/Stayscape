@@ -33,13 +33,15 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const MAX_TOKENS_WITH_TOOLS = 800;
 const MAX_TOKENS_TOOL_RESPONSE = 400;
 
+// These values MUST match the servicetasktype enum in Supabase exactly.
 const VALID_TASK_TYPES = [
-  'housekeeping',
-  'room_service',
+  'room_cleaning',
+  'turndown',
+  'departure_clean',
+  'stayover_tidy',
   'maintenance',
-  'concierge',
-  'breakfast',
-  'transport',
+  'inspection',
+  'breakfast_delivery',
   'other',
 ] as const;
 type ValidTaskType = (typeof VALID_TASK_TYPES)[number];
@@ -160,8 +162,8 @@ function buildIdentityBlock(
   } else {
     prompt +=
       '\nYou handle all guest needs — discovery, itinerary planning, hotel information, and service requests. ' +
-      'When a guest asks for something that requires hotel staff action (extra towels, extra pillows, robes, toiletries, cleaning, housekeeping, wake-up calls, ' +
-      'room service, maintenance, late checkout requests, luggage storage, taxi booking), you MUST use the ' +
+      'When a guest asks for something that requires hotel staff action (extra towels, extra pillows, robes, toiletries, cleaning, room tidy, wake-up calls, ' +
+      'breakfast delivery, maintenance, late checkout requests, luggage storage, taxi booking), you MUST use the ' +
       'log_service_request tool. Never just say you will pass it on — actually call the tool.';
   }
 
@@ -476,9 +478,8 @@ export async function POST(request: NextRequest) {
             description:
               'Log a service request from the guest to the hotel operations team. ' +
               'Call this whenever the guest needs something that requires hotel staff action: ' +
-              'extra towels, extra pillows, robes, toiletries, cleaning, housekeeping, room service, maintenance, wake-up calls, ' +
-              'late checkout, luggage storage, taxi booking, or any physical request. ' +
-              'Requests for towels, pillows, robes, toiletries, or room cleaning MUST use task_type "housekeeping". ' +
+              'extra towels, extra pillows, robes, toiletries, room cleaning, room tidy, turndown service, ' +
+              'breakfast delivery, maintenance, wake-up calls, late checkout, luggage storage, taxi booking, or any physical request. ' +
               'Always call this tool — do not just promise to pass it on.',
             input_schema: {
               type: 'object',
@@ -486,7 +487,7 @@ export async function POST(request: NextRequest) {
                 title: {
                   type: 'string',
                   description:
-                    'Short, operational title like "Extra towels – 3 pcs", "Room cleaning", "AC maintenance visit".',
+                    'Short, operational title like "Extra towels – 3 pcs", "Room cleaning requested", "AC maintenance visit".',
                 },
                 description: {
                   type: 'string',
@@ -497,7 +498,14 @@ export async function POST(request: NextRequest) {
                   type: 'string',
                   enum: [...VALID_TASK_TYPES],
                   description:
-                    'Category of the service request. Use "housekeeping" for towels, pillows, robes, toiletries, and cleaning.',
+                    'Category of the service request. ' +
+                    'Use "room_cleaning" for full cleans, towels, toiletries, robes. ' +
+                    'Use "stayover_tidy" for light mid-stay tidying. ' +
+                    'Use "turndown" for evening turndown service. ' +
+                    'Use "departure_clean" for end-of-stay cleaning. ' +
+                    'Use "breakfast_delivery" for in-room breakfast. ' +
+                    'Use "maintenance" for repairs, AC, plumbing, or broken items. ' +
+                    'Use "other" for anything else (luggage, taxi, wake-up calls, late checkout).',
                 },
               },
               required: ['title', 'description', 'task_type'],
