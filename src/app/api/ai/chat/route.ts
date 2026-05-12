@@ -160,7 +160,7 @@ function buildIdentityBlock(
   } else {
     prompt +=
       '\nYou handle all guest needs — discovery, itinerary planning, hotel information, and service requests. ' +
-      'When a guest asks for something that requires hotel staff action (extra towels, housekeeping, wake-up calls, ' +
+      'When a guest asks for something that requires hotel staff action (extra towels, extra pillows, robes, toiletries, cleaning, housekeeping, wake-up calls, ' +
       'room service, maintenance, late checkout requests, luggage storage, taxi booking), you MUST use the ' +
       'log_service_request tool. Never just say you will pass it on — actually call the tool.';
   }
@@ -259,7 +259,8 @@ async function buildSystemPrompt(
     const prefLines: string[] = ['\n\nGuest onboarding preferences:'];
     if (pd.interests != null) prefLines.push(`- Interests: ${JSON.stringify(pd.interests)}`);
     if (pd.pace != null) prefLines.push(`- Pace: ${JSON.stringify(pd.pace)}`);
-    if (pd.food_preferences != null) prefLines.push(`- Food preferences: ${JSON.stringify(pd.food_preferences)}`);
+    if (pd.food_preferences != null)
+      prefLines.push(`- Food preferences: ${JSON.stringify(pd.food_preferences)}`);
     if (prefLines.length > 1) systemPrompt += prefLines.join('\n');
   }
 
@@ -411,8 +412,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: { user }, error: authError } =
-    await getSupabaseAdmin().auth.getUser(token);
+  const {
+    data: { user },
+    error: authError,
+  } = await getSupabaseAdmin().auth.getUser(token);
 
   if (authError || !user) {
     return NextResponse.json(
@@ -473,24 +476,28 @@ export async function POST(request: NextRequest) {
             description:
               'Log a service request from the guest to the hotel operations team. ' +
               'Call this whenever the guest needs something that requires hotel staff action: ' +
-              'extra towels, housekeeping, room service, maintenance, wake-up calls, ' +
+              'extra towels, extra pillows, robes, toiletries, cleaning, housekeeping, room service, maintenance, wake-up calls, ' +
               'late checkout, luggage storage, taxi booking, or any physical request. ' +
+              'Requests for towels, pillows, robes, toiletries, or room cleaning MUST use task_type "housekeeping". ' +
               'Always call this tool — do not just promise to pass it on.',
             input_schema: {
               type: 'object',
               properties: {
                 title: {
                   type: 'string',
-                  description: 'Short title for the request, e.g. "Extra towels requested"',
+                  description:
+                    'Short, operational title like "Extra towels – 3 pcs", "Room cleaning", "AC maintenance visit".',
                 },
                 description: {
                   type: 'string',
-                  description: 'Full details of what the guest needs, in plain English',
+                  description:
+                    'Operational details for staff only: what is needed, quantities, timing preference. Avoid chit-chat or apologies.',
                 },
                 task_type: {
                   type: 'string',
                   enum: [...VALID_TASK_TYPES],
-                  description: 'Category of the service request',
+                  description:
+                    'Category of the service request. Use "housekeeping" for towels, pillows, robes, toiletries, and cleaning.',
                 },
               },
               required: ['title', 'description', 'task_type'],
@@ -533,6 +540,8 @@ export async function POST(request: NextRequest) {
       if (toolUseBlock.name === 'log_service_request') {
         const input = toolUseBlock.input as LogServiceRequestInput;
 
+        let toolSucceeded = false;
+
         try {
           if (propertyId && isValidTaskType(input.task_type)) {
             const supabase = getSupabaseAdmin();
@@ -545,6 +554,7 @@ export async function POST(request: NextRequest) {
               status: 'pending',
               priority: 0,
             });
+            toolSucceeded = true;
           } else {
             console.error('[ai/chat] Service request skipped — validation failed:', {
               propertyId,
@@ -556,7 +566,9 @@ export async function POST(request: NextRequest) {
           // Never surface this error to the guest
         }
 
-        toolResultContent = 'Service request logged successfully.';
+        toolResultContent = toolSucceeded
+          ? 'Service request logged successfully.'
+          : 'Unable to log this request in the system right now.';
       } else if (toolUseBlock.name === 'get_service_request_status') {
         try {
           const supabase = getSupabaseAdmin();
