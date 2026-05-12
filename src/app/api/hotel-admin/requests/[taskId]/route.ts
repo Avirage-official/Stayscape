@@ -80,10 +80,10 @@ export async function PATCH(
 
   const { taskId } = await params;
 
-  // Verify the task belongs to this admin's property
+  // Verify the task belongs to this admin's property — also fetch status for history event
   const { data: existingTask, error: fetchError } = await supabase
     .from('service_tasks')
-    .select('id, propertyid')
+    .select('id, propertyid, status')
     .eq('id', taskId)
     .maybeSingle();
 
@@ -91,7 +91,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   }
 
-  const task = existingTask as { id: string; propertyid: string };
+  const task = existingTask as { id: string; propertyid: string; status: TaskStatus };
 
   if (task.propertyid !== property_id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -129,6 +129,17 @@ export async function PATCH(
       { status: 500 },
     );
   }
+
+  // Insert a history event for this status change (fire-and-forget)
+  await supabase.from('service_task_events').insert({
+    taskid: task.id,
+    event_type: 'status_change',
+    old_status: task.status,
+    new_status: status,
+    notes: status === 'cancelled' ? (cancel_reason ?? null) : null,
+    created_by: null,
+    createdat: now,
+  });
 
   return NextResponse.json({ task: updatedTask });
 }
