@@ -98,10 +98,11 @@ const TABS: { key: FilterTab; label: string }[] = [
   { key: 'pending', label: 'Pending' },
   { key: 'in_progress', label: 'In Progress' },
   { key: 'completed', label: 'Completed' },
+  { key: 'cancelled', label: 'Cancelled' },
 ];
 
 export default function RequestsPage() {
-  useHotelAdmin(); // ensure we're inside the provider
+  useHotelAdmin();
 
   const [tasks, setTasks] = useState<ServiceTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +139,6 @@ export default function RequestsPage() {
     }
   }, []);
 
-  // Fetch on mount and poll every 30 seconds
   useEffect(() => {
     void fetchTasks();
     const interval = setInterval(() => void fetchTasks(), 30_000);
@@ -152,7 +152,6 @@ export default function RequestsPage() {
     );
 
     const token = await getHotelAdminToken();
-
     if (!token) return;
 
     try {
@@ -166,7 +165,6 @@ export default function RequestsPage() {
       });
 
       if (!res.ok) {
-        // Revert optimistic update on failure
         setTasks((prev) =>
           prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)),
         );
@@ -177,14 +175,12 @@ export default function RequestsPage() {
         );
       }
     } catch {
-      // Revert optimistic update on error
       setTasks((prev) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)),
       );
     }
   }
 
-  // Count per tab
   const counts: Record<FilterTab, number> = {
     all: tasks.length,
     pending: tasks.filter((t) => t.status === 'pending').length,
@@ -271,8 +267,18 @@ export default function RequestsPage() {
                     {formatTaskType(task.task_type)}
                   </span>
                 </div>
+                {task.description && (
+                  <p className="text-[12px] text-white/40 leading-relaxed line-clamp-1">
+                    {task.description}
+                  </p>
+                )}
                 <div className="flex items-center gap-3 text-[12px] text-white/30">
                   <span>Room {getRoomLabel(task)}</span>
+                  {task.stays?.guest_email && (
+                    <span className="truncate max-w-[160px]">
+                      {task.stays.guest_email}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <Clock size={11} />
                     {timeAgo(task.createdat)}
@@ -280,7 +286,7 @@ export default function RequestsPage() {
                 </div>
               </div>
 
-              {/* Right: status + action */}
+              {/* Right: status + actions */}
               <div className="flex items-center gap-3 shrink-0">
                 <StatusBadge status={task.status} />
                 {task.status === 'pending' && (
@@ -297,6 +303,14 @@ export default function RequestsPage() {
                     className="text-[12px] font-medium text-green-400 hover:text-green-300 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-lg px-3 py-1.5 transition-colors"
                   >
                     Complete
+                  </button>
+                )}
+                {(task.status === 'pending' || task.status === 'in_progress') && (
+                  <button
+                    onClick={() => void handleAction(task, 'cancelled')}
+                    className="text-[12px] font-medium text-white/30 hover:text-red-400 bg-white/[0.02] hover:bg-red-500/10 border border-white/[0.06] hover:border-red-500/20 rounded-lg px-3 py-1.5 transition-colors"
+                  >
+                    Cancel
                   </button>
                 )}
               </div>
