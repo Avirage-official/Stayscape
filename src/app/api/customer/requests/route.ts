@@ -26,8 +26,11 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
+// service_tasks has roomid (UUID FK → property_rooms), NOT roomlabel.
+// We join stays(roomlabel) to surface the human-readable room label to the frontend.
 const TASK_SELECT =
-  'id, title, description, task_type, status, priority, createdat, updatedat, roomlabel, stayid';
+  'id, title, description, task_type, status, priority, createdat, updatedat, roomid, stayid, stays(roomlabel)';
+
 // ─── Shared auth + active stay lookup ───────────────────────────────────────
 
 async function getGuestStay(token: string) {
@@ -122,6 +125,8 @@ export async function POST(request: NextRequest) {
 
   const now = new Date().toISOString();
 
+  // roomid is intentionally omitted — stays only carry roomlabel (text), not a
+  // property_rooms UUID. The admin sees the room via stays(roomlabel) in their GET.
   const { data: task, error: insertError } = await supabase
     .from('service_tasks')
     .insert({
