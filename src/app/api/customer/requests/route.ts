@@ -27,8 +27,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 export const dynamic = 'force-dynamic';
 
 const TASK_SELECT =
-  'id, title, description, task_type, status, priority, createdat, updatedat, roomid, stayid, property_rooms(room_number, room_type)';
-
+  'id, title, description, task_type, status, priority, createdat, updatedat, roomlabel, stayid';
 // ─── Shared auth + active stay lookup ───────────────────────────────────────
 
 async function getGuestStay(token: string) {
@@ -44,7 +43,7 @@ async function getGuestStay(token: string) {
   // Find the guest's active or confirmed stay
   const { data: stay, error: stayError } = await supabase
     .from('stays')
-    .select('id, propertyid, roomid')
+    .select('id, propertyid, roomlabel')
     .eq('userid', user.id)
     .in('status', ['active', 'confirmed', 'checked_in'])
     .order('checkindate', { ascending: false })
@@ -128,7 +127,6 @@ export async function POST(request: NextRequest) {
     .insert({
       propertyid: stay.propertyid,
       stayid: stay.id,
-      roomid: stay.roomid ?? null,
       task_type,
       title,
       description: description ?? null,
