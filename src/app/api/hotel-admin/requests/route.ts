@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('service_tasks')
     .select(
-      'id, title, description, task_type, status, priority, createdat, updatedat, roomid, stayid, property_rooms(room_number, room_type), stays(guest_email, roomlabel)',
+      'id, title, description, task_type, status, priority, createdat, updatedat, roomid, stayid, stays(roomlabel)',
     )
     .eq('propertyid', property_id)
     .order('createdat', { ascending: false });
