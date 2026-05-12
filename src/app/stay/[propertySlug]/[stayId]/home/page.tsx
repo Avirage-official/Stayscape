@@ -11,13 +11,12 @@
  *   Wake-up Call, Call Staff
  *
  * Tiles that are info-only (no insert):
- *   Spa Booking, Facilities, Amenities, Information
+ *   Facilities, Amenities, Information
  *
- * Hotel Amenities row pulls from existing /api/discovery/places (real data).
- * Weather card is a placeholder until weather API is wired.
+ * Spa Booking removed — handled by concierge separately.
  */
 
-import React, { useEffect, useMemo, useState, useContext, type CSSProperties } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
@@ -57,22 +56,13 @@ const TILES: Tile[] = [
     id: 'room_service',
     label: 'Room Service',
     icon: <IconBed />,
-    action: { kind: 'request', task_type: 'housekeeping', title: 'Room service requested' },
+    action: { kind: 'request', task_type: 'room_service', title: 'Room service requested' },
   },
   {
     id: 'food_order',
     label: 'Food Order',
     icon: <IconFork />,
     action: { kind: 'request', task_type: 'room_service', title: 'In-room food order requested' },
-  },
-  {
-    id: 'spa',
-    label: 'Spa Booking',
-    icon: <IconSpa />,
-    action: {
-      kind: 'info',
-      body: 'Spa bookings are arranged with our concierge team. We can send a member to assist you shortly.',
-    },
   },
   {
     id: 'facilities',
@@ -96,25 +86,25 @@ const TILES: Tile[] = [
     id: 'laundry',
     label: 'Laundry',
     icon: <IconLaundry />,
-    action: { kind: 'request', task_type: 'housekeeping', title: 'Laundry pickup requested' },
+    action: { kind: 'request', task_type: 'laundry', title: 'Laundry pickup requested' },
   },
   {
     id: 'transport',
     label: 'Transportation',
     icon: <IconCar />,
-    action: { kind: 'request', task_type: 'transport', title: 'Transportation requested' },
+    action: { kind: 'request', task_type: 'taxi_booking', title: 'Transportation requested' },
   },
   {
     id: 'wakeup',
     label: 'Wake-up Call',
     icon: <IconClock />,
-    action: { kind: 'request', task_type: 'concierge', title: 'Wake-up call requested' },
+    action: { kind: 'request', task_type: 'wakeup_call', title: 'Wake-up call requested' },
   },
   {
     id: 'call_staff',
     label: 'Call Staff',
     icon: <IconStaff />,
-    action: { kind: 'request', task_type: 'concierge', title: 'Guest requesting staff assistance' },
+    action: { kind: 'request', task_type: 'other', title: 'Guest requesting staff assistance' },
   },
   {
     id: 'information',
@@ -127,6 +117,17 @@ const TILES: Tile[] = [
   },
 ];
 
+/* ─── Per-tile extra fields ─── */
+
+interface TileFields {
+  foodOrder?: string;        // Food Order: what they want
+  laundryTime?: string;      // Laundry: preferred pickup time
+  transportTime?: string;    // Transportation: pickup time
+  transportDest?: string;    // Transportation: destination
+  wakeupTime?: string;       // Wake-up Call: time
+  roomServiceNotes?: string; // Room Service: optional notes
+}
+
 /* ─── Helpers ─── */
 
 function getGreeting(): string {
@@ -135,6 +136,28 @@ function getGreeting(): string {
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--background)',
+  border: '1px solid var(--border)',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontSize: 13,
+  color: 'var(--text-primary)',
+  outline: 'none',
+  fontFamily: 'inherit',
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: 'var(--text-muted)',
+  marginBottom: 6,
+  display: 'block',
+};
 
 /* ─── Main page ─── */
 
@@ -163,7 +186,6 @@ export default function StayHomePage() {
   const propertyName = stay?.property?.name ?? 'your hotel';
   const regionId = stay?.property?.region_id ?? null;
 
-  /* Discover places — for "Hotel Amenities For You" row */
   const [places, setPlaces] = useState<DiscoveryPlaceCard[]>([]);
   useEffect(() => {
     if (!regionId) return;
@@ -174,24 +196,65 @@ export default function StayHomePage() {
         if (!cancelled) setPlaces(body?.data ?? []);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [regionId]);
 
-  /* Confirmation dialog state */
   const [activeTile, setActiveTile] = useState<Tile | null>(null);
+  const [fields, setFields] = useState<TileFields>({});
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const openTile = (tile: Tile) => {
+    setFields({});
+    setActiveTile(tile);
+  };
 
   const closeDialog = () => {
     if (submitting) return;
     setActiveTile(null);
+    setFields({});
   };
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3200);
+  };
+
+  /* Build description string from per-tile fields */
+  const buildDescription = (tile: Tile): string | undefined => {
+    switch (tile.id) {
+      case 'room_service':
+        return fields.roomServiceNotes ? `Notes: ${fields.roomServiceNotes}` : undefined;
+      case 'food_order':
+        return fields.foodOrder ? `Order: ${fields.foodOrder}` : undefined;
+      case 'laundry':
+        return fields.laundryTime ? `Preferred pickup time: ${fields.laundryTime}` : undefined;
+      case 'transport':
+        return [
+          fields.transportTime ? `Pickup time: ${fields.transportTime}` : null,
+          fields.transportDest ? `Destination: ${fields.transportDest}` : null,
+        ]
+          .filter(Boolean)
+          .join(' | ') || undefined;
+      case 'wakeup':
+        return fields.wakeupTime ? `Wake-up time: ${fields.wakeupTime}` : undefined;
+      default:
+        return undefined;
+    }
+  };
+
+  /* Validate required fields before submit */
+  const canSubmit = (tile: Tile): boolean => {
+    switch (tile.id) {
+      case 'food_order':
+        return !!fields.foodOrder?.trim();
+      case 'transport':
+        return !!fields.transportTime?.trim() && !!fields.transportDest?.trim();
+      case 'wakeup':
+        return !!fields.wakeupTime?.trim();
+      default:
+        return true;
+    }
   };
 
   const submitRequest = async (tile: Tile) => {
@@ -203,6 +266,8 @@ export default function StayHomePage() {
         ? (await supabase.auth.getSession()).data.session?.access_token
         : null;
 
+      const description = buildDescription(tile);
+
       const res = await fetch(`/api/stays/${encodeURIComponent(stayId)}/services/request`, {
         method: 'POST',
         headers: {
@@ -212,6 +277,7 @@ export default function StayHomePage() {
         body: JSON.stringify({
           task_type: tile.action.task_type,
           title: tile.action.title,
+          ...(description ? { description } : {}),
         }),
       });
 
@@ -221,6 +287,7 @@ export default function StayHomePage() {
       }
 
       setActiveTile(null);
+      setFields({});
       showToast(`${tile.label} sent to the team.`);
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Something went wrong');
@@ -257,18 +324,11 @@ export default function StayHomePage() {
           {firstName.charAt(0).toUpperCase() + firstName.slice(1)}.
         </span>
       </p>
-      <p
-        style={{
-          margin: '6px 0 0',
-          fontSize: 14,
-          color: 'var(--text-muted)',
-          fontWeight: 300,
-        }}
-      >
+      <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-muted)', fontWeight: 300 }}>
         How can we help at {propertyName}?
       </p>
 
-      {/* Main grid: tiles (left) + weather (right) */}
+      {/* Main grid */}
       <div className="stay-home-grid" style={{ marginTop: 28 }}>
         <style>{`
           .stay-home-grid {
@@ -293,7 +353,6 @@ export default function StayHomePage() {
           @media (min-width: 900px) {
             .tile-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
           }
-          /* .tile uses the global .ss-tile utility — only layout/sizing here */
           .tile {
             aspect-ratio: 1;
             display: flex;
@@ -327,9 +386,9 @@ export default function StayHomePage() {
           @media (min-width: 900px) {
             .amenity-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
           }
-          .amenity-card {
-            overflow: hidden;
-          }
+          .amenity-card { overflow: hidden; }
+          .sh-input:focus { border-color: var(--gold) !important; }
+          .sh-textarea:focus { border-color: var(--gold) !important; }
           @keyframes hd-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
 
@@ -342,11 +401,11 @@ export default function StayHomePage() {
                 className="tile ss-tile"
                 role="button"
                 tabIndex={0}
-                onClick={() => setActiveTile(tile)}
+                onClick={() => openTile(tile)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setActiveTile(tile);
+                    openTile(tile);
                   }
                 }}
               >
@@ -357,57 +416,27 @@ export default function StayHomePage() {
           </div>
         </div>
 
-        {/* RIGHT: weather placeholder */}
+        {/* RIGHT: weather */}
         <div>
-          <p
-            style={{
-              margin: '0 0 12px',
-              fontSize: 14,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
+          <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
             Weather Today
           </p>
-          <div
-            className="ss-card-raised"
-            style={{
-              padding: 22,
-            }}
-          >
+          <div className="ss-card-raised" style={{ padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div
                 className="ss-icon-chip"
-                style={{
-                  width: 48,
-                  height: 48,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <IconCloud />
               </div>
               <div>
                 <p
                   className={cormorant.className}
-                  style={{
-                    margin: 0,
-                    fontSize: 28,
-                    fontWeight: 400,
-                    lineHeight: 1,
-                    color: 'var(--text-primary)',
-                  }}
+                  style={{ margin: 0, fontSize: 28, fontWeight: 400, lineHeight: 1, color: 'var(--text-primary)' }}
                 >
                   Coming soon
                 </p>
-                <p
-                  style={{
-                    margin: '4px 0 0',
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                  }}
-                >
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
                   {stay?.property?.city ?? 'Your destination'}
                 </p>
               </div>
@@ -416,9 +445,7 @@ export default function StayHomePage() {
 
           <button
             type="button"
-            onClick={() =>
-              router.push(`/stay/${propertySlug}/${stayId}/discover`)
-            }
+            onClick={() => router.push(`/stay/${propertySlug}/${stayId}/discover`)}
             className="ss-pill"
             style={{
               marginTop: 14,
@@ -439,46 +466,24 @@ export default function StayHomePage() {
         </div>
       </div>
 
-      {/* Hotel Amenities For You — real Discover places */}
+      {/* Hotel Amenities For You */}
       {places.length > 0 && (
         <div style={{ marginTop: 36 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 16,
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-              }}
-            >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>
               Hotel Amenities For You
             </p>
             <span
               role="button"
               tabIndex={0}
-              onClick={() =>
-                router.push(`/stay/${propertySlug}/${stayId}/discover`)
-              }
+              onClick={() => router.push(`/stay/${propertySlug}/${stayId}/discover`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   router.push(`/stay/${propertySlug}/${stayId}/discover`);
                 }
               }}
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                letterSpacing: '0.04em',
-                color: 'var(--gold)',
-                cursor: 'pointer',
-              }}
+              style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--gold)', cursor: 'pointer' }}
             >
               See all activities →
             </span>
@@ -495,9 +500,7 @@ export default function StayHomePage() {
                   className="amenity-card ss-card-raised"
                   role="button"
                   tabIndex={0}
-                  onClick={() =>
-                    router.push(`/stay/${propertySlug}/${stayId}/discover`)
-                  }
+                  onClick={() => router.push(`/stay/${propertySlug}/${stayId}/discover`)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
@@ -515,29 +518,11 @@ export default function StayHomePage() {
                     }}
                   />
                   <div style={{ padding: '12px 14px 14px' }}>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: 'var(--text-primary)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {p.name}
                     </p>
                     {p.category ? (
-                      <p
-                        style={{
-                          margin: '2px 0 0',
-                          fontSize: 11,
-                          letterSpacing: '0.06em',
-                          textTransform: 'uppercase',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
+                      <p style={{ margin: '2px 0 0', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                         {p.category}
                       </p>
                     ) : null}
@@ -549,7 +534,7 @@ export default function StayHomePage() {
         </div>
       )}
 
-      {/* Confirmation dialog */}
+      {/* Dialog */}
       {activeTile && (
         <div
           role="dialog"
@@ -580,6 +565,7 @@ export default function StayHomePage() {
               border: '1px solid var(--border)',
             }}
           >
+            {/* Icon + title */}
             <div
               style={{
                 width: 48,
@@ -597,43 +583,137 @@ export default function StayHomePage() {
             </div>
             <p
               className={cormorant.className}
-              style={{
-                margin: 0,
-                fontSize: 22,
-                fontWeight: 400,
-                color: 'var(--text-primary)',
-              }}
+              style={{ margin: 0, fontSize: 22, fontWeight: 400, color: 'var(--text-primary)' }}
             >
               {activeTile.label}
             </p>
-            <p
-              style={{
-                margin: '8px 0 18px',
-                fontSize: 14,
-                color: 'var(--text-muted)',
-                lineHeight: 1.5,
-                fontWeight: 300,
-              }}
-            >
-              {activeTile.action.kind === 'request'
-                ? `Send a ${activeTile.label.toLowerCase()} request to the hotel team?`
-                : activeTile.action.body}
-            </p>
 
+            {/* Info-only body */}
+            {activeTile.action.kind === 'info' && (
+              <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                {activeTile.action.body}
+              </p>
+            )}
+
+            {/* ── Per-tile input forms ── */}
+
+            {/* Room Service */}
+            {activeTile.id === 'room_service' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  We'll send housekeeping to your room shortly.
+                </p>
+                <div>
+                  <label style={labelStyle}>Notes (optional)</label>
+                  <textarea
+                    className="sh-textarea"
+                    rows={2}
+                    placeholder="e.g. extra towels, pillow top-up…"
+                    value={fields.roomServiceNotes ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))}
+                    style={{ ...inputStyle, resize: 'none' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Food Order */}
+            {activeTile.id === 'food_order' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Check the in-room menu and type your order below.
+                </p>
+                <div>
+                  <label style={labelStyle}>Your order <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <textarea
+                    className="sh-textarea"
+                    rows={3}
+                    placeholder="e.g. Club sandwich, fries, orange juice"
+                    value={fields.foodOrder ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, foodOrder: e.target.value }))}
+                    style={{ ...inputStyle, resize: 'none' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Laundry */}
+            {activeTile.id === 'laundry' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Leave your laundry bag outside the door. We'll pick it up at your preferred time.
+                </p>
+                <div>
+                  <label style={labelStyle}>Preferred pickup time (optional)</label>
+                  <input
+                    className="sh-input"
+                    type="time"
+                    value={fields.laundryTime ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, laundryTime: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Transportation */}
+            {activeTile.id === 'transport' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Pickup time <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <input
+                    className="sh-input"
+                    type="time"
+                    value={fields.transportTime ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, transportTime: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Destination <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <input
+                    className="sh-input"
+                    type="text"
+                    placeholder="e.g. Changi Airport, Orchard Road"
+                    value={fields.transportDest ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, transportDest: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Wake-up Call */}
+            {activeTile.id === 'wakeup' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Wake-up time <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <input
+                    className="sh-input"
+                    type="time"
+                    value={fields.wakeupTime ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, wakeupTime: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Call Staff */}
+            {activeTile.id === 'call_staff' && (
+              <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                A staff member will be notified and with you shortly.
+              </p>
+            )}
+
+            {/* Buttons */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 type="button"
                 onClick={closeDialog}
                 disabled={submitting}
                 className="ss-pill"
-                style={{
-                  flex: 1,
-                  height: 46,
-                  borderRadius: 14,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  opacity: submitting ? 0.5 : 1,
-                }}
+                style={{ flex: 1, height: 46, borderRadius: 14, fontSize: 13, fontWeight: 500, opacity: submitting ? 0.5 : 1 }}
               >
                 {activeTile.action.kind === 'info' ? 'Close' : 'Cancel'}
               </button>
@@ -641,7 +721,7 @@ export default function StayHomePage() {
                 <button
                   type="button"
                   onClick={() => submitRequest(activeTile)}
-                  disabled={submitting}
+                  disabled={submitting || !canSubmit(activeTile)}
                   className="ss-gold-btn"
                   style={{
                     flex: 1,
@@ -649,6 +729,7 @@ export default function StayHomePage() {
                     borderRadius: 14,
                     fontSize: 13,
                     fontWeight: 600,
+                    opacity: !canSubmit(activeTile) ? 0.4 : 1,
                   }}
                 >
                   {submitting ? 'Sending…' : 'Send request'}
@@ -718,14 +799,6 @@ function IconFork() {
       <path d="M11 2v6" />
       <path d="M3 2v6a4 4 0 004 4" />
       <path d="M17 2v20M17 2c2 0 3 2 3 5v6h-3" />
-    </svg>
-  );
-}
-function IconSpa() {
-  return (
-    <svg {...svgProps()}>
-      <path d="M12 21c-3-3-7-5-7-10a7 7 0 0114 0c0 5-4 7-7 10z" />
-      <path d="M12 11v0" />
     </svg>
   );
 }
