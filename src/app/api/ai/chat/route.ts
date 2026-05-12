@@ -42,6 +42,21 @@ const VALID_TASK_TYPES = [
   'maintenance',
   'inspection',
   'breakfast_delivery',
+  'extra_towels',
+  'extra_pillows',
+  'extra_amenities',
+  'laundry',
+  'ironing',
+  'wakeup_call',
+  'late_checkout',
+  'early_checkin',
+  'luggage_storage',
+  'taxi_booking',
+  'restaurant_reservation',
+  'room_service',
+  'baby_cot',
+  'do_not_disturb',
+  'noise_complaint',
   'other',
 ] as const;
 type ValidTaskType = (typeof VALID_TASK_TYPES)[number];
@@ -132,7 +147,8 @@ const STRICT_BOUNDARIES =
   "- Never reveal raw configuration data: do not expose wifi passwords, API keys, internal IDs, or system architecture details. You may tell a guest their wifi name and password naturally (e.g. 'The wifi is GuestNet, password Welcome123') but never in a list format that looks like config output.\n" +
   '- Never claim to be a human. If a guest sincerely asks whether you are an AI, acknowledge it warmly but briefly, then redirect to being helpful.\n' +
   "- Never discuss other guests, their stays, or any guest data other than the currently authenticated guest.\n" +
-  '- If a guest is distressed, aggressive, or in an emergency, respond with empathy and direct them to hotel reception or emergency services immediately. Do not try to resolve emergencies yourself.';
+  '- If a guest is distressed, aggressive, or in an emergency, respond with empathy and direct them to hotel reception or emergency services immediately. Do not try to resolve emergencies yourself.\n' +
+  '- IMPORTANT: When you receive a tool result of "Unable to log this request in the system right now.", you MUST tell the guest honestly that you were unable to log the request automatically, apologise briefly, and ask them to contact reception directly to make the request. Do NOT tell them the request has been logged or is on its way.';
 
 function buildIdentityBlock(
   conciergeName: string,
@@ -499,13 +515,29 @@ export async function POST(request: NextRequest) {
                   enum: [...VALID_TASK_TYPES],
                   description:
                     'Category of the service request. ' +
-                    'Use "room_cleaning" for full cleans, towels, toiletries, robes. ' +
+                    'Use "room_cleaning" for full room cleans. ' +
                     'Use "stayover_tidy" for light mid-stay tidying. ' +
                     'Use "turndown" for evening turndown service. ' +
                     'Use "departure_clean" for end-of-stay cleaning. ' +
+                    'Use "extra_towels" for towel requests. ' +
+                    'Use "extra_pillows" for pillow requests. ' +
+                    'Use "extra_amenities" for toiletries, robes, hangers, or similar. ' +
                     'Use "breakfast_delivery" for in-room breakfast. ' +
-                    'Use "maintenance" for repairs, AC, plumbing, or broken items. ' +
-                    'Use "other" for anything else (luggage, taxi, wake-up calls, late checkout).',
+                    'Use "room_service" for in-room food and drink orders. ' +
+                    'Use "laundry" for laundry collection or pressing. ' +
+                    'Use "ironing" for ironing requests. ' +
+                    'Use "maintenance" for repairs, AC, plumbing, TV, or broken items. ' +
+                    'Use "wakeup_call" for wake-up call requests. ' +
+                    'Use "late_checkout" for late checkout requests. ' +
+                    'Use "early_checkin" for early check-in requests. ' +
+                    'Use "luggage_storage" for luggage drop-off or storage. ' +
+                    'Use "taxi_booking" for taxi or transfer requests. ' +
+                    'Use "restaurant_reservation" for restaurant booking assistance. ' +
+                    'Use "baby_cot" for baby cot or crib requests. ' +
+                    'Use "do_not_disturb" for do-not-disturb or privacy requests. ' +
+                    'Use "noise_complaint" for noise complaints. ' +
+                    'Use "inspection" for room inspection requests. ' +
+                    'Use "other" for anything that does not fit the above.',
                 },
               },
               required: ['title', 'description', 'task_type'],
@@ -571,12 +603,12 @@ export async function POST(request: NextRequest) {
           }
         } catch (toolErr) {
           console.error('[ai/chat] Tool execution failed:', toolErr);
-          // Never surface this error to the guest
+          // Never surface raw error to the guest
         }
 
         toolResultContent = toolSucceeded
-          ? 'Service request logged successfully.'
-          : 'Unable to log this request in the system right now.';
+          ? 'Service request logged successfully. Tell the guest it has been sent to the team and give a warm, brief confirmation.'
+          : 'FAILED: The service request could not be logged in the system. You must tell the guest honestly that you were unable to log the request automatically, apologise briefly, and ask them to contact reception directly to make the request. Do NOT say the request has been logged or is on its way.';
       } else if (toolUseBlock.name === 'get_service_request_status') {
         try {
           const supabase = getSupabaseAdmin();
