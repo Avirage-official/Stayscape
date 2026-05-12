@@ -23,7 +23,7 @@ async function fetchStayApi(userId: string, stayId: string): Promise<CustomerSta
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type StayTab = 'concierge' | 'home' | 'discover' | 'itinerary';
+type StayTab = 'concierge' | 'home' | 'discover' | 'itinerary'| 'requests';
 
 function getActiveTab(
   pathname: string,
@@ -34,6 +34,7 @@ function getActiveTab(
   if (pathname.endsWith('/home')) return 'home';
   if (pathname.endsWith('/discover')) return 'discover';
   if (pathname.endsWith('/itinerary')) return 'itinerary';
+  if (pathname.endsWith('/requests')) return 'requests';
   return null;
 }
 
@@ -102,6 +103,14 @@ function IconClose() {
       strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+function IconRequests(active: boolean) {
+  return (
+    <svg {...iconProps(active)}>
+      <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
     </svg>
   );
 }
@@ -300,6 +309,12 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       label: 'Itinerary',
       href: `/stay/${propertySlug}/${stayId}/itinerary`,
       icon: IconItinerary,
+    },
+    {
+      id: 'requests',
+      label: 'Requests',
+      href: `/stay/${propertySlug}/${stayId}/requests`,
+      icon: IconRequests,
     },
   ];
 
