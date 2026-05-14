@@ -4,7 +4,7 @@
  * /stay/[propertySlug]/[stayId]/home
  *
  * Hotel-branded home screen. Quick-action tiles fire real service_tasks
- * via POST /api/stays/[stayId]/services/request.
+ * via POST /api/customer/requests.
  *
  * Tiles tied to backend (insert service_tasks row):
  *   Room Service, Restaurants & Bars, Laundry, Transportation,
@@ -288,7 +288,8 @@ export default function StayHomePage() {
 
       const description = buildDescription(tile);
 
-      const res = await fetch(`/api/stays/${encodeURIComponent(stayId)}/services/request`, {
+      // POST to the customer requests API — same endpoint used by the Requests page
+      const res = await fetch('/api/customer/requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
