@@ -7,13 +7,11 @@
  * via POST /api/stays/[stayId]/services/request.
  *
  * Tiles tied to backend (insert service_tasks row):
- *   Room Service, Food Order, Laundry, Transportation,
- *   Wake-up Call, Call Staff
+ *   Room Service, Restaurants & Bars, Laundry, Transportation,
+ *   Wake-up Call, Call Staff, Maintenance, Late Checkout
  *
  * Tiles that are info-only (no insert):
  *   Facilities, Amenities, Information
- *
- * Spa Booking removed — handled by concierge separately.
  */
 
 import React, { useEffect, useMemo, useState, useContext } from 'react';
@@ -59,10 +57,10 @@ const TILES: Tile[] = [
     action: { kind: 'request', task_type: 'room_service', title: 'Room service requested' },
   },
   {
-    id: 'food_order',
-    label: 'Food Order',
+    id: 'restaurants_bars',
+    label: 'Restaurants & Bars',
     icon: <IconFork />,
-    action: { kind: 'request', task_type: 'room_service', title: 'In-room food order requested' },
+    action: { kind: 'request', task_type: 'restaurant_reservation', title: 'Restaurant or bar reservation requested' },
   },
   {
     id: 'facilities',
@@ -107,6 +105,18 @@ const TILES: Tile[] = [
     action: { kind: 'request', task_type: 'other', title: 'Guest requesting staff assistance' },
   },
   {
+    id: 'maintenance',
+    label: 'Maintenance',
+    icon: <IconWrench />,
+    action: { kind: 'request', task_type: 'maintenance', title: 'Maintenance requested' },
+  },
+  {
+    id: 'late_checkout',
+    label: 'Late Checkout',
+    icon: <IconKey />,
+    action: { kind: 'request', task_type: 'late_checkout', title: 'Late checkout requested' },
+  },
+  {
     id: 'information',
     label: 'Information',
     icon: <IconInfo />,
@@ -120,12 +130,14 @@ const TILES: Tile[] = [
 /* ─── Per-tile extra fields ─── */
 
 interface TileFields {
-  foodOrder?: string;        // Food Order: what they want
-  laundryTime?: string;      // Laundry: preferred pickup time
-  transportTime?: string;    // Transportation: pickup time
-  transportDest?: string;    // Transportation: destination
-  wakeupTime?: string;       // Wake-up Call: time
-  roomServiceNotes?: string; // Room Service: optional notes
+  restaurantNotes?: string;    // Restaurants & Bars: reservation details
+  laundryTime?: string;        // Laundry: preferred pickup time
+  transportTime?: string;      // Transportation: pickup time
+  transportDest?: string;      // Transportation: destination
+  wakeupTime?: string;         // Wake-up Call: time
+  roomServiceNotes?: string;   // Room Service: optional notes
+  maintenanceNotes?: string;   // Maintenance: describe the issue
+  lateCheckoutTime?: string;   // Late Checkout: desired checkout time
 }
 
 /* ─── Helpers ─── */
@@ -225,8 +237,8 @@ export default function StayHomePage() {
     switch (tile.id) {
       case 'room_service':
         return fields.roomServiceNotes ? `Notes: ${fields.roomServiceNotes}` : undefined;
-      case 'food_order':
-        return fields.foodOrder ? `Order: ${fields.foodOrder}` : undefined;
+      case 'restaurants_bars':
+        return fields.restaurantNotes ? `Details: ${fields.restaurantNotes}` : undefined;
       case 'laundry':
         return fields.laundryTime ? `Preferred pickup time: ${fields.laundryTime}` : undefined;
       case 'transport':
@@ -238,6 +250,10 @@ export default function StayHomePage() {
           .join(' | ') || undefined;
       case 'wakeup':
         return fields.wakeupTime ? `Wake-up time: ${fields.wakeupTime}` : undefined;
+      case 'maintenance':
+        return fields.maintenanceNotes ? `Issue: ${fields.maintenanceNotes}` : undefined;
+      case 'late_checkout':
+        return fields.lateCheckoutTime ? `Desired checkout time: ${fields.lateCheckoutTime}` : undefined;
       default:
         return undefined;
     }
@@ -246,12 +262,16 @@ export default function StayHomePage() {
   /* Validate required fields before submit */
   const canSubmit = (tile: Tile): boolean => {
     switch (tile.id) {
-      case 'food_order':
-        return !!fields.foodOrder?.trim();
+      case 'restaurants_bars':
+        return !!fields.restaurantNotes?.trim();
       case 'transport':
         return !!fields.transportTime?.trim() && !!fields.transportDest?.trim();
       case 'wakeup':
         return !!fields.wakeupTime?.trim();
+      case 'maintenance':
+        return !!fields.maintenanceNotes?.trim();
+      case 'late_checkout':
+        return !!fields.lateCheckoutTime?.trim();
       default:
         return true;
     }
@@ -351,6 +371,9 @@ export default function StayHomePage() {
             .tile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
           }
           @media (min-width: 900px) {
+            .tile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          }
+          @media (min-width: 1200px) {
             .tile-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
           }
           .tile {
@@ -617,20 +640,20 @@ export default function StayHomePage() {
               </div>
             )}
 
-            {/* Food Order */}
-            {activeTile.id === 'food_order' && (
+            {/* Restaurants & Bars */}
+            {activeTile.id === 'restaurants_bars' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  Check the in-room menu and type your order below.
+                  Let us know your preferred restaurant, date, time, and number of guests.
                 </p>
                 <div>
-                  <label style={labelStyle}>Your order <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <label style={labelStyle}>Reservation details <span style={{ color: 'var(--gold)' }}>*</span></label>
                   <textarea
                     className="sh-textarea"
                     rows={3}
-                    placeholder="e.g. Club sandwich, fries, orange juice"
-                    value={fields.foodOrder ?? ''}
-                    onChange={(e) => setFields((f) => ({ ...f, foodOrder: e.target.value }))}
+                    placeholder="e.g. The Grill Room, tonight at 7:30pm, 2 guests"
+                    value={fields.restaurantNotes ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, restaurantNotes: e.target.value }))}
                     style={{ ...inputStyle, resize: 'none' }}
                   />
                 </div>
@@ -704,6 +727,45 @@ export default function StayHomePage() {
               <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
                 A staff member will be notified and with you shortly.
               </p>
+            )}
+
+            {/* Maintenance */}
+            {activeTile.id === 'maintenance' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Describe the issue and our maintenance team will attend to it promptly.
+                </p>
+                <div>
+                  <label style={labelStyle}>Describe the issue <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <textarea
+                    className="sh-textarea"
+                    rows={3}
+                    placeholder="e.g. Air conditioning not working, leaking tap in bathroom…"
+                    value={fields.maintenanceNotes ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, maintenanceNotes: e.target.value }))}
+                    style={{ ...inputStyle, resize: 'none' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Late Checkout */}
+            {activeTile.id === 'late_checkout' && (
+              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Request a late checkout and we'll confirm availability with you.
+                </p>
+                <div>
+                  <label style={labelStyle}>Desired checkout time <span style={{ color: 'var(--gold)' }}>*</span></label>
+                  <input
+                    className="sh-input"
+                    type="time"
+                    value={fields.lateCheckoutTime ?? ''}
+                    onChange={(e) => setFields((f) => ({ ...f, lateCheckoutTime: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
             )}
 
             {/* Buttons */}
@@ -851,6 +913,22 @@ function IconStaff() {
       <circle cx="12" cy="9" r="3" />
       <path d="M5 21v-1a7 7 0 0114 0v1" />
       <path d="M9 5a3 3 0 016 0" />
+    </svg>
+  );
+}
+function IconWrench() {
+  return (
+    <svg {...svgProps()}>
+      <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+    </svg>
+  );
+}
+function IconKey() {
+  return (
+    <svg {...svgProps()}>
+      <circle cx="7.5" cy="15.5" r="5.5" />
+      <path d="M21 2l-9.6 9.6" />
+      <path d="M15.5 7.5l3 3L21 8l-3-3" />
     </svg>
   );
 }
