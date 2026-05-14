@@ -43,7 +43,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
     const placeMessage: ChatMessage = {
       id,
       role: 'assistant',
-      text: `You selected ${place.name} — let me check it for you. Here are the details I found. If you decide to book it, just send me the date and time and I'll add it to your itinerary.`,
+      text: `${place.name} — here are the details. Let me know the date and time you'd like to go and I'll add it to your itinerary.`,
       place,
     };
     setMessages((prev) => [...prev, placeMessage]);
@@ -87,7 +87,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
     const assistantMsg: ChatMessage = {
       id: `itinerary-${++idCounterRef.current}`,
       role: 'assistant',
-      text: `Great choice! To add ${selectedPlace.name} to your itinerary, just let me know the date and time you'd like to go, and I'll take care of the rest.`,
+      text: `Great choice. Just tell me the date and time and I'll have ${selectedPlace.name} on your itinerary.`,
     };
 
     setMessages((prev) => [...prev, assistantMsg]);
@@ -110,7 +110,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                 <span className="text-[11px] text-[#C9A84C]">✦</span>
               </div>
               <div>
-                <h2 className="text-[13px] font-medium text-white tracking-wide">Travel Assistant</h2>
+                <h2 className="text-[13px] font-medium text-white tracking-wide">Aria</h2>
               </div>
             </div>
             {selectedPlace && (
@@ -123,7 +123,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
             )}
           </div>
           <p className="text-[9px] text-white/35 mt-1 tracking-wide">
-            Your personal concierge · Ask anything
+            Your concierge · Ask anything
           </p>
           <p className="text-[9px] text-white/25 mt-0.5 tracking-wide">
             Each message starts fresh — no memory of previous turns
@@ -139,10 +139,10 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                 <span className="text-[18px] text-[#C9A84C]">✦</span>
               </div>
               <h3 className="text-[14px] font-medium text-white tracking-wide mb-2">
-                Welcome to Stayscape
+                Hello, I&apos;m Aria
               </h3>
               <p className="text-[11px] text-white/45 leading-[1.7] max-w-[240px] mb-6">
-                I&apos;m your personal travel assistant. Ask me anything about your stay, nearby places, dining, activities, or select a place on the map to learn more.
+                I&apos;m here to take care of everything during your stay — from recommendations and reservations to anything your room needs. Just ask.
               </p>
               {/* Suggestion chips */}
               <div className="flex flex-wrap justify-center gap-1.5">
@@ -182,7 +182,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
                     <span className="text-[10px] text-[#C9A84C]">✦</span>
                   </div>
                   <span className="text-[10px] text-white/40 animate-pulse">
-                    Thinking…
+                    One moment…
                   </span>
                 </div>
               )}
@@ -202,7 +202,7 @@ const TravelAssistantPanel = forwardRef<TravelAssistantPanelHandle, TravelAssist
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about your stay…"
+              placeholder="Ask Aria anything…"
               disabled={isLoading}
               className="text-[11px] text-white placeholder-white/30 bg-transparent focus:outline-none flex-1"
             />
