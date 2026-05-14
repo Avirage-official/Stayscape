@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Bell, Clock, X } from 'lucide-react';
+import { Bell, Clock, X, Plus } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
 import { getHotelAdminToken } from '@/lib/hotel-admin-token';
 
@@ -18,6 +18,9 @@ interface ServiceTask {
   priority: number;
   createdat: string;
   updatedat: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
   roomid: string | null;
   stayid: string | null;
   cancel_reason?: string | null;
@@ -29,10 +32,29 @@ interface TaskMessage {
   id: string;
   sender_role: 'guest' | 'hotel';
   message: string;
+  is_internal?: boolean;
   createdat: string;
 }
 
 type FilterTab = 'all' | TaskStatus;
+
+const TASK_TYPES = [
+  'all_types',
+  'housekeeping',
+  'maintenance',
+  'food_beverage',
+  'concierge',
+  'late_checkout',
+  'early_checkin',
+  'extra_amenities',
+  'transport',
+  'spa',
+  'restaurant',
+  'laundry',
+  'other',
+] as const;
+
+type TaskTypeFilter = (typeof TASK_TYPES)[number];
 
 /* ── Helpers ── */
 
@@ -44,6 +66,13 @@ function timeAgo(dateStr: string): string {
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `${diffHr}h ago`;
   return new Date(dateStr).toLocaleDateString();
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 }
 
 function formatTime(iso: string) {
@@ -91,6 +120,137 @@ function SkeletonRow() {
   );
 }
 
+/* ── Create Task Modal ── */
+
+const VALID_TASK_TYPES = TASK_TYPES.filter((t) => t !== 'all_types');
+
+function CreateTaskModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [taskType, setTaskType] = useState('other');
+  const [roomLabel, setRoomLabel] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    const trimTitle = title.trim();
+    if (!trimTitle) { setErr('Title is required.'); return; }
+    setSubmitting(true);
+    setErr(null);
+    const token = await getHotelAdminToken();
+    if (!token) { setErr('Session expired.'); setSubmitting(false); return; }
+    try {
+      const res = await fetch('/api/hotel-admin/requests', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: trimTitle,
+          description: description.trim() || null,
+          task_type: taskType,
+          room_label: roomLabel.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setErr(body.error ?? 'Failed to create task.');
+        return;
+      }
+      onCreated();
+      onClose();
+    } catch {
+      setErr('Network error.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center px-5" onClick={onClose}>
+      <div
+        className="bg-[#151512] border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-[16px] font-semibold text-white">New Request</p>
+          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors" aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+
+        {err && <p className="text-[12px] text-red-400">{err}</p>}
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1">Title *</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Extra towels requested"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] text-white placeholder-white/20 px-3 py-2.5 focus:outline-none focus:border-white/20 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1">Type</label>
+            <select
+              value={taskType}
+              onChange={(e) => setTaskType(e.target.value)}
+              className="w-full bg-[#0e0e0c] border border-white/[0.08] rounded-xl text-[13px] text-white px-3 py-2.5 focus:outline-none focus:border-white/20 transition-colors"
+            >
+              {VALID_TASK_TYPES.map((t) => (
+                <option key={t} value={t}>{formatTaskType(t)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1">Room number (optional)</label>
+            <input
+              value={roomLabel}
+              onChange={(e) => setRoomLabel(e.target.value)}
+              placeholder="e.g. 1208"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] text-white placeholder-white/20 px-3 py-2.5 focus:outline-none focus:border-white/20 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1">Description (optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Any extra details…"
+              rows={3}
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] text-white placeholder-white/20 px-3 py-2.5 resize-none focus:outline-none focus:border-white/20 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={onClose}
+            className="flex-1 h-11 rounded-xl border border-white/[0.08] text-[13px] text-white/50 hover:text-white hover:border-white/20 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => void handleSubmit()}
+            disabled={submitting}
+            className="flex-1 h-11 rounded-xl bg-[#C9A84C] text-[13px] font-medium text-[#1a1208] hover:bg-[#d4b05c] transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Creating…' : 'Create'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Task Drawer ── */
 
 function TaskDrawer({
@@ -109,6 +269,7 @@ function TaskDrawer({
   const [actioning, setActioning] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [noteMode, setNoteMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = useCallback(async () => {
@@ -141,7 +302,7 @@ function TaskDrawer({
       const res = await fetch(`/api/hotel-admin/requests/${task.id}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, is_internal: noteMode }),
       });
       if (res.ok) {
         const json = (await res.json()) as { message: TaskMessage };
@@ -154,7 +315,6 @@ function TaskDrawer({
     setActioning(true);
     try {
       await onStatusChange(task.id, newStatus, reason);
-      // If cancelled with reason, post it as a hotel message so guest sees it
       if (newStatus === 'cancelled' && reason?.trim()) {
         const token = await getHotelAdminToken();
         if (token) {
@@ -182,19 +342,14 @@ function TaskDrawer({
 
   return (
     <>
-      {/* Drawer backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose} />
 
-      {/* Drawer panel */}
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#0e0e0c] border-l border-white/[0.06] z-50 flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/[0.06] flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[15px] font-medium text-white truncate">{task.title}</p>
+              <p className="text-[15px] font-medium text-white">{task.title}</p>
               <StatusBadge status={task.status} />
             </div>
             <p className="mt-1 text-[12px] text-white/40">
@@ -202,8 +357,29 @@ function TaskDrawer({
               {task.stays?.guest_email && <> · {task.stays.guest_email}</>}
             </p>
             {task.description && (
-              <p className="mt-2 text-[13px] text-white/50 leading-relaxed">{task.description}</p>
+              <p className="mt-2 text-[13px] text-white/60 leading-relaxed">{task.description}</p>
             )}
+            {/* Timestamps */}
+            <div className="mt-3 space-y-1">
+              <p className="text-[11px] text-white/25">
+                <span className="text-white/35">Created</span> {formatDateTime(task.createdat)}
+              </p>
+              {task.started_at && (
+                <p className="text-[11px] text-white/25">
+                  <span className="text-white/35">Started</span> {formatDateTime(task.started_at)}
+                </p>
+              )}
+              {task.completed_at && (
+                <p className="text-[11px] text-white/25">
+                  <span className="text-white/35">Completed</span> {formatDateTime(task.completed_at)}
+                </p>
+              )}
+              {task.cancelled_at && (
+                <p className="text-[11px] text-white/25">
+                  <span className="text-white/35">Cancelled</span> {formatDateTime(task.cancelled_at)}
+                </p>
+              )}
+            </div>
             {task.status === 'cancelled' && task.cancel_reason && (
               <div className="mt-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
                 <p className="text-[12px] text-red-400"><span className="font-medium">Reason: </span>{task.cancel_reason}</p>
@@ -258,16 +434,19 @@ function TaskDrawer({
           ) : (
             messages.map((m) => {
               const isHotel = m.sender_role === 'hotel';
+              const isInternal = m.is_internal === true;
               return (
                 <div key={m.id} className={`flex ${isHotel ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[78%] px-3 py-2 rounded-2xl ${
-                    isHotel
-                      ? 'bg-[#C9A84C] text-[#1a1208] rounded-br-sm'
-                      : 'bg-white/[0.06] text-white border border-white/[0.06] rounded-bl-sm'
+                    isInternal
+                      ? 'bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-br-sm'
+                      : isHotel
+                        ? 'bg-[#C9A84C] text-[#1a1208] rounded-br-sm'
+                        : 'bg-white/[0.06] text-white border border-white/[0.06] rounded-bl-sm'
                   }`}>
                     <p className="text-[13px] leading-[1.45]">{m.message}</p>
                     <p className={`text-[10px] mt-1 opacity-55 ${isHotel ? 'text-right' : 'text-left'}`}>
-                      {isHotel ? 'You' : 'Guest'} · {formatTime(m.createdat)}
+                      {isInternal ? '🔒 Internal note' : isHotel ? 'You' : 'Guest'} · {formatTime(m.createdat)}
                     </p>
                   </div>
                 </div>
@@ -279,27 +458,54 @@ function TaskDrawer({
 
         {/* Message input */}
         {!isClosed ? (
-          <div className="px-4 py-3 border-t border-white/[0.06] flex gap-2 items-end">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-              placeholder="Message guest…"
-              rows={1}
-              className="flex-1 resize-none bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] text-white placeholder-white/20 px-3 py-2.5 focus:outline-none focus:border-white/20 transition-colors"
-              style={{ minHeight: 40, maxHeight: 120, lineHeight: 1.4 }}
-            />
-            <button
-              onClick={() => void handleSend()}
-              disabled={!input.trim() || sending}
-              className="h-10 w-10 rounded-xl bg-[#C9A84C] text-[#1a1208] flex items-center justify-center shrink-0 hover:bg-[#d4b05c] transition-colors disabled:opacity-40"
-              aria-label="Send"
-            >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
+          <div className="px-4 py-3 border-t border-white/[0.06] space-y-2">
+            {/* Note / Message toggle */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => setNoteMode(false)}
+                className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
+                  !noteMode ? 'bg-[#C9A84C]/20 text-[#C9A84C]' : 'text-white/30 hover:text-white/50'
+                }`}
+              >
+                Message guest
+              </button>
+              <button
+                onClick={() => setNoteMode(true)}
+                className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
+                  noteMode ? 'bg-purple-500/20 text-purple-400' : 'text-white/30 hover:text-white/50'
+                }`}
+              >
+                🔒 Internal note
+              </button>
+            </div>
+            <div className="flex gap-2 items-end">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
+                placeholder={noteMode ? 'Add internal note (only hotel staff see this)…' : 'Message guest…'}
+                rows={1}
+                className={`flex-1 resize-none border rounded-xl text-[13px] text-white placeholder-white/20 px-3 py-2.5 focus:outline-none transition-colors ${
+                  noteMode
+                    ? 'bg-purple-500/[0.06] border-purple-500/20 focus:border-purple-500/40'
+                    : 'bg-white/[0.04] border-white/[0.08] focus:border-white/20'
+                }`}
+                style={{ minHeight: 40, maxHeight: 120, lineHeight: 1.4 }}
+              />
+              <button
+                onClick={() => void handleSend()}
+                disabled={!input.trim() || sending}
+                className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-colors disabled:opacity-40 ${
+                  noteMode ? 'bg-purple-500/30 text-purple-300 hover:bg-purple-500/50' : 'bg-[#C9A84C] text-[#1a1208] hover:bg-[#d4b05c]'
+                }`}
+                aria-label="Send"
+              >
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="px-5 py-4 border-t border-white/[0.06] text-center">
@@ -308,7 +514,7 @@ function TaskDrawer({
         )}
       </div>
 
-      {/* Cancel with reason modal */}
+      {/* Cancel modal */}
       {showCancelModal && (
         <div className="fixed inset-0 z-60 flex items-center justify-center px-5" onClick={() => setShowCancelModal(false)}>
           <div className="bg-[#151512] border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -345,7 +551,7 @@ function TaskDrawer({
 
 /* ── Main page ── */
 
-const TABS: { key: FilterTab; label: string }[] = [
+const STATUS_TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Pending' },
   { key: 'in_progress', label: 'In Progress' },
@@ -360,7 +566,9 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [typeFilter, setTypeFilter] = useState<TaskTypeFilter>('all_types');
   const [selectedTask, setSelectedTask] = useState<ServiceTask | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     const token = await getHotelAdminToken();
@@ -391,7 +599,6 @@ export default function RequestsPage() {
   }, [fetchTasks]);
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus, cancelReason?: string) => {
-    // Optimistic
     setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
     const token = await getHotelAdminToken();
     if (!token) return;
@@ -402,7 +609,6 @@ export default function RequestsPage() {
         body: JSON.stringify({ status: newStatus, ...(cancelReason ? { cancel_reason: cancelReason } : {}) }),
       });
       if (!res.ok) {
-        // revert
         void fetchTasks();
       } else {
         const data = (await res.json()) as { task: ServiceTask };
@@ -421,32 +627,79 @@ export default function RequestsPage() {
     cancelled:   tasks.filter((t) => t.status === 'cancelled').length,
   };
 
-  const filteredTasks = activeTab === 'all' ? tasks : tasks.filter((t) => t.status === activeTab);
+  // Apply both status + type filters
+  const filteredTasks = tasks
+    .filter((t) => activeTab === 'all' || t.status === activeTab)
+    .filter((t) => typeFilter === 'all_types' || t.task_type === typeFilter);
+
+  // Unique task types present in current list for the type filter dropdown
+  const presentTypes = Array.from(new Set(tasks.map((t) => t.task_type)));
 
   return (
     <div className="px-5 py-8 md:px-8 space-y-6">
-      <h1 className="text-[22px] font-semibold text-white">Requests</h1>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-[22px] font-semibold text-white">Requests</h1>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 text-[13px] font-medium text-[#C9A84C] hover:text-[#d4b05c] bg-[#C9A84C]/10 hover:bg-[#C9A84C]/20 border border-[#C9A84C]/20 rounded-xl px-3 py-2 transition-colors"
+        >
+          <Plus size={14} />
+          New request
+        </button>
+      </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 border-b border-white/[0.06]">
-        {TABS.map(({ key, label }) => {
-          const isActive = activeTab === key;
-          return (
-            <button key={key} onClick={() => setActiveTab(key)}
-              className={`relative px-4 py-2.5 text-[13px] font-medium transition-colors ${
-                isActive ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/60'
+      {/* Status tabs + type filter row */}
+      <div className="space-y-3">
+        <div className="flex gap-1 border-b border-white/[0.06]">
+          {STATUS_TABS.map(({ key, label }) => {
+            const isActive = activeTab === key;
+            return (
+              <button key={key} onClick={() => setActiveTab(key)}
+                className={`relative px-4 py-2.5 text-[13px] font-medium transition-colors ${
+                  isActive ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/60'
+                }`}
+              >
+                {label}
+                {counts[key] > 0 && (
+                  <span className={`ml-1.5 text-[11px] ${isActive ? 'text-[#C9A84C]/70' : 'text-white/20'}`}>
+                    {counts[key]}
+                  </span>
+                )}
+                {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#C9A84C] rounded-t" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Type filter — only show if >1 type exists */}
+        {presentTypes.length > 1 && (
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              onClick={() => setTypeFilter('all_types')}
+              className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                typeFilter === 'all_types'
+                  ? 'bg-white/[0.08] border-white/[0.12] text-white/70'
+                  : 'border-white/[0.06] text-white/30 hover:text-white/50 hover:border-white/[0.10]'
               }`}
             >
-              {label}
-              {counts[key] > 0 && (
-                <span className={`ml-1.5 text-[11px] ${isActive ? 'text-[#C9A84C]/70' : 'text-white/20'}`}>
-                  {counts[key]}
-                </span>
-              )}
-              {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#C9A84C] rounded-t" />}
+              All types
             </button>
-          );
-        })}
+            {presentTypes.map((type) => (
+              <button
+                key={type}
+                onClick={() => setTypeFilter(type as TaskTypeFilter)}
+                className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                  typeFilter === type
+                    ? 'bg-white/[0.08] border-white/[0.12] text-white/70'
+                    : 'border-white/[0.06] text-white/30 hover:text-white/50 hover:border-white/[0.10]'
+                }`}
+              >
+                {formatTaskType(type)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -478,7 +731,7 @@ export default function RequestsPage() {
                   </span>
                 </div>
                 {task.description && (
-                  <p className="text-[12px] text-white/40 leading-relaxed line-clamp-1">{task.description}</p>
+                  <p className="text-[12px] text-white/40 leading-relaxed line-clamp-2">{task.description}</p>
                 )}
                 <div className="flex items-center gap-3 text-[12px] text-white/30">
                   <span>Room {getRoomLabel(task)}</span>
@@ -495,12 +748,18 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* Task detail drawer */}
       {selectedTask && (
         <TaskDrawer
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           onStatusChange={handleStatusChange}
+        />
+      )}
+
+      {showCreate && (
+        <CreateTaskModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { void fetchTasks(); }}
         />
       )}
     </div>
