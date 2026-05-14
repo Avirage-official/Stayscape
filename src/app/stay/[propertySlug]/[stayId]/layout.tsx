@@ -23,7 +23,7 @@ async function fetchStayApi(userId: string, stayId: string): Promise<CustomerSta
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type StayTab = 'concierge' | 'home' | 'discover' | 'itinerary'| 'requests';
+type StayTab = 'concierge' | 'home' | 'discover' | 'itinerary' | 'requests';
 
 function getActiveTab(
   pathname: string,
@@ -87,25 +87,6 @@ function IconItinerary(active: boolean) {
     </svg>
   );
 }
-function IconMenu() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="18" x2="21" y2="18" />
-    </svg>
-  );
-}
-function IconClose() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
 function IconRequests(active: boolean) {
   return (
     <svg {...iconProps(active)}>
@@ -114,8 +95,16 @@ function IconRequests(active: boolean) {
     </svg>
   );
 }
+function IconChevronLeft() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
 
-/* ─── Side nav rendering ─── */
+/* ─── Nav item type ─── */
 
 interface NavItem {
   id: StayTab;
@@ -124,25 +113,22 @@ interface NavItem {
   icon: (active: boolean) => React.ReactNode;
 }
 
+/* ─── Desktop side nav ─── */
+
 function SideNav({
   items,
   activeTab,
-  onItemClick,
-  variant,
 }: {
   items: NavItem[];
   activeTab: StayTab | null;
-  onItemClick?: () => void;
-  variant: 'desktop' | 'drawer';
 }) {
-  const isDrawer = variant === 'drawer';
   return (
     <nav
       style={{
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        padding: isDrawer ? '20px 16px' : '24px 14px',
+        padding: '24px 14px',
         height: '100%',
       }}
       aria-label="Stay navigation"
@@ -153,12 +139,11 @@ function SideNav({
           <Link
             key={item.id}
             href={item.href}
-            onClick={onItemClick}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              padding: isDrawer ? '14px 14px' : '12px 12px',
+              padding: '12px 12px',
               borderRadius: 12,
               textDecoration: 'none',
               color: active ? 'var(--gold)' : 'var(--text-muted)',
@@ -184,6 +169,72 @@ function SideNav({
               {item.icon(active)}
             </span>
             <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ─── Mobile bottom tab bar ─── */
+
+function BottomNav({
+  items,
+  activeTab,
+}: {
+  items: NavItem[];
+  activeTab: StayTab | null;
+}) {
+  return (
+    <nav
+      aria-label="Stay navigation"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 60,
+        height: 64,
+        background: 'var(--surface)',
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'stretch',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
+      {items.map((item) => {
+        const active = item.id === activeTab;
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            aria-label={item.label}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              textDecoration: 'none',
+              color: active ? 'var(--gold)' : 'var(--text-muted)',
+              minWidth: 44,
+              minHeight: 44,
+              transition: 'color 0.15s ease',
+            }}
+          >
+            {item.icon(active)}
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: 'DM Sans, sans-serif',
+                fontWeight: active ? 600 : 400,
+                letterSpacing: '0.02em',
+                lineHeight: 1,
+              }}
+            >
+              {item.label}
+            </span>
           </Link>
         );
       })}
@@ -217,7 +268,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   const [stay, setStay] = useState<CustomerStay | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready'>('loading');
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Auth redirect
   useEffect(() => {
@@ -259,11 +309,6 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
       });
   }, [user, stayId, router, setRegion]);
 
-  // Close drawer on route change
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
-
   if (isLoading) return <GuestArrivalSkeleton />;
   if (!user) return null;
   if (!UUID_REGEX.test(stayId)) return null;
@@ -284,18 +329,20 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   }
 
   const activeTab = getActiveTab(pathname, propertySlug, stayId);
+  const homeHref = `/stay/${propertySlug}/${stayId}/home`;
+  const isOnHomePage = activeTab === 'home';
 
   const navItems: NavItem[] = [
     {
       id: 'concierge',
-      label: 'Ask Aria',
+      label: 'Aria',
       href: `/stay/${propertySlug}/${stayId}`,
       icon: IconAria,
     },
     {
       id: 'home',
-      label: 'Home',
-      href: `/stay/${propertySlug}/${stayId}/home`,
+      label: 'Hotel Services',
+      href: homeHref,
       icon: IconHome,
     },
     {
@@ -324,8 +371,10 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
         <style>{`
           .stay-shell { min-height: 100vh; background: var(--background); }
           .stay-side-nav-desktop { display: none; }
-          .stay-mobile-bar { display: flex; }
-          .stay-content { padding-bottom: 16px; }
+          .stay-mobile-topbar { display: flex; }
+          .stay-bottom-nav { display: flex; }
+          /* account for bottom nav height */
+          .stay-content { padding-bottom: 64px; }
 
           @media (min-width: 900px) {
             .stay-shell {
@@ -340,40 +389,10 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
               border-right: 1px solid var(--border);
               background: var(--surface);
             }
-            .stay-mobile-bar { display: none; }
+            .stay-mobile-topbar { display: none; }
+            .stay-bottom-nav { display: none; }
             .stay-content { padding-bottom: 0; }
           }
-
-          .stay-drawer-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(20, 16, 12, 0.55);
-            backdrop-filter: blur(4px);
-            z-index: 80;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-          }
-          .stay-drawer-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
-          }
-          .stay-drawer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 260px;
-            max-width: 80vw;
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            z-index: 90;
-            transform: translateX(-100%);
-            transition: transform 0.25s ease;
-            display: flex;
-            flex-direction: column;
-          }
-          .stay-drawer.open { transform: translateX(0); }
         `}</style>
 
         <div className="stay-shell">
@@ -390,12 +409,12 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
             >
               Stayscape
             </div>
-            <SideNav items={navItems} activeTab={activeTab} variant="desktop" />
+            <SideNav items={navItems} activeTab={activeTab} />
           </aside>
 
           {/* Mobile top bar */}
           <div
-            className="stay-mobile-bar"
+            className="stay-mobile-topbar"
             style={{
               position: 'sticky',
               top: 0,
@@ -408,25 +427,28 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
               justifyContent: 'space-between',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open menu"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <IconMenu />
-            </button>
+            {/* Back button — visible on all subpages except Hotel Services itself */}
+            {!isOnHomePage ? (
+              <Link
+                href={homeHref}
+                aria-label="Back to Hotel Services"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  textDecoration: 'none',
+                }}
+              >
+                <IconChevronLeft />
+              </Link>
+            ) : (
+              <span style={{ width: 40 }} />
+            )}
+
             <span
               style={{
                 fontFamily: 'Cormorant Garamond, serif',
@@ -439,57 +461,10 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
             <span style={{ width: 40 }} />
           </div>
 
-          {/* Mobile drawer */}
-          <div
-            className={`stay-drawer-overlay ${drawerOpen ? 'open' : ''}`}
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden="true"
-          />
-          <aside className={`stay-drawer ${drawerOpen ? 'open' : ''}`} aria-hidden={!drawerOpen}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '18px 18px 6px',
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'Cormorant Garamond, serif',
-                  fontSize: 20,
-                  color: 'var(--gold)',
-                }}
-              >
-                Stayscape
-              </span>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close menu"
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <IconClose />
-              </button>
-            </div>
-            <SideNav
-              items={navItems}
-              activeTab={activeTab}
-              onItemClick={() => setDrawerOpen(false)}
-              variant="drawer"
-            />
-          </aside>
+          {/* Mobile bottom tab bar */}
+          <div className="stay-bottom-nav">
+            <BottomNav items={navItems} activeTab={activeTab} />
+          </div>
 
           {/* Main content */}
           <div className="stay-content">
