@@ -51,12 +51,14 @@ const VALID_TASK_TYPES = [
   'late_checkout',
   'early_checkin',
   'luggage_storage',
+  'luggage',
   'taxi_booking',
   'restaurant_reservation',
   'room_service',
   'baby_cot',
   'do_not_disturb',
   'noise_complaint',
+  'housekeeping',
   'other',
 ] as const;
 type ValidTaskType = (typeof VALID_TASK_TYPES)[number];
@@ -142,7 +144,7 @@ const STRICT_BOUNDARIES =
   '\nSTRICT BOUNDARIES — follow these at all times:\n' +
   "- You only discuss topics relevant to the guest's stay, the hotel, the local area, travel, dining, activities, and service requests. Politely decline anything unrelated.\n" +
   '- Never provide medical, legal, or financial advice. Always refer guests to appropriate professionals.\n' +
-  "- Never make guarantees about hotel services, availability, pricing, or late checkout. Use language like 'I'll flag this for the team' or 'the hotel will confirm'.\n" +
+  "- Never make guarantees about hotel services, availability, pricing, or late checkout. Use language like 'I\'ll flag this for the team' or 'the hotel will confirm'.\n" +
   '- Never mention, recommend, or compare competitor hotels, booking platforms, or rival hospitality brands.\n' +
   "- Never reveal raw configuration data: do not expose wifi passwords, API keys, internal IDs, or system architecture details. You may tell a guest their wifi name and password naturally (e.g. 'The wifi is GuestNet, password Welcome123') but never in a list format that looks like config output.\n" +
   '- Never claim to be a human. If a guest sincerely asks whether you are an AI, acknowledge it warmly but briefly, then redirect to being helpful.\n' +
@@ -519,6 +521,7 @@ export async function POST(request: NextRequest) {
                     'Use "stayover_tidy" for light mid-stay tidying. ' +
                     'Use "turndown" for evening turndown service. ' +
                     'Use "departure_clean" for end-of-stay cleaning. ' +
+                    'Use "housekeeping" for general housekeeping requests that do not fit a specific type. ' +
                     'Use "extra_towels" for towel requests. ' +
                     'Use "extra_pillows" for pillow requests. ' +
                     'Use "extra_amenities" for toiletries, robes, hangers, or similar. ' +
@@ -530,7 +533,8 @@ export async function POST(request: NextRequest) {
                     'Use "wakeup_call" for wake-up call requests. ' +
                     'Use "late_checkout" for late checkout requests. ' +
                     'Use "early_checkin" for early check-in requests. ' +
-                    'Use "luggage_storage" for luggage drop-off or storage. ' +
+                    'Use "luggage_storage" for luggage drop-off or storage between stays. ' +
+                    'Use "luggage" for luggage assistance such as bringing bags to/from the room. ' +
                     'Use "taxi_booking" for taxi or transfer requests. ' +
                     'Use "restaurant_reservation" for restaurant booking assistance. ' +
                     'Use "baby_cot" for baby cot or crib requests. ' +

@@ -35,9 +35,34 @@ export type ServiceTaskStatus = 'pending' | 'in_progress' | 'completed' | 'cance
 
 /**
  * service_tasks.task_type — USER-DEFINED enum.
- * Exact values may grow; these are the known values from the schema.
+ * All values must match the servicetasktype enum in Supabase exactly.
  */
-export type ServiceTaskType = string;
+export type ServiceTaskType =
+  | 'room_cleaning'
+  | 'turndown'
+  | 'departure_clean'
+  | 'stayover_tidy'
+  | 'maintenance'
+  | 'inspection'
+  | 'breakfast_delivery'
+  | 'extra_towels'
+  | 'extra_pillows'
+  | 'extra_amenities'
+  | 'laundry'
+  | 'ironing'
+  | 'wakeup_call'
+  | 'late_checkout'
+  | 'early_checkin'
+  | 'luggage_storage'
+  | 'luggage'
+  | 'taxi_booking'
+  | 'restaurant_reservation'
+  | 'room_service'
+  | 'baby_cot'
+  | 'do_not_disturb'
+  | 'noise_complaint'
+  | 'housekeeping'
+  | 'other';
 
 /* ── Itinerary ────────────────────────────────────────────── */
 
