@@ -21,7 +21,6 @@ async function verifyTaskBelongsToGuest(
   taskId: string,
   userId: string,
 ) {
-  // Task must belong to a stay owned by this user
   const { data, error } = await supabase
     .from('service_tasks')
     .select('id, stayid, stays!inner(userid)')
@@ -29,7 +28,8 @@ async function verifyTaskBelongsToGuest(
     .maybeSingle();
 
   if (error || !data) return false;
-  const stay = data.stays as { userid: string } | null;
+  const raw = data.stays as unknown;
+  const stay = (Array.isArray(raw) ? raw[0] : raw) as { userid: string } | null;
   return stay?.userid === userId;
 }
 
