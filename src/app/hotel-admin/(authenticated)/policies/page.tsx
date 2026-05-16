@@ -3,36 +3,87 @@
 /**
  * /hotel-admin/policies
  *
- * Hotel admin Policies page.
- * Lets hotel admins configure:
- *   - Stay info  (check-in/out times, Wi-Fi)
- *   - Laundry policy
- *   - Late checkout policy and fee
- *   - Other policies  (cancellation, pets, smoking)
- *
- * Data is read from / written to:
- *   hotel_policies columns  -> checkin_time, checkout_time, wifi_name, wifi_password,
- *                              cancellation_policy, pet_policy, smoking_policy
- *   extra_policies jsonb    -> laundry_policy, late_checkout_policy, late_checkout_fee
+ * Rebuilt policies page with:
+ * - Per-service toggles (enabled/disabled)
+ * - Structured time fields enforced per service
+ * - Conditional fields only show when service is enabled
+ * - Stay Info + General Policies always visible
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
-// --- Types ---
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PoliciesForm {
+  // Stay info (always shown)
   checkin_time: string;
   checkout_time: string;
   wifi_name: string;
   wifi_password: string;
-  laundry_policy: string;
-  late_checkout_policy: string;
-  late_checkout_fee: string;
+
+  // General policies (always shown)
   cancellation_policy: string;
   pet_policy: string;
   smoking_policy: string;
+
+  // Concierge
+  concierge_enabled: boolean;
+  concierge_hours_start: string;
+  concierge_hours_end: string;
+
+  // Housekeeping
+  housekeeping_enabled: boolean;
+  housekeeping_start: string;
+  housekeeping_end: string;
+  turndown_enabled: boolean;
+  turndown_start: string;
+  turndown_end: string;
+
+  // Room Service
+  room_service_enabled: boolean;
+  room_service_start: string;
+  room_service_end: string;
+  room_service_last_order: string;
+
+  // Laundry
+  laundry_enabled: boolean;
+  laundry_pickup_start: string;
+  laundry_pickup_cutoff: string;
+  laundry_return_time: string;
+  laundry_express_enabled: boolean;
+  laundry_express_hours: string;
+  laundry_policy: string;
+
+  // Maintenance
+  maintenance_enabled: boolean;
+  maintenance_start: string;
+  maintenance_end: string;
+  maintenance_emergency_24hr: boolean;
+
+  // Transport
+  transport_enabled: boolean;
+  transport_hours_start: string;
+  transport_hours_end: string;
+  transport_advance_notice_mins: string;
+
+  // Luggage Pickup
+  luggage_pickup_enabled: boolean;
+  luggage_pickup_start: string;
+  luggage_pickup_end: string;
+  luggage_pickup_fee: string;
+
+  // Late Checkout
+  late_checkout_enabled: boolean;
+  late_checkout_max_time: string;
+  late_checkout_free_if_available: boolean;
+  late_checkout_fee: string;
+  late_checkout_policy: string;
+
+  // Restaurants
+  restaurant_enabled: boolean;
+  restaurant_reservation_enabled: boolean;
 }
 
 const EMPTY: PoliciesForm = {
@@ -40,15 +91,51 @@ const EMPTY: PoliciesForm = {
   checkout_time: '',
   wifi_name: '',
   wifi_password: '',
-  laundry_policy: '',
-  late_checkout_policy: '',
-  late_checkout_fee: '',
   cancellation_policy: '',
   pet_policy: '',
   smoking_policy: '',
+  concierge_enabled: true,
+  concierge_hours_start: '',
+  concierge_hours_end: '',
+  housekeeping_enabled: true,
+  housekeeping_start: '',
+  housekeeping_end: '',
+  turndown_enabled: false,
+  turndown_start: '',
+  turndown_end: '',
+  room_service_enabled: false,
+  room_service_start: '',
+  room_service_end: '',
+  room_service_last_order: '',
+  laundry_enabled: false,
+  laundry_pickup_start: '',
+  laundry_pickup_cutoff: '',
+  laundry_return_time: '',
+  laundry_express_enabled: false,
+  laundry_express_hours: '',
+  laundry_policy: '',
+  maintenance_enabled: true,
+  maintenance_start: '',
+  maintenance_end: '',
+  maintenance_emergency_24hr: false,
+  transport_enabled: false,
+  transport_hours_start: '',
+  transport_hours_end: '',
+  transport_advance_notice_mins: '',
+  luggage_pickup_enabled: false,
+  luggage_pickup_start: '',
+  luggage_pickup_end: '',
+  luggage_pickup_fee: '',
+  late_checkout_enabled: false,
+  late_checkout_max_time: '',
+  late_checkout_free_if_available: false,
+  late_checkout_fee: '',
+  late_checkout_policy: '',
+  restaurant_enabled: false,
+  restaurant_reservation_enabled: false,
 };
 
-// --- Helpers ---
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getToken(): Promise<string | null> {
   const supabase = getSupabaseBrowser();
@@ -56,7 +143,17 @@ async function getToken(): Promise<string | null> {
   return (await supabase.auth.getSession()).data.session?.access_token ?? null;
 }
 
-// --- Shared style atoms ---
+function str(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  return String(v);
+}
+
+function bool(v: unknown, fallback = false): boolean {
+  if (typeof v === 'boolean') return v;
+  return fallback;
+}
+
+// ─── Style atoms ──────────────────────────────────────────────────────────────
 
 const inputCls =
   'w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-[13px] text-white/90 placeholder:text-white/25 focus:outline-none focus:border-[#C9A84C]/60 focus:ring-1 focus:ring-[#C9A84C]/20 transition-colors resize-none';
@@ -66,17 +163,64 @@ const labelCls = 'block text-[11px] font-medium tracking-widest uppercase text-w
 const sectionCls =
   'rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 flex flex-col gap-5';
 
-const sectionHeadCls = 'text-[13px] font-semibold text-white/80 mb-1';
-const sectionSubCls = 'text-[12px] text-white/35 mb-4 leading-relaxed';
+const sectionHeadCls = 'text-[13px] font-semibold text-white/80';
+const sectionSubCls = 'text-[12px] text-white/35 leading-relaxed mt-1';
 
-// --- Component ---
+// ─── Toggle component ─────────────────────────────────────────────────────────
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+  sub,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  sub?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-start justify-between w-full text-left gap-4 group"
+      aria-pressed={checked}
+    >
+      <div>
+        <p className={sectionHeadCls}>{label}</p>
+        {sub && <p className={sectionSubCls}>{sub}</p>}
+      </div>
+      <div
+        className="relative flex-shrink-0 mt-0.5"
+        style={{
+          width: 44,
+          height: 24,
+          borderRadius: 12,
+          background: checked ? '#C9A84C' : 'rgba(255,255,255,0.1)',
+          transition: 'background 0.2s',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: checked ? 23 : 3,
+            width: 16,
+            height: 16,
+            borderRadius: 8,
+            background: checked ? '#0d0d0d' : 'rgba(255,255,255,0.4)',
+            transition: 'left 0.2s',
+          }}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PoliciesPage() {
-  // useHotelAdmin gives access to propertyId, hotelName, adminName
-  // from HotelAdminProvider in the authenticated layout.
-  // We don't need propertyId here directly -- the API resolves it
-  // from the auth token server-side -- but the hook validates we're
-  // inside the provider.
   useHotelAdmin();
 
   const [form, setForm] = useState<PoliciesForm>(EMPTY);
@@ -85,6 +229,7 @@ export default function PoliciesPage() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Load ──
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -95,23 +240,57 @@ export default function PoliciesPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
-        const json = (await res.json()) as {
-          policies: Record<string, unknown>;
-        };
+        const json = (await res.json()) as { policies: Record<string, unknown> };
         const p = json.policies ?? {};
         const extra = (p.extra_policies ?? {}) as Record<string, unknown>;
         if (!cancelled) {
           setForm({
-            checkin_time: (p.checkin_time as string) ?? '',
-            checkout_time: (p.checkout_time as string) ?? '',
-            wifi_name: (p.wifi_name as string) ?? '',
-            wifi_password: (p.wifi_password as string) ?? '',
-            laundry_policy: (extra.laundry_policy as string) ?? '',
-            late_checkout_policy: (extra.late_checkout_policy as string) ?? '',
-            late_checkout_fee: (extra.late_checkout_fee as string) ?? '',
-            cancellation_policy: (p.cancellation_policy as string) ?? '',
-            pet_policy: (p.pet_policy as string) ?? '',
-            smoking_policy: (p.smoking_policy as string) ?? '',
+            checkin_time: str(p.checkin_time),
+            checkout_time: str(p.checkout_time),
+            wifi_name: str(p.wifi_name),
+            wifi_password: str(p.wifi_password),
+            cancellation_policy: str(p.cancellation_policy),
+            pet_policy: str(p.pet_policy),
+            smoking_policy: str(p.smoking_policy),
+            concierge_enabled: bool(p.concierge_enabled, true),
+            concierge_hours_start: str(p.concierge_hours_start),
+            concierge_hours_end: str(p.concierge_hours_end),
+            housekeeping_enabled: bool(p.housekeeping_enabled, true),
+            housekeeping_start: str(p.housekeeping_start),
+            housekeeping_end: str(p.housekeeping_end),
+            turndown_enabled: bool(p.turndown_enabled, false),
+            turndown_start: str(p.turndown_start),
+            turndown_end: str(p.turndown_end),
+            room_service_enabled: bool(p.room_service_enabled, false),
+            room_service_start: str(p.room_service_start),
+            room_service_end: str(p.room_service_end),
+            room_service_last_order: str(p.room_service_last_order),
+            laundry_enabled: bool(p.laundry_enabled, false),
+            laundry_pickup_start: str(p.laundry_pickup_start),
+            laundry_pickup_cutoff: str(p.laundry_pickup_cutoff),
+            laundry_return_time: str(p.laundry_return_time),
+            laundry_express_enabled: bool(p.laundry_express_enabled, false),
+            laundry_express_hours: str(p.laundry_express_hours),
+            laundry_policy: str(extra.laundry_policy),
+            maintenance_enabled: bool(p.maintenance_enabled, true),
+            maintenance_start: str(p.maintenance_start),
+            maintenance_end: str(p.maintenance_end),
+            maintenance_emergency_24hr: bool(p.maintenance_emergency_24hr, false),
+            transport_enabled: bool(p.transport_enabled, false),
+            transport_hours_start: str(p.transport_hours_start),
+            transport_hours_end: str(p.transport_hours_end),
+            transport_advance_notice_mins: str(p.transport_advance_notice_mins),
+            luggage_pickup_enabled: bool(p.luggage_pickup_enabled, false),
+            luggage_pickup_start: str(p.luggage_pickup_start),
+            luggage_pickup_end: str(p.luggage_pickup_end),
+            luggage_pickup_fee: str(p.luggage_pickup_fee),
+            late_checkout_enabled: bool(p.late_checkout_enabled, false),
+            late_checkout_max_time: str(p.late_checkout_max_time),
+            late_checkout_free_if_available: bool(p.late_checkout_free_if_available, false),
+            late_checkout_fee: str(extra.late_checkout_fee),
+            late_checkout_policy: str(extra.late_checkout_policy),
+            restaurant_enabled: bool(p.restaurant_enabled, false),
+            restaurant_reservation_enabled: bool(p.restaurant_reservation_enabled, false),
           });
         }
       } catch {
@@ -123,12 +302,17 @@ export default function PoliciesPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // ── Field helpers ──
   function field<K extends keyof PoliciesForm>(key: K) {
     return {
-      value: form[key],
+      value: form[key] as string,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
         setForm((f) => ({ ...f, [key]: e.target.value })),
     };
+  }
+
+  function toggle<K extends keyof PoliciesForm>(key: K) {
+    return (v: boolean) => setForm((f) => ({ ...f, [key]: v }));
   }
 
   function showToast(msg: string, ok: boolean) {
@@ -137,6 +321,7 @@ export default function PoliciesPage() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }
 
+  // ── Save ──
   async function handleSave() {
     setSaving(true);
     try {
@@ -173,13 +358,13 @@ export default function PoliciesPage() {
       <div className="mb-8">
         <h1 className="text-[20px] font-semibold text-white/90">Hotel Policies</h1>
         <p className="text-[13px] text-white/40 mt-1">
-          These settings are shown to guests when they request services. Keep them up to date.
+          Configure which services your hotel offers and set time boundaries. Guests only see services you have enabled.
         </p>
       </div>
 
       <div className="flex flex-col gap-6">
 
-        {/* Stay Info */}
+        {/* ── Stay Info (always shown) ── */}
         <section className={sectionCls}>
           <div>
             <p className={sectionHeadCls}>Stay Info</p>
@@ -198,78 +383,339 @@ export default function PoliciesPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Wi-Fi network name</label>
-              <input
-                type="text"
-                placeholder="e.g. StayScape_Guest"
-                className={inputCls}
-                {...field('wifi_name')}
-              />
+              <input type="text" placeholder="e.g. Hotel_Guest" className={inputCls} {...field('wifi_name')} />
             </div>
             <div>
               <label className={labelCls}>Wi-Fi password</label>
-              <input
-                type="text"
-                placeholder="e.g. welcome2025"
-                className={inputCls}
-                {...field('wifi_password')}
-              />
+              <input type="text" placeholder="e.g. welcome2026" className={inputCls} {...field('wifi_password')} />
             </div>
           </div>
         </section>
 
-        {/* Laundry */}
+        {/* ── Concierge ── */}
         <section className={sectionCls}>
-          <div>
-            <p className={sectionHeadCls}>Laundry Policy</p>
-            <p className={sectionSubCls}>
-              Shown to guests before they submit a laundry request - pricing, turnaround time,
-              and any notes about delicate items.
-            </p>
-          </div>
-          <div>
-            <label className={labelCls}>Policy text</label>
-            <textarea
-              rows={4}
-              placeholder="e.g. Standard turnaround is 24 hours. Express (4-hour) service available at RM 15 extra. Delicate items handled separately. Pricing from RM 5 per item."
-              className={inputCls}
-              {...field('laundry_policy')}
-            />
-          </div>
+          <Toggle
+            checked={form.concierge_enabled}
+            onChange={toggle('concierge_enabled')}
+            label="Concierge / Aria"
+            sub="When enabled, guests can chat with Aria and make general requests."
+          />
+          {form.concierge_enabled && (
+            <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/[0.05]">
+              <div>
+                <label className={labelCls}>Available from</label>
+                <input type="time" className={inputCls} {...field('concierge_hours_start')} />
+              </div>
+              <div>
+                <label className={labelCls}>Available until</label>
+                <input type="time" className={inputCls} {...field('concierge_hours_end')} />
+              </div>
+            </div>
+          )}
         </section>
 
-        {/* Late Checkout */}
+        {/* ── Housekeeping ── */}
         <section className={sectionCls}>
-          <div>
-            <p className={sectionHeadCls}>Late Checkout</p>
-            <p className={sectionSubCls}>
-              Guests see this before requesting a late checkout. Be specific about conditions,
-              fees, and availability so expectations are clear.
-            </p>
-          </div>
-          <div>
-            <label className={labelCls}>Policy text</label>
-            <textarea
-              rows={4}
-              placeholder="e.g. Late checkout until 2pm is complimentary if the room is not pre-booked. Beyond 2pm a half-day rate applies. Subject to availability."
-              className={inputCls}
-              {...field('late_checkout_policy')}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Fee (if applicable)</label>
-            <input
-              type="text"
-              placeholder="e.g. RM 80 per hour / RM 150 half-day rate"
-              className={inputCls}
-              {...field('late_checkout_fee')}
-            />
-          </div>
+          <Toggle
+            checked={form.housekeeping_enabled}
+            onChange={toggle('housekeeping_enabled')}
+            label="Housekeeping"
+            sub="Guests can request room cleaning, towels, amenities and more."
+          />
+          {form.housekeeping_enabled && (
+            <div className="flex flex-col gap-4 pt-1 border-t border-white/[0.05]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Service from</label>
+                  <input type="time" className={inputCls} {...field('housekeeping_start')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Service until</label>
+                  <input type="time" className={inputCls} {...field('housekeeping_end')} />
+                </div>
+              </div>
+              {/* Turndown sub-toggle */}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex flex-col gap-4">
+                <Toggle
+                  checked={form.turndown_enabled}
+                  onChange={toggle('turndown_enabled')}
+                  label="Turndown service"
+                  sub="Evening room preparation (pillows, towels, bed turn)."
+                />
+                {form.turndown_enabled && (
+                  <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/[0.05]">
+                    <div>
+                      <label className={labelCls}>Turndown from</label>
+                      <input type="time" className={inputCls} {...field('turndown_start')} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Turndown until</label>
+                      <input type="time" className={inputCls} {...field('turndown_end')} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
-        {/* Other Policies */}
+        {/* ── Room Service ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.room_service_enabled}
+            onChange={toggle('room_service_enabled')}
+            label="Room Service"
+            sub="In-room dining. Separate from housekeeping."
+          />
+          {form.room_service_enabled && (
+            <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/[0.05]">
+              <div>
+                <label className={labelCls}>Available from</label>
+                <input type="time" className={inputCls} {...field('room_service_start')} />
+              </div>
+              <div>
+                <label className={labelCls}>Available until</label>
+                <input type="time" className={inputCls} {...field('room_service_end')} />
+              </div>
+              <div className="col-span-2">
+                <label className={labelCls}>Last order time</label>
+                <input type="time" className={inputCls} {...field('room_service_last_order')} />
+                <p className="text-[11px] text-white/30 mt-1.5">Orders placed after this time will not be accepted.</p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Laundry ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.laundry_enabled}
+            onChange={toggle('laundry_enabled')}
+            label="Laundry"
+            sub="Guests can submit laundry requests with pickup time constraints enforced."
+          />
+          {form.laundry_enabled && (
+            <div className="flex flex-col gap-4 pt-1 border-t border-white/[0.05]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Pickup available from</label>
+                  <input type="time" className={inputCls} {...field('laundry_pickup_start')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Pickup cutoff (last pickup)</label>
+                  <input type="time" className={inputCls} {...field('laundry_pickup_cutoff')} />
+                  <p className="text-[11px] text-white/30 mt-1.5">Requests after this time are for next day.</p>
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Return time (items returned by)</label>
+                <input type="time" className={inputCls} {...field('laundry_return_time')} />
+              </div>
+              {/* Express sub-toggle */}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex flex-col gap-4">
+                <Toggle
+                  checked={form.laundry_express_enabled}
+                  onChange={toggle('laundry_express_enabled')}
+                  label="Express laundry"
+                  sub="Same-day faster turnaround at an additional charge."
+                />
+                {form.laundry_express_enabled && (
+                  <div className="pt-1 border-t border-white/[0.05]">
+                    <label className={labelCls}>Express turnaround (hours)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      placeholder="e.g. 4"
+                      className={inputCls}
+                      {...field('laundry_express_hours')}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={labelCls}>Policy notes (shown to guest)</label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Pricing from RM 5/item. Delicate items handled separately. No liability for pre-existing damage."
+                  className={inputCls}
+                  {...field('laundry_policy')}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Maintenance ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.maintenance_enabled}
+            onChange={toggle('maintenance_enabled')}
+            label="Maintenance"
+            sub="Guests can report issues — AC, plumbing, lighting, etc."
+          />
+          {form.maintenance_enabled && (
+            <div className="flex flex-col gap-4 pt-1 border-t border-white/[0.05]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Service from</label>
+                  <input type="time" className={inputCls} {...field('maintenance_start')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Service until</label>
+                  <input type="time" className={inputCls} {...field('maintenance_end')} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <Toggle
+                  checked={form.maintenance_emergency_24hr}
+                  onChange={toggle('maintenance_emergency_24hr')}
+                  label="24-hour emergency maintenance"
+                  sub="Critical issues (flooding, no power) can be reported at any time."
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Transport ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.transport_enabled}
+            onChange={toggle('transport_enabled')}
+            label="Transport / Taxi"
+            sub="Guests can request taxis or hotel transport."
+          />
+          {form.transport_enabled && (
+            <div className="flex flex-col gap-4 pt-1 border-t border-white/[0.05]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Available from</label>
+                  <input type="time" className={inputCls} {...field('transport_hours_start')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Available until</label>
+                  <input type="time" className={inputCls} {...field('transport_hours_end')} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Minimum advance notice (minutes)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={1440}
+                  placeholder="e.g. 60"
+                  className={inputCls}
+                  {...field('transport_advance_notice_mins')}
+                />
+                <p className="text-[11px] text-white/30 mt-1.5">Guests cannot book transport with less than this notice.</p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Luggage Pickup ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.luggage_pickup_enabled}
+            onChange={toggle('luggage_pickup_enabled')}
+            label="Luggage Pickup"
+            sub="Staff collect bags from the guest room. Only enable if your hotel offers this."
+          />
+          {form.luggage_pickup_enabled && (
+            <div className="flex flex-col gap-4 pt-1 border-t border-white/[0.05]">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Available from</label>
+                  <input type="time" className={inputCls} {...field('luggage_pickup_start')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Available until</label>
+                  <input type="time" className={inputCls} {...field('luggage_pickup_end')} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Fee</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Complimentary / RM 5 per bag"
+                  className={inputCls}
+                  {...field('luggage_pickup_fee')}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Late Checkout ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.late_checkout_enabled}
+            onChange={toggle('late_checkout_enabled')}
+            label="Late Checkout"
+            sub="Guests can request to stay past the standard checkout time."
+          />
+          {form.late_checkout_enabled && (
+            <div className="flex flex-col gap-4 pt-1 border-t border-white/[0.05]">
+              <div>
+                <label className={labelCls}>Latest possible checkout time</label>
+                <input type="time" className={inputCls} {...field('late_checkout_max_time')} />
+                <p className="text-[11px] text-white/30 mt-1.5">Guests cannot request beyond this time.</p>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <Toggle
+                  checked={form.late_checkout_free_if_available}
+                  onChange={toggle('late_checkout_free_if_available')}
+                  label="Offer free late checkout when available"
+                  sub="When occupancy allows, late checkout is complimentary."
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Fee (if applicable)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. RM 80 per hour / RM 150 half-day"
+                  className={inputCls}
+                  {...field('late_checkout_fee')}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Policy notes (shown to guest)</label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Late checkout subject to availability. Requests made the morning of checkout only."
+                  className={inputCls}
+                  {...field('late_checkout_policy')}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Restaurants & Bars ── */}
+        <section className={sectionCls}>
+          <Toggle
+            checked={form.restaurant_enabled}
+            onChange={toggle('restaurant_enabled')}
+            label="Restaurants & Bars"
+            sub="Show venue information and menus to guests in the app."
+          />
+          {form.restaurant_enabled && (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 border-t border-white/[0.05]">
+              <Toggle
+                checked={form.restaurant_reservation_enabled}
+                onChange={toggle('restaurant_reservation_enabled')}
+                label="Accept table reservation requests"
+                sub="Guests can send reservation requests through the app to your team."
+              />
+            </div>
+          )}
+        </section>
+
+        {/* ── General Policies (always shown) ── */}
         <section className={sectionCls}>
           <div>
-            <p className={sectionHeadCls}>Other Policies</p>
+            <p className={sectionHeadCls}>General Policies</p>
             <p className={sectionSubCls}>Optional. Leave blank if not applicable for your property.</p>
           </div>
           <div>
@@ -303,6 +749,7 @@ export default function PoliciesPage() {
 
       </div>
 
+      {/* Save button */}
       <div className="mt-8 flex justify-end">
         <button
           type="button"
@@ -314,12 +761,11 @@ export default function PoliciesPage() {
         </button>
       </div>
 
+      {/* Toast */}
       {toast && (
         <div
           className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl text-[13px] font-medium z-50 shadow-xl transition-all ${
-            toast.ok
-              ? 'bg-white/90 text-[#0d0d0d]'
-              : 'bg-red-500/90 text-white'
+            toast.ok ? 'bg-white/90 text-[#0d0d0d]' : 'bg-red-500/90 text-white'
           }`}
         >
           {toast.msg}
