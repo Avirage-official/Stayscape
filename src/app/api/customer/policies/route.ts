@@ -6,30 +6,6 @@
  *
  * Auth: Supabase JWT via Authorization: Bearer <token>
  * No write access — read-only, guest-safe subset of hotel_policies.
- *
- * Response shape:
- * {
- *   services: {
- *     housekeeping_enabled: boolean
- *     room_service_enabled: boolean
- *     laundry_enabled:      boolean
- *     maintenance_enabled:  boolean
- *     transport_enabled:    boolean
- *     luggage_pickup_enabled: boolean
- *     late_checkout_enabled: boolean
- *     restaurant_enabled:   boolean
- *     restaurant_reservation_enabled: boolean
- *   }
- *   policy_text: {
- *     laundry_policy:        string | null   // free-text notes shown before submit
- *     late_checkout_policy:  string | null
- *     late_checkout_fee:     string | null
- *     late_checkout_max_time: string | null  // HH:MM — cap on desired time picker
- *     late_checkout_free_if_available: boolean
- *     luggage_pickup_fee:    string | null
- *     transport_advance_notice_mins: number | null
- *   }
- * }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -50,7 +26,6 @@ async function resolvePropertyId(
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Resolve the guest's active stay → propertyid
   const { data: stay, error: stayError } = await supabase
     .from('stays')
     .select('propertyid')
@@ -64,7 +39,7 @@ async function resolvePropertyId(
     return NextResponse.json({ error: 'No active stay found' }, { status: 404 });
   }
 
-  return { propertyId: (stay as { propertyid: string }).propertyid };
+  return { propertyId: (stay as unknown as { propertyid: string }).propertyid };
 }
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
@@ -80,7 +55,6 @@ export async function GET(request: NextRequest) {
     .from('hotel_policies')
     .select(
       [
-        // Service toggles
         'housekeeping_enabled',
         'room_service_enabled',
         'laundry_enabled',
@@ -90,12 +64,10 @@ export async function GET(request: NextRequest) {
         'late_checkout_enabled',
         'restaurant_enabled',
         'restaurant_reservation_enabled',
-        // Guest-visible time/policy fields
         'late_checkout_max_time',
         'late_checkout_free_if_available',
         'luggage_pickup_fee',
         'transport_advance_notice_mins',
-        // Free-text notes live in extra_policies JSONB
         'extra_policies',
       ].join(', '),
     )
@@ -104,7 +76,6 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // If no policy row exists yet, return safe defaults (all services off)
   if (!data) {
     return NextResponse.json({
       services: {
@@ -130,7 +101,9 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const p = data as Record<string, unknown>;
+  // Double-cast through unknown — Supabase's GenericStringError union doesn't
+  // overlap directly with Record<string, unknown> under strict TS checks.
+  const p = data as unknown as Record<string, unknown>;
   const extra = (p.extra_policies ?? {}) as Record<string, unknown>;
 
   return NextResponse.json({
