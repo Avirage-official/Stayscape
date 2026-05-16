@@ -399,6 +399,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.replace('Bearer ', '') ?? null;
+
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
+  const {
+    data: { user },
+    error: authError,
+  } = await getSupabaseAdmin().auth.getUser(token);
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
   let body: {
     message?: string;
     stayId?: string | null;
@@ -421,26 +443,10 @@ export async function POST(request: NextRequest) {
       { status: 400, headers: rateLimit.headers },
     );
   }
-
-  const authHeader = request.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '') ?? null;
-
-  if (!token) {
+  if (message.length > 2000) {
     return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401, headers: rateLimit.headers },
-    );
-  }
-
-  const {
-    data: { user },
-    error: authError,
-  } = await getSupabaseAdmin().auth.getUser(token);
-
-  if (authError || !user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401, headers: rateLimit.headers },
+      { error: 'Message exceeds maximum length of 2000 characters' },
+      { status: 400, headers: rateLimit.headers },
     );
   }
 

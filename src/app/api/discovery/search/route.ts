@@ -52,9 +52,8 @@ export async function GET(request: NextRequest) {
 
   const type = searchParams.get('type') ?? 'all'; // 'place' | 'event' | 'all'
   const regionId = searchParams.get('region_id') ?? undefined;
-  const limit = searchParams.get('limit')
-    ? parseInt(searchParams.get('limit')!, 10)
-    : 10;
+  const rawLimit = searchParams.get('limit');
+  const limit = rawLimit ? Math.min(Math.max(1, parseInt(rawLimit, 10) || 10), 100) : 10;
 
   try {
     const results: SearchResults = { places: [], events: [], total: 0 };
@@ -90,7 +89,7 @@ export async function GET(request: NextRequest) {
     results.total = results.places.length + results.events.length;
     return NextResponse.json({ data: results }, { headers: rateLimit.headers });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[discovery/search] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
