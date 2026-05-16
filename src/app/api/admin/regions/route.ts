@@ -26,13 +26,14 @@ export async function GET(request: NextRequest) {
       .order('name');
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[admin/regions] Failed to fetch regions:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     const regions = (data ?? []) as Array<{ id: string; name: string; country_code: string }>;
     return NextResponse.json({ regions });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[admin/regions] Unexpected error fetching regions:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

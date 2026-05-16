@@ -31,12 +31,13 @@ export async function DELETE(
       .eq('property_id', propertyId);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[admin/hotels/[propertyId]/amenities/[amenityId]] Failed to delete amenity:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[admin/hotels/[propertyId]/amenities/[amenityId]] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

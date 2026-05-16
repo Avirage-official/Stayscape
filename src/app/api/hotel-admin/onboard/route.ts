@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
   });
 
   if (createUserError) {
-    return NextResponse.json({ error: createUserError.message }, { status: 500 });
+    console.error('[hotel-admin/onboard] Failed to create auth user:', createUserError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   const authUserId = createdUser.user!.id;
@@ -135,7 +136,8 @@ export async function POST(request: NextRequest) {
     if (authDeleteError) {
       console.error('[onboard] Failed to roll back auth user after users update failure:', authDeleteError);
     }
-    return NextResponse.json({ error: usersUpdateError.message }, { status: 500 });
+    console.error('[hotel-admin/onboard] Failed to update users table:', usersUpdateError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   // Mark the invite as active and link the auth user
@@ -157,7 +159,8 @@ export async function POST(request: NextRequest) {
     if (authDeleteError) {
       console.error('[onboard] Failed to roll back auth user after hotel_admins update failure:', authDeleteError);
     }
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    console.error('[hotel-admin/onboard] Failed to update hotel_admins record:', updateError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

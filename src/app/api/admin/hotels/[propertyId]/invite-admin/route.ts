@@ -84,7 +84,8 @@ export async function POST(
   });
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    console.error('[admin/hotels/[propertyId]/invite-admin] Failed to insert hotel_admins invite:', insertError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   // Send onboarding email via Resend

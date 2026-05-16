@@ -458,16 +458,10 @@ export async function POST(request: NextRequest) {
     systemPrompt = buildIdentityBlock('Aria', 'warm', 'this hotel', mode);
   }
 
-  // Load persisted conversation from DB. Fall back to body.history when no stayId.
+  // Load persisted conversation from DB. When no stayId, start with empty history.
   let conversationHistory: ConversationMessage[] = [];
   if (stayId) {
     conversationHistory = await loadConversation(stayId);
-  } else if (Array.isArray(body.history)) {
-    conversationHistory = body.history.map((h) => ({
-      role: h.role,
-      content: h.text,
-      timestamp: new Date().toISOString(),
-    }));
   }
 
   // Cap to last 40 messages (≈20 exchanges) for the Claude context window

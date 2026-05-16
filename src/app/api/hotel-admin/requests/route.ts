@@ -75,7 +75,8 @@ export async function GET(request: NextRequest) {
   const { data: tasks, error: tasksError } = await query;
 
   if (tasksError) {
-    return NextResponse.json({ error: tasksError.message }, { status: 500 });
+    console.error('[hotel-admin/requests] Failed to fetch tasks:', tasksError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   return NextResponse.json({ tasks: tasks ?? [] });
