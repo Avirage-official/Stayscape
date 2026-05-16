@@ -625,7 +625,7 @@ export default function StayHomePage() {
             {activeTile.id === 'room_service' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  We'll send housekeeping to your room shortly.
+                  We&apos;ll send housekeeping to your room shortly.
                 </p>
                 <div>
                   <label style={labelStyle}>Notes (optional)</label>
@@ -665,7 +665,7 @@ export default function StayHomePage() {
             {activeTile.id === 'laundry' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  Leave your laundry bag outside the door. We'll pick it up at your preferred time.
+                  Leave your laundry bag outside the door. We&apos;ll pick it up at your preferred time.
                 </p>
                 <div>
                   <label style={labelStyle}>Preferred pickup time (optional)</label>
@@ -754,7 +754,7 @@ export default function StayHomePage() {
             {activeTile.id === 'late_checkout' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  Request a late checkout and we'll confirm availability with you.
+                  Request a late checkout and we&apos;ll confirm availability with you.
                 </p>
                 <div>
                   <label style={labelStyle}>Desired checkout time <span style={{ color: 'var(--gold)' }}>*</span></label>

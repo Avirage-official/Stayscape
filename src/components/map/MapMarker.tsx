@@ -60,6 +60,7 @@ const MapMarker: React.FC<MapMarkerProps> = ({
   /* Trigger ripple animation when this marker becomes selected */
   useEffect(() => {
     if (selected && !prevSelectedRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRippleKey((k) => k + 1);
     }
     prevSelectedRef.current = selected;
