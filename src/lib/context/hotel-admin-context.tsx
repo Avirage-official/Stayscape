@@ -8,6 +8,7 @@ export interface HotelAdminContextValue {
   adminName: string;
 }
 
+// Context is not exported directly -- use useHotelAdmin() hook instead.
 const HotelAdminContext = createContext<HotelAdminContextValue | null>(null);
 
 export function HotelAdminProvider({
@@ -24,6 +25,13 @@ export function HotelAdminProvider({
   );
 }
 
+/**
+ * useHotelAdmin()
+ * Use this hook in any page inside /hotel-admin/(authenticated)/
+ * to access propertyId, hotelName, adminName.
+ *
+ * Throws if called outside <HotelAdminProvider>.
+ */
 export function useHotelAdmin(): HotelAdminContextValue {
   const ctx = useContext(HotelAdminContext);
   if (!ctx) {

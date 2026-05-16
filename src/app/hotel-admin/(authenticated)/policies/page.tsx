@@ -7,7 +7,7 @@
  * Lets hotel admins configure:
  *   - Stay info  (check-in/out times, Wi-Fi)
  *   - Laundry policy
- *   - Late checkout policy & fee
+ *   - Late checkout policy and fee
  *   - Other policies  (cancellation, pets, smoking)
  *
  * Data is read from / written to:
@@ -16,8 +16,8 @@
  *   extra_policies jsonb    -> laundry_policy, late_checkout_policy, late_checkout_fee
  */
 
-import { useContext, useEffect, useRef, useState } from 'react';
-import { HotelAdminContext } from '@/lib/context/hotel-admin-context';
+import { useEffect, useRef, useState } from 'react';
+import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 // --- Types ---
@@ -72,7 +72,13 @@ const sectionSubCls = 'text-[12px] text-white/35 mb-4 leading-relaxed';
 // --- Component ---
 
 export default function PoliciesPage() {
-  const ctx = useContext(HotelAdminContext);
+  // useHotelAdmin gives access to propertyId, hotelName, adminName
+  // from HotelAdminProvider in the authenticated layout.
+  // We don't need propertyId here directly -- the API resolves it
+  // from the auth token server-side -- but the hook validates we're
+  // inside the provider.
+  useHotelAdmin();
+
   const [form, setForm] = useState<PoliciesForm>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
