@@ -6,12 +6,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { isTokenExpired } from '@/lib/validation';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 /* ── GET ────────────────────────────────────────────────────────── */
 
 export async function GET(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request);
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: rateLimit.headers });
+  }
+
   const token = request.nextUrl.searchParams.get('token');
 
   if (!token) {
@@ -60,6 +66,11 @@ interface OnboardBody {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request, 'admin');
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: rateLimit.headers });
+  }
+
   let body: OnboardBody;
   try {
     body = (await request.json()) as OnboardBody;
@@ -74,6 +85,9 @@ export async function POST(request: NextRequest) {
   }
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+  }
+  if (name.trim().length > 200) {
+    return NextResponse.json({ error: 'Name exceeds maximum length of 200 characters' }, { status: 400 });
   }
   if (!password || password.length < 8) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
