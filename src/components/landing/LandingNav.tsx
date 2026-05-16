@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 
 const NAV_LINKS = [
@@ -89,7 +90,7 @@ export default function LandingNav() {
     return (
       <header className="sticky top-0 z-50 w-full" style={{ backgroundColor: 'rgba(250, 248, 245, 0)' }}>
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
-          <a href="/" className="flex items-center gap-2.5" aria-label="StayScape home">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="StayScape home">
             <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="1.5" y="1.5" width="23" height="23" rx="5" stroke="var(--gold)" strokeWidth="1.75" />
               <rect x="7" y="7" width="12" height="12" rx="2.5" fill="var(--gold)" />
@@ -97,7 +98,7 @@ export default function LandingNav() {
             <span className="text-[17px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: "'DM Sans', sans-serif" }}>
               StayScape
             </span>
-          </a>
+          </Link>
           <a href="/login" className="text-[13px] font-semibold" style={{ background: 'var(--gold)', color: '#FAF8F5', borderRadius: '6px', padding: '8px 20px' }}>
             Sign In
           </a>
@@ -170,6 +171,7 @@ export default function LandingNav() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* eslint-disable react-hooks/refs */}
             <motion.a
               ref={magnetic.ref}
               href="/login"
@@ -193,6 +195,7 @@ export default function LandingNav() {
             >
               Sign In
             </motion.a>
+            {/* eslint-enable react-hooks/refs */}
 
             <motion.button
               className="flex sm:hidden flex-col justify-center items-center gap-[5px] w-9 h-9"

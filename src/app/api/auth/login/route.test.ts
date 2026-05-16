@@ -5,10 +5,12 @@ import { POST } from './route';
 describe('POST /api/auth/login', () => {
   const originalEmail = process.env.SUPER_ADMIN_EMAIL;
   const originalPassword = process.env.SUPER_ADMIN_PASSWORD;
+  const originalSyncKey = process.env.ADMIN_SYNC_KEY;
 
   beforeEach(() => {
     process.env.SUPER_ADMIN_EMAIL = 'staff@stayscape-demo.com';
     process.env.SUPER_ADMIN_PASSWORD = 'Staff1234!';
+    process.env.ADMIN_SYNC_KEY = 'test-admin-sync-key-for-ci';
   });
 
   afterEach(() => {
@@ -16,6 +18,8 @@ describe('POST /api/auth/login', () => {
     else process.env.SUPER_ADMIN_EMAIL = originalEmail;
     if (originalPassword === undefined) delete process.env.SUPER_ADMIN_PASSWORD;
     else process.env.SUPER_ADMIN_PASSWORD = originalPassword;
+    if (originalSyncKey === undefined) delete process.env.ADMIN_SYNC_KEY;
+    else process.env.ADMIN_SYNC_KEY = originalSyncKey;
   });
 
   it('returns super admin user for valid super admin credentials', async () => {

@@ -5,6 +5,8 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import type { PmsBookingPayload } from '@/types/pms';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/customer/stays
  *
@@ -23,6 +25,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Too many requests' },
       { status: 429, headers: rateLimit.headers },
+    );
+  }
+
+  // Verify the caller is authenticated and owns the user_id they claim
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
+  const { data: { user }, error: authError } = await getSupabaseAdmin().auth.getUser(token);
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
     );
   }
 
@@ -48,6 +70,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields: user_id, country, city, hotel_name, check_in, check_out' },
         { status: 400, headers: rateLimit.headers },
+      );
+    }
+
+    // Ensure the caller can only create stays for themselves
+    if (body.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403, headers: rateLimit.headers },
       );
     }
 

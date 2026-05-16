@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { isValidEmail } from '@/lib/validation';
+import { verifyAdminSession } from '@/lib/auth/admin-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ interface InviteAdminBody {
 
 function checkAuth(request: NextRequest): boolean {
   const saSession = request.cookies.get('sa_session');
-  return Boolean(saSession?.value);
+  return Boolean(saSession?.value) && verifyAdminSession(saSession!.value);
 }
 
 export async function POST(

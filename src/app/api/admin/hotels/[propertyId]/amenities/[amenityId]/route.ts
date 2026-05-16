@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { verifyAdminSession } from '@/lib/auth/admin-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function DELETE(
   { params }: { params: Promise<{ propertyId: string; amenityId: string }> },
 ) {
   const saSession = request.cookies.get('sa_session');
-  if (!saSession?.value) {
+  if (!saSession?.value || !verifyAdminSession(saSession.value)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

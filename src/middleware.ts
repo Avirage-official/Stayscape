@@ -51,9 +51,12 @@ export async function middleware(request: NextRequest) {
   // Block unauthenticated access to /admin routes
   const { pathname } = request.nextUrl;
   if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login') && pathname !== '/api/admin/login') {
-    // Check for the sa_session cookie set on successful staff login.
+    // Check for the sa_session cookie. Format: <32-hex>.<64-hex> (token.hmac-sha256).
+    // Full cryptographic verification happens in each admin API route; this gate
+    // exists only to redirect unauthenticated browsers to the login page quickly.
     const saSession = request.cookies.get('sa_session');
-    if (!saSession?.value) {
+    const sessionValid = /^[0-9a-f]{32}\.[0-9a-f]{64}$/.test(saSession?.value ?? '');
+    if (!sessionValid) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);

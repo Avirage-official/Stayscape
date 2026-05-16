@@ -101,7 +101,7 @@ export default function PitchStory() {
         >
           Great hospitality has always been about people — the way a stay feels, not just how it runs. 
           But as expectations grow and teams get busier, it becomes harder to keep that same level of care 
-          consistent in every moment. The opportunity isn't to change what hospitality is, 
+          consistent in every moment. The opportunity isn&apos;t to change what hospitality is,
           but to support it — making it easier for teams to deliver thoughtful, 
           seamless experiences while building a stronger connection with every guest.
         </motion.p>

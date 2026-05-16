@@ -662,6 +662,9 @@ export default function StayHomePage() {
             {/* Room Service */}
             {activeTile.id === 'room_service' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  We&apos;ll send housekeeping to your room shortly.
+                </p>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>In-room dining request. The team will confirm your order shortly.</p>
                 <div>
                   <label style={labelStyle}>What would you like? (optional)</label>
@@ -684,6 +687,9 @@ export default function StayHomePage() {
             {/* Laundry */}
             {activeTile.id === 'laundry' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Leave your laundry bag outside the door. We&apos;ll pick it up at your preferred time.
+                </p>
                 {policyText.laundry_policy && <div style={policyBoxStyle}>{policyText.laundry_policy}</div>}
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Leave your laundry bag outside the door and we will collect it.</p>
                 <div>
@@ -769,6 +775,9 @@ export default function StayHomePage() {
             {/* Late Checkout */}
             {activeTile.id === 'late_checkout' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Request a late checkout and we&apos;ll confirm availability with you.
+                </p>
                 <div style={policyBoxStyle}>
                   {policyText.late_checkout_policy
                     ? policyText.late_checkout_policy
