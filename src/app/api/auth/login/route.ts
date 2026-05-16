@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
+import { createAdminSession } from '@/lib/auth/admin-session';
 
 function getSuperAdminCredentials(): {
   email: string;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
         user: { id: staffMatch.id, email: staffMatch.email },
       });
 
-      res.cookies.set('sa_session', staffMatch.id, {
+      res.cookies.set('sa_session', createAdminSession(), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

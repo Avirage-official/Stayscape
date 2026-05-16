@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth-context';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { ItineraryProvider } from '@/components/ItineraryContext';
 import { useRegion } from '@/lib/context/region-context';
 import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
@@ -12,10 +13,15 @@ import StayOnboardingFlow from '@/components/guest-lounge/StayOnboardingFlow';
 import type { CustomerStay } from '@/types/customer';
 import { StayContext } from './stay-context';
 
-async function fetchStayApi(userId: string, stayId: string): Promise<CustomerStay> {
-  const res = await fetch(
-    `/api/customer/stays/${encodeURIComponent(stayId)}?userId=${encodeURIComponent(userId)}`,
-  );
+async function fetchStayApi(stayId: string): Promise<CustomerStay> {
+  const supabase = getSupabaseBrowser();
+  const token = supabase
+    ? (await supabase.auth.getSession()).data.session?.access_token
+    : null;
+  if (!token) throw new Error('Not authenticated');
+  const res = await fetch(`/api/customer/stays/${encodeURIComponent(stayId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) throw new Error('Failed to load stay');
   const json = (await res.json()) as { stay: CustomerStay };
   return json.stay;
@@ -297,7 +303,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (!user) return;
     if (!UUID_REGEX.test(stayId)) return;
-    fetchStayApi(user.id, stayId)
+    fetchStayApi(stayId)
       .then((found) => {
         setStay(found);
         setLoadState('ready');

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { verifyAdminSession } from '@/lib/auth/admin-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +59,7 @@ interface AddAmenityBody {
 
 function checkAuth(request: NextRequest): boolean {
   const saSession = request.cookies.get('sa_session');
-  return Boolean(saSession?.value);
+  return Boolean(saSession?.value) && verifyAdminSession(saSession!.value);
 }
 
 /* ── GET ────────────────────────────────────────────────────────── */
