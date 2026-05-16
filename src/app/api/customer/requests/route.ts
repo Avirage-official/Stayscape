@@ -82,7 +82,8 @@ export async function GET(request: NextRequest) {
     .order('createdat', { ascending: false });
 
   if (tasksError) {
-    return NextResponse.json({ error: tasksError.message }, { status: 500 });
+    console.error('[customer/requests] Failed to fetch tasks:', tasksError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   return NextResponse.json({ tasks: tasks ?? [] });
@@ -144,8 +145,9 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (insertError || !task) {
+    console.error('[customer/requests] Failed to create task:', insertError);
     return NextResponse.json(
-      { error: insertError?.message ?? 'Failed to create task' },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (propertyError || !propertyData) {
-      const message = propertyError?.message ?? 'Failed to create property';
-      return NextResponse.json({ error: message }, { status: 500 });
+      console.error('[admin/hotels] Failed to insert property:', propertyError);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     const propertyId = (propertyData as { id: string }).id;
@@ -108,7 +108,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (brandingError) {
-      return NextResponse.json({ error: brandingError.message }, { status: 500 });
+      console.error('[admin/hotels] Failed to insert hotel_branding:', brandingError);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     // Step 3: Insert into hotel_policies
@@ -124,7 +125,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (policiesError) {
-      return NextResponse.json({ error: policiesError.message }, { status: 500 });
+      console.error('[admin/hotels] Failed to insert hotel_policies:', policiesError);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     // Step 4: Insert into pms_config
@@ -136,12 +138,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (pmsError) {
-      return NextResponse.json({ error: pmsError.message }, { status: 500 });
+      console.error('[admin/hotels] Failed to insert pms_config:', pmsError);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     return NextResponse.json({ propertyId }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[admin/hotels] Unexpected error creating hotel:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

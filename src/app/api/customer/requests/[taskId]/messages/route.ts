@@ -51,7 +51,10 @@ export async function GET(
     .eq('task_id', taskId)
     .order('createdat', { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[customer/requests/[taskId]/messages] Failed to fetch messages:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
   return NextResponse.json({ messages: messages ?? [] });
 }
 
@@ -80,6 +83,9 @@ export async function POST(
     .select('id, sender_role, message, createdat')
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[customer/requests/[taskId]/messages] Failed to insert message:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
   return NextResponse.json({ message: msg }, { status: 201 });
 }

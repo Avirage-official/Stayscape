@@ -118,7 +118,10 @@ export async function GET(request: NextRequest) {
     .eq('property_id', propertyId)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[hotel-admin/policies] Failed to fetch policies:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 
   return NextResponse.json({ policies: data ?? {} });
 }
@@ -169,7 +172,10 @@ export async function PATCH(request: NextRequest) {
     .from('hotel_policies')
     .upsert(updates, { onConflict: 'property_id' });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[hotel-admin/policies] Failed to upsert policies:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

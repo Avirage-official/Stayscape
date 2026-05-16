@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { processWebhookBooking } from '@/lib/supabase/pms-repository';
 import { createRegionForProperty, seedPlacesForRegion } from '@/lib/services/ai/region-creation';
 import type { PmsBookingPayload } from '@/types/pms';
@@ -36,7 +37,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!apiKey || apiKey !== expectedKey) {
+    const keysMatch =
+      apiKey !== null &&
+      apiKey.length === expectedKey.length &&
+      timingSafeEqual(Buffer.from(apiKey), Buffer.from(expectedKey));
+    if (!keysMatch) {
       return NextResponse.json(
         { error: 'Invalid API key' },
         { status: 401, headers: rateLimit.headers },

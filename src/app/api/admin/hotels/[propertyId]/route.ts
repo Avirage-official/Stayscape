@@ -109,7 +109,8 @@ export async function GET(
     ]);
 
     if (propertyRes.error) {
-      return NextResponse.json({ error: propertyRes.error.message }, { status: 500 });
+      console.error('[admin/hotels/[propertyId]] Failed to fetch property:', propertyRes.error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -120,8 +121,8 @@ export async function GET(
       amenities: amenitiesRes.data ?? [],
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[admin/hotels/[propertyId]] Unexpected error in GET:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -160,7 +161,8 @@ export async function PUT(
         .eq('id', propertyId);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[admin/hotels/[propertyId]] Failed to update property basics:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
       }
     }
 
@@ -181,7 +183,8 @@ export async function PUT(
         .upsert(upsert, { onConflict: 'property_id' });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[admin/hotels/[propertyId]] Failed to upsert hotel_branding:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
       }
     }
 
@@ -203,7 +206,8 @@ export async function PUT(
         .upsert(upsert, { onConflict: 'property_id' });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[admin/hotels/[propertyId]] Failed to upsert hotel_policies:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
       }
     }
 
@@ -221,14 +225,15 @@ export async function PUT(
         .upsert(upsert, { onConflict: 'property_id' });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[admin/hotels/[propertyId]] Failed to upsert pms_config:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
       }
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[admin/hotels/[propertyId]] Unexpected error in PUT:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -267,12 +272,13 @@ export async function POST(
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[admin/hotels/[propertyId]] Failed to insert amenity:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, amenity: data });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[admin/hotels/[propertyId]] Unexpected error in POST:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

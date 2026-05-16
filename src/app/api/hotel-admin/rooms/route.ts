@@ -56,7 +56,8 @@ export async function GET(request: NextRequest) {
     .order('room_number', { ascending: true });
 
   if (roomsError) {
-    return NextResponse.json({ error: roomsError.message }, { status: 500 });
+    console.error('[hotel-admin/rooms] Failed to fetch rooms:', roomsError);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   return NextResponse.json({ rooms: rooms ?? [] });
