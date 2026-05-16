@@ -39,19 +39,15 @@ export default function HotelAdminLayout({
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
 
-  const [hotelAdmin, setHotelAdmin] = useState<HotelAdminContextValue | null>(
-    null,
-  );
+  const [hotelAdmin, setHotelAdmin] = useState<HotelAdminContextValue | null>(null);
   const [meLoading, setMeLoading] = useState(true);
 
-  // Auth guard — redirect unauthenticated users to /login
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/login');
     }
   }, [authLoading, user, router]);
 
-  // Fetch hotel admin details once the user is confirmed
   useEffect(() => {
     if (authLoading || !user) return;
 
@@ -107,7 +103,6 @@ export default function HotelAdminLayout({
     router.push('/login');
   }
 
-  // Show a full-screen loading spinner while auth or /me is resolving
   if (authLoading || meLoading || !hotelAdmin) {
     return (
       <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center">
@@ -119,9 +114,8 @@ export default function HotelAdminLayout({
   return (
     <HotelAdminProvider value={hotelAdmin}>
       <div className="min-h-screen bg-[#0d0d0d] text-white">
-        {/* ── Desktop sidebar ─────────────────────────────────────────── */}
+        {/* Desktop sidebar */}
         <aside className="hidden md:flex fixed inset-y-0 left-0 w-[220px] flex-col border-r border-white/[0.06] bg-[#0d0d0d] z-20">
-          {/* Hotel name / header */}
           <div className="flex items-center justify-between px-5 h-[60px] border-b border-white/[0.06]">
             <span className="text-[13px] font-medium text-white/80">
               {hotelAdmin.hotelName}
@@ -135,7 +129,6 @@ export default function HotelAdminLayout({
             </button>
           </div>
 
-          {/* Nav links */}
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
             {NAV_LINKS.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/');
@@ -157,7 +150,7 @@ export default function HotelAdminLayout({
           </nav>
         </aside>
 
-        {/* ── Main content area ────────────────────────────────────────── */}
+        {/* Main content area */}
         <div className="md:pl-[220px] flex flex-col min-h-screen">
           {/* Mobile top header */}
           <header className="flex md:hidden items-center justify-between px-4 h-[56px] border-b border-white/[0.06] bg-[#0d0d0d] sticky top-0 z-10">
@@ -173,10 +166,9 @@ export default function HotelAdminLayout({
             </button>
           </header>
 
-          {/* Page content */}
           <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
-          {/* ── Mobile bottom nav ──────────────────────────────────────── */}
+          {/* Mobile bottom nav */}
           <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-white/[0.06] bg-[#0d0d0d] z-20">
             <div className="flex items-center justify-around h-[60px]">
               {NAV_LINKS.map(({ href, label, icon: Icon }) => {

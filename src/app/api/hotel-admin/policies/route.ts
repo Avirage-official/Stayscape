@@ -1,6 +1,6 @@
 /**
- * GET  /api/hotel-admin/policies  — fetch hotel_policies row for this admin's property
- * PATCH /api/hotel-admin/policies  — upsert hotel_policies row
+ * GET  /api/hotel-admin/policies  -- fetch hotel_policies row for this admin's property
+ * PATCH /api/hotel-admin/policies  -- upsert hotel_policies row
  *
  * Extra advisory fields (laundry_policy, late_checkout_policy, late_checkout_fee)
  * are stored in the existing extra_policies jsonb column so we avoid a migration.
@@ -11,7 +11,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
-/* ── auth helper ─────────────────────────────────────────────── */
+// --- auth helper ---
 
 async function resolvePropertyId(
   request: NextRequest,
@@ -36,7 +36,7 @@ async function resolvePropertyId(
   return { propertyId: (adminData as { property_id: string }).property_id };
 }
 
-/* ── GET ─────────────────────────────────────────────────────── */
+// --- GET ---
 
 export async function GET(request: NextRequest) {
   const resolved = await resolvePropertyId(request);
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ policies: data ?? {} });
 }
 
-/* ── PATCH ───────────────────────────────────────────────────── */
+// --- PATCH ---
 
 export async function PATCH(request: NextRequest) {
   const resolved = await resolvePropertyId(request);
@@ -66,7 +66,6 @@ export async function PATCH(request: NextRequest) {
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // Fields that live as top-level columns
   const columnFields = [
     'checkin_time',
     'checkout_time',
@@ -82,14 +81,12 @@ export async function PATCH(request: NextRequest) {
     if (field in body) columnUpdates[field] = body[field] ?? null;
   }
 
-  // Extra advisory fields stored in extra_policies jsonb
   const extraKeys = ['laundry_policy', 'late_checkout_policy', 'late_checkout_fee'] as const;
   const hasExtra = extraKeys.some((k) => k in body);
 
   const supabase = getSupabaseAdmin();
 
   if (hasExtra) {
-    // Fetch existing extra_policies so we can merge
     const { data: existing } = await supabase
       .from('hotel_policies')
       .select('extra_policies')

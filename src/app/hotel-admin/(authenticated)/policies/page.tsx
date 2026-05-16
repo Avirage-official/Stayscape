@@ -11,16 +11,16 @@
  *   - Other policies  (cancellation, pets, smoking)
  *
  * Data is read from / written to:
- *   hotel_policies columns  → checkin_time, checkout_time, wifi_name, wifi_password,
- *                             cancellation_policy, pet_policy, smoking_policy
- *   extra_policies jsonb     → laundry_policy, late_checkout_policy, late_checkout_fee
+ *   hotel_policies columns  -> checkin_time, checkout_time, wifi_name, wifi_password,
+ *                              cancellation_policy, pet_policy, smoking_policy
+ *   extra_policies jsonb    -> laundry_policy, late_checkout_policy, late_checkout_fee
  */
 
 import { useContext, useEffect, useRef, useState } from 'react';
 import { HotelAdminContext } from '@/lib/context/hotel-admin-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
-/* ── Types ─────────────────────────────────────────────────── */
+// --- Types ---
 
 interface PoliciesForm {
   checkin_time: string;
@@ -48,7 +48,7 @@ const EMPTY: PoliciesForm = {
   smoking_policy: '',
 };
 
-/* ── Helpers ───────────────────────────────────────────────── */
+// --- Helpers ---
 
 async function getToken(): Promise<string | null> {
   const supabase = getSupabaseBrowser();
@@ -56,7 +56,7 @@ async function getToken(): Promise<string | null> {
   return (await supabase.auth.getSession()).data.session?.access_token ?? null;
 }
 
-/* ── Shared style atoms ────────────────────────────────────── */
+// --- Shared style atoms ---
 
 const inputCls =
   'w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-[13px] text-white/90 placeholder:text-white/25 focus:outline-none focus:border-[#C9A84C]/60 focus:ring-1 focus:ring-[#C9A84C]/20 transition-colors resize-none';
@@ -69,7 +69,7 @@ const sectionCls =
 const sectionHeadCls = 'text-[13px] font-semibold text-white/80 mb-1';
 const sectionSubCls = 'text-[12px] text-white/35 mb-4 leading-relaxed';
 
-/* ── Component ─────────────────────────────────────────────── */
+// --- Component ---
 
 export default function PoliciesPage() {
   const ctx = useContext(HotelAdminContext);
@@ -79,7 +79,6 @@ export default function PoliciesPage() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* fetch on mount */
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -110,7 +109,7 @@ export default function PoliciesPage() {
           });
         }
       } catch {
-        /* silent */
+        // silent
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -136,7 +135,7 @@ export default function PoliciesPage() {
     setSaving(true);
     try {
       const token = await getToken();
-      if (!token) { showToast('Session expired — please sign in again.', false); return; }
+      if (!token) { showToast('Session expired - please sign in again.', false); return; }
       const res = await fetch('/api/hotel-admin/policies', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -165,7 +164,6 @@ export default function PoliciesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-8">
-      {/* Page header */}
       <div className="mb-8">
         <h1 className="text-[20px] font-semibold text-white/90">Hotel Policies</h1>
         <p className="text-[13px] text-white/40 mt-1">
@@ -175,7 +173,7 @@ export default function PoliciesPage() {
 
       <div className="flex flex-col gap-6">
 
-        {/* ── Stay Info ── */}
+        {/* Stay Info */}
         <section className={sectionCls}>
           <div>
             <p className={sectionHeadCls}>Stay Info</p>
@@ -184,19 +182,11 @@ export default function PoliciesPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Check-in time</label>
-              <input
-                type="time"
-                className={inputCls}
-                {...field('checkin_time')}
-              />
+              <input type="time" className={inputCls} {...field('checkin_time')} />
             </div>
             <div>
               <label className={labelCls}>Check-out time</label>
-              <input
-                type="time"
-                className={inputCls}
-                {...field('checkout_time')}
-              />
+              <input type="time" className={inputCls} {...field('checkout_time')} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -221,12 +211,12 @@ export default function PoliciesPage() {
           </div>
         </section>
 
-        {/* ── Laundry ── */}
+        {/* Laundry */}
         <section className={sectionCls}>
           <div>
             <p className={sectionHeadCls}>Laundry Policy</p>
             <p className={sectionSubCls}>
-              Shown to guests before they submit a laundry request — pricing, turnaround time,
+              Shown to guests before they submit a laundry request - pricing, turnaround time,
               and any notes about delicate items.
             </p>
           </div>
@@ -234,18 +224,14 @@ export default function PoliciesPage() {
             <label className={labelCls}>Policy text</label>
             <textarea
               rows={4}
-              placeholder={
-                'e.g. Standard turnaround is 24 hours. Express (4-hour) service is available at RM 15 extra. '
-                + 'Delicate and silk items are handled separately — please indicate on the bag tag. '
-                + 'Pricing starts from RM 5 per item.'
-              }
+              placeholder="e.g. Standard turnaround is 24 hours. Express (4-hour) service available at RM 15 extra. Delicate items handled separately. Pricing from RM 5 per item."
               className={inputCls}
               {...field('laundry_policy')}
             />
           </div>
         </section>
 
-        {/* ── Late Checkout ── */}
+        {/* Late Checkout */}
         <section className={sectionCls}>
           <div>
             <p className={sectionHeadCls}>Late Checkout</p>
@@ -258,10 +244,7 @@ export default function PoliciesPage() {
             <label className={labelCls}>Policy text</label>
             <textarea
               rows={4}
-              placeholder={
-                'e.g. Late checkout until 2pm is complimentary if the room is not pre-booked. '
-                + 'Beyond 2pm a half-day rate applies. Subject to availability — we will confirm within 30 minutes.'
-              }
+              placeholder="e.g. Late checkout until 2pm is complimentary if the room is not pre-booked. Beyond 2pm a half-day rate applies. Subject to availability."
               className={inputCls}
               {...field('late_checkout_policy')}
             />
@@ -277,7 +260,7 @@ export default function PoliciesPage() {
           </div>
         </section>
 
-        {/* ── Other Policies ── */}
+        {/* Other Policies */}
         <section className={sectionCls}>
           <div>
             <p className={sectionHeadCls}>Other Policies</p>
@@ -314,7 +297,6 @@ export default function PoliciesPage() {
 
       </div>
 
-      {/* Save button */}
       <div className="mt-8 flex justify-end">
         <button
           type="button"
@@ -322,11 +304,10 @@ export default function PoliciesPage() {
           disabled={saving}
           className="px-6 py-3 rounded-xl text-[13px] font-semibold bg-[#C9A84C] text-[#0d0d0d] hover:bg-[#d4b56a] disabled:opacity-50 transition-colors"
         >
-          {saving ? 'Saving…' : 'Save policies'}
+          {saving ? 'Saving...' : 'Save policies'}
         </button>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div
           className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl text-[13px] font-medium z-50 shadow-xl transition-all ${
