@@ -23,6 +23,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,11 @@ async function getGuestStay(token: string) {
 // ─── GET /api/customer/requests ──────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request);
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: rateLimit.headers });
+  }
+
   const token = request.headers.get('authorization')?.replace('Bearer ', '') ?? null;
 
   if (!token) {
@@ -99,6 +105,11 @@ interface PostBody {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request);
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: rateLimit.headers });
+  }
+
   const token = request.headers.get('authorization')?.replace('Bearer ', '') ?? null;
 
   if (!token) {
@@ -122,6 +133,12 @@ export async function POST(request: NextRequest) {
 
   if (!task_type || !title) {
     return NextResponse.json({ error: 'task_type and title are required' }, { status: 400 });
+  }
+  if (title.length > 200) {
+    return NextResponse.json({ error: 'title exceeds maximum length of 200 characters' }, { status: 400 });
+  }
+  if (description && description.length > 2000) {
+    return NextResponse.json({ error: 'description exceeds maximum length of 2000 characters' }, { status: 400 });
   }
 
   const now = new Date().toISOString();
