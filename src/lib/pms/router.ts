@@ -189,8 +189,12 @@ function assertCredentials(
  * v1: pass-through (key is stored as-is in api_key_encrypted column).
  * v2 (Phase 2): use Supabase Vault or a server-side AES key to decrypt
  * before returning. The contract here doesn't change — only the body.
+ *
+ * Exported so the drift canary can reuse this without duplicating the
+ * decryption logic. Any caller that needs raw credentials must go through
+ * here — do NOT inline the decryption anywhere else.
  */
-function decryptApiKey(encrypted: string): string {
+export function decryptApiKey(encrypted: string): string {
   // TODO Phase 2: replace with real decryption via Supabase Vault.
   return encrypted;
 }
