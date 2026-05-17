@@ -200,11 +200,11 @@ function BottomNav({
         left: 0,
         right: 0,
         zIndex: 60,
-        height: 64,
+        height: 'calc(64px + env(safe-area-inset-bottom))',
         background: 'var(--surface)',
         borderTop: '1px solid var(--border)',
         display: 'flex',
-        alignItems: 'stretch',
+        alignItems: 'flex-start',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
@@ -225,8 +225,9 @@ function BottomNav({
               textDecoration: 'none',
               color: active ? 'var(--gold)' : 'var(--text-muted)',
               minWidth: 44,
-              minHeight: 44,
-              transition: 'color 0.15s ease',
+              height: 64,
+              transition: 'color 0.15s ease, opacity 0.1s ease',
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             {item.icon(active)}
@@ -336,7 +337,8 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
 
   const activeTab = getActiveTab(pathname, propertySlug, stayId);
   const homeHref = `/stay/${propertySlug}/${stayId}/home`;
-  const isOnHomePage = activeTab === 'home';
+  // Show back button only on sub-pages (deep within a tab), not on the 5 primary tab roots
+  const isTabRoot = activeTab !== null;
 
   const navItems: NavItem[] = [
     {
@@ -379,8 +381,8 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
           .stay-side-nav-desktop { display: none; }
           .stay-mobile-topbar { display: flex; }
           .stay-bottom-nav { display: flex; }
-          /* account for bottom nav height */
-          .stay-content { padding-bottom: 64px; }
+          .stay-content { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+          .stay-bottom-nav a:active { opacity: 0.6; }
 
           @media (min-width: 900px) {
             .stay-shell {
@@ -433,11 +435,11 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
               justifyContent: 'space-between',
             }}
           >
-            {/* Back button — visible on all subpages except Hotel Services itself */}
-            {!isOnHomePage ? (
-              <Link
-                href={homeHref}
-                aria-label="Back to Hotel Services"
+            {/* Back button — only on sub-pages (deep within a tab), not on primary tab roots */}
+            {!isTabRoot ? (
+              <button
+                onClick={() => router.back()}
+                aria-label="Go back"
                 style={{
                   width: 40,
                   height: 40,
@@ -446,11 +448,14 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: 'var(--text-muted)',
-                  textDecoration: 'none',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <IconChevronLeft />
-              </Link>
+              </button>
             ) : (
               <span style={{ width: 40 }} />
             )}
