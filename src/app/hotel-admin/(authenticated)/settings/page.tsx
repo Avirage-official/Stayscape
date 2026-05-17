@@ -4,13 +4,15 @@
  * /hotel-admin/settings
  *
  * Phase 1 Settings — four sections:
- *   1. Property Identity  — name, city, country, address (PATCH /api/hotel-admin/settings/property)
- *   2. Timezone           — IANA timezone dropdown        (PATCH /api/hotel-admin/settings/property)
- *   3. Aria Concierge     — name + tone                  (PATCH /api/hotel-admin/settings/branding)
- *   4. Accent Colour      — hex colour picker             (PATCH /api/hotel-admin/settings/branding)
+ *   1. Property Identity  — name, city, country (dropdown), address (Geoapify autocomplete)
+ *   2. Timezone           — IANA timezone dropdown
+ *   3. Aria Concierge     — name + tone
+ *   4. Accent Colour      — hex colour picker (saved to DB; guest-app injection is a separate step)
+ *
+ * All saved via PATCH /api/hotel-admin/settings
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import { Check, Loader2, Globe, Palette, Bot, Building2 } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
@@ -19,7 +21,28 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 const cormorant = Cormorant_Garamond({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], display: 'swap' });
 const dmSans    = DM_Sans({ subsets: ['latin'], weight: ['300', '400', '500', '600'], display: 'swap' });
 
-// IANA timezones most relevant for a hotel platform — full list kept concise
+// ── Country list (curated for hotel markets) ─────────────────────────────────
+const COUNTRIES = [
+  'Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia',
+  'Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belgium','Bhutan',
+  'Bolivia','Bosnia and Herzegovina','Brazil','Brunei','Bulgaria','Cambodia',
+  'Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cyprus',
+  'Czech Republic','Denmark','Ecuador','Egypt','Estonia','Ethiopia','Finland',
+  'France','Georgia','Germany','Ghana','Greece','Hong Kong','Hungary','Iceland',
+  'India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan',
+  'Kazakhstan','Kenya','Kuwait','Laos','Latvia','Lebanon','Lithuania','Luxembourg',
+  'Macau','Malaysia','Maldives','Malta','Mexico','Moldova','Monaco','Mongolia',
+  'Montenegro','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria',
+  'North Macedonia','Norway','Oman','Pakistan','Panama','Peru','Philippines',
+  'Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Serbia',
+  'Singapore','Slovakia','Slovenia','South Africa','South Korea','Spain',
+  'Sri Lanka','Sweden','Switzerland','Taiwan','Tajikistan','Tanzania','Thailand',
+  'Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates',
+  'United Kingdom','United States','Uruguay','Uzbekistan','Vietnam','Yemen',
+  'Zimbabwe',
+];
+
+// ── IANA Timezones ───────────────────────────────────────────────────────────
 const TIMEZONES = [
   { label: 'Singapore (UTC+8)',         value: 'Asia/Singapore' },
   { label: 'Kuala Lumpur (UTC+8)',       value: 'Asia/Kuala_Lumpur' },
@@ -52,25 +75,31 @@ const ARIA_TONES = [
 ];
 
 const PRESET_COLOURS = [
-  '#C9A84C', '#B8860B', '#D4AF37',  // Golds
-  '#01696F', '#0891B2', '#0369A1',  // Teals / Blues
-  '#7C3AED', '#9333EA', '#A855F7',  // Purples
-  '#DC2626', '#E11D48', '#F97316',  // Reds / Orange
-  '#16A34A', '#059669',              // Greens
-  '#374151', '#1F2937',              // Dark neutrals
+  '#C9A84C', '#B8860B', '#D4AF37',
+  '#01696F', '#0891B2', '#0369A1',
+  '#7C3AED', '#9333EA', '#A855F7',
+  '#DC2626', '#E11D48', '#F97316',
+  '#16A34A', '#059669',
+  '#374151', '#1F2937',
 ];
 
 interface Settings {
-  // property
   name: string;
   city: string;
   country: string;
   address: string;
   timezone: string;
-  // branding
   concierge_name: string;
   concierge_tone: string;
   accent_color: string;
+}
+
+interface GeoapifyFeature {
+  properties: {
+    formatted?: string;
+    address_line1?: string;
+    address_line2?: string;
+  };
 }
 
 async function getToken(): Promise<string | null> {
@@ -79,6 +108,37 @@ async function getToken(): Promise<string | null> {
   return (await sb.auth.getSession()).data.session?.access_token ?? null;
 }
 
+// ── Address autocomplete hook ─────────────────────────────────────────────────
+function useAddressAutocomplete(query: string) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loading, setLoading]         = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (query.length < 3) { setSuggestions([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const key = process.env.NEXT_PUBLIC_GEOAPIFY_KEY ?? '';
+        const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&type=amenity,building,street&limit=5&apiKey=${key}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const json = (await res.json()) as { features: GeoapifyFeature[] };
+        setSuggestions(
+          json.features
+            .map((f) => f.properties.formatted ?? f.properties.address_line1 ?? '')
+            .filter(Boolean),
+        );
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    }, 320);
+  }, [query]);
+
+  return { suggestions, loading, clear: () => setSuggestions([]) };
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { propertyId } = useHotelAdmin();
 
@@ -86,10 +146,15 @@ export default function SettingsPage() {
     name: '', city: '', country: '', address: '', timezone: 'Asia/Singapore',
     concierge_name: 'Aria', concierge_tone: 'warm', accent_color: '#C9A84C',
   });
-  const [loading, setLoading]         = useState(true);
-  const [saving, setSaving]           = useState<string | null>(null); // section key
-  const [saved,  setSaved]            = useState<string | null>(null);
-  const [error,  setError]            = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState<string | null>(null);
+  const [saved,   setSaved]   = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
+
+  // Address autocomplete
+  const { suggestions, loading: addrLoading, clear: clearSuggestions } = useAddressAutocomplete(settings.address);
+  const [addrFocused, setAddrFocused] = useState(false);
+  const showSuggestions = addrFocused && suggestions.length > 0;
 
   // Load current settings
   useEffect(() => {
@@ -135,11 +200,10 @@ export default function SettingsPage() {
     }
   };
 
-  const field = (key: keyof Settings) => ({
-    value: settings[key] as string,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setSettings((s) => ({ ...s, [key]: e.target.value })),
-  });
+  const set = (key: keyof Settings) => (
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setSettings((s) => ({ ...s, [key]: e.target.value }))
+  );
 
   if (loading) {
     return (
@@ -167,21 +231,68 @@ export default function SettingsPage() {
       {/* ── Section 1: Property Identity ── */}
       <Section icon={<Building2 size={15} />} title="Property Identity" desc="Basic details shown to guests and staff.">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Hotel Name */}
           <div className="sm:col-span-2">
             <label className={labelCls}>Hotel Name</label>
-            <input className={inputCls} type="text" placeholder="The Grand Marina" {...field('name')} />
+            <input className={inputCls} type="text" placeholder="The Grand Marina" value={settings.name} onChange={set('name')} />
           </div>
+
+          {/* City */}
           <div>
             <label className={labelCls}>City</label>
-            <input className={inputCls} type="text" placeholder="Singapore" {...field('city')} />
+            <input className={inputCls} type="text" placeholder="Singapore" value={settings.city} onChange={set('city')} />
           </div>
+
+          {/* Country — dropdown */}
           <div>
             <label className={labelCls}>Country</label>
-            <input className={inputCls} type="text" placeholder="Singapore" {...field('country')} />
+            <select
+              className={`${inputCls} appearance-none cursor-pointer`}
+              value={settings.country}
+              onChange={set('country')}
+            >
+              <option value="">Select country…</option>
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
-          <div className="sm:col-span-2">
-            <label className={labelCls}>Address</label>
-            <input className={inputCls} type="text" placeholder="1 Marina Boulevard, Singapore 018989" {...field('address')} />
+
+          {/* Address — Geoapify autocomplete */}
+          <div className="sm:col-span-2 relative">
+            <label className={labelCls}>
+              Address
+              {addrLoading && <span className="ml-2 text-white/20 normal-case tracking-normal">searching…</span>}
+            </label>
+            <input
+              className={inputCls}
+              type="text"
+              placeholder="Start typing your hotel address…"
+              value={settings.address}
+              onChange={set('address')}
+              onFocus={() => setAddrFocused(true)}
+              onBlur={() => setTimeout(() => setAddrFocused(false), 150)}
+              autoComplete="off"
+            />
+            {showSuggestions && (
+              <ul className="absolute z-50 mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1a1a18] shadow-xl overflow-hidden">
+                {suggestions.map((s, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 text-[12px] text-white/70 hover:bg-white/[0.06] transition-colors border-b border-white/[0.04] last:border-0"
+                      onMouseDown={() => {
+                        setSettings((prev) => ({ ...prev, address: s }));
+                        clearSuggestions();
+                      }}
+                    >
+                      {s}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-1.5 text-[11px] text-white/20">Powered by Geoapify — select a suggestion for the exact address.</p>
           </div>
         </div>
         <SaveRow
@@ -205,7 +316,14 @@ export default function SettingsPage() {
             ))}
           </select>
           <p className="mt-2 text-[11px] text-white/20 leading-relaxed">
-            Current hotel time: <span className="text-white/40 font-medium">{new Intl.DateTimeFormat('en-GB', { timeZone: settings.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, weekday: 'short' }).format(new Date())}</span>
+            Current hotel time:{' '}
+            <span className="text-white/40 font-medium">
+              {new Intl.DateTimeFormat('en-GB', {
+                timeZone: settings.timezone,
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: true, weekday: 'short',
+              }).format(new Date())}
+            </span>
           </p>
         </div>
         <SaveRow
@@ -219,7 +337,7 @@ export default function SettingsPage() {
       <Section icon={<Bot size={15} />} title="Aria Concierge" desc="Personalise how your AI concierge introduces herself to guests.">
         <div className="mb-4">
           <label className={labelCls}>Concierge Name</label>
-          <input className={inputCls} type="text" placeholder="Aria" maxLength={32} {...field('concierge_name')} />
+          <input className={inputCls} type="text" placeholder="Aria" maxLength={32} value={settings.concierge_name} onChange={set('concierge_name')} />
           <p className="mt-1.5 text-[11px] text-white/20">Guests will see this name in the chat header. Keep it to one word.</p>
         </div>
         <div>
@@ -257,7 +375,17 @@ export default function SettingsPage() {
       </Section>
 
       {/* ── Section 4: Accent Colour ── */}
-      <Section icon={<Palette size={15} />} title="Accent Colour" desc="The gold highlight colour used throughout the guest app. Shown on buttons, icons, and active states.">
+      <Section icon={<Palette size={15} />} title="Accent Colour" desc="The highlight colour used throughout the guest app — buttons, icons, and active states.">
+        {/* Info banner */}
+        <div className="mb-4 flex items-start gap-2.5 px-3.5 py-3 rounded-lg bg-white/[0.03] border border-white/[0.07]">
+          <span className="text-[#C9A84C] mt-0.5 flex-shrink-0">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v.01M12 11v5"/></svg>
+          </span>
+          <p className="text-[11px] text-white/30 leading-relaxed font-light">
+            Colour is saved to the database. Guest-app live injection is coming in the next update — guests will see your chosen colour automatically once that is wired in.
+          </p>
+        </div>
+
         {/* Presets */}
         <div className="mb-4">
           <label className={labelCls}>Presets</label>
@@ -276,7 +404,8 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
-        {/* Custom hex */}
+
+        {/* Custom hex + colour picker */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" style={{ background: settings.accent_color }} />
           <div className="flex-1">
@@ -308,7 +437,7 @@ export default function SettingsPage() {
   );
 }
 
-// ── Sub-components ──
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function Section({ icon, title, desc, children }: { icon: React.ReactNode; title: string; desc: string; children: React.ReactNode }) {
   return (
@@ -331,7 +460,11 @@ function SaveRow({ saving, saved, onSave }: { saving: boolean; saved: boolean; o
         onClick={onSave}
         disabled={saving}
         className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold transition-colors"
-        style={{ background: saved ? 'rgba(22,163,74,0.15)' : 'rgba(201,168,76,0.12)', color: saved ? '#4ade80' : '#C9A84C', border: `1px solid ${saved ? 'rgba(22,163,74,0.25)' : 'rgba(201,168,76,0.2)'}` }}
+        style={{
+          background: saved ? 'rgba(22,163,74,0.15)' : 'rgba(201,168,76,0.12)',
+          color: saved ? '#4ade80' : '#C9A84C',
+          border: `1px solid ${saved ? 'rgba(22,163,74,0.25)' : 'rgba(201,168,76,0.2)'}`,
+        }}
       >
         {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : null}
         {saving ? 'Saving…' : saved ? 'Saved' : 'Save changes'}
