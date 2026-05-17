@@ -663,9 +663,8 @@ export default function StayHomePage() {
             {activeTile.id === 'room_service' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  We&apos;ll send housekeeping to your room shortly.
+                  In-room dining request. Let us know what you&apos;d like and the team will confirm your order shortly.
                 </p>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>In-room dining request. The team will confirm your order shortly.</p>
                 <div>
                   <label style={labelStyle}>What would you like? (optional)</label>
                   <textarea className="sh-textarea" rows={3} placeholder="e.g. burger and fries, sparkling water…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
@@ -688,10 +687,9 @@ export default function StayHomePage() {
             {activeTile.id === 'laundry' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  Leave your laundry bag outside the door. We&apos;ll pick it up at your preferred time.
+                  Leave your laundry bag outside the door and we&apos;ll collect it at your preferred time.
                 </p>
                 {policyText.laundry_policy && <div style={policyBoxStyle}>{policyText.laundry_policy}</div>}
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Leave your laundry bag outside the door and we will collect it.</p>
                 <div>
                   <label style={labelStyle}>Preferred pickup time (optional)</label>
                   <input className="sh-input" type="time" value={fields.laundryTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, laundryTime: e.target.value }))} style={inputStyle} />
