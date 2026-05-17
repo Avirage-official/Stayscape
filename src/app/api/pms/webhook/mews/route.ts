@@ -27,6 +27,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { getAdapterForProperty, PmsRouterError } from '@/lib/pms/router';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { appendToConversation } from '@/lib/supabase/aria-conversation-repository';
 import type { MewsAdapter } from '@/lib/pms/adapters/mews';
 
 /* ─────────────────────────────────────────────────────────────────
@@ -246,23 +247,28 @@ async function handleCheckIn(
   externalStayId: string,
   supabase: ReturnType<typeof getSupabaseAdmin>,
 ): Promise<void> {
-  // Look up the internal stay ID for this external stay
   const { data: stayRow } = await supabase
     .from('stays')
-    .select('id, guest_id')
+    .select('id, userid')
     .eq('external_id', externalStayId)
     .eq('propertyid', propertyId)
     .single();
 
-  if (!stayRow) return;
+  if (!stayRow?.userid) {
+    // Guest hasn't linked their Stayscape account yet — nothing to greet.
+    console.log(`[mews-webhook] Check-in for ${externalStayId} — no Stayscape userid, skipping Aria greeting`);
+    return;
+  }
 
-  console.log(
-    `[mews-webhook] Check-in detected — stay ${stayRow.id}, guest ${stayRow.guest_id}. ` +
-    `Aria active session trigger goes here (Phase 2).`,
-  );
+  const context = await loadGreetingContext(propertyId, stayRow.userid, supabase);
+  const guestFirst = context.guestFirstName ? `, ${context.guestFirstName}` : '';
+  const greeting = `Welcome to ${context.hotelName}${guestFirst}! 🎉 I'm ${context.conciergeNameDisplay}, your personal concierge for this stay. I'm here whenever you need anything — restaurant suggestions, room requests, local tips, or anything else. Just ask! Enjoy your stay.`;
 
-  // Phase 2: trigger Aria active session initialisation
-  // await initAriaSession({ stayId: stayRow.id, guestId: stayRow.guest_id });
+  await appendToConversation(stayRow.id as string, stayRow.userid as string, [
+    { role: 'assistant', content: greeting, timestamp: new Date().toISOString() },
+  ]);
+
+  console.log(`[mews-webhook] Aria check-in greeting sent — stay ${stayRow.id}`);
 }
 
 async function handleCheckOut(
@@ -272,20 +278,73 @@ async function handleCheckOut(
 ): Promise<void> {
   const { data: stayRow } = await supabase
     .from('stays')
-    .select('id, guest_id')
+    .select('id, userid')
     .eq('external_id', externalStayId)
     .eq('propertyid', propertyId)
     .single();
 
-  if (!stayRow) return;
+  if (!stayRow?.userid) {
+    console.log(`[mews-webhook] Check-out for ${externalStayId} — no Stayscape userid, skipping Aria farewell`);
+    return;
+  }
 
-  console.log(
-    `[mews-webhook] Check-out detected — stay ${stayRow.id}, guest ${stayRow.guest_id}. ` +
-    `closeMemory() trigger goes here (Phase 2).`,
-  );
+  const context = await loadGreetingContext(propertyId, stayRow.userid, supabase);
+  const guestFirst = context.guestFirstName ? `, ${context.guestFirstName}` : '';
+  const farewell = `It's been a pleasure${guestFirst}! 👋 Safe travels and thank you for staying with us at ${context.hotelName}. Your preferences and memories from this stay are saved to your Stayscape profile — ready for your next adventure. Until next time!`;
 
-  // Phase 2: trigger Aria memory close + post-stay flow
-  // await closeAriaSession({ stayId: stayRow.id, guestId: stayRow.guest_id });
+  await appendToConversation(stayRow.id as string, stayRow.userid as string, [
+    { role: 'assistant', content: farewell, timestamp: new Date().toISOString() },
+  ]);
+
+  console.log(`[mews-webhook] Aria check-out farewell sent — stay ${stayRow.id}`);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   GREETING CONTEXT — hotel name, concierge name, guest first name
+   ───────────────────────────────────────────────────────────────── */
+
+interface GreetingContext {
+  hotelName: string;
+  conciergeNameDisplay: string;
+  guestFirstName: string | null;
+}
+
+async function loadGreetingContext(
+  propertyId: string,
+  userId: string,
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+): Promise<GreetingContext> {
+  const [propertyResult, guestResult] = await Promise.all([
+    supabase
+      .from('properties')
+      .select('name, hotel_branding(concierge_name)')
+      .eq('id', propertyId)
+      .single(),
+    supabase
+      .from('users')
+      .select('firstname')
+      .eq('id', userId)
+      .maybeSingle(),
+  ]);
+
+  const propRow = propertyResult.data as
+    | { name: string; hotel_branding: { concierge_name?: string } | Array<{ concierge_name?: string }> | null }
+    | null;
+
+  const hotelName = propRow?.name ?? 'the hotel';
+
+  let conciergeName: string | null = null;
+  if (propRow?.hotel_branding) {
+    const branding = propRow.hotel_branding;
+    conciergeName = Array.isArray(branding)
+      ? (branding[0]?.concierge_name ?? null)
+      : (branding.concierge_name ?? null);
+  }
+  const conciergeNameDisplay = conciergeName ?? 'Aria';
+
+  const guestFirstName = (guestResult.data as { firstname?: string } | null)?.firstname ?? null;
+
+  return { hotelName, conciergeNameDisplay, guestFirstName };
 }
 
 /* ─────────────────────────────────────────────────────────────────

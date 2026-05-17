@@ -142,10 +142,10 @@ async function checkPropertyDrift(
   apiKeyEncrypted: string,
 ): Promise<PropertyCheckResult> {
   // Decrypt then parse the api_key blob — routed through decryptApiKey()
-  // so Phase 2 encryption is automatically picked up here too.
+  // so Vault-stored credentials are automatically resolved here too.
   let auth: MewsAuthEnvelope;
   try {
-    const parsed = JSON.parse(decryptApiKey(apiKeyEncrypted)) as {
+    const parsed = JSON.parse(await decryptApiKey(apiKeyEncrypted)) as {
       ClientToken?: string;
       AccessToken?: string;
     };

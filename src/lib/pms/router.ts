@@ -66,14 +66,14 @@ export async function getAdapterForProperty(
     );
   }
 
-  return buildAdapter(config);
+  return await buildAdapter(config);
 }
 
 /**
  * Direct adapter construction without DB lookup.
  * Used by tests, the drift canary, and one-off scripts.
  */
-export function buildAdapter(config: PmsConfigRow): PmsAdapter | null {
+export async function buildAdapter(config: PmsConfigRow): Promise<PmsAdapter | null> {
   if (!isSupportedProvider(config.provider)) {
     throw new PmsRouterError(
       `Unsupported PMS provider: ${config.provider}. ` +
@@ -91,7 +91,7 @@ export function buildAdapter(config: PmsConfigRow): PmsAdapter | null {
       const adapterConfig: PmsAdapterConfig = {
         propertyId: config.property_id,
         apiEndpoint: config.api_endpoint!,
-        apiKey: decryptApiKey(config.api_key_encrypted!),
+        apiKey: await decryptApiKey(config.api_key_encrypted!),
         webhookSecret: config.webhook_secret ?? undefined,
       };
       return new MewsAdapter(adapterConfig);
@@ -184,17 +184,52 @@ function assertCredentials(
 }
 
 /**
- * Decrypt the stored API key.
+ * Resolve the stored API key.
  *
- * v1: pass-through (key is stored as-is in api_key_encrypted column).
- * v2 (Phase 2): use Supabase Vault or a server-side AES key to decrypt
- * before returning. The contract here doesn't change — only the body.
+ * If the stored value is prefixed with 'vault:', it is a Supabase Vault
+ * secret UUID — we fetch and decrypt it via the read_pms_vault_secret
+ * Postgres function (see migration 20260517000001_vault_pms_secrets.sql).
  *
- * Exported so the drift canary can reuse this without duplicating the
- * decryption logic. Any caller that needs raw credentials must go through
- * here — do NOT inline the decryption anywhere else.
+ * Legacy values (raw JSON, no prefix) pass through unchanged so hotels
+ * onboarded before Vault was introduced continue to work. Migrate them
+ * to Vault by calling storeInVault() and saving the returned value.
+ *
+ * NEVER call this from client-side code — it uses the service role key.
  */
-export function decryptApiKey(encrypted: string): string {
-  // TODO Phase 2: replace with real decryption via Supabase Vault.
-  return encrypted;
+export async function decryptApiKey(stored: string): Promise<string> {
+  if (!stored.startsWith('vault:')) {
+    return stored; // legacy raw value — backwards compat
+  }
+  const vaultId = stored.slice('vault:'.length);
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.rpc('read_pms_vault_secret', { p_id: vaultId });
+  if (error || data === null || data === undefined) {
+    throw new PmsRouterError(
+      `Vault secret ${vaultId} not found or inaccessible: ${error?.message ?? 'null result'}`,
+    );
+  }
+  return data as string;
+}
+
+/**
+ * Store a PMS API key in Supabase Vault and return the prefixed reference
+ * to save in pms_config.api_key_encrypted.
+ *
+ * Example:
+ *   const ref = await storeInVault(jsonBlob, `mews-${propertyId}`);
+ *   // ref === 'vault:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+ *   // save ref to pms_config.api_key_encrypted
+ */
+export async function storeInVault(value: string, name: string): Promise<string> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.rpc('create_pms_vault_secret', {
+    p_secret: value,
+    p_name: name,
+  });
+  if (error || !data) {
+    throw new PmsRouterError(
+      `Failed to store secret in Vault: ${error?.message ?? 'no UUID returned'}`,
+    );
+  }
+  return `vault:${data as string}`;
 }
