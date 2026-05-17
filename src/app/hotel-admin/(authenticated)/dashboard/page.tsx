@@ -94,9 +94,7 @@ function BarChart({ data }: { data: DayBucket[] }) {
               className="w-full rounded-sm transition-all duration-500"
               style={{
                 height: `${pct}%`,
-                background: isToday
-                  ? 'rgba(201,168,76,0.7)'
-                  : 'rgba(255,255,255,0.12)',
+                background: isToday ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.12)',
               }}
             />
             <span className="text-[9px] text-white/25 leading-none">
@@ -109,7 +107,7 @@ function BarChart({ data }: { data: DayBucket[] }) {
   );
 }
 
-/* ─── Inline donut for type breakdown ───────────────────────── */
+/* ─── Type breakdown bars ──────────────────────────────────── */
 function TypeBreakdown({ data }: { data: TypeBucket[] }) {
   const total = data.reduce((s, d) => s + d.count, 0);
   if (total === 0) return <p className="text-[13px] text-white/30 py-4 text-center">No requests yet</p>;
@@ -138,9 +136,7 @@ function TypeBreakdown({ data }: { data: TypeBucket[] }) {
 
 /* ─── Skeleton pulse ─────────────────────────────────────────── */
 function Skeleton({ className = '' }: { className?: string }) {
-  return (
-    <div className={`bg-white/[0.06] rounded animate-pulse ${className}`} />
-  );
+  return <div className={`bg-white/[0.06] rounded animate-pulse ${className}`} />;
 }
 
 /* ─── Main page ──────────────────────────────────────────────── */
@@ -165,7 +161,6 @@ export default function HotelAdminDashboardPage() {
 
   useEffect(() => {
     void fetchStats();
-    // Auto-refresh every 60 seconds so staff see live updates
     intervalRef.current = setInterval(() => void fetchStats(), 60_000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
@@ -175,7 +170,6 @@ export default function HotelAdminDashboardPage() {
   const hasHotspots    = (s?.hotspots?.length ?? 0) > 0;
   const showAlertStrip = !loading && (hasSlaBreaches || hasHotspots);
 
-  /* ─── KPI cards config ─────────────────────────────────────── */
   const KPI_CARDS = [
     {
       label: 'Active Requests',
@@ -227,6 +221,9 @@ export default function HotelAdminDashboardPage() {
     },
   ];
 
+  // Column widths for skeleton table cells (as percentages)
+  const SKELETON_COL_WIDTHS = [60, 20, 30, 25, 20];
+
   return (
     <div className="px-5 py-8 md:px-8 space-y-6 pb-16">
 
@@ -236,14 +233,11 @@ export default function HotelAdminDashboardPage() {
         <h1 className="text-[22px] font-semibold text-white mt-1">Dashboard</h1>
       </div>
 
-      {/* ── Alert strip ────────────────────────────────────────── */}
+      {/* Alert strip */}
       {showAlertStrip && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex flex-col gap-2">
           {hasSlaBreaches && (
-            <Link
-              href="/hotel-admin/requests?status=pending"
-              className="flex items-center gap-2 group"
-            >
+            <Link href="/hotel-admin/requests?status=pending" className="flex items-center gap-2 group">
               <AlertTriangle size={14} className="text-amber-400 shrink-0" />
               <span className="text-[13px] text-amber-300">
                 <span className="font-semibold">{s!.requests.sla_breaches}</span>
@@ -263,31 +257,26 @@ export default function HotelAdminDashboardPage() {
         </div>
       )}
 
-      {/* ── KPI cards (2 col mobile, 3 col md, 6 col lg) ──────── */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {KPI_CARDS.map(({ label, value, icon: Icon, href, sub, highlight }) => {
           const inner = (
             <div
-              className={`relative bg-white/[0.02] border rounded-xl p-4 flex flex-col gap-2 h-full transition-colors
-                ${
-                  highlight
-                    ? 'border-amber-500/30 bg-amber-500/[0.04]'
-                    : 'border-white/[0.06] hover:border-white/[0.10]'
-                }`}
+              className={`relative bg-white/[0.02] border rounded-xl p-4 flex flex-col gap-2 h-full transition-colors ${
+                highlight
+                  ? 'border-amber-500/30 bg-amber-500/[0.04]'
+                  : 'border-white/[0.06] hover:border-white/[0.10]'
+              }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-[#C9A84C]/60 uppercase tracking-[0.1em] leading-tight">{label}</span>
                 <Icon size={14} className={highlight ? 'text-amber-400/60' : 'text-white/20'} />
               </div>
-              <span className={`text-[24px] font-semibold leading-none ${ highlight ? 'text-amber-300' : 'text-white' }`}>
+              <span className={`text-[24px] font-semibold leading-none ${highlight ? 'text-amber-300' : 'text-white'}`}>
                 {loading ? <Skeleton className="h-6 w-10" /> : value}
               </span>
-              {sub && (
-                <span className="text-[10px] text-white/30 leading-none">{sub}</span>
-              )}
-              {href && !loading && (
-                <ArrowUpRight size={11} className="absolute top-3 right-3 text-white/15" />
-              )}
+              {sub && <span className="text-[10px] text-white/30 leading-none">{sub}</span>}
+              {href && !loading && <ArrowUpRight size={11} className="absolute top-3 right-3 text-white/15" />}
             </div>
           );
           return href ? (
@@ -298,13 +287,13 @@ export default function HotelAdminDashboardPage() {
         })}
       </div>
 
-      {/* ── Two-column body ────────────────────────────────────── */}
+      {/* Two-column body */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        {/* Left: 7-day chart + type breakdown */}
+        {/* Left column */}
         <div className="lg:col-span-1 flex flex-col gap-4">
 
-          {/* 7-day requests chart */}
+          {/* 7-day chart */}
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -317,20 +306,17 @@ export default function HotelAdminDashboardPage() {
                 </span>
               )}
             </div>
-            {loading
-              ? <Skeleton className="h-[72px] w-full" />
-              : <BarChart data={s?.requests.by_day ?? []} />
-            }
+            {loading ? <Skeleton className="h-[72px] w-full" /> : <BarChart data={s?.requests.by_day ?? []} />}
           </div>
 
-          {/* Service type breakdown */}
+          {/* Type breakdown */}
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <Users size={13} className="text-white/30" />
               <span className="text-[12px] font-medium text-white/60">Top Request Types</span>
             </div>
             {loading
-              ? <div className="space-y-3">{Array.from({length: 4}).map((_,i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
+              ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
               : <TypeBreakdown data={s?.requests.by_type ?? []} />
             }
           </div>
@@ -347,13 +333,13 @@ export default function HotelAdminDashboardPage() {
               </Link>
             </div>
             {loading ? (
-              <div className="space-y-3">{Array.from({length:3}).map((_,i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
+              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}</div>
             ) : (
               <div className="space-y-2.5">
                 {[
-                  { label: 'Active Guests',      value: s?.stays.active_count ?? 0 },
-                  { label: 'Arrivals Today',     value: s?.stays.arrivals_today ?? 0 },
-                  { label: 'Departures Today',   value: s?.stays.departures_today ?? 0 },
+                  { label: 'Active Guests',    value: s?.stays.active_count ?? 0 },
+                  { label: 'Arrivals Today',   value: s?.stays.arrivals_today ?? 0 },
+                  { label: 'Departures Today', value: s?.stays.departures_today ?? 0 },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between items-center">
                     <span className="text-[12px] text-white/50">{label}</span>
@@ -372,10 +358,7 @@ export default function HotelAdminDashboardPage() {
               <LayoutGrid size={13} className="text-white/30" />
               <span className="text-[13px] font-medium text-white/70">Recent Requests</span>
             </div>
-            <Link
-              href="/hotel-admin/requests"
-              className="text-[11px] text-[#C9A84C]/50 hover:text-[#C9A84C]/80 transition-colors flex items-center gap-0.5"
-            >
+            <Link href="/hotel-admin/requests" className="text-[11px] text-[#C9A84C]/50 hover:text-[#C9A84C]/80 transition-colors flex items-center gap-0.5">
               View all <ArrowUpRight size={10} />
             </Link>
           </div>
@@ -393,9 +376,13 @@ export default function HotelAdminDashboardPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="border-b border-white/[0.04]">
-                      {[60, 20, 30, 25, 20].map((w, j) => (
+                      {SKELETON_COL_WIDTHS.map((w, j) => (
                         <td key={j} className="px-5 py-3.5">
-                          <Skeleton className={`h-3 w-${w === 60 ? 'full' : `[${w}%]`}`} style={{ width: `${w}%` }} />
+                          {/* Inline div avoids passing style to Skeleton component */}
+                          <div
+                            className="h-3 bg-white/[0.06] rounded animate-pulse"
+                            style={{ width: `${w}%` }}
+                          />
                         </td>
                       ))}
                     </tr>
@@ -408,10 +395,7 @@ export default function HotelAdminDashboardPage() {
                   </tr>
                 ) : (
                   s.requests.recent.map((task) => (
-                    <tr
-                      key={task.id}
-                      className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-default"
-                    >
+                    <tr key={task.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-default">
                       <td className="px-5 py-3.5 max-w-[180px]">
                         <span className="text-[13px] text-white/80 font-medium truncate block">{task.title}</span>
                       </td>
@@ -427,7 +411,7 @@ export default function HotelAdminDashboardPage() {
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_PILL[task.status] ?? STATUS_PILL.cancelled}`}>
                           {STATUS_LABEL[task.status] ?? task.status}
                         </span>
-                      </td>
+2                      </td>
                       <td className="px-5 py-3.5">
                         <span className="text-[11px] text-white/30">{timeAgo(task.createdat)}</span>
                       </td>
