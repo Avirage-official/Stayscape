@@ -460,7 +460,7 @@ export default function StayHomePage() {
   }, [activeTile, unavailableReason]);
 
   return (
-    <div className={dmSans.className} style={{ background: 'var(--background)', minHeight: '100vh', color: 'var(--text-primary)', padding: '28px 28px 48px' }}>
+    <div className={dmSans.className} style={{ background: 'var(--background)', minHeight: '100dvh', color: 'var(--text-primary)', padding: '28px 28px 48px' }}>
       <style>{`
         .stay-home-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
         @media (min-width: 1024px) { .stay-home-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; } }
@@ -477,7 +477,7 @@ export default function StayHomePage() {
         }
         .tile:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
         .tile:active { transform: scale(0.97); }
-        .tile-label  { font-size: 11px; font-weight: 500; color: var(--text-secondary); text-align: center; line-height: 1.3; letter-spacing: 0.01em; }
+        .tile-label  { font-size: 11px; font-weight: 500; color: var(--text-secondary); text-align: center; line-height: 1.3; letter-spacing: 0.01em; overflow-wrap: break-word; word-break: break-word; max-width: 100%; }
         .tile-icon   { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; color: var(--gold); }
         .amenity-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
         @media (min-width: 900px) { .amenity-row { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
