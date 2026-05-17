@@ -6,29 +6,6 @@
  * so the dashboard only needs one fetch.
  *
  * Auth: Supabase Bearer token → verified → property_id from hotel_admins
- *
- * Returns:
- * {
- *   requests: {
- *     active: number,          // pending + in_progress
- *     pending: number,         // pending only
- *     sla_breaches: number,    // pending tasks older than SLA_THRESHOLD_MS
- *     avg_response_mins: number | null,  // avg mins from created → started_at
- *     by_day: { date: string; count: number }[],  // last 7 days incl. today
- *     by_type: { type: string; count: number }[], // all-time counts by task_type
- *     recent: RecentTask[],    // last 8 tasks sorted newest first
- *   },
- *   stays: {
- *     arrivals_today: number,
- *     departures_today: number,
- *     active_count: number,    // checkindate <= today <= checkoutdate, not cancelled
- *     occupancy_pct: number | null,  // null if no rooms configured
- *   },
- *   rooms: {
- *     total: number,
- *   },
- *   hotspots: { room: string; open_count: number }[],  // rooms with >1 open request
- * }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -38,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 const SLA_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
-/* ── Auth helper (same pattern as requests/route.ts) ── */
+/* ── Auth helper ── */
 async function resolvePropertyId(
   request: NextRequest,
 ): Promise<{ propertyId: string } | NextResponse> {
@@ -66,7 +43,10 @@ function isNextResponse(v: unknown): v is NextResponse {
   return v instanceof NextResponse;
 }
 
-/* ── Types ── */
+/* ── Types ──
+   Supabase returns joined relations as arrays even for single-row joins.
+   We take [0] when accessing nested fields.
+*/
 interface RawTask {
   id: string;
   title: string;
@@ -74,8 +54,9 @@ interface RawTask {
   status: string;
   createdat: string;
   started_at: string | null;
-  property_rooms: { room_number: string } | null;
-  stays: { guest_email: string | null; roomlabel: string | null } | null;
+  // Supabase always returns these as arrays
+  property_rooms: { room_number: string }[] | null;
+  stays: { guest_email: string | null; roomlabel: string | null }[] | null;
 }
 
 interface RawStay {
@@ -86,6 +67,17 @@ interface RawStay {
   guestcount: number | null;
 }
 
+/* ── Relation accessors (safe array[0]) ── */
+function roomNumber(t: RawTask): string | null {
+  return Array.isArray(t.property_rooms) ? (t.property_rooms[0]?.room_number ?? null) : null;
+}
+function roomLabel(t: RawTask): string | null {
+  return Array.isArray(t.stays) ? (t.stays[0]?.roomlabel ?? null) : null;
+}
+function guestEmail(t: RawTask): string | null {
+  return Array.isArray(t.stays) ? (t.stays[0]?.guest_email ?? null) : null;
+}
+
 /* ── Main handler ── */
 export async function GET(request: NextRequest) {
   const auth = await resolvePropertyId(request);
@@ -93,30 +85,25 @@ export async function GET(request: NextRequest) {
   const { propertyId } = auth;
 
   const supabase = getSupabaseAdmin();
-  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  // 7-day window for the chart
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
 
-  /* ── Parallel fetches ── */
   const [tasksResult, staysResult, roomsResult] = await Promise.all([
-    // All tasks (unfiltered — we slice client side for the chart window)
     supabase
       .from('service_tasks')
       .select('id, title, task_type, status, createdat, started_at, property_rooms(room_number), stays(guest_email, roomlabel)')
       .eq('propertyid', propertyId)
       .order('createdat', { ascending: false }),
 
-    // All non-cancelled stays
     supabase
       .from('stays')
       .select('id, checkindate, checkoutdate, status, guestcount')
       .eq('propertyid', propertyId)
       .neq('status', 'cancelled'),
 
-    // Room count only
     supabase
       .from('property_rooms')
       .select('id', { count: 'exact', head: true })
@@ -128,32 +115,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
-  const tasks  = (tasksResult.data ?? []) as RawTask[];
-  const stays  = (staysResult.data ?? []) as RawStay[];
+  const tasks      = (tasksResult.data ?? []) as unknown as RawTask[];
+  const stays      = (staysResult.data ?? []) as unknown as RawStay[];
   const totalRooms = roomsResult.count ?? 0;
 
   /* ── Request aggregations ── */
-  const now = Date.now();
-
+  const now     = Date.now();
   const active  = tasks.filter((t) => t.status === 'pending' || t.status === 'in_progress');
   const pending = tasks.filter((t) => t.status === 'pending');
 
-  // SLA breaches: pending tasks older than 15 mins with no response
   const slaBreaches = pending.filter(
     (t) => now - new Date(t.createdat).getTime() > SLA_THRESHOLD_MS,
   );
 
-  // Avg response time: tasks that have a started_at (in_progress or completed)
-  const respondedTasks = tasks.filter((t) => t.started_at);
+  const respondedTasks  = tasks.filter((t) => t.started_at);
   const avgResponseMins = respondedTasks.length > 0
     ? Math.round(
-        respondedTasks.reduce((sum, t) => {
-          return sum + (new Date(t.started_at!).getTime() - new Date(t.createdat).getTime());
-        }, 0) / respondedTasks.length / 60_000,
+        respondedTasks.reduce((sum, t) =>
+          sum + (new Date(t.started_at!).getTime() - new Date(t.createdat).getTime()), 0,
+        ) / respondedTasks.length / 60_000,
       )
     : null;
 
-  // 7-day chart: build a map of date → count for the last 7 days
+  // 7-day chart
   const dayMap: Record<string, number> = {};
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
@@ -168,28 +152,28 @@ export async function GET(request: NextRequest) {
     });
   const byDay = Object.entries(dayMap).map(([date, count]) => ({ date, count }));
 
-  // By type (all time)
+  // By type
   const typeMap: Record<string, number> = {};
   tasks.forEach((t) => { typeMap[t.task_type] = (typeMap[t.task_type] ?? 0) + 1; });
   const byType = Object.entries(typeMap)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Recent 8 tasks
+  // Recent 8
   const recent = tasks.slice(0, 8).map((t) => ({
-    id: t.id,
-    title: t.title,
-    task_type: t.task_type,
-    status: t.status,
-    createdat: t.createdat,
-    room: t.property_rooms?.room_number ?? t.stays?.roomlabel ?? null,
-    guest_email: t.stays?.guest_email ?? null,
+    id:          t.id,
+    title:       t.title,
+    task_type:   t.task_type,
+    status:      t.status,
+    createdat:   t.createdat,
+    room:        roomNumber(t) ?? roomLabel(t),
+    guest_email: guestEmail(t),
   }));
 
-  // Room hotspots: rooms with >1 open request
+  // Room hotspots
   const roomOpenMap: Record<string, number> = {};
   active.forEach((t) => {
-    const room = t.property_rooms?.room_number ?? t.stays?.roomlabel;
+    const room = roomNumber(t) ?? roomLabel(t);
     if (room) roomOpenMap[room] = (roomOpenMap[room] ?? 0) + 1;
   });
   const hotspots = Object.entries(roomOpenMap)
@@ -207,12 +191,12 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     requests: {
-      active:             active.length,
-      pending:            pending.length,
-      sla_breaches:       slaBreaches.length,
-      avg_response_mins:  avgResponseMins,
-      by_day:             byDay,
-      by_type:            byType,
+      active:            active.length,
+      pending:           pending.length,
+      sla_breaches:      slaBreaches.length,
+      avg_response_mins: avgResponseMins,
+      by_day:            byDay,
+      by_type:           byType,
       recent,
     },
     stays: {
@@ -221,9 +205,7 @@ export async function GET(request: NextRequest) {
       active_count:     activeStays.length,
       occupancy_pct:    occupancyPct,
     },
-    rooms: {
-      total: totalRooms,
-    },
+    rooms:    { total: totalRooms },
     hotspots,
   });
 }
