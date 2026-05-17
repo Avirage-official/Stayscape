@@ -104,7 +104,7 @@ interface TileFields {
 const ALL_TILES: (Tile & { toggleKey?: keyof ServiceFlags })[] = [
   { id: 'housekeeping',    label: 'Housekeeping',       icon: <IconBed />,      action: { kind: 'request', task_type: 'housekeeping',          title: 'Housekeeping requested' },                      toggleKey: 'housekeeping_enabled' },
   { id: 'room_service',    label: 'Room Service',        icon: <IconFork />,     action: { kind: 'request', task_type: 'room_service',           title: 'Room service requested' },                      toggleKey: 'room_service_enabled' },
-  { id: 'restaurants_bars',label: 'Restaurants & Bars',  icon: <IconFork />,     action: { kind: 'request', task_type: 'restaurant_reservation', title: 'Restaurant or bar reservation requested' },     toggleKey: 'restaurant_enabled' },
+  { id: 'restaurants_bars',label: 'Restaurants & Bars',  icon: <IconWineGlass />, action: { kind: 'request', task_type: 'restaurant_reservation', title: 'Restaurant or bar reservation requested' },     toggleKey: 'restaurant_enabled' },
   { id: 'laundry',         label: 'Laundry',             icon: <IconLaundry />,  action: { kind: 'request', task_type: 'laundry',                title: 'Laundry pickup requested' },                    toggleKey: 'laundry_enabled' },
   { id: 'maintenance',     label: 'Maintenance',         icon: <IconWrench />,   action: { kind: 'request', task_type: 'maintenance',            title: 'Maintenance requested' },                       toggleKey: 'maintenance_enabled' },
   { id: 'transport',       label: 'Transportation',      icon: <IconCar />,      action: { kind: 'request', task_type: 'taxi_booking',           title: 'Transportation requested' },                    toggleKey: 'transport_enabled' },
@@ -248,11 +248,23 @@ function getUnavailableCopy(tileId: string, resumesAt: string) {
 
 // ─── Helpers ───
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+function getGreeting(hotelTimezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: hotelTimezone,
+      hour: 'numeric',
+      hour12: false,
+    }).formatToParts(new Date());
+    const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  } catch {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
 }
 
 async function getBearerToken(): Promise<string | null> {
@@ -266,7 +278,7 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--background)',
   border: '1px solid var(--border)',
   borderRadius: 10,
-  padding: '10px 14px',
+  padding: '12px 14px',
   fontSize: 13,
   color: 'var(--text-primary)',
   outline: 'none',
@@ -287,7 +299,7 @@ const policyBoxStyle: React.CSSProperties = {
   background: 'rgba(201, 168, 117, 0.07)',
   border: '1px solid rgba(201, 168, 117, 0.18)',
   borderRadius: 10,
-  padding: '10px 14px',
+  padding: '12px 14px',
   fontSize: 12,
   lineHeight: 1.55,
   color: 'var(--text-muted)',
@@ -452,7 +464,7 @@ export default function StayHomePage() {
     }
   };
 
-  const greeting = useMemo(() => getGreeting(), []);
+  const greeting = useMemo(() => getGreeting(hotelTimezone), [hotelTimezone]);
 
   const unavailableCopy = useMemo(() => {
     if (!activeTile || !unavailableReason) return null;
@@ -859,7 +871,8 @@ function svgProps(size = 22) {
   return { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 }
 function IconBed()      { return <svg {...svgProps()}><path d="M3 18v-7a3 3 0 013-3h12a3 3 0 013 3v7" /><path d="M3 14h18" /><path d="M3 18h18" /></svg>; }
-function IconFork()     { return <svg {...svgProps()}><path d="M7 2v8a3 3 0 003 3v9" /><path d="M11 2v6" /><path d="M3 2v6a4 4 0 004 4" /><path d="M17 2v20M17 2c2 0 3 2 3 5v6h-3" /></svg>; }
+function IconFork()      { return <svg {...svgProps()}><path d="M7 2v8a3 3 0 003 3v9" /><path d="M11 2v6" /><path d="M3 2v6a4 4 0 004 4" /><path d="M17 2v20M17 2c2 0 3 2 3 5v6h-3" /></svg>; }
+function IconWineGlass() { return <svg {...svgProps()}><path d="M8 2h8l-2 8a4 4 0 01-4 3 4 4 0 01-4-3L8 2z" /><path d="M12 13v7" /><path d="M9 20h6" /></svg>; }
 function IconDumbbell() { return <svg {...svgProps()}><path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12" /></svg>; }
 function IconLaundry()  { return <svg {...svgProps()}><rect x="4" y="3" width="16" height="18" rx="2" /><circle cx="12" cy="13" r="4" /><path d="M8 6h.01M11 6h.01" /></svg>; }
 function IconCar()      { return <svg {...svgProps()}><path d="M5 17h14M6 17l1-5h10l1 5M7 12l1.5-4h7L17 12" /><circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" /></svg>; }
