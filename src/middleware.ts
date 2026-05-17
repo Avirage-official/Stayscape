@@ -57,9 +57,7 @@ export async function middleware(request: NextRequest) {
     const saSession = request.cookies.get('sa_session');
     const sessionValid = /^[0-9a-f]{32}\.[0-9a-f]{64}$/.test(saSession?.value ?? '');
     if (!sessionValid) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
   }
 
