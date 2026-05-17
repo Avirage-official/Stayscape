@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { decryptApiKey } from '@/lib/pms/router';
 import {
   MEWS_ENDPOINTS,
   MEWS_RESERVATION_EXPECTED_FIELDS,
@@ -140,10 +141,11 @@ async function checkPropertyDrift(
   apiEndpoint: string,
   apiKeyEncrypted: string,
 ): Promise<PropertyCheckResult> {
-  // Decrypt the api_key blob — same pattern as MewsAdapter constructor
+  // Decrypt then parse the api_key blob — routed through decryptApiKey()
+  // so Phase 2 encryption is automatically picked up here too.
   let auth: MewsAuthEnvelope;
   try {
-    const parsed = JSON.parse(apiKeyEncrypted) as {
+    const parsed = JSON.parse(decryptApiKey(apiKeyEncrypted)) as {
       ClientToken?: string;
       AccessToken?: string;
     };

@@ -150,7 +150,7 @@ export class MewsAdapter implements PmsAdapter {
     return { externalId: response.Id };
   }
 
-  async pushGuestPreferences(): Promise<void> {
+  async pushGuestPreferences(_preferences: import('../types').GuestPreference[]): Promise<void> {
     /**
      * Phase 2: write guest preferences (allergies, room prefs, etc.)
      * back to Mews customer notes. Skipping in v1 — preferences live
@@ -184,21 +184,26 @@ export class MewsAdapter implements PmsAdapter {
     for (const event of payload.Events) {
       switch (event.Type) {
         case 'ReservationCreated':
+          if (!event.Reservation?.Id) break;
           events.push({ type: 'stay.created', externalId: event.Reservation.Id });
           break;
-        case 'ReservationUpdated':
+        case 'ReservationUpdated': {
+          if (!event.Reservation?.Id) break;
           /* Drill into specific transitions where possible */
-          if (event.Reservation.State === 'Started') {
-            events.push({ type: 'stay.checked_in', externalId: event.Reservation.Id });
-          } else if (event.Reservation.State === 'Processed') {
-            events.push({ type: 'stay.checked_out', externalId: event.Reservation.Id });
-          } else if (event.Reservation.State === 'Canceled') {
-            events.push({ type: 'stay.cancelled', externalId: event.Reservation.Id });
+          const { Id, State } = event.Reservation;
+          if (State === 'Started') {
+            events.push({ type: 'stay.checked_in', externalId: Id });
+          } else if (State === 'Processed') {
+            events.push({ type: 'stay.checked_out', externalId: Id });
+          } else if (State === 'Canceled') {
+            events.push({ type: 'stay.cancelled', externalId: Id });
           } else {
-            events.push({ type: 'stay.updated', externalId: event.Reservation.Id });
+            events.push({ type: 'stay.updated', externalId: Id });
           }
           break;
+        }
         case 'ResourceStatusChanged':
+          if (!event.Resource?.Id) break;
           events.push({
             type: 'room.status_changed',
             roomNumber: event.Resource.Number ?? event.Resource.Id,
@@ -373,6 +378,8 @@ function hmacSha256Hex(secret: string, payload: string): string {
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
+  // Both inputs are SHA-256 hex digests (always 64 chars). A length
+  // difference means a malformed input — not a match.
   if (a.length !== b.length) return false;
   let result = 0;
   for (let i = 0; i < a.length; i++) {
@@ -387,19 +394,31 @@ function timingSafeEqual(a: string, b: string): boolean {
    Mews's webhook envelope shape — we only need a minimal type guard.
    ────────────────────────────────────────────────────────────────── */
 
+interface MewsWebhookReservationEvent {
+  Type: 'ReservationCreated' | 'ReservationUpdated';
+  Reservation: { Id: string; State: MewsReservationState };
+  Resource?: never;
+}
+
+interface MewsWebhookResourceEvent {
+  Type: 'ResourceStatusChanged';
+  Resource: { Id: string; Number?: string; State?: string };
+  Reservation?: never;
+}
+
+interface MewsWebhookUnknownEvent {
+  Type: string;
+  Reservation?: { Id: string; State: MewsReservationState };
+  Resource?: { Id: string; Number?: string; State?: string };
+}
+
+type MewsWebhookEvent =
+  | MewsWebhookReservationEvent
+  | MewsWebhookResourceEvent
+  | MewsWebhookUnknownEvent;
+
 interface MewsWebhookPayload {
-  Events: Array<{
-    Type: string;
-    Reservation: {
-      Id: string;
-      State: MewsReservationState;
-    };
-    Resource: {
-      Id: string;
-      Number?: string;
-      State?: string;
-    };
-  }>;
+  Events: MewsWebhookEvent[];
 }
 
 function isMewsWebhookPayload(p: unknown): p is MewsWebhookPayload {
