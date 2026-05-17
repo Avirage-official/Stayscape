@@ -10,6 +10,7 @@ import { useRegion } from '@/lib/context/region-context';
 import { getStaySelectedRegion } from '@/components/guest-lounge/stay-region';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import StayOnboardingFlow from '@/components/guest-lounge/StayOnboardingFlow';
+import BookingReferenceGate from '@/components/guest-lounge/BookingReferenceGate';
 import type { CustomerStay } from '@/types/customer';
 import { StayContext } from './stay-context';
 
@@ -323,6 +324,10 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
 
   const dbSlug = stay.property?.slug ?? null;
   if (dbSlug === null || dbSlug !== propertySlug) return null;
+
+  if (stay.stay_confirmed_by_guest === false) {
+    return <BookingReferenceGate propertySlug={propertySlug} stay={stay} userId={user.id} />;
+  }
 
   if (!stay.onboarding_completed && !onboardingCompleted) {
     return (
