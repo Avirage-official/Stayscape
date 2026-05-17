@@ -12,6 +12,12 @@
  *
  * Tiles that are info-only (no insert):
  *   Facilities, Information
+ *
+ * Time-gate: if the hotel has set operating hours for a service (via
+ * service_hours returned from GET /api/customer/policies), tapping the tile
+ * outside those hours shows a warm "we're resting" dialog instead of the
+ * request form. The send button is hidden and the guest is shown exactly
+ * when the service resumes.
  */
 
 import React, { useEffect, useMemo, useState, useContext } from 'react';
@@ -59,6 +65,22 @@ interface PolicyText {
   luggage_pickup_fee: string | null;
   transport_advance_notice_mins: number | null;
 }
+
+/**
+ * Service hours as set by the hotel admin.
+ * All fields are optional — if the hotel hasn't configured hours for a
+ * service, no time-gate is applied.
+ */
+interface ServiceHourEntry {
+  start?: string | null;        // "HH:MM" 24-hour
+  end?: string | null;          // "HH:MM" 24-hour
+  last_order?: string | null;   // room service cut-off
+  pickup_start?: string | null; // laundry
+  pickup_cutoff?: string | null;
+  emergency_24hr?: boolean;     // maintenance override
+}
+
+type ServiceHours = Partial<Record<string, ServiceHourEntry>>;
 
 type TileAction =
   | { kind: 'request'; task_type: string; title: string }
@@ -181,6 +203,140 @@ const ALL_TILES: (Tile & { toggleKey?: keyof ServiceFlags })[] = [
   },
 ];
 
+// ─── Time-gate helpers ───
+
+/**
+ * Parse "HH:MM" into total minutes since midnight.
+ * Returns null if the string is missing or malformed.
+ */
+function toMinutes(t: string | null | undefined): number | null {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+/** Current local time as minutes since midnight. */
+function nowMinutes(): number {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/** Format "HH:MM" → "8:00 AM" / "11:30 PM" for display. */
+function fmt(t: string | null | undefined): string {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return t;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/**
+ * Returns null if the service is available right now, or a human-readable
+ * "resumes at X" string if it is outside operating hours.
+ *
+ * Maintenance with emergency_24hr set is always available.
+ * Services with no hours configured are always available.
+ */
+function getUnavailableReason(
+  tileId: string,
+  hours: ServiceHours,
+): string | null {
+  const entry = hours[tileId];
+  if (!entry) return null;
+
+  // Maintenance emergency override
+  if (tileId === 'maintenance' && entry.emergency_24hr) return null;
+
+  // Determine the relevant start/end for this tile
+  let start: string | null | undefined;
+  let end: string | null | undefined;
+
+  if (tileId === 'laundry') {
+    start = entry.pickup_start;
+    end = entry.pickup_cutoff;
+  } else if (tileId === 'room_service') {
+    // Use last_order as the effective end if present, otherwise end
+    start = entry.start;
+    end = entry.last_order ?? entry.end;
+  } else {
+    start = entry.start;
+    end = entry.end;
+  }
+
+  const startMin = toMinutes(start);
+  const endMin = toMinutes(end);
+
+  // If either bound is missing, no gate applied
+  if (startMin === null || endMin === null) return null;
+
+  const now = nowMinutes();
+  if (now >= startMin && now < endMin) return null;
+
+  // Outside hours — build a friendly resumption message
+  if (now < startMin) {
+    return `resumes at ${fmt(start)}`;
+  }
+  // Past end — wraps to next day
+  return `resumes tomorrow at ${fmt(start)}`;
+}
+
+// ─── Warm unavailability copy per service ───
+
+const UNAVAILABLE_COPY: Record<string, { headline: string; body: (resumesAt: string) => string }> = {
+  housekeeping: {
+    headline: 'Housekeeping is resting for now',
+    body: (r) =>
+      `We completely understand how important a freshened room is, and we wish we could help right now. Our housekeeping team ${r} — please do reach out then and we will take wonderful care of you.`,
+  },
+  room_service: {
+    headline: 'Our kitchen is closed for now',
+    body: (r) =>
+      `We are so sorry — in-room dining ${r}. We know that is never the answer you want to hear, especially when hunger strikes. Our team will be ready to prepare something delicious for you very soon.`,
+  },
+  laundry: {
+    headline: 'Laundry pickup has closed for today',
+    body: (r) =>
+      `We apologise for the inconvenience. Our laundry team ${r}, and we will make sure your items receive the full care they deserve. Thank you so much for your patience.`,
+  },
+  maintenance: {
+    headline: 'Maintenance is currently off-duty',
+    body: (r) =>
+      `We are truly sorry you are experiencing an issue. Our maintenance team ${r}. If this is urgent, please call the front desk directly and we will do everything we can to help you tonight.`,
+  },
+  transport: {
+    headline: 'Transportation is unavailable right now',
+    body: (r) =>
+      `We apologise — our transport service ${r}. We hope this has not caused too much disruption to your plans. Please check back with us then and we will arrange everything for you.`,
+  },
+  luggage_pickup: {
+    headline: 'Luggage pickup has closed for now',
+    body: (r) =>
+      `We are sorry for the inconvenience. Our bell team ${r} — they will be more than happy to assist you with your bags when they return.`,
+  },
+  restaurants_bars: {
+    headline: 'Reservations are closed for now',
+    body: (r) =>
+      `We wish we could lock in your table right this moment. Our reservations team ${r} and will be delighted to help you plan a memorable meal.`,
+  },
+  late_checkout: {
+    headline: 'Late checkout requests are paused',
+    body: (r) =>
+      `We are sorry — our front desk team processes late checkout requests ${r}. We will do our very best to accommodate you when we open.`,
+  },
+  default: {
+    headline: 'This service is unavailable right now',
+    body: (r) =>
+      `We sincerely apologise. This service ${r}. Our team will be ready to help you very soon — thank you for your understanding.`,
+  },
+};
+
+function getUnavailableCopy(tileId: string, resumesAt: string) {
+  const copy = UNAVAILABLE_COPY[tileId] ?? UNAVAILABLE_COPY.default;
+  return { headline: copy.headline, body: copy.body(resumesAt) };
+}
+
 // ─── Helpers ───
 
 function getGreeting(): string {
@@ -267,6 +423,7 @@ export default function StayHomePage() {
     luggage_pickup_fee: null,
     transport_advance_notice_mins: null,
   });
+  const [serviceHours, setServiceHours] = useState<ServiceHours>({});
   const [policiesLoading, setPoliciesLoading] = useState(true);
 
   useEffect(() => {
@@ -281,10 +438,12 @@ export default function StayHomePage() {
         const json = (await res.json()) as {
           services: ServiceFlags;
           policy_text: PolicyText;
+          service_hours?: ServiceHours;
         };
         if (!cancelled) {
           setServices(json.services);
           setPolicyText(json.policy_text);
+          setServiceHours(json.service_hours ?? {});
         }
       } catch {
         // silent — alwaysShow tiles still render
@@ -325,8 +484,29 @@ export default function StayHomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const openTile = (tile: Tile) => { setFields({}); setActiveTile(tile); };
-  const closeDialog = () => { if (submitting) return; setActiveTile(null); setFields({}); };
+  /**
+   * When a tile is tapped we check its operating hours first.
+   * If outside hours, we store the unavailability reason so the dialog
+   * can render the warm apology view instead of the request form.
+   */
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
+
+  const openTile = (tile: Tile) => {
+    setFields({});
+    const reason = tile.action.kind === 'request'
+      ? getUnavailableReason(tile.id, serviceHours)
+      : null;
+    setUnavailableReason(reason);
+    setActiveTile(tile);
+  };
+
+  const closeDialog = () => {
+    if (submitting) return;
+    setActiveTile(null);
+    setFields({});
+    setUnavailableReason(null);
+  };
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3200);
@@ -370,6 +550,7 @@ export default function StayHomePage() {
 
   // ── Validate ──
   const canSubmit = (tile: Tile): boolean => {
+    if (unavailableReason) return false;
     switch (tile.id) {
       case 'restaurants_bars': return !!fields.restaurantNotes?.trim();
       case 'transport': return !!fields.transportTime?.trim() && !!fields.transportDest?.trim();
@@ -404,6 +585,7 @@ export default function StayHomePage() {
       }
       setActiveTile(null);
       setFields({});
+      setUnavailableReason(null);
       showToast(`${tile.label} request sent to the team.`);
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Something went wrong');
@@ -413,6 +595,12 @@ export default function StayHomePage() {
   };
 
   const greeting = useMemo(() => getGreeting(), []);
+
+  // ── Unavailability copy for the active tile ──
+  const unavailableCopy = useMemo(() => {
+    if (!activeTile || !unavailableReason) return null;
+    return getUnavailableCopy(activeTile.id, unavailableReason);
+  }, [activeTile, unavailableReason]);
 
   return (
     <div
@@ -504,6 +692,39 @@ export default function StayHomePage() {
         @keyframes skeleton-shimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
+        }
+        .unavail-moon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: rgba(201,168,117,0.08);
+          color: var(--gold);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 14px;
+          opacity: 0.85;
+        }
+        .unavail-body {
+          font-size: 13px;
+          line-height: 1.65;
+          color: var(--text-muted);
+          font-weight: 300;
+          margin: 8px 0 20px;
+        }
+        .unavail-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(201,168,117,0.09);
+          border: 1px solid rgba(201,168,117,0.2);
+          border-radius: 8px;
+          padding: 7px 12px;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--gold);
+          margin-bottom: 20px;
+          letter-spacing: 0.02em;
         }
       `}</style>
 
@@ -634,179 +855,208 @@ export default function StayHomePage() {
             onClick={(e) => e.stopPropagation()}
             style={{ background: 'var(--surface)', borderRadius: 22, padding: 26, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: '1px solid var(--border)' }}
           >
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(201,168,117,0.12)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-              {activeTile.icon}
-            </div>
-            <p className={cormorant.className} style={{ margin: 0, fontSize: 22, fontWeight: 400, color: 'var(--text-primary)' }}>
-              {activeTile.label}
-            </p>
 
-            {/* Info-only */}
-            {activeTile.action.kind === 'info' && (
-              <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                {activeTile.action.body}
-              </p>
-            )}
-
-            {/* Housekeeping */}
-            {activeTile.id === 'housekeeping' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Your room will be attended to shortly.</p>
-                <div>
-                  <label style={labelStyle}>Notes (optional)</label>
-                  <textarea className="sh-textarea" rows={2} placeholder="e.g. extra towels, more hangers…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+            {/* ── Time-gate: warm unavailability view ── */}
+            {unavailableReason && unavailableCopy ? (
+              <>
+                <div className="unavail-moon">
+                  <IconMoon />
                 </div>
-              </div>
-            )}
-
-            {/* Room Service */}
-            {activeTile.id === 'room_service' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  In-room dining request. Let us know what you&apos;d like and the team will confirm your order shortly.
+                <p className={cormorant.className} style={{ margin: 0, fontSize: 22, fontWeight: 400, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  {unavailableCopy.headline}
                 </p>
-                <div>
-                  <label style={labelStyle}>What would you like? (optional)</label>
-                  <textarea className="sh-textarea" rows={3} placeholder="e.g. burger and fries, sparkling water…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                <p className="unavail-body">{unavailableCopy.body}</p>
+                <div className="unavail-badge">
+                  <IconClock2 />
+                  {unavailableReason.charAt(0).toUpperCase() + unavailableReason.slice(1)}
                 </div>
-              </div>
-            )}
-
-            {/* Restaurants & Bars */}
-            {activeTile.id === 'restaurants_bars' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Let us know your preferred restaurant, date, time, and number of guests. We will confirm shortly.</p>
-                <div>
-                  <label style={labelStyle}>Reservation details <span style={{ color: 'var(--gold)' }}>*</span></label>
-                  <textarea className="sh-textarea" rows={3} placeholder="e.g. The Grill Room, tonight at 7:30pm, 2 guests" value={fields.restaurantNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, restaurantNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
-                </div>
-              </div>
-            )}
-
-            {/* Laundry */}
-            {activeTile.id === 'laundry' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  Leave your laundry bag outside the door and we&apos;ll collect it at your preferred time.
-                </p>
-                {policyText.laundry_policy && <div style={policyBoxStyle}>{policyText.laundry_policy}</div>}
-                <div>
-                  <label style={labelStyle}>Preferred pickup time (optional)</label>
-                  <input className="sh-input" type="time" value={fields.laundryTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, laundryTime: e.target.value }))} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Special instructions (optional)</label>
-                  <textarea className="sh-textarea" rows={2} placeholder="e.g. delicate items, no tumble dry…" value={fields.laundryNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, laundryNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
-                </div>
-              </div>
-            )}
-
-            {/* Maintenance */}
-            {activeTile.id === 'maintenance' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Our maintenance team will attend to the issue promptly.</p>
-                <div>
-                  <label style={labelStyle}>Type of issue <span style={{ color: 'var(--gold)' }}>*</span></label>
-                  <select className="sh-input" value={fields.maintenanceIssue ?? ''} onChange={(e) => setFields((f) => ({ ...f, maintenanceIssue: e.target.value }))} style={{ ...inputStyle, appearance: 'none' }}>
-                    <option value="">Select an issue…</option>
-                    <option>AC not working</option>
-                    <option>Heating not working</option>
-                    <option>Light bulb out</option>
-                    <option>Plumbing / leaking tap</option>
-                    <option>TV / remote issue</option>
-                    <option>Door lock issue</option>
-                    <option>Safe not opening</option>
-                    <option>No hot water</option>
-                    <option>Blocked drain</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Additional details (optional)</label>
-                  <textarea className="sh-textarea" rows={2} placeholder="Any extra detail that helps the team…" value={fields.maintenanceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, maintenanceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
-                </div>
-              </div>
-            )}
-
-            {/* Transportation */}
-            {activeTile.id === 'transport' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {policyText.transport_advance_notice_mins != null && (
-                  <div style={policyBoxStyle}>Please book at least {policyText.transport_advance_notice_mins} minutes in advance.</div>
-                )}
-                <div>
-                  <label style={labelStyle}>Pickup time <span style={{ color: 'var(--gold)' }}>*</span></label>
-                  <input className="sh-input" type="time" value={fields.transportTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, transportTime: e.target.value }))} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Destination <span style={{ color: 'var(--gold)' }}>*</span></label>
-                  <input className="sh-input" type="text" placeholder="e.g. Changi Airport, Orchard Road" value={fields.transportDest ?? ''} onChange={(e) => setFields((f) => ({ ...f, transportDest: e.target.value }))} style={inputStyle} />
-                </div>
-              </div>
-            )}
-
-            {/* Luggage Pickup */}
-            {activeTile.id === 'luggage_pickup' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {policyText.luggage_pickup_fee && <div style={policyBoxStyle}>Fee: {policyText.luggage_pickup_fee}</div>}
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>A member of the team will collect your bags from your room.</p>
-                <div>
-                  <label style={labelStyle}>Notes (optional)</label>
-                  <textarea className="sh-textarea" rows={2} placeholder="e.g. number of bags, ready time…" value={fields.luggageNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, luggageNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
-                </div>
-              </div>
-            )}
-
-            {/* Wake-up Call */}
-            {activeTile.id === 'wakeup' && (
-              <div style={{ margin: '14px 0 18px' }}>
-                <label style={labelStyle}>Wake-up time <span style={{ color: 'var(--gold)' }}>*</span></label>
-                <input className="sh-input" type="time" value={fields.wakeupTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, wakeupTime: e.target.value }))} style={inputStyle} />
-              </div>
-            )}
-
-            {/* Call Staff */}
-            {activeTile.id === 'call_staff' && (
-              <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>A member of the team will be with you shortly.</p>
-            )}
-
-            {/* Late Checkout */}
-            {activeTile.id === 'late_checkout' && (
-              <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
-                  Request a late checkout and we&apos;ll confirm availability with you.
-                </p>
-                <div style={policyBoxStyle}>
-                  {policyText.late_checkout_policy
-                    ? policyText.late_checkout_policy
-                    : policyText.late_checkout_free_if_available
-                      ? 'Late checkout is complimentary when availability allows.'
-                      : 'Late checkout is subject to availability and may incur a fee.'}
-                  {policyText.late_checkout_fee && (
-                    <span style={{ display: 'block', marginTop: 4, fontWeight: 500, color: 'var(--text-primary)' }}>Fee: {policyText.late_checkout_fee}</span>
-                  )}
-                </div>
-                <div>
-                  <label style={labelStyle}>Desired checkout time <span style={{ color: 'var(--gold)' }}>*</span></label>
-                  <input className="sh-input" type="time" max={policyText.late_checkout_max_time ?? undefined} value={fields.lateCheckoutTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, lateCheckoutTime: e.target.value }))} style={inputStyle} />
-                  {policyText.late_checkout_max_time && (
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontWeight: 300 }}>Latest available: {policyText.late_checkout_max_time}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={closeDialog} disabled={submitting} className="ss-pill" style={{ flex: 1, height: 46, borderRadius: 14, fontSize: 13, fontWeight: 500, opacity: submitting ? 0.5 : 1 }}>
-                {activeTile.action.kind === 'info' ? 'Close' : 'Cancel'}
-              </button>
-              {activeTile.action.kind === 'request' && (
-                <button type="button" onClick={() => void submitRequest(activeTile)} disabled={submitting || !canSubmit(activeTile)} className="ss-gold-btn" style={{ flex: 1, height: 46, borderRadius: 14, fontSize: 13, fontWeight: 600, opacity: !canSubmit(activeTile) ? 0.4 : 1 }}>
-                  {submitting ? 'Sending…' : 'Send request'}
+                <button
+                  type="button"
+                  onClick={closeDialog}
+                  className="ss-pill"
+                  style={{ width: '100%', height: 46, borderRadius: 14, fontSize: 13, fontWeight: 500 }}
+                >
+                  Got it, thank you
                 </button>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                {/* ── Normal request / info view ── */}
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(201,168,117,0.12)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                  {activeTile.icon}
+                </div>
+                <p className={cormorant.className} style={{ margin: 0, fontSize: 22, fontWeight: 400, color: 'var(--text-primary)' }}>
+                  {activeTile.label}
+                </p>
+
+                {/* Info-only */}
+                {activeTile.action.kind === 'info' && (
+                  <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                    {activeTile.action.body}
+                  </p>
+                )}
+
+                {/* Housekeeping */}
+                {activeTile.id === 'housekeeping' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Your room will be attended to shortly.</p>
+                    <div>
+                      <label style={labelStyle}>Notes (optional)</label>
+                      <textarea className="sh-textarea" rows={2} placeholder="e.g. extra towels, more hangers…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Room Service */}
+                {activeTile.id === 'room_service' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                      In-room dining request. Let us know what you&apos;d like and the team will confirm your order shortly.
+                    </p>
+                    <div>
+                      <label style={labelStyle}>What would you like? (optional)</label>
+                      <textarea className="sh-textarea" rows={3} placeholder="e.g. burger and fries, sparkling water…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Restaurants & Bars */}
+                {activeTile.id === 'restaurants_bars' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Let us know your preferred restaurant, date, time, and number of guests. We will confirm shortly.</p>
+                    <div>
+                      <label style={labelStyle}>Reservation details <span style={{ color: 'var(--gold)' }}>*</span></label>
+                      <textarea className="sh-textarea" rows={3} placeholder="e.g. The Grill Room, tonight at 7:30pm, 2 guests" value={fields.restaurantNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, restaurantNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Laundry */}
+                {activeTile.id === 'laundry' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                      Leave your laundry bag outside the door and we&apos;ll collect it at your preferred time.
+                    </p>
+                    {policyText.laundry_policy && <div style={policyBoxStyle}>{policyText.laundry_policy}</div>}
+                    <div>
+                      <label style={labelStyle}>Preferred pickup time (optional)</label>
+                      <input className="sh-input" type="time" value={fields.laundryTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, laundryTime: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Special instructions (optional)</label>
+                      <textarea className="sh-textarea" rows={2} placeholder="e.g. delicate items, no tumble dry…" value={fields.laundryNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, laundryNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Maintenance */}
+                {activeTile.id === 'maintenance' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Our maintenance team will attend to the issue promptly.</p>
+                    <div>
+                      <label style={labelStyle}>Type of issue <span style={{ color: 'var(--gold)' }}>*</span></label>
+                      <select className="sh-input" value={fields.maintenanceIssue ?? ''} onChange={(e) => setFields((f) => ({ ...f, maintenanceIssue: e.target.value }))} style={{ ...inputStyle, appearance: 'none' }}>
+                        <option value="">Select an issue…</option>
+                        <option>AC not working</option>
+                        <option>Heating not working</option>
+                        <option>Light bulb out</option>
+                        <option>Plumbing / leaking tap</option>
+                        <option>TV / remote issue</option>
+                        <option>Door lock issue</option>
+                        <option>Safe not opening</option>
+                        <option>No hot water</option>
+                        <option>Blocked drain</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Additional details (optional)</label>
+                      <textarea className="sh-textarea" rows={2} placeholder="Any extra detail that helps the team…" value={fields.maintenanceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, maintenanceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Transportation */}
+                {activeTile.id === 'transport' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {policyText.transport_advance_notice_mins != null && (
+                      <div style={policyBoxStyle}>Please book at least {policyText.transport_advance_notice_mins} minutes in advance.</div>
+                    )}
+                    <div>
+                      <label style={labelStyle}>Pickup time <span style={{ color: 'var(--gold)' }}>*</span></label>
+                      <input className="sh-input" type="time" value={fields.transportTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, transportTime: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Destination <span style={{ color: 'var(--gold)' }}>*</span></label>
+                      <input className="sh-input" type="text" placeholder="e.g. Changi Airport, Orchard Road" value={fields.transportDest ?? ''} onChange={(e) => setFields((f) => ({ ...f, transportDest: e.target.value }))} style={inputStyle} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Luggage Pickup */}
+                {activeTile.id === 'luggage_pickup' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {policyText.luggage_pickup_fee && <div style={policyBoxStyle}>Fee: {policyText.luggage_pickup_fee}</div>}
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>A member of the team will collect your bags from your room.</p>
+                    <div>
+                      <label style={labelStyle}>Notes (optional)</label>
+                      <textarea className="sh-textarea" rows={2} placeholder="e.g. number of bags, ready time…" value={fields.luggageNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, luggageNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Wake-up Call */}
+                {activeTile.id === 'wakeup' && (
+                  <div style={{ margin: '14px 0 18px' }}>
+                    <label style={labelStyle}>Wake-up time <span style={{ color: 'var(--gold)' }}>*</span></label>
+                    <input className="sh-input" type="time" value={fields.wakeupTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, wakeupTime: e.target.value }))} style={inputStyle} />
+                  </div>
+                )}
+
+                {/* Call Staff */}
+                {activeTile.id === 'call_staff' && (
+                  <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>A member of the team will be with you shortly.</p>
+                )}
+
+                {/* Late Checkout */}
+                {activeTile.id === 'late_checkout' && (
+                  <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                      Request a late checkout and we&apos;ll confirm availability with you.
+                    </p>
+                    <div style={policyBoxStyle}>
+                      {policyText.late_checkout_policy
+                        ? policyText.late_checkout_policy
+                        : policyText.late_checkout_free_if_available
+                          ? 'Late checkout is complimentary when availability allows.'
+                          : 'Late checkout is subject to availability and may incur a fee.'}
+                      {policyText.late_checkout_fee && (
+                        <span style={{ display: 'block', marginTop: 4, fontWeight: 500, color: 'var(--text-primary)' }}>Fee: {policyText.late_checkout_fee}</span>
+                      )}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Desired checkout time <span style={{ color: 'var(--gold)' }}>*</span></label>
+                      <input className="sh-input" type="time" max={policyText.late_checkout_max_time ?? undefined} value={fields.lateCheckoutTime ?? ''} onChange={(e) => setFields((f) => ({ ...f, lateCheckoutTime: e.target.value }))} style={inputStyle} />
+                      {policyText.late_checkout_max_time && (
+                        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontWeight: 300 }}>Latest available: {policyText.late_checkout_max_time}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" onClick={closeDialog} disabled={submitting} className="ss-pill" style={{ flex: 1, height: 46, borderRadius: 14, fontSize: 13, fontWeight: 500, opacity: submitting ? 0.5 : 1 }}>
+                    {activeTile.action.kind === 'info' ? 'Close' : 'Cancel'}
+                  </button>
+                  {activeTile.action.kind === 'request' && (
+                    <button type="button" onClick={() => void submitRequest(activeTile)} disabled={submitting || !canSubmit(activeTile)} className="ss-gold-btn" style={{ flex: 1, height: 46, borderRadius: 14, fontSize: 13, fontWeight: 600, opacity: !canSubmit(activeTile) ? 0.4 : 1 }}>
+                      {submitting ? 'Sending…' : 'Send request'}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -847,6 +1097,9 @@ function IconLuggage() {
 function IconClock() {
   return <svg {...svgProps()}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M5 4l-2 2M19 4l2 2" /></svg>;
 }
+function IconClock2() {
+  return <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>;
+}
 function IconStaff() {
   return <svg {...svgProps()}><circle cx="12" cy="9" r="3" /><path d="M5 21v-1a7 7 0 0114 0v1" /></svg>;
 }
@@ -861,4 +1114,7 @@ function IconInfo() {
 }
 function IconCloud() {
   return <svg {...svgProps()}><path d="M17 18a4 4 0 000-8 6 6 0 00-11.5 2A4 4 0 006 18z" /></svg>;
+}
+function IconMoon() {
+  return <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>;
 }
