@@ -215,6 +215,17 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     <div className="relative min-h-[100dvh] text-white overflow-x-hidden">
       <div className="fixed inset-0 -z-10 bg-[#0F0E0C]" />
 
+      {/* Skip link — always visible so guests are never fully stuck */}
+      {step !== 'complete' && (
+        <button
+          onClick={onCompleted}
+          className="absolute top-4 right-4 z-10 text-[12px] text-white/30 hover:text-white/60 transition-colors"
+          aria-label="Skip onboarding setup"
+        >
+          Skip setup
+        </button>
+      )}
+
       {/* Full-height flex container: centers card vertically on desktop,
           natural scroll on mobile */}
       <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-10 sm:px-6">

@@ -201,6 +201,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
     lng: number;
   } | null>(null);
   const [addUnknownPlaceOpen, setAddUnknownPlaceOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'map'>('list');
 
   const dataLoadedRef = useRef<boolean | null>(null);
   const regionLoadedRef = useRef<string | null>(null);
@@ -441,19 +442,49 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
         @media (max-width: 899px) {
           .discover-sidebar {
             width: 100%;
-            order: 2;
             flex: 1;
             min-height: 0;
             display: flex;
             flex-direction: column;
           }
           .discover-map-wrap {
-            order: 1;
-            height: 52vh;
             width: 100%;
-            flex-shrink: 0;
-            border-bottom: 1px solid var(--border);
+            flex: 1;
+            min-height: 0;
           }
+          .discover-sidebar.mobile-hidden,
+          .discover-map-wrap.mobile-hidden { display: none; }
+          .discover-mobile-toggle { display: flex; }
+        }
+        @media (min-width: 900px) {
+          .discover-mobile-toggle { display: none; }
+        }
+        .discover-mobile-toggle {
+          display: none;
+          gap: 0;
+          flex-shrink: 0;
+          border-bottom: 1px solid var(--border);
+        }
+        .discover-mobile-toggle button {
+          flex: 1;
+          height: 40px;
+          border: none;
+          background: none;
+          font-family: inherit;
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          cursor: pointer;
+          transition: color 0.15s ease, background 0.15s ease;
+          WebkitTapHighlightColor: transparent;
+        }
+        .discover-mobile-toggle button.active {
+          color: var(--gold);
+          background: rgba(201, 168, 117, 0.08);
+          border-bottom: 2px solid var(--gold);
+        }
+        .discover-mobile-toggle button:not(.active) {
+          color: var(--text-muted);
         }
         .discover-sidebar-header {
           padding: 20px 18px 14px;
@@ -503,9 +534,25 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
       `}</style>
 
       <div className="discover-shell">
+        {/* Mobile list/map toggle — hidden on desktop */}
+        <div className="discover-mobile-toggle">
+          <button
+            className={mobileView === 'list' ? 'active' : ''}
+            onClick={() => setMobileView('list')}
+          >
+            List
+          </button>
+          <button
+            className={mobileView === 'map' ? 'active' : ''}
+            onClick={() => setMobileView('map')}
+          >
+            Map
+          </button>
+        </div>
+
         <div className="discover-grid">
           {/* ── SIDEBAR ── */}
-          <aside className="discover-sidebar">
+          <aside className={`discover-sidebar${mobileView === 'map' ? ' mobile-hidden' : ''}`}>
             {/* Header */}
             <div className="discover-sidebar-header">
               <p
@@ -659,7 +706,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
           </aside>
 
           {/* ── MAP ── */}
-          <div className="discover-map-wrap">
+          <div className={`discover-map-wrap${mobileView === 'list' ? ' mobile-hidden' : ''}`}>
             <MapPlaceholder 
              stayId={stayId ?? null}
              onSelectPlace={(place) => setSelectedMapPlaceId(place.id)}

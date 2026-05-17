@@ -694,7 +694,7 @@ export default function ConciergeExperience({
   return (
     <>
       <style>{`
-        .ce-layout{display:flex;flex-direction:column;width:100%;height:calc(100vh - 64px);background:#FAF8F5;overflow:hidden;}
+        .ce-layout{display:flex;flex-direction:column;width:100%;height:calc(100dvh - 64px);background:#FAF8F5;overflow:hidden;}
         .ce-left{width:100%;flex-shrink:0;border-bottom:1px solid #EDE8E1;max-height:340px;overflow:hidden;}
         .ce-right{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
         @media(min-width:768px){
