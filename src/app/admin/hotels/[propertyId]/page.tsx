@@ -53,6 +53,11 @@ interface PmsRow {
   provider: string;
   is_active: boolean;
   last_synced_at: string | null;
+  health_status: string | null;
+  last_health_check: string | null;
+  api_key_encrypted: string | null;
+  webhook_secret: string | null;
+  mews_enterprise_id: string | null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────── */
@@ -119,7 +124,7 @@ export default async function AdminHotelDetailPage({
       .order('sort_order'),
     supabase
       .from('pms_config')
-      .select('provider, is_active, last_synced_at')
+      .select('provider, is_active, last_synced_at, health_status, last_health_check, api_key_encrypted, webhook_secret, mews_enterprise_id')
       .eq('property_id', propertyId)
       .maybeSingle(),
   ]);
@@ -332,37 +337,72 @@ export default async function AdminHotelDetailPage({
       {/* ── Section 4: PMS Config ── */}
       <section className={cardClass}>
         <h3 className="text-[11px] font-medium text-[#C9A84C]/70 uppercase tracking-[0.16em]">
-          PMS Config
+          PMS Integration
         </h3>
 
         {pms ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">
-                Provider
-              </p>
-              <p className="text-[13px] text-white/70">{pms.provider}</p>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">Provider</p>
+              <p className="text-[13px] text-white/70 capitalize">{pms.provider}</p>
             </div>
 
             <div>
-              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-1">
-                Status
-              </p>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-1">Sync</p>
               <div className="flex items-center gap-1.5">
-                <span
-                  className={`w-2 h-2 rounded-full ${pms.is_active ? 'bg-emerald-400' : 'bg-amber-400'}`}
-                />
-                <span className="text-[13px] text-white/70">
-                  {pms.is_active ? 'Active' : 'Inactive'}
-                </span>
+                <span className={`w-2 h-2 rounded-full ${pms.is_active ? 'bg-emerald-400' : 'bg-white/20'}`} />
+                <span className="text-[13px] text-white/70">{pms.is_active ? 'Active' : 'Inactive'}</span>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">
-                Last synced
-              </p>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-1">Health</p>
+              <div className="flex items-center gap-1.5">
+                {pms.health_status === 'ok' && (
+                  <><span className="w-2 h-2 rounded-full bg-emerald-400" /><span className="text-[13px] text-emerald-400">OK</span></>
+                )}
+                {pms.health_status === 'error' && (
+                  <><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-[13px] text-red-400">Error</span></>
+                )}
+                {(!pms.health_status || pms.health_status === 'unknown') && (
+                  <><span className="w-2 h-2 rounded-full bg-white/20" /><span className="text-[13px] text-white/30">Unknown</span></>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">Last health check</p>
+              <p className="text-[13px] text-white/70">{formatDate(pms.last_health_check)}</p>
+            </div>
+
+            <div>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">Last synced</p>
               <p className="text-[13px] text-white/70">{formatDate(pms.last_synced_at)}</p>
+            </div>
+
+            {pms.mews_enterprise_id && (
+              <div>
+                <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">Enterprise ID</p>
+                <p className="text-[13px] text-white/70 font-mono">{pms.mews_enterprise_id}</p>
+              </div>
+            )}
+
+            <div>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">API credentials</p>
+              {pms.api_key_encrypted ? (
+                <span className="text-[12px] text-emerald-400">Set</span>
+              ) : (
+                <span className="text-[12px] text-amber-400">Not set</span>
+              )}
+            </div>
+
+            <div>
+              <p className="text-[10px] text-[#C9A84C]/70 uppercase tracking-[0.14em] mb-0.5">Webhook secret</p>
+              {pms.webhook_secret ? (
+                <span className="text-[12px] text-emerald-400">Set</span>
+              ) : (
+                <span className="text-[12px] text-amber-400">Not set</span>
+              )}
             </div>
           </div>
         ) : (
@@ -370,7 +410,7 @@ export default async function AdminHotelDetailPage({
         )}
 
         <p className="text-[11px] text-white/25 pt-2 border-t border-white/[0.06]">
-          PMS configuration managed by Stayscape team
+          Hotel admins manage their own credentials via the Integrations page. Stayscape team handles provider onboarding.
         </p>
       </section>
     </div>

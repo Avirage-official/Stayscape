@@ -18,6 +18,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   { label: 'Stays', href: '/admin/stays' },
   { label: 'Simulate Booking', href: '/admin/simulate-booking' },
   { label: 'Sync Runs', href: '/admin/sync-runs' },
+  { label: 'PMS', href: '/admin/pms' },
 ];
 
 function isItemActive(pathname: string, href: string): boolean {
