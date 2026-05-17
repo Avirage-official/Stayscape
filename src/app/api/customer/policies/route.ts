@@ -7,6 +7,10 @@
  *
  * Auth: Supabase JWT via Authorization: Bearer <token>
  * No write access — read-only, guest-safe subset of hotel_policies.
+ *
+ * Resilience: if any hour column doesn't exist in the DB yet (migration
+ * pending), the field resolves to null and no time-gate is applied.
+ * The API will never 500 due to a missing column.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -52,6 +56,9 @@ export async function GET(request: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
+  // We select only the toggle + freetext columns here (guaranteed to exist).
+  // Hour columns are fetched in a second query so a missing column never
+  // breaks the primary response.
   const { data, error } = await supabase
     .from('hotel_policies')
     .select(
@@ -66,51 +73,13 @@ export async function GET(request: NextRequest) {
         'late_checkout_enabled',
         'restaurant_enabled',
         'restaurant_reservation_enabled',
-
-        // ── Housekeeping hours ──
-        'housekeeping_start',
-        'housekeeping_end',
-        'turndown_enabled',
-        'turndown_start',
-        'turndown_end',
-
-        // ── Room service hours ──
-        'room_service_start',
-        'room_service_end',
-        'room_service_last_order',
-
-        // ── Laundry hours ──
-        'laundry_pickup_start',
-        'laundry_pickup_cutoff',
-        'laundry_return_time',
-        'laundry_express_enabled',
-        'laundry_express_hours',
-
-        // ── Maintenance hours ──
-        'maintenance_start',
-        'maintenance_end',
-        'maintenance_emergency_24hr',
-
-        // ── Transport hours ──
-        'transport_hours_start',
-        'transport_hours_end',
-        'transport_advance_notice_mins',
-
-        // ── Luggage pickup hours ──
-        'luggage_pickup_start',
-        'luggage_pickup_end',
-        'luggage_pickup_fee',
-
+        'concierge_enabled',
         // ── Late checkout ──
         'late_checkout_max_time',
         'late_checkout_free_if_available',
-
-        // ── Concierge hours ──
-        'concierge_enabled',
-        'concierge_hours_start',
-        'concierge_hours_end',
-
-        // ── Freetext policy fields ──
+        // ── Transport advance notice ──
+        'transport_advance_notice_mins',
+        // ── Freetext ──
         'extra_policies',
       ].join(', '),
     )
@@ -118,6 +87,17 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const EMPTY_HOURS = {
+    housekeeping:  { start: null, end: null },
+    turndown:      { enabled: false, start: null, end: null },
+    room_service:  { start: null, end: null, last_order: null },
+    laundry:       { pickup_start: null, pickup_cutoff: null },
+    maintenance:   { start: null, end: null, emergency_24hr: false },
+    transport:     { start: null, end: null },
+    luggage_pickup:{ start: null, end: null },
+    concierge:     { start: null, end: null },
+  };
 
   // ── No row yet — return safe defaults ────────────────────────────────────
   if (!data) {
@@ -143,25 +123,38 @@ export async function GET(request: NextRequest) {
         luggage_pickup_fee:             null,
         transport_advance_notice_mins:  null,
       },
-      service_hours: {
-        housekeeping:    { start: null, end: null },
-        turndown:        { enabled: false, start: null, end: null },
-        room_service:    { start: null, end: null, last_order: null },
-        laundry:         { pickup_start: null, pickup_cutoff: null, return_time: null, express_enabled: false, express_hours: null },
-        maintenance:     { start: null, end: null, emergency_24hr: false },
-        transport:       { start: null, end: null, advance_notice_mins: null },
-        luggage_pickup:  { start: null, end: null },
-        concierge:       { start: null, end: null },
-      },
+      service_hours: EMPTY_HOURS,
     });
   }
 
-  // Double-cast through unknown — Supabase's GenericStringError union doesn't
-  // overlap directly with Record<string, unknown> under strict TS checks.
   const p = data as unknown as Record<string, unknown>;
   const extra = (p.extra_policies ?? {}) as Record<string, unknown>;
-
   const str = (v: unknown) => (v != null ? String(v) : null);
+
+  // ── Fetch hour columns in a separate query so missing columns
+  //    (migration not yet applied) gracefully return null rather than 500. ──
+  let hours: Record<string, unknown> = {};
+  try {
+    const { data: hData } = await supabase
+      .from('hotel_policies')
+      .select(
+        [
+          'housekeeping_start', 'housekeeping_end',
+          'turndown_enabled', 'turndown_start', 'turndown_end',
+          'room_service_start', 'room_service_end', 'room_service_last_order',
+          'laundry_pickup_start', 'laundry_pickup_cutoff',
+          'maintenance_start', 'maintenance_end', 'maintenance_emergency_24hr',
+          'transport_hours_start', 'transport_hours_end',
+          'luggage_pickup_start', 'luggage_pickup_end', 'luggage_pickup_fee',
+          'concierge_hours_start', 'concierge_hours_end',
+        ].join(', '),
+      )
+      .eq('property_id', propertyId)
+      .maybeSingle();
+    if (hData) hours = hData as unknown as Record<string, unknown>;
+  } catch {
+    // Migration not applied yet — hour fields default to null, no time-gate applied
+  }
 
   return NextResponse.json({
     services: {
@@ -182,53 +175,46 @@ export async function GET(request: NextRequest) {
       late_checkout_fee:              (extra.late_checkout_fee as string) ?? null,
       late_checkout_max_time:         str(p.late_checkout_max_time),
       late_checkout_free_if_available: Boolean(p.late_checkout_free_if_available),
-      luggage_pickup_fee:             str(p.luggage_pickup_fee),
+      luggage_pickup_fee:             str(hours.luggage_pickup_fee),
       transport_advance_notice_mins:  p.transport_advance_notice_mins != null
                                         ? Number(p.transport_advance_notice_mins)
                                         : null,
     },
-    // ── Service hours — used by guest UI to block out-of-hours requests ──
     service_hours: {
       housekeeping: {
-        start:          str(p.housekeeping_start),
-        end:            str(p.housekeeping_end),
+        start: str(hours.housekeeping_start),
+        end:   str(hours.housekeeping_end),
       },
       turndown: {
-        enabled:        Boolean(p.turndown_enabled),
-        start:          str(p.turndown_start),
-        end:            str(p.turndown_end),
+        enabled: Boolean(hours.turndown_enabled),
+        start:   str(hours.turndown_start),
+        end:     str(hours.turndown_end),
       },
       room_service: {
-        start:          str(p.room_service_start),
-        end:            str(p.room_service_end),
-        last_order:     str(p.room_service_last_order),
+        start:      str(hours.room_service_start),
+        end:        str(hours.room_service_end),
+        last_order: str(hours.room_service_last_order),
       },
       laundry: {
-        pickup_start:   str(p.laundry_pickup_start),
-        pickup_cutoff:  str(p.laundry_pickup_cutoff),
-        return_time:    str(p.laundry_return_time),
-        express_enabled: Boolean(p.laundry_express_enabled),
-        express_hours:  p.laundry_express_hours != null ? Number(p.laundry_express_hours) : null,
+        pickup_start:  str(hours.laundry_pickup_start),
+        pickup_cutoff: str(hours.laundry_pickup_cutoff),
       },
       maintenance: {
-        start:          str(p.maintenance_start),
-        end:            str(p.maintenance_end),
-        emergency_24hr: Boolean(p.maintenance_emergency_24hr),
+        start:          str(hours.maintenance_start),
+        end:            str(hours.maintenance_end),
+        emergency_24hr: Boolean(hours.maintenance_emergency_24hr),
       },
       transport: {
-        start:              str(p.transport_hours_start),
-        end:                str(p.transport_hours_end),
-        advance_notice_mins: p.transport_advance_notice_mins != null
-                               ? Number(p.transport_advance_notice_mins)
-                               : null,
+        start: str(hours.transport_hours_start),
+        end:   str(hours.transport_hours_end),
       },
       luggage_pickup: {
-        start:          str(p.luggage_pickup_start),
-        end:            str(p.luggage_pickup_end),
+        start: str(hours.luggage_pickup_start),
+        end:   str(hours.luggage_pickup_end),
       },
       concierge: {
-        start:          str(p.concierge_hours_start),
-        end:            str(p.concierge_hours_end),
+        start: str(hours.concierge_hours_start),
+        end:   str(hours.concierge_hours_end),
       },
     },
   });
