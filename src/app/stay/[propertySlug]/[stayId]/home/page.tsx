@@ -8,12 +8,12 @@
  *
  * Time-gate: if the hotel has set operating hours for a service, tapping the
  * tile outside those hours shows a full, dramatic unavailability dialog
- * with warm hospitality copy and a clear “resumes at X” badge.
- * No send button is shown — only a “Got it” dismiss.
+ * with warm hospitality copy and a clear "resumes at X" badge.
+ * No send button is shown — only a "Got it" dismiss.
  *
- * Timezone: all time comparisons use the hotel’s IANA timezone
+ * Timezone: all time comparisons use the hotel's IANA timezone
  * (returned as property_timezone from GET /api/customer/policies),
- * NOT the guest’s device clock.
+ * NOT the guest's device clock.
  */
 
 import React, { useEffect, useMemo, useState, useContext } from 'react';
@@ -724,7 +724,9 @@ export default function StayHomePage() {
 
             {activeTile.id === 'room_service' && (
               <div style={{ margin: '14px 0 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>In-room dining request. Let us know what you&apos;d like and the team will confirm your order shortly.</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>
+                  Our in-room dining team is ready to take your order. Tell us what you&apos;d like and we&apos;ll confirm with you shortly.
+                </p>
                 <div>
                   <label style={labelStyle}>What would you like? (optional)</label>
                   <textarea className="sh-textarea" rows={3} placeholder="e.g. burger and fries, sparkling water…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
