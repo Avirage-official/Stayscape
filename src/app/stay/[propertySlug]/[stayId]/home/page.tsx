@@ -8,8 +8,12 @@
  *
  * Time-gate: if the hotel has set operating hours for a service, tapping the
  * tile outside those hours shows a full, dramatic unavailability dialog
- * with warm hospitality copy and a clear "resumes at X" badge.
- * No send button is shown — only a "Got it" dismiss.
+ * with warm hospitality copy and a clear “resumes at X” badge.
+ * No send button is shown — only a “Got it” dismiss.
+ *
+ * Timezone: all time comparisons use the hotel’s IANA timezone
+ * (returned as property_timezone from GET /api/customer/policies),
+ * NOT the guest’s device clock.
  */
 
 import React, { useEffect, useMemo, useState, useContext } from 'react';
@@ -121,9 +125,28 @@ function toMinutes(t: string | null | undefined): number | null {
   return h * 60 + m;
 }
 
-function nowMinutes(): number {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
+/**
+ * Returns the current time-of-day in minutes, evaluated in the hotel's
+ * IANA timezone — NOT the guest's device clock.
+ * e.g. hotel in Singapore (UTC+8): a guest browsing from London at
+ * 8 PM local time gets 04:00 hotel time (4 * 60 = 240), not 1200.
+ */
+function nowMinutesInTz(hotelTimezone: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: hotelTimezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+    }).formatToParts(new Date());
+    const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+    const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+    return h * 60 + m;
+  } catch {
+    // Fallback to device clock if timezone is invalid
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
 }
 
 function fmt(t: string | null | undefined): string {
@@ -135,7 +158,11 @@ function fmt(t: string | null | undefined): string {
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-function getUnavailableReason(tileId: string, hours: ServiceHours): string | null {
+function getUnavailableReason(
+  tileId: string,
+  hours: ServiceHours,
+  hotelTimezone: string,
+): string | null {
   const entry = hours[tileId];
   if (!entry) return null;
   if (tileId === 'maintenance' && entry.emergency_24hr) return null;
@@ -158,7 +185,7 @@ function getUnavailableReason(tileId: string, hours: ServiceHours): string | nul
   const endMin   = toMinutes(end);
   if (startMin === null || endMin === null) return null;
 
-  const now = nowMinutes();
+  const now = nowMinutesInTz(hotelTimezone);
   if (now >= startMin && now < endMin) return null;
   if (now < startMin) return `resumes at ${fmt(start)}`;
   return `resumes tomorrow at ${fmt(start)}`;
@@ -283,14 +310,15 @@ export default function StayHomePage() {
   const propertyName = stay?.property?.name ?? 'your hotel';
   const regionId     = stay?.property?.region_id ?? null;
 
-  // ── Policies ──
+  // ── Policies + timezone ──
   const [services, setServices]         = useState<ServiceFlags | null>(null);
   const [policyText, setPolicyText]     = useState<PolicyText>({
     laundry_policy: null, late_checkout_policy: null, late_checkout_fee: null,
     late_checkout_max_time: null, late_checkout_free_if_available: false,
     luggage_pickup_fee: null, transport_advance_notice_mins: null,
   });
-  const [serviceHours, setServiceHours] = useState<ServiceHours>({});
+  const [serviceHours, setServiceHours]     = useState<ServiceHours>({});
+  const [hotelTimezone, setHotelTimezone]   = useState<string>('Asia/Singapore');
   const [policiesLoading, setPoliciesLoading] = useState(true);
 
   useEffect(() => {
@@ -306,11 +334,13 @@ export default function StayHomePage() {
           services: ServiceFlags;
           policy_text: PolicyText;
           service_hours?: ServiceHours;
+          property_timezone?: string;
         };
         if (!cancelled) {
           setServices(json.services);
           setPolicyText(json.policy_text);
           setServiceHours(json.service_hours ?? {});
+          setHotelTimezone(json.property_timezone ?? 'Asia/Singapore');
         }
       } catch {
         // silent
@@ -342,15 +372,17 @@ export default function StayHomePage() {
   }, [regionId]);
 
   // ── Dialog state ──
-  const [activeTile, setActiveTile]             = useState<Tile | null>(null);
+  const [activeTile, setActiveTile]               = useState<Tile | null>(null);
   const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
-  const [fields, setFields]                     = useState<TileFields>({});
-  const [submitting, setSubmitting]             = useState(false);
-  const [toast, setToast]                       = useState<string | null>(null);
+  const [fields, setFields]                       = useState<TileFields>({});
+  const [submitting, setSubmitting]               = useState(false);
+  const [toast, setToast]                         = useState<string | null>(null);
 
   const openTile = (tile: Tile) => {
     setFields({});
-    const reason = tile.action.kind === 'request' ? getUnavailableReason(tile.id, serviceHours) : null;
+    const reason = tile.action.kind === 'request'
+      ? getUnavailableReason(tile.id, serviceHours, hotelTimezone)
+      : null;
     setUnavailableReason(reason);
     setActiveTile(tile);
   };
@@ -623,36 +655,24 @@ export default function StayHomePage() {
         </div>
       )}
 
-      {/* ─── TIME-GATE DIALOG — bottom sheet on mobile, centred card on desktop ─── */}
+      {/* ─── TIME-GATE DIALOG ─── */}
       {activeTile && unavailableReason && unavailableCopy && (
         <div className="unavail-overlay" role="dialog" aria-modal="true" onClick={closeDialog}>
           <div className="unavail-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="unavail-pill" />
-
-            <div className="unavail-icon-ring">
-              <IconMoon size={32} />
-            </div>
-
-            <p className={`${cormorant.className} unavail-headline`}>
-              {unavailableCopy.headline}
-            </p>
+            <div className="unavail-icon-ring"><IconMoon size={32} /></div>
+            <p className={`${cormorant.className} unavail-headline`}>{unavailableCopy.headline}</p>
             <p className="unavail-subline">{unavailableCopy.subline}</p>
-
             <p className="unavail-body">{unavailableCopy.body}</p>
-
-            {/* Resumption time badge — the key info, big and gold */}
             <div className="unavail-resume-badge">
               <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(201,168,117,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold)', flexShrink: 0 }}>
                 <IconClock2 size={18} />
               </div>
               <div>
                 <p className="unavail-resume-label">Next available</p>
-                <p className="unavail-resume-time">
-                  {unavailableReason.charAt(0).toUpperCase() + unavailableReason.slice(1)}
-                </p>
+                <p className="unavail-resume-time">{unavailableReason.charAt(0).toUpperCase() + unavailableReason.slice(1)}</p>
               </div>
             </div>
-
             <button type="button" onClick={closeDialog} className="ss-gold-btn"
               style={{ width: '100%', height: 50, borderRadius: 16, fontSize: 14, fontWeight: 600 }}>
               Got it, thank you
