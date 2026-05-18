@@ -885,7 +885,7 @@ export default function SupportPage() {
 
                   {/* Pledge button */}
                   <a
-                    href={tier.stripe_payment_link}
+                    href={tier.stripe_payment_link?.trim()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="ss-tiers-pledge-btn"
