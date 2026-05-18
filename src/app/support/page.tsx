@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
 import SupportPageClient from './SupportPageClient'
 
 export const dynamic = 'force-dynamic'
@@ -22,9 +22,23 @@ export interface EarlyProgress {
   goal_sgd: number
 }
 
+// Create a fresh client per request — never reuse the module singleton.
+// This guarantees no in-memory query cache between requests.
+function makeFreshAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(url, key, {
+    auth: { persistSession: false },
+    global: {
+      fetch: (input, init) =>
+        fetch(input, { ...init, cache: 'no-store' }),
+    },
+  })
+}
+
 async function fetchTiers(): Promise<Tier[]> {
   try {
-    const supabase = getSupabaseAdmin()
+    const supabase = makeFreshAdminClient()
     const { data, error } = await supabase
       .from('early_tiers')
       .select(
@@ -47,7 +61,7 @@ async function fetchProgress(): Promise<EarlyProgress> {
     goal_sgd: 15000,
   }
   try {
-    const supabase = getSupabaseAdmin()
+    const supabase = makeFreshAdminClient()
     const { data, error } = await supabase
       .from('early_progress')
       .select('total_pledged_sgd, total_backers, goal_sgd')
