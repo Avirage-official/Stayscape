@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Playfair_Display } from "next/font/google";
+import { DM_Sans, Playfair_Display, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import ThemeProvider from "@/components/ThemeProvider";
@@ -18,6 +18,14 @@ const playfair = Playfair_Display({
   weight: ['400', '500', '600', '700', '800', '900'],
   style: ['normal', 'italic'],
   variable: '--font-playfair',
+  display: 'swap',
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-cormorant',
   display: 'swap',
 });
 
@@ -69,7 +77,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${playfair.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
+      <body className={`${dmSans.variable} ${playfair.variable} ${cormorant.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         <ThemeProvider>
           <AuthProvider>
             <RegionProvider>
