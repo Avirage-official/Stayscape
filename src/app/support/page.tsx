@@ -113,62 +113,100 @@ const STORY_STYLES = `
   }
 `
 
-const TIERS = [
-  {
-    id: 'traveller',
-    name: 'Traveller',
-    price: 'S$ 99',
-    period: 'one-time',
-    tagline: 'Your first step in.',
-    description: 'Early access to Stayscape Personal and a permanent seat at the founding table.',
-    perks: [
-      '12 months of Stayscape Personal',
-      'Founding member status',
-      'Early access before public launch',
-      'Community access',
-    ],
-    highlight: false,
-    badge: null,
-  },
-  {
-    id: 'explorer',
-    name: 'Explorer',
-    price: 'S$ 299',
-    period: 'one-time',
-    tagline: 'For those who want more.',
-    description: 'Extended access and a voice in how we build. This is the tier most early supporters choose.',
-    perks: [
-      '24 months of Stayscape Personal',
-      'Private product update calls (quarterly)',
-      'Founding member status',
-      'Name in app credits',
-      'All Traveller perks',
-    ],
-    highlight: true,
-    badge: 'Most popular',
-  },
-  {
-    id: 'founding',
-    name: 'Founding Member',
-    price: 'S$ 999',
-    period: 'one-time',
-    tagline: 'Shape what we become.',
-    description: 'For the rare few who want to be genuinely close to how Stayscape is built.',
-    perks: [
-      'Lifetime access to Stayscape Personal',
-      'Direct founder access (bi-annual call)',
-      'Input on roadmap priorities',
-      'Name in app credits (prominent)',
-      'All Explorer perks',
-    ],
-    highlight: false,
-    badge: 'Limited — 10 spots',
-  },
-]
+interface Tier {
+  slug: string
+  name: string
+  price_sgd: number
+  tagline: string
+  perks: string[]
+  is_limited: boolean
+  total_spots: number | null
+  stripe_payment_link: string
+}
+
+const TIERS_STYLES = `
+  @keyframes ssFadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ss-tiers-card {
+    opacity: 0;
+    transition: border-color 200ms ease, transform 200ms ease;
+  }
+  .ss-tiers-card:hover {
+    border-color: rgba(201, 168, 117, 0.4) !important;
+    transform: translateY(-2px);
+  }
+  .ss-tiers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: stretch;
+  }
+  @media (max-width: 1023px) {
+    .ss-tiers-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+  }
+  @media (max-width: 767px) {
+    .ss-tiers-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .ss-tiers-card {
+      padding: 24px !important;
+    }
+  }
+  .ss-tiers-perks {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+  }
+  .ss-tiers-perks li {
+    position: relative;
+    padding-left: 22px;
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(245, 241, 234, 0.85);
+  }
+  .ss-tiers-perks li::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #C9A875;
+  }
+  .ss-tiers-pledge-btn:hover {
+    background: #D4B58A !important;
+  }
+  .ss-tiers-section.in-view .ss-tiers-card:nth-child(1) { animation: ssFadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 0ms both; }
+  .ss-tiers-section.in-view .ss-tiers-card:nth-child(2) { animation: ssFadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 80ms both; }
+  .ss-tiers-section.in-view .ss-tiers-card:nth-child(3) { animation: ssFadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 160ms both; }
+  .ss-tiers-section.in-view .ss-tiers-card:nth-child(4) { animation: ssFadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 240ms both; }
+  .ss-tiers-section.in-view .ss-tiers-card:nth-child(5) { animation: ssFadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 320ms both; }
+  .ss-tiers-section.in-view .ss-tiers-card:nth-child(6) { animation: ssFadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 400ms both; }
+  @media (prefers-reduced-motion: reduce) {
+    .ss-tiers-card {
+      opacity: 1 !important;
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+`
 
 export default function SupportPage() {
   const reduced = useReducedMotion()
   const [progress, setProgress] = useState<EarlyProgress>(PROGRESS_FALLBACK)
+  const [tiers, setTiers] = useState<Tier[]>([])
 
   useEffect(() => {
     const sb = getSupabaseBrowser()
@@ -186,7 +224,24 @@ export default function SupportPage() {
     })()
   }, [])
 
+  useEffect(() => {
+    const sb = getSupabaseBrowser()
+    if (!sb) return
+    void (async () => {
+      try {
+        const { data } = await sb
+          .from('early_tiers')
+          .select('slug,name,price_sgd,tagline,perks,is_limited,total_spots,stripe_payment_link')
+          .order('display_order', { ascending: true })
+        if (data) setTiers(data as Tier[])
+      } catch {
+        // fallback: empty grid renders cleanly
+      }
+    })()
+  }, [])
+
   const storyRef = useRef<HTMLElement>(null)
+  const tiersRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const el = storyRef.current
@@ -199,6 +254,22 @@ export default function SupportPage() {
         }
       },
       { threshold: 0.2 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const el = tiersRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('in-view')
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.3 },
     )
     obs.observe(el)
     return () => obs.disconnect()
@@ -641,106 +712,121 @@ export default function SupportPage() {
         {/* ── TIERS ────────────────────────────────────────────────── */}
         <section
           id="tiers"
+          ref={tiersRef}
+          className="ss-tiers-section"
           style={{
-            background: 'var(--background)',
-            padding: 'clamp(80px, 10vw, 120px) clamp(24px, 5vw, 80px)',
+            background: '#0A0908',
+            padding: 'clamp(80px, 10vw, 140px) 24px',
           }}
         >
-          <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          {/* eslint-disable-next-line react/no-danger */}
+          <style dangerouslySetInnerHTML={{ __html: TIERS_STYLES }} />
+
+          <div style={{ maxWidth: 'min(1200px, 92vw)', margin: '0 auto' }}>
 
             {/* Section header */}
-            <p
-              style={{
-                fontFamily: 'var(--font-dm-sans), sans-serif',
-                fontSize: 11,
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.2em',
-                color: 'var(--gold)',
-                marginBottom: 16,
-              }}
-            >
-              Support Tiers
-            </p>
-            <h2
-              style={{
-                fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
-                fontSize: 'clamp(2rem, 4vw, 3.5rem)',
-                fontWeight: 600,
-                lineHeight: 1.1,
-                letterSpacing: '-0.02em',
-                color: 'var(--text-primary)',
-                marginBottom: 16,
-                maxWidth: '22ch',
-              }}
-            >
-              Back Stayscape Personal.
-            </h2>
-            <p
-              style={{
-                fontFamily: 'var(--font-dm-sans), sans-serif',
-                fontSize: 17,
-                color: 'var(--text-secondary)',
-                lineHeight: 1.6,
-                maxWidth: '52ch',
-                marginBottom: 64,
-              }}
-            >
-              Choose a tier that works for you. Every pledge goes directly into building.
-              Payment links coming soon — reserve your spot below.
-            </p>
+            <div style={{ textAlign: 'center', marginBottom: 64 }}>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.18em',
+                  color: '#C9A875',
+                  margin: 0,
+                }}
+              >
+                CHOOSE YOUR TIER
+              </p>
+              <h2
+                style={{
+                  fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                  fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
+                  fontWeight: 400,
+                  lineHeight: 1.2,
+                  color: '#F5F1EA',
+                  margin: '16px 0 0',
+                }}
+              >
+                Six ways to support.
+              </h2>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(15px, 1.7vw, 17px)',
+                  color: '#A89B8C',
+                  lineHeight: 1.6,
+                  maxWidth: 520,
+                  margin: '24px auto 0',
+                }}
+              >
+                Every tier includes lifetime access. Limited tiers are gone when they&apos;re gone.
+              </p>
+            </div>
 
             {/* Tier cards */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
-                gap: 20,
-                alignItems: 'start',
-              }}
-            >
-              {TIERS.map((tier, i) => (
-                <motion.div
-                  key={tier.id}
-                  initial={reduced ? false : { opacity: 0, y: 28 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={reduced ? undefined : { duration: 0.7, ease: EASE, delay: i * 0.12 }}
+            <div className="ss-tiers-grid">
+              {tiers.map((tier) => (
+                <div
+                  key={tier.slug}
+                  className="ss-tiers-card"
                   style={{
                     position: 'relative',
-                    background: tier.highlight
-                      ? 'linear-gradient(160deg, rgba(201,168,117,0.08) 0%, rgba(201,168,117,0.02) 60%), var(--surface)'
-                      : 'var(--surface)',
-                    border: tier.highlight
-                      ? '1px solid rgba(201,168,117,0.35)'
-                      : '1px solid var(--border)',
-                    borderRadius: 20,
-                    padding: 'clamp(28px, 4vw, 40px)',
-                    boxShadow: tier.highlight
-                      ? 'inset 0 1px 0 rgba(201,168,117,0.12), 0 8px 32px rgba(0,0,0,0.3)'
-                      : 'inset 0 1px 0 rgba(245,230,204,0.04), 0 4px 16px rgba(0,0,0,0.2)',
+                    background: '#14100D',
+                    border: '1px solid rgba(201, 168, 117, 0.18)',
+                    borderRadius: 12,
+                    padding: 32,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 20,
                   }}
                 >
-                  {/* Badge */}
-                  {tier.badge && (
+                  {/* Most Popular pill (wanderer only) */}
+                  {tier.slug === 'wanderer' && (
                     <span
                       style={{
                         position: 'absolute',
-                        top: -12,
-                        left: 28,
-                        fontFamily: 'var(--font-dm-sans), sans-serif',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.12em',
-                        color: tier.highlight ? 'var(--background)' : 'var(--gold)',
-                        background: tier.highlight ? 'var(--gold)' : 'var(--surface)',
-                        border: '1px solid var(--gold)',
+                        top: -10,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        padding: '4px 14px',
+                        background: '#C9A875',
+                        color: '#14100D',
                         borderRadius: 999,
-                        padding: '4px 12px',
+                        fontFamily: 'var(--font-dm-sans), sans-serif',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.14em',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      {tier.badge}
+                      MOST POPULAR
+                    </span>
+                  )}
+
+                  {/* Limited badge */}
+                  {tier.is_limited && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        padding: '4px 10px',
+                        borderRadius: 999,
+                        background: 'rgba(201, 168, 117, 0.15)',
+                        border: '1px solid rgba(201, 168, 117, 0.3)',
+                        color: '#C9A875',
+                        fontFamily: 'var(--font-dm-sans), sans-serif',
+                        fontSize: 10,
+                        fontWeight: 500,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.12em',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {tier.total_spots ? `LIMITED · ${tier.total_spots} SPOTS` : 'LIMITED'}
                     </span>
                   )}
 
@@ -748,167 +834,100 @@ export default function SupportPage() {
                   <p
                     style={{
                       fontFamily: 'var(--font-dm-sans), sans-serif',
-                      fontSize: 11,
-                      fontWeight: 700,
+                      fontSize: 12,
+                      fontWeight: 500,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.18em',
-                      color: 'var(--gold)',
-                      marginBottom: 12,
+                      letterSpacing: '0.16em',
+                      color: '#C9A875',
+                      margin: 0,
                     }}
                   >
                     {tier.name}
                   </p>
 
                   {/* Price */}
-                  <div style={{ marginBottom: 6 }}>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
-                        fontSize: 'clamp(2.4rem, 4vw, 3.2rem)',
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        color: 'var(--text-primary)',
-                        letterSpacing: '-0.02em',
-                      }}
-                    >
-                      {tier.price}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-dm-sans), sans-serif',
-                        fontSize: 13,
-                        color: 'var(--text-muted)',
-                        marginLeft: 8,
-                      }}
-                    >
-                      {tier.period}
-                    </span>
-                  </div>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                      fontSize: 'clamp(2.5rem, 3.5vw, 3.25rem)',
+                      fontWeight: 400,
+                      lineHeight: 1,
+                      color: '#F5F1EA',
+                      margin: 0,
+                    }}
+                  >
+                    S$&nbsp;{tier.price_sgd.toLocaleString('en-SG')}
+                  </p>
 
                   {/* Tagline */}
                   <p
                     style={{
                       fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
-                      fontSize: 18,
+                      fontSize: 16,
                       fontStyle: 'italic',
-                      fontWeight: 400,
-                      color: 'var(--text-secondary)',
-                      marginBottom: 16,
+                      lineHeight: 1.4,
+                      color: 'rgba(245, 241, 234, 0.7)',
+                      margin: 0,
                     }}
                   >
                     {tier.tagline}
                   </p>
 
                   {/* Divider */}
-                  <div
-                    style={{
-                      height: 1,
-                      background: tier.highlight
-                        ? 'rgba(201,168,117,0.2)'
-                        : 'var(--border)',
-                      marginBottom: 20,
-                    }}
-                  />
-
-                  {/* Description */}
-                  <p
-                    style={{
-                      fontFamily: 'var(--font-dm-sans), sans-serif',
-                      fontSize: 14,
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.6,
-                      marginBottom: 24,
-                    }}
-                  >
-                    {tier.description}
-                  </p>
+                  <hr style={{ height: 1, background: 'rgba(201, 168, 117, 0.2)', border: 'none', margin: 0 }} />
 
                   {/* Perks */}
-                  <ul
-                    style={{
-                      listStyle: 'none',
-                      padding: 0,
-                      margin: '0 0 32px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 10,
-                    }}
-                  >
-                    {tier.perks.map((perk) => (
-                      <li
-                        key={perk}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: 10,
-                          fontFamily: 'var(--font-dm-sans), sans-serif',
-                          fontSize: 14,
-                          color: 'var(--text-primary)',
-                          lineHeight: 1.45,
-                        }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            display: 'inline-block',
-                            width: 14,
-                            height: 14,
-                            marginTop: 2,
-                            flexShrink: 0,
-                            color: 'var(--gold)',
-                            fontSize: 12,
-                            fontWeight: 700,
-                          }}
-                        >
-                          –
-                        </span>
-                        {perk}
-                      </li>
+                  <ul className="ss-tiers-perks">
+                    {(tier.perks as string[]).map((perk, pi) => (
+                      <li key={pi}>{perk}</li>
                     ))}
                   </ul>
 
-                  {/* Placeholder CTA */}
-                  <button
-                    disabled
-                    aria-label={`Pledge ${tier.price} — ${tier.name} tier (coming soon)`}
-                    className={tier.highlight ? 'ss-gold-btn' : undefined}
+                  {/* Pledge button */}
+                  <a
+                    href={tier.stripe_payment_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ss-tiers-pledge-btn"
+                    aria-label={
+                      tier.slug === 'hotel-insider'
+                        ? `Reserve your spot — ${tier.name} tier`
+                        : `Pledge S$ ${tier.price_sgd.toLocaleString('en-SG')} — ${tier.name} tier`
+                    }
                     style={{
+                      display: 'block',
                       width: '100%',
-                      height: 48,
+                      padding: '14px 24px',
+                      background: '#C9A875',
+                      color: '#14100D',
                       borderRadius: 999,
-                      fontSize: 14,
-                      fontWeight: 600,
                       fontFamily: 'var(--font-dm-sans), sans-serif',
-                      letterSpacing: '0.03em',
-                      cursor: 'not-allowed',
-                      ...(tier.highlight
-                        ? { color: 'var(--background)' }
-                        : {
-                            background: 'transparent',
-                            border: '1px solid var(--border)',
-                            color: 'var(--text-secondary)',
-                          }),
+                      fontSize: 15,
+                      fontWeight: 500,
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    Pledge {tier.price} — Coming Soon
-                  </button>
-                </motion.div>
+                    {tier.slug === 'hotel-insider'
+                      ? 'Reserve Your Spot'
+                      : `Pledge S$ ${tier.price_sgd.toLocaleString('en-SG')}`}
+                  </a>
+                </div>
               ))}
             </div>
 
-            {/* Disclaimer */}
+            {/* Footer note */}
             <p
               style={{
                 fontFamily: 'var(--font-dm-sans), sans-serif',
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                marginTop: 32,
-                lineHeight: 1.6,
-                maxWidth: '60ch',
+                fontSize: 13,
+                color: '#A89B8C',
+                textAlign: 'center',
+                marginTop: 56,
               }}
             >
-              This is a reward-based crowdfund — not equity. Supporters receive access
-              and recognition in exchange for their pledge. Similar in structure to Kickstarter.
+              Secure checkout powered by Stripe · Cards accepted globally
             </p>
           </div>
         </section>
