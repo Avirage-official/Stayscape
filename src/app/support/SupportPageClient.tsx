@@ -22,7 +22,7 @@ const TIERS = [
     ],
     is_limited: false,
     total_spots: null,
-    stripe_payment_link: 'https://buy.stripe.com/cNidR85Qa8jI5vf1UXdfG00',
+    stripe_payment_link: 'https://buy.stripe.com/bJefZg3I2fMaf5P7fhdfG01',
   },
   {
     slug: 'wanderer',
