@@ -153,11 +153,17 @@ export default function SupportPage() {
   useEffect(() => {
     const sb = getSupabaseBrowser()
     if (!sb) return
-    sb.from('early_progress')
-      .select('total_pledged_sgd,total_backers,goal_sgd')
-      .single()
-      .then(({ data }) => { if (data) setProgress(data as EarlyProgress) })
-      .catch(() => {})
+    void (async () => {
+      try {
+        const { data } = await sb
+          .from('early_progress')
+          .select('total_pledged_sgd,total_backers,goal_sgd')
+          .single()
+        if (data) setProgress(data as EarlyProgress)
+      } catch {
+        // fallback state already set
+      }
+    })()
   }, [])
 
   const fade = (delay: number) =>
