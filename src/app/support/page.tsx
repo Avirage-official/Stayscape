@@ -203,6 +203,201 @@ const TIERS_STYLES = `
   }
 `
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ABOUT SECTION STYLES — fully bespoke, no generic templates
+// Deep espresso palette matching the hero + story sections above
+// ─────────────────────────────────────────────────────────────────────────────
+const ABOUT_STYLES = `
+  @keyframes ssLineReveal {
+    from { clip-path: inset(100% 0 0 0); }
+    to   { clip-path: inset(0% 0 0 0); }
+  }
+  @keyframes ssCounterUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes ssBarGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  .ss-about-section {
+    background: #0A0908;
+    overflow: hidden;
+    position: relative;
+  }
+  /* Ambient gold glow — sits behind content */
+  .ss-about-section::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 55%;
+    height: 80%;
+    background: radial-gradient(ellipse at center, rgba(201, 168, 117, 0.07) 0%, transparent 68%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ss-about-section::after {
+    content: '';
+    position: absolute;
+    bottom: -10%;
+    left: -5%;
+    width: 40%;
+    height: 60%;
+    background: radial-gradient(ellipse at center, rgba(180, 100, 60, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Thin horizontal rule with gradient fade */
+  .ss-about-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201, 168, 117, 0.35) 30%, rgba(201, 168, 117, 0.35) 70%, transparent);
+    margin: 0;
+    border: none;
+  }
+  /* Stat cells */
+  .ss-about-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .ss-about-stat {
+    padding: clamp(28px, 3.5vw, 44px) clamp(20px, 3vw, 40px);
+    border-right: 1px solid rgba(201, 168, 117, 0.12);
+    opacity: 0;
+  }
+  .ss-about-stat:last-child { border-right: none; }
+  .ss-about-section.in-view .ss-about-stat:nth-child(1) {
+    animation: ssCounterUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 0ms both;
+  }
+  .ss-about-section.in-view .ss-about-stat:nth-child(2) {
+    animation: ssCounterUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 100ms both;
+  }
+  .ss-about-section.in-view .ss-about-stat:nth-child(3) {
+    animation: ssCounterUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 200ms both;
+  }
+  /* Progress track */
+  .ss-about-progress-track {
+    height: 2px;
+    background: rgba(201, 168, 117, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .ss-about-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #C9A875, #E0C088);
+    border-radius: 999px;
+    transform-origin: left center;
+    transform: scaleX(0);
+    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s;
+  }
+  .ss-about-section.in-view .ss-about-progress-fill {
+    transform: scaleX(1);
+  }
+  /* Manifesto lines */
+  .ss-about-line {
+    display: block;
+    overflow: hidden;
+  }
+  .ss-about-line-inner {
+    display: block;
+    clip-path: inset(100% 0 0 0);
+  }
+  .ss-about-section.in-view .ss-about-line-inner:nth-child(1) {
+    animation: ssLineReveal 900ms cubic-bezier(0.16, 1, 0.3, 1) 0ms both;
+  }
+  .ss-about-section.in-view .ss-about-line-inner:nth-child(2) {
+    animation: ssLineReveal 900ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  }
+  .ss-about-section.in-view .ss-about-line-inner:nth-child(3) {
+    animation: ssLineReveal 900ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
+  }
+  /* Body paragraphs */
+  .ss-about-body {
+    opacity: 0;
+  }
+  .ss-about-section.in-view .ss-about-body:nth-of-type(1) {
+    animation: ssCounterUp 700ms cubic-bezier(0.4, 0, 0.2, 1) 300ms both;
+  }
+  .ss-about-section.in-view .ss-about-body:nth-of-type(2) {
+    animation: ssCounterUp 700ms cubic-bezier(0.4, 0, 0.2, 1) 440ms both;
+  }
+  .ss-about-section.in-view .ss-about-body:nth-of-type(3) {
+    animation: ssCounterUp 700ms cubic-bezier(0.4, 0, 0.2, 1) 560ms both;
+  }
+  /* CTA pair */
+  .ss-about-cta-area {
+    opacity: 0;
+  }
+  .ss-about-section.in-view .ss-about-cta-area {
+    animation: ssCounterUp 700ms cubic-bezier(0.4, 0, 0.2, 1) 680ms both;
+  }
+  /* Founder tag / pill */
+  .ss-about-founder-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(201, 168, 117, 0.08);
+    border: 1px solid rgba(201, 168, 117, 0.18);
+    border-radius: 999px;
+    padding: 6px 14px 6px 8px;
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: #C9A875;
+    letter-spacing: 0.04em;
+    opacity: 0;
+  }
+  .ss-about-section.in-view .ss-about-founder-tag {
+    animation: ssCounterUp 600ms cubic-bezier(0.4, 0, 0.2, 1) 150ms both;
+  }
+  /* Ghost link style */
+  .ss-about-ghost-link {
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 14px;
+    color: rgba(245, 241, 234, 0.55);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 200ms ease;
+  }
+  .ss-about-ghost-link:hover {
+    color: #C9A875;
+  }
+  /* Stats grid — mobile */
+  @media (max-width: 639px) {
+    .ss-about-stats {
+      grid-template-columns: 1fr 1fr;
+    }
+    .ss-about-stat:nth-child(2) {
+      border-right: none;
+    }
+    .ss-about-stat:nth-child(3) {
+      grid-column: 1 / -1;
+      border-right: none;
+      border-top: 1px solid rgba(201, 168, 117, 0.12);
+    }
+  }
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .ss-about-stat,
+    .ss-about-line-inner,
+    .ss-about-body,
+    .ss-about-cta-area,
+    .ss-about-founder-tag {
+      opacity: 1 !important;
+      animation: none !important;
+      clip-path: none !important;
+    }
+    .ss-about-progress-fill {
+      transform: scaleX(1) !important;
+      transition: none !important;
+    }
+  }
+`
+
 export default function SupportPage() {
   const reduced = useReducedMotion()
   const [progress, setProgress] = useState<EarlyProgress>(PROGRESS_FALLBACK)
@@ -242,6 +437,7 @@ export default function SupportPage() {
 
   const storyRef = useRef<HTMLElement>(null)
   const tiersRef = useRef<HTMLElement>(null)
+  const aboutRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const el = storyRef.current
@@ -275,6 +471,22 @@ export default function SupportPage() {
     return () => obs.disconnect()
   }, [])
 
+  useEffect(() => {
+    const el = aboutRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('in-view')
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.15 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
   const fade = (delay: number) =>
     reduced
       ? {}
@@ -290,7 +502,7 @@ export default function SupportPage() {
   )
 
   return (
-    <div style={{ background: 'var(--background)', minHeight: '100vh' }}>
+    <div style={{ background: '#0A0908', minHeight: '100vh' }}>
       <LandingNav />
 
       <main>
@@ -932,134 +1144,290 @@ export default function SupportPage() {
           </div>
         </section>
 
-        {/* ── STORY ────────────────────────────────────────────────── */}
+        {/* ── ABOUT — cinematic espresso, bespoke layout ────────────── */}
         <section
-          id="story"
-          style={{
-            background: 'var(--background)',
-            borderTop: '1px solid var(--border)',
-            padding: 'clamp(80px, 10vw, 120px) clamp(24px, 5vw, 80px)',
-          }}
+          id="about"
+          ref={aboutRef}
+          className="ss-about-section"
+          aria-label="About Stayscape"
         >
-          <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))',
-                gap: 'clamp(48px, 6vw, 96px)',
-                alignItems: 'start',
-              }}
-            >
-              {/* Left: heading block */}
-              <div>
-                <p
-                  style={{
-                    fontFamily: 'var(--font-dm-sans), sans-serif',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.2em',
-                    color: 'var(--gold)',
-                    marginBottom: 20,
-                  }}
-                >
-                  Our Story
-                </p>
-                <motion.h2
-                  initial={reduced ? false : { opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={reduced ? undefined : { duration: 0.8, ease: EASE }}
-                  style={{
-                    fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
-                    fontSize: 'clamp(2rem, 4vw, 3.2rem)',
-                    fontWeight: 600,
-                    lineHeight: 1.1,
-                    letterSpacing: '-0.02em',
-                    color: 'var(--text-primary)',
-                    maxWidth: '18ch',
-                  }}
-                >
-                  Built by travellers who got tired of losing the magic.
-                </motion.h2>
+          {/* eslint-disable-next-line react/no-danger */}
+          <style dangerouslySetInnerHTML={{ __html: ABOUT_STYLES }} />
 
-                {/* Thin rule */}
-                <motion.div
-                  initial={reduced ? false : { scaleX: 0 }}
-                  whileInView={{ scaleX: 1 }}
-                  viewport={{ once: true }}
-                  transition={reduced ? undefined : { duration: 0.7, ease: EASE, delay: 0.2 }}
-                  style={{
-                    width: 48,
-                    height: 1,
-                    background: 'var(--gold)',
-                    marginTop: 32,
-                    transformOrigin: 'left center',
-                    opacity: 0.6,
-                  }}
+          {/* Full-width gradient rule — visual separator from tiers */}
+          <hr className="ss-about-rule" style={{ position: 'relative', zIndex: 1 }} />
+
+          {/* Stat strip — 3 numbers, no icons, no circles */}
+          <div className="ss-about-stats" style={{ position: 'relative', zIndex: 1 }}>
+            {/* stat 1 */}
+            <div className="ss-about-stat">
+              <p
+                style={{
+                  fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                  fontSize: 'clamp(2.25rem, 4.5vw, 3.5rem)',
+                  fontWeight: 400,
+                  lineHeight: 1,
+                  color: '#C9A875',
+                  margin: 0,
+                }}
+              >
+                1 team
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 13,
+                  color: 'rgba(245,241,234,0.45)',
+                  marginTop: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                Building this carefully, not fast
+              </p>
+              <div className="ss-about-progress-track">
+                <div className="ss-about-progress-fill" style={{ width: '100%' }} />
+              </div>
+            </div>
+            {/* stat 2 */}
+            <div className="ss-about-stat">
+              <p
+                style={{
+                  fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                  fontSize: 'clamp(2.25rem, 4.5vw, 3.5rem)',
+                  fontWeight: 400,
+                  lineHeight: 1,
+                  color: '#C9A875',
+                  margin: 0,
+                }}
+              >
+                0 VCs
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 13,
+                  color: 'rgba(245,241,234,0.45)',
+                  marginTop: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                Raising from people who will actually use this
+              </p>
+              <div className="ss-about-progress-track">
+                <div className="ss-about-progress-fill" style={{ width: '100%' }} />
+              </div>
+            </div>
+            {/* stat 3 */}
+            <div className="ss-about-stat">
+              <p
+                style={{
+                  fontFamily: 'var(--font-cormorant), var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                  fontSize: 'clamp(2.25rem, 4.5vw, 3.5rem)',
+                  fontWeight: 400,
+                  lineHeight: 1,
+                  color: '#C9A875',
+                  margin: 0,
+                }}
+              >
+                S${(progress.goal_sgd / 1000).toFixed(0)}k goal
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 13,
+                  color: 'rgba(245,241,234,0.45)',
+                  marginTop: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                {pledgedPct}% funded · {progress.total_backers} backers
+              </p>
+              <div className="ss-about-progress-track">
+                <div
+                  className="ss-about-progress-fill"
+                  style={{ width: `${Math.max(pledgedPct, 3)}%` }}
                 />
               </div>
-
-              {/* Right: editorial copy */}
-              <motion.div
-                initial={reduced ? false : { opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={reduced ? undefined : { duration: 0.8, ease: EASE, delay: 0.15 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
-              >
-                {[
-                  `We built Stayscape because we kept losing something when we travelled. That feeling — arriving somewhere new, not knowing what was around the corner, being surprised. It gets engineered out by apps that optimise for efficiency over experience.`,
-                  `Stayscape Personal is our answer to that. An AI that knows you, knows the city, and helps you move through it the way a well-travelled friend would. Not a search engine. Not a booking tool. A companion.`,
-                  `We're a small team building carefully. We're not raising from institutions right now — we're raising from the people who will actually use this. If you've ever felt that travel should feel like more, this is for you.`,
-                ].map((text, i) => (
-                  <p
-                    key={i}
-                    style={{
-                      fontFamily: 'var(--font-dm-sans), sans-serif',
-                      fontSize: 17,
-                      color: i === 0 ? 'var(--text-secondary)' : 'var(--text-muted)',
-                      lineHeight: 1.75,
-                    }}
-                  >
-                    {text}
-                  </p>
-                ))}
-
-                {/* Story CTA */}
-                <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                  <a
-                    href="#tiers"
-                    className="ss-gold-btn"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      height: 48,
-                      padding: '0 32px',
-                      borderRadius: 999,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      fontFamily: 'var(--font-dm-sans), sans-serif',
-                      letterSpacing: '0.03em',
-                      textDecoration: 'none',
-                      color: 'var(--background)',
-                    }}
-                  >
-                    See the Tiers
-                  </a>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-dm-sans), sans-serif',
-                      fontSize: 13,
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    Reward-based · No equity
-                  </span>
-                </div>
-              </motion.div>
             </div>
           </div>
+
+          <hr className="ss-about-rule" style={{ position: 'relative', zIndex: 1 }} />
+
+          {/* Main body — asymmetric, left-anchored editorial layout */}
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              maxWidth: 'min(1200px, 92vw)',
+              margin: '0 auto',
+              padding: 'clamp(72px, 9vw, 128px) 0',
+              display: 'grid',
+              gridTemplateColumns: 'clamp(280px, 38%, 460px) 1fr',
+              gap: 'clamp(48px, 7vw, 112px)',
+              alignItems: 'start',
+            }}
+          >
+            {/* Left column — manifesto headline, tightly tracked */}
+            <div style={{ position: 'sticky', top: 120 }}>
+              {/* Founder tag */}
+              <div className="ss-about-founder-tag">
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: '#C9A875',
+                    flexShrink: 0,
+                  }}
+                />
+                A note from the founder
+              </div>
+
+              {/* Headline — line-reveal animation */}
+              <h2
+                style={{
+                  fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                  fontSize: 'clamp(2rem, 3.8vw, 3.2rem)',
+                  fontWeight: 400,
+                  lineHeight: 1.12,
+                  letterSpacing: '-0.02em',
+                  color: '#F5F1EA',
+                  margin: '24px 0 0',
+                }}
+              >
+                <span className="ss-about-line">
+                  <span className="ss-about-line-inner" style={{ display: 'block' }}>Built by travellers</span>
+                </span>
+                <span className="ss-about-line">
+                  <span
+                    className="ss-about-line-inner"
+                    style={{
+                      display: 'block',
+                      fontStyle: 'italic',
+                      color: '#A89B8C',
+                    }}
+                  >
+                    who got tired of losing
+                  </span>
+                </span>
+                <span className="ss-about-line">
+                  <span className="ss-about-line-inner" style={{ display: 'block' }}>the magic.</span>
+                </span>
+              </h2>
+
+              {/* Gold rule — animated scale-x from left */}
+              <motion.div
+                initial={reduced ? false : { scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={reduced ? undefined : { duration: 0.8, ease: EASE, delay: 0.5 }}
+                style={{
+                  width: 40,
+                  height: 1,
+                  background: 'rgba(201, 168, 117, 0.5)',
+                  marginTop: 32,
+                  transformOrigin: 'left center',
+                }}
+              />
+            </div>
+
+            {/* Right column — body copy + CTA */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <p
+                className="ss-about-body"
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.6vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.8,
+                  color: 'rgba(245,241,234,0.75)',
+                }}
+              >
+                We built Stayscape because we kept losing something when we travelled. That feeling — arriving somewhere new, not knowing what was around the corner, being surprised. It gets engineered out by apps that optimise for efficiency over experience.
+              </p>
+
+              <p
+                className="ss-about-body"
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.6vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.8,
+                  color: 'rgba(245,241,234,0.75)',
+                }}
+              >
+                Stayscape Personal is our answer to that. An AI that knows you, knows the city, and helps you move through it the way a well-travelled friend would. Not a search engine. Not a booking tool.{' '}
+                <em
+                  style={{
+                    fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(17px, 1.7vw, 19px)',
+                    color: 'rgba(245,241,234,0.88)',
+                  }}
+                >
+                  A companion.
+                </em>
+              </p>
+
+              <p
+                className="ss-about-body"
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.6vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.8,
+                  color: 'rgba(245,241,234,0.75)',
+                }}
+              >
+                We&apos;re a small team building carefully. We&apos;re not raising from institutions right now — we&apos;re raising from the people who will actually use this. If you&apos;ve ever felt that travel should feel like more, this is for you.
+              </p>
+
+              {/* CTA row */}
+              <div
+                className="ss-about-cta-area"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 20,
+                  marginTop: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <a
+                  href="#tiers"
+                  className="ss-gold-btn"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    height: 48,
+                    padding: '0 32px',
+                    borderRadius: 999,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    fontFamily: 'var(--font-dm-sans), sans-serif',
+                    letterSpacing: '0.03em',
+                    textDecoration: 'none',
+                    color: '#14100D',
+                  }}
+                >
+                  Back the project
+                </a>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-dm-sans), sans-serif',
+                    fontSize: 13,
+                    color: 'rgba(245,241,234,0.35)',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  Reward-based · No equity
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom gradient rule */}
+          <hr className="ss-about-rule" style={{ position: 'relative', zIndex: 1 }} />
         </section>
 
       </main>
