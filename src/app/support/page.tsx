@@ -1,6 +1,9 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client'
 import SupportPageClient from './SupportPageClient'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export interface Tier {
   slug: string
   name: string
