@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import LandingNav from '@/components/landing/LandingNav'
 import LandingFooter from '@/components/landing/LandingFooter'
@@ -93,6 +93,26 @@ const HERO_STYLES = `
   }
 `
 
+const STORY_STYLES = `
+  @keyframes ssFadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ss-story-child {
+    opacity: 0;
+  }
+  .ss-story-section.in-view .ss-story-child {
+    animation: ssFadeUp 700ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ss-story-child {
+      opacity: 1 !important;
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+`
+
 const TIERS = [
   {
     id: 'traveller',
@@ -166,6 +186,24 @@ export default function SupportPage() {
     })()
   }, [])
 
+  const storyRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const el = storyRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('in-view')
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.2 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
   const fade = (delay: number) =>
     reduced
       ? {}
@@ -189,8 +227,10 @@ export default function SupportPage() {
         {/* ── HERO ─────────────────────────────────────────────────── */}
         <section
           style={{
+            position: 'relative',
             minHeight: '100vh',
             background: '#0A0908',
+            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -201,8 +241,45 @@ export default function SupportPage() {
           {/* eslint-disable-next-line react/no-danger */}
           <style dangerouslySetInnerHTML={{ __html: HERO_STYLES }} />
 
+          {/* Background media — bottom fades into #0A0908 via mask */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              WebkitMaskImage: 'linear-gradient(to bottom, black 52%, transparent 100%)',
+              maskImage: 'linear-gradient(to bottom, black 52%, transparent 100%)',
+            }}
+          >
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            >
+              <source src="/videos/support-hero.mp4" type="video/mp4" />
+            </video>
+            {/* Cinematic still — swap for your own asset */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundImage:
+                  'url(https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1800&q=80)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center 40%',
+              }}
+            />
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,6,4,0.54)' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 35%, rgba(4,3,2,0.62) 100%)' }} />
+          </div>
+
           <div
             style={{
+              position: 'relative',
+              zIndex: 1,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -339,6 +416,260 @@ export default function SupportPage() {
                 {pledgedPct}% funded
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* ── STORY ────────────────────────────────────────────────── */}
+        <section
+          id="story"
+          ref={storyRef}
+          className="ss-story-section"
+          style={{
+            background: '#0A0908',
+            padding: 'clamp(80px, 12vw, 160px) 24px',
+          }}
+        >
+          {/* eslint-disable-next-line react/no-danger */}
+          <style dangerouslySetInnerHTML={{ __html: STORY_STYLES }} />
+
+          <div style={{ maxWidth: 'min(680px, 92vw)', margin: '0 auto' }}>
+
+            {/* Eyebrow */}
+            <p
+              className="ss-story-child"
+              style={{
+                animationDelay: '0ms',
+                fontFamily: 'var(--font-dm-sans), sans-serif',
+                fontSize: 11,
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.18em',
+                color: '#C9A875',
+                margin: 0,
+              }}
+            >
+              The Story
+            </p>
+
+            {/* Heading */}
+            <h2
+              className="ss-story-child"
+              style={{
+                animationDelay: '100ms',
+                fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                fontSize: 'clamp(1.75rem, 4.5vw, 3rem)',
+                fontWeight: 400,
+                lineHeight: 1.2,
+                letterSpacing: '-0.01em',
+                color: '#F5F1EA',
+                margin: '16px 0 0',
+              }}
+            >
+              Travel deserves a companion that actually knows you.
+            </h2>
+
+            {/* Paragraph 1 block */}
+            <div
+              className="ss-story-child"
+              style={{ animationDelay: '250ms', marginTop: 'clamp(32px, 4vw, 56px)' }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.8vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.75,
+                  color: 'rgba(245,241,234,0.82)',
+                  margin: 0,
+                }}
+              >
+                We understand that loving travel and actually traveling are two very different things. One requires excitement — the other requires planning.
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.8vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.75,
+                  color: 'rgba(245,241,234,0.82)',
+                  margin: '28px 0 0',
+                }}
+              >
+                And for hotels, no matter how advanced operational technology becomes, hospitality has always been about enhancing the guest experience. But do you see the gap? Hotels are meant to be the gateway to a destination — a bridge between guests and the local ecosystem, culture, and experiences waiting to be discovered.
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.8vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.75,
+                  color: 'rgba(245,241,234,0.82)',
+                  margin: '28px 0 0',
+                }}
+              >
+                As technology evolves, so does the opportunity to digitalize services in ways that improve hotel operations while creating greater convenience and comfort for travelers.
+              </p>
+            </div>
+
+            {/* Divider */}
+            <hr
+              style={{
+                width: 64,
+                height: 1,
+                border: 'none',
+                background: 'rgba(201, 168, 117, 0.3)',
+                margin: '40px 0',
+                marginLeft: 0,
+              }}
+            />
+
+            {/* Paragraph 2 block */}
+            <div
+              className="ss-story-child"
+              style={{ animationDelay: '400ms' }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.8vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.75,
+                  color: 'rgba(245,241,234,0.82)',
+                  margin: 0,
+                }}
+              >
+                That is where StayScape comes in.
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.8vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.75,
+                  color: 'rgba(245,241,234,0.82)',
+                  margin: '28px 0 0',
+                }}
+              >
+                StayScape is designed to be an extra source of comfort throughout your journey — helping you get things done effortlessly, discover places with ease, and feel supported whenever uncertainty arises. It is an extension of the hotel experience, and when needed, a trusted guide during your travels.
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 'clamp(16px, 1.8vw, 18px)',
+                  fontWeight: 400,
+                  lineHeight: 1.75,
+                  color: 'rgba(245,241,234,0.82)',
+                  margin: '28px 0 0',
+                }}
+              >
+                Aria is more than just an AI concierge. She is a planner, a local guide, and most importantly, a companion — there to support{' '}
+                <em
+                  style={{
+                    fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                    fontStyle: 'italic',
+                    fontWeight: 400,
+                  }}
+                >
+                  you
+                </em>
+                {' '}every step of your trip.
+              </p>
+
+              {/*
+                IMAGE PLACEHOLDER — recommended: a phone screen showing Aria's interface,
+                warm ambient hotel lighting, soft focus background.
+                Upload to: /public/images/story-aria-companion.jpg
+                Ideal dimensions: 680 × 420px (aspect ratio 16:10)
+              */}
+              <figure
+                aria-hidden="true"
+                style={{
+                  margin: 'clamp(32px, 4vw, 48px) 0 0',
+                  width: '100%',
+                  aspectRatio: '16/10',
+                  background: 'rgba(201, 168, 117, 0.03)',
+                  border: '1px dashed rgba(201, 168, 117, 0.15)',
+                  borderRadius: 6,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Replace this entire <figure> with: */}
+                {/* <img src="/images/story-aria-companion.jpg" alt="Aria — your personal travel companion" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} /> */}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-dm-sans), sans-serif',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    color: 'rgba(201, 168, 117, 0.25)',
+                  }}
+                >
+                  Image placeholder
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-dm-sans), sans-serif',
+                    fontSize: 11,
+                    color: 'rgba(201, 168, 117, 0.15)',
+                    textAlign: 'center',
+                    maxWidth: 260,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Upload to /public/images/story-aria-companion.jpg · 680 × 420px
+                </span>
+              </figure>
+            </div>
+
+            {/* Divider */}
+            <hr
+              style={{
+                width: 64,
+                height: 1,
+                border: 'none',
+                background: 'rgba(201, 168, 117, 0.3)',
+                margin: '40px 0',
+                marginLeft: 0,
+              }}
+            />
+
+            {/* Pull quote — Meet Aria */}
+            <div
+              className="ss-story-child"
+              style={{ animationDelay: '550ms', marginTop: 24 }}
+            >
+              <div style={{ display: 'flex', gap: 24, alignItems: 'stretch' }}>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: 3,
+                    flexShrink: 0,
+                    background: '#C9A875',
+                    borderRadius: 2,
+                  }}
+                />
+                <p
+                  style={{
+                    fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                    fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)',
+                    fontStyle: 'italic',
+                    fontWeight: 400,
+                    lineHeight: 1.3,
+                    color: '#C9A875',
+                    margin: 0,
+                  }}
+                >
+                  Meet Aria — your personal travel concierge.
+                </p>
+              </div>
+            </div>
+
           </div>
         </section>
 
