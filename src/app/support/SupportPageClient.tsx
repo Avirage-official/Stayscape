@@ -8,15 +8,13 @@ import type { EarlyProgress } from './page'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
-// ─── Hardcoded tiers ───────────────────────────────────────────────────────
-// Stripe URLs are stable and don't need to live in Supabase.
-// To update a URL: change it here and redeploy.
+// ─── Hardcoded tiers ──────────────────────────────────────────────────────────
 const TIERS = [
   {
     slug: 'believer',
     name: 'Believer',
     price_sgd: 35,
-    tagline: 'You believe in what we\'re building.',
+    tagline: "You believe in what we're building.",
     perks: [
       'Lifetime access to Stayscape Personal',
       'Early Supporter badge on your profile',
@@ -24,7 +22,7 @@ const TIERS = [
     ],
     is_limited: false,
     total_spots: null,
-    stripe_payment_link: 'https://buy.stripe.com/bJefZg3I2fMaf5P7fhdfG01',
+    stripe_payment_link: 'https://buy.stripe.com/cNidR85Qa8jI5vf1UXdfG00',
   },
   {
     slug: 'wanderer',
@@ -111,7 +109,7 @@ const TIERS = [
 
 type TierEntry = typeof TIERS[number]
 
-// ─── Styles ────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const HERO_STYLES = `
   @keyframes ssFadeUp {
     from { opacity: 0; transform: translateY(12px); }
@@ -149,8 +147,23 @@ const STORY_STYLES = `
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+  /* Two-column story layout */
+  .ss-story-grid {
+    display: grid;
+    grid-template-columns: clamp(240px, 36%, 420px) 1fr;
+    gap: clamp(48px, 6vw, 96px);
+    align-items: start;
+  }
+  .ss-story-sticky {
+    position: sticky;
+    top: 120px;
+  }
   .ss-story-child { opacity: 0; }
   .ss-story-section.in-view .ss-story-child { animation: ssFadeUp 700ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+  @media (max-width: 860px) {
+    .ss-story-grid { grid-template-columns: 1fr; }
+    .ss-story-sticky { position: static; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .ss-story-child { opacity: 1 !important; animation: none !important; transform: none !important; }
   }
@@ -251,7 +264,7 @@ export default function SupportPageClient({ initialProgress }: Props) {
     return () => obs.disconnect()
   }
 
-  useEffect(() => attachObserver(storyRef, 0.2), [])
+  useEffect(() => attachObserver(storyRef, 0.1), [])
   useEffect(() => attachObserver(tiersRef, 0.3), [])
   useEffect(() => attachObserver(aboutRef, 0.15), [])
 
@@ -266,7 +279,7 @@ export default function SupportPageClient({ initialProgress }: Props) {
 
       <main>
 
-        {/* ── HERO ───────────────────────────────────────────────── */}
+        {/* ── HERO ──────────────────────────────────────────────────────────── */}
         <section style={{ position: 'relative', minHeight: '100vh', background: '#0A0908', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(80px,10vh,120px) clamp(24px,5vw,48px)' }}>
           {/* eslint-disable-next-line react/no-danger */}
           <style dangerouslySetInnerHTML={{ __html: HERO_STYLES }} />
@@ -303,42 +316,97 @@ export default function SupportPageClient({ initialProgress }: Props) {
           </div>
         </section>
 
-        {/* ── STORY ─────────────────────────────────────────────── */}
-        <section id="story" ref={storyRef} className="ss-story-section" style={{ background: '#0A0908', padding: 'clamp(80px,12vw,160px) 24px' }}>
+        {/* ── STORY ─────────────────────────────────────────────────────────── */}
+        <section
+          id="story"
+          ref={storyRef}
+          className="ss-story-section"
+          style={{ background: '#0A0908', padding: 'clamp(72px,9vw,120px) clamp(24px,5vw,64px)' }}
+        >
           {/* eslint-disable-next-line react/no-danger */}
           <style dangerouslySetInnerHTML={{ __html: STORY_STYLES }} />
-          <div style={{ maxWidth: 'min(680px,92vw)', margin: '0 auto' }}>
-            <p className="ss-story-child" style={{ animationDelay: '0ms', fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#C9A875', margin: 0 }}>The Story</p>
-            <h2 className="ss-story-child" style={{ animationDelay: '100ms', fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif', fontSize: 'clamp(1.75rem,4.5vw,3rem)', fontWeight: 400, lineHeight: 1.2, letterSpacing: '-0.01em', color: '#F5F1EA', margin: '16px 0 0' }}>Travel deserves a companion that actually knows you.</h2>
-            <div className="ss-story-child" style={{ animationDelay: '250ms', marginTop: 'clamp(32px,4vw,56px)' }}>
-              {['We understand that loving travel and actually traveling are two very different things. One requires excitement — the other requires planning.', 'And for hotels, no matter how advanced operational technology becomes, hospitality has always been about enhancing the guest experience. But do you see the gap? Hotels are meant to be the gateway to a destination — a bridge between guests and the local ecosystem, culture, and experiences waiting to be discovered.', 'As technology evolves, so does the opportunity to digitalize services in ways that improve hotel operations while creating greater convenience and comfort for travelers.'].map((text, i) => (
-                <p key={i} style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 'clamp(16px,1.8vw,18px)', fontWeight: 400, lineHeight: 1.75, color: 'rgba(245,241,234,0.82)', margin: i === 0 ? 0 : '28px 0 0' }}>{text}</p>
-              ))}
-            </div>
-            <hr style={{ width: 64, height: 1, border: 'none', background: 'rgba(201,168,117,0.3)', margin: '40px 0', marginLeft: 0 }} />
-            <div className="ss-story-child" style={{ animationDelay: '400ms' }}>
-              {['That is where StayScape comes in.', 'StayScape is designed to be an extra source of comfort throughout your journey — helping you get things done effortlessly, discover places with ease, and feel supported whenever uncertainty arises. It is an extension of the hotel experience, and when needed, a trusted guide during your travels.'].map((text, i) => (
-                <p key={i} style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 'clamp(16px,1.8vw,18px)', fontWeight: 400, lineHeight: 1.75, color: 'rgba(245,241,234,0.82)', margin: i === 0 ? 0 : '28px 0 0' }}>{text}</p>
-              ))}
-              <p style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 'clamp(16px,1.8vw,18px)', fontWeight: 400, lineHeight: 1.75, color: 'rgba(245,241,234,0.82)', margin: '28px 0 0' }}>
-                Aria is more than just an AI concierge. She is a planner, a local guide, and most importantly, a companion — there to support{' '}
-                <em style={{ fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif', fontStyle: 'italic', fontWeight: 400 }}>you</em>{' '}every step of your trip.
-              </p>
-              <figure style={{ margin: 'clamp(32px,4vw,48px) 0 0', width: '100%', borderRadius: 6, overflow: 'hidden', lineHeight: 0 }}>
-                <img src="/images/story-aria-companion.jpg" alt="Aria — your personal travel companion" style={{ width: '100%', height: 'auto', objectFit: 'cover', display: 'block', borderRadius: 6 }} />
-              </figure>
-            </div>
-            <hr style={{ width: 64, height: 1, border: 'none', background: 'rgba(201,168,117,0.3)', margin: '40px 0', marginLeft: 0 }} />
-            <div className="ss-story-child" style={{ animationDelay: '550ms', marginTop: 24 }}>
-              <div style={{ display: 'flex', gap: 24, alignItems: 'stretch' }}>
-                <div aria-hidden="true" style={{ width: 3, flexShrink: 0, background: '#C9A875', borderRadius: 2 }} />
-                <p style={{ fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif', fontSize: 'clamp(1.5rem,3.5vw,2.25rem)', fontStyle: 'italic', fontWeight: 400, lineHeight: 1.3, color: '#C9A875', margin: 0 }}>Meet Aria — your personal travel concierge.</p>
+
+          <div style={{ maxWidth: 'min(1200px, 92vw)', margin: '0 auto' }}>
+            <div className="ss-story-grid">
+
+              {/* ── LEFT: sticky label + heading + pull-quote ── */}
+              <div className="ss-story-sticky">
+                <p
+                  className="ss-story-child"
+                  style={{ animationDelay: '0ms', fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#C9A875', margin: 0 }}
+                >
+                  The Story
+                </p>
+                <h2
+                  className="ss-story-child"
+                  style={{ animationDelay: '100ms', fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif', fontSize: 'clamp(1.75rem,3.5vw,2.75rem)', fontWeight: 400, lineHeight: 1.18, letterSpacing: '-0.01em', color: '#F5F1EA', margin: '16px 0 0' }}
+                >
+                  Travel deserves a companion that actually knows you.
+                </h2>
+                <hr style={{ width: 48, height: 1, border: 'none', background: 'rgba(201,168,117,0.35)', margin: '32px 0', marginLeft: 0 }} />
+                <div
+                  className="ss-story-child"
+                  style={{ animationDelay: '300ms', display: 'flex', gap: 16, alignItems: 'stretch' }}
+                >
+                  <div aria-hidden="true" style={{ width: 2, flexShrink: 0, background: '#C9A875', borderRadius: 2, opacity: 0.7 }} />
+                  <p style={{ fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif', fontSize: 'clamp(1.1rem,2vw,1.35rem)', fontStyle: 'italic', fontWeight: 400, lineHeight: 1.5, color: 'rgba(201,168,117,0.9)', margin: 0 }}>
+                    Meet Aria — your personal travel concierge.
+                  </p>
+                </div>
               </div>
+
+              {/* ── RIGHT: body copy ── */}
+              <div
+                className="ss-story-child"
+                style={{ animationDelay: '200ms', display: 'flex', flexDirection: 'column', gap: 28 }}
+              >
+                {[
+                  'We understand that loving travel and actually traveling are two very different things. One requires excitement — the other requires planning.',
+                  'And for hotels, no matter how advanced operational technology becomes, hospitality has always been about enhancing the guest experience. Hotels are meant to be the gateway to a destination — a bridge between guests and the local ecosystem, culture, and experiences waiting to be discovered.',
+                  'As technology evolves, so does the opportunity to digitalize services in ways that improve hotel operations while creating greater convenience and comfort for travelers.',
+                ].map((text, i) => (
+                  <p
+                    key={i}
+                    style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 'clamp(15px,1.6vw,17px)', fontWeight: 400, lineHeight: 1.8, color: 'rgba(245,241,234,0.78)', margin: 0 }}
+                  >
+                    {text}
+                  </p>
+                ))}
+
+                <hr style={{ height: 1, background: 'rgba(201,168,117,0.18)', border: 'none', margin: '4px 0' }} />
+
+                {[
+                  'That is where StayScape comes in.',
+                  'StayScape is designed to be an extra source of comfort throughout your journey — helping you get things done effortlessly, discover places with ease, and feel supported whenever uncertainty arises. It is an extension of the hotel experience, and when needed, a trusted guide during your travels.',
+                ].map((text, i) => (
+                  <p
+                    key={i}
+                    style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 'clamp(15px,1.6vw,17px)', fontWeight: 400, lineHeight: 1.8, color: 'rgba(245,241,234,0.78)', margin: 0 }}
+                  >
+                    {text}
+                  </p>
+                ))}
+
+                <p style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 'clamp(15px,1.6vw,17px)', fontWeight: 400, lineHeight: 1.8, color: 'rgba(245,241,234,0.78)', margin: 0 }}>
+                  Aria is more than just an AI concierge. She is a planner, a local guide, and most importantly, a companion — there to support{' '}
+                  <em style={{ fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(16px,1.7vw,18px)', color: 'rgba(245,241,234,0.9)' }}>you</em>{' '}every step of your trip.
+                </p>
+
+                <figure style={{ margin: '8px 0 0', width: '100%', borderRadius: 8, overflow: 'hidden', lineHeight: 0 }}>
+                  <img
+                    src="/images/story-aria-companion.jpg"
+                    alt="Aria — your personal travel companion"
+                    loading="lazy"
+                    style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
+                  />
+                </figure>
+              </div>
+
             </div>
           </div>
         </section>
 
-        {/* ── TIERS ─────────────────────────────────────────────── */}
+        {/* ── TIERS ─────────────────────────────────────────────────────────── */}
         <section id="tiers" ref={tiersRef} className="ss-tiers-section" style={{ background: '#0A0908', padding: 'clamp(80px,10vw,140px) 24px' }}>
           {/* eslint-disable-next-line react/no-danger */}
           <style dangerouslySetInnerHTML={{ __html: TIERS_STYLES }} />
@@ -383,7 +451,7 @@ export default function SupportPageClient({ initialProgress }: Props) {
           </div>
         </section>
 
-        {/* ── ABOUT ─────────────────────────────────────────────── */}
+        {/* ── ABOUT ─────────────────────────────────────────────────────────── */}
         <section id="about" ref={aboutRef} className="ss-about-section" aria-label="About Stayscape">
           {/* eslint-disable-next-line react/no-danger */}
           <style dangerouslySetInnerHTML={{ __html: ABOUT_STYLES }} />
