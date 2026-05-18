@@ -1,10 +1,97 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import LandingNav from '@/components/landing/LandingNav'
 import LandingFooter from '@/components/landing/LandingFooter'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 const EASE = [0.16, 1, 0.3, 1] as const
+
+interface EarlyProgress {
+  total_pledged_sgd: number
+  total_backers: number
+  goal_sgd: number
+}
+
+const PROGRESS_FALLBACK: EarlyProgress = {
+  total_pledged_sgd: 0,
+  total_backers: 0,
+  goal_sgd: 15000,
+}
+
+const HERO_STYLES = `
+  @keyframes ssFadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ss-hero-item {
+    animation: ssFadeUp 700ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .ss-hero-cta-primary {
+    background: #C9A875;
+    color: #14100D;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background 200ms ease, transform 200ms ease;
+  }
+  .ss-hero-cta-primary:hover {
+    background: #D4B58A;
+    transform: scale(1.015);
+  }
+  .ss-hero-cta-ghost {
+    background: transparent;
+    color: #C9A875;
+    border: 1px solid rgba(201, 168, 117, 0.4);
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 200ms ease;
+  }
+  .ss-hero-cta-ghost:hover {
+    border-color: rgba(201, 168, 117, 0.8);
+  }
+  .ss-hero-ctas {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 480px) {
+    .ss-hero-ctas {
+      flex-direction: column;
+      width: 100%;
+    }
+    .ss-hero-cta-primary,
+    .ss-hero-cta-ghost {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ss-hero-item {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+`
 
 const TIERS = [
   {
@@ -61,6 +148,17 @@ const TIERS = [
 
 export default function SupportPage() {
   const reduced = useReducedMotion()
+  const [progress, setProgress] = useState<EarlyProgress>(PROGRESS_FALLBACK)
+
+  useEffect(() => {
+    const sb = getSupabaseBrowser()
+    if (!sb) return
+    sb.from('early_progress')
+      .select('total_pledged_sgd,total_backers,goal_sgd')
+      .single()
+      .then(({ data }) => { if (data) setProgress(data as EarlyProgress) })
+      .catch(() => {})
+  }, [])
 
   const fade = (delay: number) =>
     reduced
@@ -71,6 +169,11 @@ export default function SupportPage() {
           transition: { duration: 0.85, ease: EASE, delay },
         }
 
+  const pledgedPct = Math.min(
+    Math.round((progress.total_pledged_sgd / progress.goal_sgd) * 100),
+    100,
+  )
+
   return (
     <div style={{ background: 'var(--background)', minHeight: '100vh' }}>
       <LandingNav />
@@ -80,221 +183,127 @@ export default function SupportPage() {
         {/* ── HERO ─────────────────────────────────────────────────── */}
         <section
           style={{
-            position: 'relative',
-            minHeight: '90vh',
-            background: 'var(--background)',
-            overflow: 'hidden',
+            minHeight: '100vh',
+            background: '#0A0908',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'flex-end',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'clamp(80px, 10vh, 120px) clamp(24px, 5vw, 48px)',
           }}
         >
-          {/* Background — masked at bottom so it bleeds into page bg */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 0,
-              WebkitMaskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)',
-              maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)',
-            }}
-          >
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-            >
-              <source src="/videos/support-hero.mp4" type="video/mp4" />
-            </video>
-            {/* Cinematic still fallback — swap src for your own asset */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundImage:
-                  'url(https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1800&q=80)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center 40%',
-              }}
-            />
-            {/* Dark overlay */}
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,6,4,0.52)' }} />
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'radial-gradient(ellipse at center, transparent 35%, rgba(4,3,2,0.6) 100%)',
-              }}
-            />
-          </div>
+          {/* eslint-disable-next-line react/no-danger */}
+          <style dangerouslySetInnerHTML={{ __html: HERO_STYLES }} />
 
-          {/* Gold shimmer rule — top */}
-          <div
-            aria-hidden="true"
-            style={{ position: 'absolute', inset: '0 0 auto 0', zIndex: 5, height: 2, overflow: 'hidden' }}
-          >
-            <motion.div
-              style={{
-                width: '200%',
-                height: '100%',
-                background:
-                  'linear-gradient(90deg, transparent 0%, rgba(201,168,117,0.3) 20%, rgba(214,162,82,1) 50%, rgba(201,168,117,0.3) 80%, transparent 100%)',
-              }}
-              animate={{ x: ['-50%', '0%'] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: 'linear', delay: 0.8 }}
-            />
-          </div>
-
-          {/* Content */}
           <div
             style={{
-              position: 'relative',
-              zIndex: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 'clamp(32px, 4vw, 48px)',
               width: '100%',
-              maxWidth: 1280,
-              margin: '0 auto',
-              padding:
-                'clamp(80px, 12vw, 160px) clamp(24px, 5vw, 80px) clamp(60px, 8vw, 100px)',
+              maxWidth: 680,
+              textAlign: 'center',
             }}
           >
-            {/* Label */}
-            <motion.p
-              {...fade(0.15)}
+            {/* Eyebrow */}
+            <p
+              className="ss-hero-item"
               style={{
+                animationDelay: '0ms',
                 fontFamily: 'var(--font-dm-sans), sans-serif',
                 fontSize: 11,
-                fontWeight: 600,
+                fontWeight: 500,
                 textTransform: 'uppercase',
-                letterSpacing: '0.22em',
-                color: 'rgba(214,162,82,0.9)',
-                marginBottom: 28,
+                letterSpacing: '0.18em',
+                color: '#C9A875',
+                margin: 0,
               }}
             >
-              Stayscape Founders Collective · Limited Release
-            </motion.p>
+              Stayscape Early Support · Limited Release
+            </p>
 
-            {/* Heading */}
-            <motion.h1 {...fade(0.3)} style={{ margin: 0 }}>
-              <span
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
-                  fontSize: 'clamp(2.8rem, 6vw, 5.8rem)',
-                  fontWeight: 600,
-                  lineHeight: 1.08,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--text-primary)',
-                  textShadow: '0 2px 40px rgba(0,0,0,0.5)',
-                }}
-              >
+            {/* Headline */}
+            <h1
+              className="ss-hero-item"
+              style={{
+                animationDelay: '100ms',
+                fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
+                fontSize: 'clamp(2rem, 5.5vw, 4rem)',
+                fontWeight: 400,
+                lineHeight: 1.15,
+                letterSpacing: '-0.01em',
+                margin: 0,
+              }}
+            >
+              <span style={{ color: '#F5F1EA', display: 'block' }}>
                 Travel was supposed to feel like discovery.
               </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--font-cormorant), var(--font-playfair), Georgia, serif',
-                  fontSize: 'clamp(2.8rem, 6vw, 5.8rem)',
-                  fontWeight: 400,
-                  fontStyle: 'italic',
-                  lineHeight: 1.08,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--text-secondary)',
-                  textShadow: '0 2px 40px rgba(0,0,0,0.5)',
-                  marginTop: '0.12em',
-                }}
-              >
+              <span style={{ color: '#A89B8C', display: 'block', fontStyle: 'italic' }}>
                 Somewhere along the way, it became logistics.
               </span>
-            </motion.h1>
+            </h1>
 
             {/* Subhead */}
-            <motion.p
-              {...fade(0.5)}
+            <p
+              className="ss-hero-item"
               style={{
+                animationDelay: '250ms',
                 fontFamily: 'var(--font-dm-sans), sans-serif',
-                fontSize: 'clamp(16px, 2vw, 22px)',
+                fontSize: 'clamp(15px, 2vw, 19px)',
                 fontWeight: 400,
-                lineHeight: 1.7,
-                color: 'rgba(245,230,204,0.7)',
-                maxWidth: 560,
-                marginTop: 28,
-                marginBottom: 40,
+                lineHeight: 1.65,
+                color: 'rgba(245,241,234,0.82)',
+                maxWidth: 580,
+                margin: 0,
               }}
             >
-              We&apos;re inviting a small group of early travellers to back Stayscape Personal —
-              the AI travel companion built for people who want their next trip to feel human again.
-            </motion.p>
+              We&apos;re inviting a small group of early travellers to support Stayscape Personal — the AI travel companion built for people who want their next trip to feel human again.
+            </p>
 
             {/* CTAs */}
-            <motion.div
-              {...fade(0.65)}
-              style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginBottom: 44 }}
+            <div
+              className="ss-hero-item ss-hero-ctas"
+              style={{ animationDelay: '400ms' }}
             >
-              <a
-                href="#tiers"
-                className="ss-gold-btn"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  height: 50,
-                  padding: '0 36px',
-                  borderRadius: 999,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  fontFamily: 'var(--font-dm-sans), sans-serif',
-                  letterSpacing: '0.03em',
-                  textDecoration: 'none',
-                  color: 'var(--background)',
-                }}
-              >
-                Become a Founder
+              <a href="#tiers" className="ss-hero-cta-primary">
+                Support Stayscape
               </a>
-              <a
-                href="#story"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  height: 50,
-                  padding: '0 32px',
-                  borderRadius: 999,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  fontFamily: 'var(--font-dm-sans), sans-serif',
-                  letterSpacing: '0.02em',
-                  textDecoration: 'none',
-                  color: 'var(--gold)',
-                  border: '1px solid var(--gold)',
-                  background: 'transparent',
-                  transition: 'background 200ms ease',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(201,168,117,0.1)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              >
+              <a href="#story" className="ss-hero-cta-ghost">
                 Read the Story
               </a>
-            </motion.div>
+            </div>
 
-            {/* Progress bar */}
-            <motion.div {...fade(0.8)} data-pledged="0" style={{ maxWidth: 440 }}>
+            {/* Progress block — live from Supabase */}
+            <div
+              className="ss-hero-item"
+              style={{
+                animationDelay: '550ms',
+                width: 'min(680px, 92vw)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
               <p
                 style={{
                   fontFamily: 'var(--font-dm-sans), sans-serif',
-                  fontSize: 12,
-                  color: 'rgba(245,230,204,0.45)',
-                  marginBottom: 10,
-                  letterSpacing: '0.02em',
+                  fontSize: 13,
+                  color: '#A89B8C',
+                  textAlign: 'center',
+                  margin: '0 0 10px',
+                  lineHeight: 1.4,
                 }}
               >
-                S$ 0 raised of S$ 15,000 goal · 0 founders so far
+                S$&nbsp;{progress.total_pledged_sgd.toLocaleString('en-SG')} raised of
+                S$&nbsp;{progress.goal_sgd.toLocaleString('en-SG')} goal
+                &nbsp;·&nbsp;{progress.total_backers} supporters so far
               </p>
               <div
                 style={{
-                  height: 8,
-                  background: 'rgba(245,230,204,0.08)',
+                  width: '100%',
+                  height: 6,
+                  background: 'rgba(201, 168, 117, 0.12)',
                   borderRadius: 999,
                   overflow: 'hidden',
                 }}
@@ -302,14 +311,28 @@ export default function SupportPage() {
                 <div
                   style={{
                     height: '100%',
-                    width: '0%',
-                    background: 'var(--gold)',
+                    width: `${pledgedPct}%`,
+                    background: 'linear-gradient(90deg, #C9A875, #E0C088)',
                     borderRadius: 999,
-                    transition: 'width 1.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transition: 'width 600ms ease',
                   }}
                 />
               </div>
-            </motion.div>
+              <p
+                style={{
+                  fontFamily: 'var(--font-dm-sans), sans-serif',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  color: '#C9A875',
+                  textAlign: 'center',
+                  margin: '12px 0 0',
+                }}
+              >
+                {pledgedPct}% funded
+              </p>
+            </div>
           </div>
         </section>
 
