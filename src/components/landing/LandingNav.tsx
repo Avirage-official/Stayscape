@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: 'For Hotels',       href: '#for-hotels' },
   { label: 'How We Work',      href: '#how-it-works' },
   { label: 'Try It Out',       href: '#final-cta' },
+  { label: 'Support',          href: '/support' },
 ]
 
 function useMagnetic(strength = 0.35) {
