@@ -575,55 +575,20 @@ export default function SupportPage() {
                 {' '}every step of your trip.
               </p>
 
-              {/*
-                IMAGE PLACEHOLDER — recommended: a phone screen showing Aria's interface,
-                warm ambient hotel lighting, soft focus background.
-                Upload to: /public/images/story-aria-companion.jpg
-                Ideal dimensions: 680 × 420px (aspect ratio 16:10)
-              */}
               <figure
-                aria-hidden="true"
                 style={{
                   margin: 'clamp(32px, 4vw, 48px) 0 0',
                   width: '100%',
-                  aspectRatio: '16/10',
-                  background: 'rgba(201, 168, 117, 0.03)',
-                  border: '1px dashed rgba(201, 168, 117, 0.15)',
                   borderRadius: 6,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
                   overflow: 'hidden',
+                  lineHeight: 0,
                 }}
               >
-                {/* Replace this entire <figure> with: */}
-                {/* <img src="/images/story-aria-companion.jpg" alt="Aria — your personal travel companion" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} /> */}
-                <span
-                  style={{
-                    fontFamily: 'var(--font-dm-sans), sans-serif',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    color: 'rgba(201, 168, 117, 0.25)',
-                  }}
-                >
-                  Image placeholder
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-dm-sans), sans-serif',
-                    fontSize: 11,
-                    color: 'rgba(201, 168, 117, 0.15)',
-                    textAlign: 'center',
-                    maxWidth: 260,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Upload to /public/images/story-aria-companion.jpg · 680 × 420px
-                </span>
+                <img
+                  src="/images/story-aria-companion.jpg"
+                  alt="Aria — your personal travel companion"
+                  style={{ width: '100%', height: 'auto', objectFit: 'cover', display: 'block', borderRadius: 6 }}
+                />
               </figure>
             </div>
 
