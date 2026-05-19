@@ -25,6 +25,8 @@ export default function SplashPage() {
   const [ariaBow, setAriaBow] = useState(false)
   const [rm, setRm] = useState(false)
   const [leaving, setLeaving] = useState<'hotels' | 'guests' | null>(null)
+  // null = unknown (SSR), true = skip intro, false = show intro
+  const [skipIntro, setSkipIntro] = useState<boolean | null>(null)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const t = (fn: () => void, ms: number) => {
@@ -34,7 +36,23 @@ export default function SplashPage() {
 
   useEffect(() => { setRm(window.matchMedia('(prefers-reduced-motion: reduce)').matches) }, [])
 
+  // Check session cookie — if already seen this session, skip straight to idle
   useEffect(() => {
+    const alreadySeen = document.cookie.split(';').some(c => c.trim().startsWith('aria_intro_seen=1'))
+    if (alreadySeen) {
+      setSkipIntro(true)
+      setBeat('idle')
+    } else {
+      setSkipIntro(false)
+      // Mark as seen for the rest of this browser session (no Max-Age = session cookie)
+      document.cookie = 'aria_intro_seen=1; path=/; SameSite=Lax'
+    }
+  }, [])
+
+  useEffect(() => {
+    // Don't run the animation sequence until we know whether to skip
+    if (skipIntro === null || skipIntro === true) return
+
     timers.current.forEach(clearTimeout)
     timers.current = []
 
@@ -62,39 +80,35 @@ export default function SplashPage() {
     }, 4200)
     t(() => setAriaBow(true), 4400)
     t(() => setAriaBow(false), 5400)
-    // hold beat3 a bit longer so the longer phrase lands
     t(() => { setLineExit(true); setTextVisible(false) }, 6600)
     t(() => setBeat('dissolving'), 6850)
     t(() => setBeat('idle'), 7500)
 
     return () => timers.current.forEach(clearTimeout)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rm])
+  }, [rm, skipIntro])
 
   const currentBeat = BEATS.find(b => b.id === beat)
 
   const wordDelay = (beatId: Beat, i: number) => {
     if (beatId === 'beat1') return 0.55 + i * 0.07
     if (beatId === 'beat2') return 0.18 + i * 0.07
-    // beat3 has 9 words — keep tight
     return 0.20 + i * 0.055
   }
 
-  // Smooth navigate with full-screen cream wipe
   function navigate(dest: 'hotels' | 'guests') {
     if (leaving) return
     setLeaving(dest)
-    // Brief pause then push — the cream overlay covers the transition
     setTimeout(() => router.push(`/${dest}`), 420)
   }
 
   return (
     <>
-      {/* Aria overlay */}
+      {/* Aria overlay — hidden if skipIntro or idle */}
       <div
         style={{
           position: 'fixed', inset: 0, zIndex: 100,
-          display: beat === 'idle' ? 'none' : 'flex',
+          display: (beat === 'idle' || skipIntro) ? 'none' : 'flex',
           flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: 'clamp(16px, 2.5vh, 28px)',
           background: '#FAF8F5',
@@ -309,7 +323,6 @@ export default function SplashPage() {
             display: 'block', border: 'none', padding: 0, cursor: 'pointer', background: 'none',
           }}
         >
-          {/* Guests video */}
           <video
             autoPlay muted loop playsInline preload="metadata" aria-hidden="true"
             style={{

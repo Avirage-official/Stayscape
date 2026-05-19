@@ -6,6 +6,15 @@ import { useState, useEffect, useRef } from 'react'
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
+// Subtle per-slide tint applied to the carousel glass panel
+// so each slide has its own quiet character
+const SLIDE_TINTS = [
+  'rgba(201,168,117,0.07)',  // Slide 1 — warm gold
+  'rgba(117,155,201,0.06)',  // Slide 2 — soft blue
+  'rgba(117,201,155,0.06)',  // Slide 3 — sage green
+  'rgba(168,117,201,0.06)',  // Slide 4 — muted violet
+] as const
+
 const SLIDES = [
   {
     eyebrow: '01 · Profile',
@@ -50,7 +59,6 @@ export default function GuestsPage() {
 
   useEffect(() => {
     setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-    // Slight delay so the page-entrance animation fires after the cream wipe
     const id = setTimeout(() => setMounted(true), 60)
     return () => clearTimeout(id)
   }, [])
@@ -103,14 +111,13 @@ export default function GuestsPage() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        // Light cream — matches Aria intro, airy and holiday-ready
         background: '#FAF8F5',
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'scale(1)' : 'scale(0.98)',
         transition: 'opacity 420ms ease-out, transform 420ms cubic-bezier(0.34,1,0.64,1)',
       }}
     >
-      {/* Background video — subtle travel ambience */}
+      {/* Background video */}
       <video
         autoPlay muted loop playsInline preload="metadata"
         aria-hidden="true"
@@ -119,7 +126,6 @@ export default function GuestsPage() {
           width: '100%', height: '100%',
           objectFit: 'cover',
           zIndex: 0,
-          // Lighten the video so text stays readable over the cream bg
           opacity: 0.18,
           mixBlendMode: 'multiply',
           pointerEvents: 'none',
@@ -128,7 +134,7 @@ export default function GuestsPage() {
         <source src="/videos/guests-bg.mp4" type="video/mp4" />
       </video>
 
-      {/* Warm sunburst on top of the video */}
+      {/* Warm sunburst */}
       <div aria-hidden="true" style={{
         position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
         background: 'radial-gradient(ellipse 80% 65% at 30% 50%, rgba(201,168,117,0.10) 0%, transparent 70%)',
@@ -194,15 +200,20 @@ export default function GuestsPage() {
           <div
             style={{
               flex: 1, minHeight: 0,
-              background: 'rgba(255,255,255,0.72)',
-              backdropFilter: 'blur(18px)',
-              WebkitBackdropFilter: 'blur(18px)',
-              border: '1px solid rgba(193,127,58,0.18)',
+              // Darker base overlay + per-slide colour tint for visual distinction
+              background: `linear-gradient(135deg, rgba(245,240,232,0.88) 0%, rgba(235,228,216,0.92) 100%)`,
+              backgroundBlendMode: 'normal',
+              // Per-slide tint layer applied via outline-offset trick isn't possible;
+              // we instead layer it as a box-shadow inset tint
+              boxShadow: `0 4px 32px rgba(193,127,58,0.12), 0 1px 0 rgba(255,255,255,0.9) inset, inset 0 0 0 2000px ${SLIDE_TINTS[slide]}`,
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(193,127,58,0.22)',
               borderRadius: '20px',
               padding: 'clamp(28px, 4vw, 56px)',
               display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
               position: 'relative', overflow: 'hidden',
-              boxShadow: '0 4px 32px rgba(193,127,58,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
+              transition: 'box-shadow 600ms ease',
             }}
           >
             {/* Top-right roman numeral */}
@@ -303,7 +314,10 @@ export default function GuestsPage() {
               className="discovery-ref-input"
               style={{
                 width: '100%', height: '48px',
-                background: 'rgba(255,255,255,0.85)',
+                // Explicit light color-scheme prevents browser dark-mode from
+                // injecting a black background over our custom background color
+                colorScheme: 'light',
+                backgroundColor: '#FFFFFF',
                 border: '1px solid rgba(193,127,58,0.28)',
                 borderRadius: '8px', padding: '0 16px',
                 fontFamily: "'DM Sans', sans-serif",
