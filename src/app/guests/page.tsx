@@ -45,23 +45,19 @@ export default function GuestsPage() {
   const [visible, setVisible] = useState(true)
   const [progressKey, setProgressKey] = useState(0)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Detect prefers-reduced-motion once on mount
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional one-time media query read
-  useEffect(() => { setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches) }, [])
+  useEffect(() => {
+    setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    // Slight delay so the page-entrance animation fires after the cream wipe
+    const id = setTimeout(() => setMounted(true), 60)
+    return () => clearTimeout(id)
+  }, [])
 
-  const advance = () => {
-    setSlide(s => (s + 1) % SLIDES.length)
-    setProgressKey(k => k + 1)
-  }
+  const advance = () => { setSlide(s => (s + 1) % SLIDES.length); setProgressKey(k => k + 1) }
+  const retreat = () => { setSlide(s => (s - 1 + SLIDES.length) % SLIDES.length); setProgressKey(k => k + 1) }
 
-  const retreat = () => {
-    setSlide(s => (s - 1 + SLIDES.length) % SLIDES.length)
-    setProgressKey(k => k + 1)
-  }
-
-  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') advance()
@@ -71,49 +67,32 @@ export default function GuestsPage() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  // Auto-advance with tab-visibility pause
   useEffect(() => {
     const dwell = prefersReducedMotion ? REDUCED_DWELL_MS : DWELL_MS
-
     function schedule() {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         if (document.visibilityState === 'hidden') return
         if (!prefersReducedMotion) {
           setVisible(false)
-          setTimeout(() => {
-            setSlide(s => (s + 1) % SLIDES.length)
-            setProgressKey(k => k + 1)
-            setVisible(true)
-          }, TRANSITION_MS)
+          setTimeout(() => { setSlide(s => (s + 1) % SLIDES.length); setProgressKey(k => k + 1); setVisible(true) }, TRANSITION_MS)
         } else {
-          setSlide(s => (s + 1) % SLIDES.length)
-          setProgressKey(k => k + 1)
+          setSlide(s => (s + 1) % SLIDES.length); setProgressKey(k => k + 1)
         }
       }, dwell)
     }
-
     schedule()
-
     function onVisibility() {
       if (document.visibilityState === 'visible') schedule()
       else if (timerRef.current) clearTimeout(timerRef.current)
     }
     document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); document.removeEventListener('visibilitychange', onVisibility) }
   }, [slide, progressKey, prefersReducedMotion])
 
   function handleFind() {
     setFindError('')
-    if (!bookingRef.trim()) {
-      setFindError('Please enter a booking reference.')
-      return
-    }
-    // TODO: wire to /api/stays/find when endpoint is ready — POST { booking_reference: bookingRef }
-    // On success, router.push to returned stay URL; on failure, setFindError(err.message)
+    if (!bookingRef.trim()) { setFindError('Please enter a booking reference.'); return }
     router.push('/login')
   }
 
@@ -124,18 +103,47 @@ export default function GuestsPage() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--background)',
+        // Light cream — matches Aria intro, airy and holiday-ready
+        background: '#FAF8F5',
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? 'scale(1)' : 'scale(0.98)',
+        transition: 'opacity 420ms ease-out, transform 420ms cubic-bezier(0.34,1,0.64,1)',
       }}
     >
-      {/* ── Top bar ──────────────────────────────────────── */}
+      {/* Background video — subtle travel ambience */}
+      <video
+        autoPlay muted loop playsInline preload="metadata"
+        aria-hidden="true"
+        style={{
+          position: 'fixed', inset: 0,
+          width: '100%', height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
+          // Lighten the video so text stays readable over the cream bg
+          opacity: 0.18,
+          mixBlendMode: 'multiply',
+          pointerEvents: 'none',
+        }}
+      >
+        <source src="/videos/guests-bg.mp4" type="video/mp4" />
+      </video>
+
+      {/* Warm sunburst on top of the video */}
+      <div aria-hidden="true" style={{
+        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse 80% 65% at 30% 50%, rgba(201,168,117,0.10) 0%, transparent 70%)',
+      }} />
+
+      {/* ── Top bar ── */}
       <div
         style={{
-          flexShrink: 0,
+          flexShrink: 0, position: 'relative', zIndex: 10,
           padding: '18px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(193,127,58,0.18)',
+          background: 'rgba(250,248,245,0.88)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
         }}
       >
         <Link
@@ -143,214 +151,123 @@ export default function GuestsPage() {
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '13px',
-            color: 'var(--text-muted)',
+            color: '#7A6B57',
             textDecoration: 'none',
             letterSpacing: '0.01em',
             transition: 'color 180ms ease',
           }}
-          onMouseEnter={e => ((e.currentTarget).style.color = 'var(--text-primary)')}
-          onMouseLeave={e => ((e.currentTarget).style.color = 'var(--text-muted)')}
+          onMouseEnter={e => (e.currentTarget.style.color = '#2C1A08')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#7A6B57')}
         >
           ← Back
         </Link>
 
-        <span
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontStyle: 'italic',
-            fontSize: '18px',
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            letterSpacing: '0.01em',
-          }}
-        >
-          Stay
-          <span
-            style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontStyle: 'normal',
-              fontWeight: 600,
-              color: 'var(--gold)',
-            }}
-          >
-            scape
-          </span>
+        <span style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontStyle: 'italic', fontSize: '18px', fontWeight: 600,
+          color: '#2C1A08', letterSpacing: '0.01em',
+        }}>
+          Stay<span style={{ fontFamily: "'DM Sans', sans-serif", fontStyle: 'normal', fontWeight: 600, color: '#C17F3A' }}>scape</span>
         </span>
 
         <span style={{ width: '48px' }} aria-hidden="true" />
       </div>
 
-      {/* ── Main two-column area ─────────────────────────── */}
+      {/* ── Main two-column area ── */}
       <div
         className="guests-main"
         style={{
-          flex: '1 1 0',
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '0',
-          overflow: 'hidden',
+          flex: '1 1 0', minHeight: 0, position: 'relative', zIndex: 2,
+          display: 'flex', flexDirection: 'row', overflow: 'hidden',
         }}
       >
-        {/* ── LEFT: Slide carousel ─────────────────────── */}
+        {/* LEFT: Slide carousel */}
         <div
           className="carousel-col"
           style={{
-            flex: '0 0 60%',
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
+            flex: '0 0 60%', minWidth: 0,
+            display: 'flex', flexDirection: 'column',
             padding: 'clamp(20px, 3vw, 48px)',
             paddingRight: 'clamp(16px, 2.5vw, 40px)',
           }}
         >
           <div
             style={{
-              flex: 1,
-              minHeight: 0,
-              background: 'var(--surface)',
-              border: '1px solid rgba(201,168,117,0.15)',
+              flex: 1, minHeight: 0,
+              background: 'rgba(255,255,255,0.72)',
+              backdropFilter: 'blur(18px)',
+              WebkitBackdropFilter: 'blur(18px)',
+              border: '1px solid rgba(193,127,58,0.18)',
               borderRadius: '20px',
               padding: 'clamp(28px, 4vw, 56px)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              position: 'relative',
-              overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              position: 'relative', overflow: 'hidden',
+              boxShadow: '0 4px 32px rgba(193,127,58,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
             }}
           >
-            {/* Top-right decorative accent */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                top: 'clamp(20px, 3vw, 32px)',
-                right: 'clamp(20px, 3vw, 32px)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-              }}
-            >
-              <div
-                style={{
-                  width: '1px',
-                  height: '32px',
-                  background: 'var(--gold)',
-                  opacity: 0.5,
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontStyle: 'italic',
-                  fontSize: '13px',
-                  color: 'var(--gold)',
-                  opacity: 0.7,
-                  minWidth: '24px',
-                  transition: 'opacity 300ms ease',
-                }}
-              >
-                {ROMAN[slide]}
-              </span>
+            {/* Top-right roman numeral */}
+            <div aria-hidden="true" style={{
+              position: 'absolute',
+              top: 'clamp(20px, 3vw, 32px)', right: 'clamp(20px, 3vw, 32px)',
+              display: 'flex', alignItems: 'center', gap: '10px',
+            }}>
+              <div style={{ width: '1px', height: '32px', background: '#C17F3A', opacity: 0.5 }} />
+              <span style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic', fontSize: '13px',
+                color: '#C17F3A', opacity: 0.7,
+                minWidth: '24px', transition: 'opacity 300ms ease',
+              }}>{ROMAN[slide]}</span>
             </div>
 
             {/* Slide content */}
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateX(0)' : 'translateX(20px)',
-                transition: `opacity ${TRANSITION_MS}ms ease, transform ${TRANSITION_MS}ms ease`,
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--gold)',
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  margin: '0 0 20px',
-                }}
-              >
-                {SLIDES[slide].eyebrow}
-              </p>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              opacity: visible ? 1 : 0,
+              transform: visible ? 'translateX(0)' : 'translateX(20px)',
+              transition: `opacity ${TRANSITION_MS}ms ease, transform ${TRANSITION_MS}ms ease`,
+            }}>
+              <p style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '11px', fontWeight: 600,
+                color: '#C17F3A', letterSpacing: '0.18em',
+                textTransform: 'uppercase', margin: '0 0 20px',
+              }}>{SLIDES[slide].eyebrow}</p>
 
-              <h2
-                style={{
-                  fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontStyle: 'italic',
-                  fontSize: 'clamp(2rem, 3.6vw, 3.4rem)',
-                  fontWeight: 500,
-                  color: 'var(--text-primary)',
-                  lineHeight: 1.18,
-                  letterSpacing: '-0.01em',
-                  margin: '0 0 20px',
-                }}
-              >
-                {SLIDES[slide].headline}
-              </h2>
+              <h2 style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic',
+                fontSize: 'clamp(2rem, 3.6vw, 3.4rem)',
+                fontWeight: 500, color: '#2C1A08',
+                lineHeight: 1.18, letterSpacing: '-0.01em',
+                margin: '0 0 20px',
+              }}>{SLIDES[slide].headline}</h2>
 
-              <p
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '15px',
-                  lineHeight: 1.65,
-                  color: 'var(--text-secondary)',
-                  maxWidth: '46ch',
-                  margin: 0,
-                }}
-              >
-                {SLIDES[slide].subline}
-              </p>
+              <p style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '15px', lineHeight: 1.65,
+                color: '#5C4A35', maxWidth: '46ch', margin: 0,
+              }}>{SLIDES[slide].subline}</p>
             </div>
 
             {/* Progress bars */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '8px',
-                paddingTop: '28px',
-                flexShrink: 0,
-              }}
-            >
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '28px', flexShrink: 0 }}>
               {SLIDES.map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '36px',
-                    height: '2px',
-                    background: 'var(--gold-muted)',
-                    opacity: i < slide ? 0.3 : i > slide ? 1 : 1,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
+                <div key={i} style={{
+                  width: '36px', height: '2px',
+                  background: 'rgba(193,127,58,0.25)',
+                  position: 'relative', overflow: 'hidden',
+                }}>
                   {i === slide && (
-                    <div
-                      key={progressKey}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'var(--gold)',
-                        transformOrigin: 'left',
-                        animation: `progressFill ${prefersReducedMotion ? 0 : DWELL_MS}ms linear forwards`,
-                      }}
-                    />
+                    <div key={progressKey} style={{
+                      position: 'absolute', inset: 0,
+                      background: '#C17F3A',
+                      transformOrigin: 'left',
+                      animation: `progressFill ${prefersReducedMotion ? 0 : DWELL_MS}ms linear forwards`,
+                    }} />
                   )}
                   {i < slide && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'var(--gold)',
-                        opacity: 0.3,
-                      }}
-                    />
+                    <div style={{ position: 'absolute', inset: 0, background: '#C17F3A', opacity: 0.35 }} />
                   )}
                 </div>
               ))}
@@ -358,15 +275,12 @@ export default function GuestsPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: Auth block ─────────────────────────── */}
+        {/* RIGHT: Auth block */}
         <div
           className="auth-col"
           style={{
-            flex: '0 0 40%',
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
+            flex: '0 0 40%', minWidth: 0,
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
             padding: 'clamp(20px, 3vw, 48px)',
             paddingLeft: 'clamp(16px, 2.5vw, 40px)',
             gap: '28px',
@@ -374,19 +288,12 @@ export default function GuestsPage() {
         >
           {/* Section A — booking reference */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p
-              style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--gold)',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                margin: 0,
-              }}
-            >
-              I have a booking reference
-            </p>
+            <p style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '11px', fontWeight: 600,
+              color: '#C17F3A', letterSpacing: '0.18em',
+              textTransform: 'uppercase', margin: 0,
+            }}>I have a booking reference</p>
 
             <input
               type="text"
@@ -395,106 +302,72 @@ export default function GuestsPage() {
               placeholder="BK-12345"
               className="discovery-ref-input"
               style={{
-                width: '100%',
-                height: '48px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--input-border)',
-                borderRadius: '8px',
-                padding: '0 16px',
+                width: '100%', height: '48px',
+                background: 'rgba(255,255,255,0.85)',
+                border: '1px solid rgba(193,127,58,0.28)',
+                borderRadius: '8px', padding: '0 16px',
                 fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                boxSizing: 'border-box',
+                fontSize: '14px', color: '#2C1A08',
+                outline: 'none', boxSizing: 'border-box',
                 transition: 'border-color 180ms ease, box-shadow 180ms ease',
               }}
-              onFocus={e => {
-                e.target.style.borderColor = 'var(--gold)'
-                e.target.style.boxShadow = '0 0 0 3px var(--input-focus-ring)'
-              }}
-              onBlur={e => {
-                e.target.style.borderColor = 'var(--input-border)'
-                e.target.style.boxShadow = 'none'
-              }}
+              onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+              onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
             />
 
             <button
               onClick={handleFind}
               style={{
-                background: 'var(--gold)',
-                border: 'none',
-                borderRadius: '8px',
+                background: '#C17F3A',
+                border: 'none', borderRadius: '8px',
                 padding: '14px 24px',
                 fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#14100D',
-                letterSpacing: '0.03em',
+                fontSize: '14px', fontWeight: 600,
+                color: '#FAF8F5', letterSpacing: '0.03em',
                 cursor: 'pointer',
-                transition: 'opacity 180ms ease',
+                transition: 'opacity 180ms ease, transform 180ms ease',
                 alignSelf: 'flex-start',
+                boxShadow: '0 4px 14px rgba(193,127,58,0.3)',
               }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
-              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
             >
               Find my stay
             </button>
 
             {findError && (
-              <p
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '13px',
-                  color: 'var(--error)',
-                  margin: 0,
-                }}
-              >
-                {findError}
-              </p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', color: '#C14A3A', margin: 0 }}>{findError}</p>
             )}
           </div>
 
           {/* Divider */}
-          <div style={{ height: '1px', background: 'var(--border)' }} />
+          <div style={{ height: '1px', background: 'rgba(193,127,58,0.2)' }} />
 
           {/* Section B — sign in */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p
-              style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--gold)',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                margin: 0,
-              }}
-            >
-              I already have an account
-            </p>
+            <p style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '11px', fontWeight: 600,
+              color: '#C17F3A', letterSpacing: '0.18em',
+              textTransform: 'uppercase', margin: 0,
+            }}>I already have an account</p>
 
             <Link
               href="/login"
               style={{
                 display: 'inline-block',
-                border: '1.5px solid var(--gold)',
-                borderRadius: '8px',
-                padding: '13px 24px',
+                border: '1.5px solid rgba(193,127,58,0.5)',
+                borderRadius: '8px', padding: '13px 24px',
                 fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px',
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.03em',
+                fontSize: '14px', fontWeight: 600,
+                color: '#2C1A08', letterSpacing: '0.03em',
                 textDecoration: 'none',
-                transition: 'background 180ms ease',
-                background: 'transparent',
-                alignSelf: 'flex-start',
+                transition: 'background 180ms ease, border-color 180ms ease',
+                background: 'transparent', alignSelf: 'flex-start',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,168,117,0.08)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              Sign in
-            </Link>
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.08)'; e.currentTarget.style.borderColor = '#C17F3A' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(193,127,58,0.5)' }}
+            >Sign in</Link>
           </div>
         </div>
       </div>
@@ -504,33 +377,14 @@ export default function GuestsPage() {
           from { transform: scaleX(0); }
           to   { transform: scaleX(1); }
         }
-
-        /* Mobile: stack carousel above auth, no scroll */
         @media (max-width: 1023px) {
-          .guests-main {
-            flex-direction: column !important;
-          }
-          .carousel-col {
-            flex: 0 0 55% !important;
-            padding-right: clamp(20px, 3vw, 48px) !important;
-          }
-          .auth-col {
-            flex: 0 0 auto !important;
-            justify-content: flex-start !important;
-            padding-top: 0 !important;
-            padding-left: clamp(20px, 3vw, 48px) !important;
-          }
+          .guests-main { flex-direction: column !important; }
+          .carousel-col { flex: 0 0 55% !important; padding-right: clamp(20px, 3vw, 48px) !important; }
+          .auth-col { flex: 0 0 auto !important; justify-content: flex-start !important; padding-top: 0 !important; padding-left: clamp(20px, 3vw, 48px) !important; }
         }
-
-        /* Very small screens: compress paddings */
         @media (max-width: 430px) {
-          .carousel-col {
-            padding: 12px !important;
-          }
-          .auth-col {
-            padding: 12px !important;
-            gap: 16px !important;
-          }
+          .carousel-col { padding: 12px !important; }
+          .auth-col { padding: 12px !important; gap: 16px !important; }
         }
       `}</style>
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 
 type Beat = 'beat1' | 'beat2' | 'beat3' | 'dissolving' | 'idle'
@@ -8,16 +8,14 @@ type Beat = 'beat1' | 'beat2' | 'beat3' | 'dissolving' | 'idle'
 const BEATS: { id: Beat; words: string[] }[] = [
   { id: 'beat1', words: ['Hi!', 'My', 'name', 'is', 'Aria.'] },
   { id: 'beat2', words: ['Welcome', 'to', 'Stayscape!'] },
-  { id: 'beat3', words: ['Pick', 'your', 'side —', "let's", 'go!'] },
+  { id: 'beat3', words: ['Pick', 'a', 'side', 'and', 'let', 'me', 'show', 'you', 'around.'] },
 ]
 
-// Each word gets a random pop direction so they feel alive
 const POP_CLASSES = ['word-pop-up', 'word-pop-left', 'word-pop-right', 'word-pop-down']
-function popClass(i: number) {
-  return POP_CLASSES[i % POP_CLASSES.length]
-}
+function popClass(i: number) { return POP_CLASSES[i % POP_CLASSES.length] }
 
 export default function SplashPage() {
+  const router = useRouter()
   const [hovered, setHovered] = useState<'hotels' | 'guests' | null>(null)
   const [beat, setBeat] = useState<Beat>('beat1')
   const [lineExit, setLineExit] = useState(false)
@@ -26,6 +24,7 @@ export default function SplashPage() {
   const [showGlow, setShowGlow] = useState(false)
   const [ariaBow, setAriaBow] = useState(false)
   const [rm, setRm] = useState(false)
+  const [leaving, setLeaving] = useState<'hotels' | 'guests' | null>(null)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const t = (fn: () => void, ms: number) => {
@@ -40,38 +39,33 @@ export default function SplashPage() {
     timers.current = []
 
     if (rm) {
-      // Reduced motion — short, no bounce
       t(() => { setLineExit(true); setTextVisible(false) }, 1800)
       t(() => { setBeat('beat2'); setLineKey(k => k+1); setLineExit(false); setTextVisible(true) }, 2100)
       t(() => { setLineExit(true); setTextVisible(false) }, 3900)
       t(() => { setBeat('beat3'); setLineKey(k => k+1); setLineExit(false); setTextVisible(true) }, 4200)
-      t(() => { setLineExit(true); setTextVisible(false) }, 6000)
-      t(() => setBeat('dissolving'), 6200)
-      t(() => setBeat('idle'), 6800)
+      t(() => { setLineExit(true); setTextVisible(false) }, 6500)
+      t(() => setBeat('dissolving'), 6700)
+      t(() => setBeat('idle'), 7200)
       return () => timers.current.forEach(clearTimeout)
     }
 
-    // --- Full energetic sequence ---
-    // beat1: 0 – 2.2s
     t(() => { setLineExit(true); setTextVisible(false) }, 1900)
     t(() => {
       setBeat('beat2'); setLineKey(k => k+1)
       setLineExit(false); setTextVisible(true); setShowGlow(true)
     }, 2200)
     t(() => setShowGlow(false), 3400)
-    // beat2: 2.2 – 4.2s
     t(() => { setLineExit(true); setTextVisible(false) }, 3900)
     t(() => {
       setBeat('beat3'); setLineKey(k => k+1)
       setLineExit(false); setTextVisible(true)
     }, 4200)
-    // bow on beat3
     t(() => setAriaBow(true), 4400)
-    t(() => setAriaBow(false), 5300)
-    // beat3: 4.2 – 6.0s
-    t(() => { setLineExit(true); setTextVisible(false) }, 5800)
-    t(() => setBeat('dissolving'), 6000)
-    t(() => setBeat('idle'), 6700)
+    t(() => setAriaBow(false), 5400)
+    // hold beat3 a bit longer so the longer phrase lands
+    t(() => { setLineExit(true); setTextVisible(false) }, 6600)
+    t(() => setBeat('dissolving'), 6850)
+    t(() => setBeat('idle'), 7500)
 
     return () => timers.current.forEach(clearTimeout)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,22 +73,30 @@ export default function SplashPage() {
 
   const currentBeat = BEATS.find(b => b.id === beat)
 
-  // Word stagger: snappy 0.07s between words
   const wordDelay = (beatId: Beat, i: number) => {
-    const base = beatId === 'beat1' ? 0.55 : beatId === 'beat2' ? 0.18 : 0.22
-    return base + i * 0.07
+    if (beatId === 'beat1') return 0.55 + i * 0.07
+    if (beatId === 'beat2') return 0.18 + i * 0.07
+    // beat3 has 9 words — keep tight
+    return 0.20 + i * 0.055
+  }
+
+  // Smooth navigate with full-screen cream wipe
+  function navigate(dest: 'hotels' | 'guests') {
+    if (leaving) return
+    setLeaving(dest)
+    // Brief pause then push — the cream overlay covers the transition
+    setTimeout(() => router.push(`/${dest}`), 420)
   }
 
   return (
     <>
-      {/* ── Aria overlay — light cream background ── */}
+      {/* Aria overlay */}
       <div
         style={{
           position: 'fixed', inset: 0, zIndex: 100,
           display: beat === 'idle' ? 'none' : 'flex',
           flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: 'clamp(16px, 2.5vh, 28px)',
-          // Light warm cream — energetic, airy, holiday-ready
           background: '#FAF8F5',
           opacity: beat === 'dissolving' ? 0 : 1,
           transform: beat === 'dissolving' ? 'scale(1.04)' : 'scale(1)',
@@ -102,83 +104,55 @@ export default function SplashPage() {
           pointerEvents: beat === 'dissolving' ? 'none' : 'all',
         }}
       >
-        {/* Subtle warm sunburst behind everything — holiday warmth */}
         <div aria-hidden="true" style={{
           position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
           background: 'radial-gradient(ellipse 70% 60% at 50% 45%, rgba(201,168,117,0.13) 0%, transparent 70%)',
         }} />
 
-        {/* Gold horizontal line */}
         <div
-          key={lineKey}
-          aria-hidden="true"
+          key={lineKey} aria-hidden="true"
           className={lineExit ? 'aria-gold-line aria-gold-line-exit' : 'aria-gold-line aria-gold-line-enter'}
           style={{ height: '1.5px', background: 'rgba(193,127,58,0.6)', position: 'relative', zIndex: 1 }}
         />
 
-        {/* Aria figure */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
           {showGlow && !rm && (
             <div aria-hidden="true" className="aria-glow" style={{
               position: 'absolute',
-              width: 'clamp(100px, 16vw, 180px)',
-              height: 'clamp(100px, 16vw, 180px)',
+              width: 'clamp(100px, 16vw, 180px)', height: 'clamp(100px, 16vw, 180px)',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(201,168,117,0.5) 0%, rgba(201,168,117,0) 70%)',
               pointerEvents: 'none',
             }} />
           )}
-
           <div className={rm ? 'aria-no-enter' : 'aria-enter'}>
-            <div
-              className={(!rm && ariaBow) ? 'aria-bow-active' : 'aria-bow-rest'}
-              style={{ transformOrigin: 'bottom center' }}
-            >
-              <svg
-                viewBox="0 0 100 112"
-                aria-hidden="true"
-                style={{ display: 'block', width: 'clamp(76px, 11vw, 130px)', height: 'auto', overflow: 'visible' }}
-              >
+            <div className={(!rm && ariaBow) ? 'aria-bow-active' : 'aria-bow-rest'} style={{ transformOrigin: 'bottom center' }}>
+              <svg viewBox="0 0 100 112" aria-hidden="true" style={{ display: 'block', width: 'clamp(76px, 11vw, 130px)', height: 'auto', overflow: 'visible' }}>
                 <defs>
                   <radialGradient id="aria-halo-g" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(201,168,117,0.28)" />
                     <stop offset="100%" stopColor="rgba(201,168,117,0)" />
                   </radialGradient>
                 </defs>
-                {/* Halo */}
                 <circle cx="50" cy="60" r="52" fill="url(#aria-halo-g)" className={rm ? '' : 'aria-halo'} />
-                {/* Head */}
                 <circle cx="50" cy="26" r="10" stroke="#C17F3A" strokeWidth="1.6" fill="none" />
-                {/* Eyes open */}
                 <g className={rm ? '' : 'aria-blink-open'}>
                   <path d="M 44 24.5 Q 46.5 22.5 49 24.5" stroke="#C17F3A" strokeWidth="1.5" fill="none" strokeLinecap="round" />
                   <path d="M 51 24.5 Q 53.5 22.5 56 24.5" stroke="#C17F3A" strokeWidth="1.5" fill="none" strokeLinecap="round" />
                 </g>
-                {/* Eyes closed */}
                 <g className={rm ? '' : 'aria-blink-closed'}>
                   <line x1="44" y1="24.5" x2="49" y2="24.5" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" />
                   <line x1="51" y1="24.5" x2="56" y2="24.5" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" />
                 </g>
-                {/* Neck + torso */}
                 <line x1="50" y1="36" x2="50" y2="63" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" />
-                {/* Left arm */}
                 <line x1="50" y1="44" x2="28" y2="55" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" />
-                {/* Right arm — wave on beat1 */}
-                <g
-                  className={(!rm && beat === 'beat1') ? 'aria-wave' : ''}
-                  style={{ transformBox: 'fill-box', transformOrigin: '0% 0%' }}
-                >
+                <g className={(!rm && beat === 'beat1') ? 'aria-wave' : ''} style={{ transformBox: 'fill-box', transformOrigin: '0% 0%' }}>
                   <line x1="50" y1="44" x2="72" y2="55" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" />
                 </g>
-                {/* Bell skirt */}
                 <g className={rm ? '' : 'aria-bell'}>
-                  <path
-                    d="M 48 63 C 48 71, 22 82, 18 97 L 82 97 C 78 82, 52 71, 52 63 Z"
-                    stroke="#C17F3A" strokeWidth="1.5" fill="rgba(193,127,58,0.07)" strokeLinejoin="round"
-                  />
+                  <path d="M 48 63 C 48 71, 22 82, 18 97 L 82 97 C 78 82, 52 71, 52 63 Z" stroke="#C17F3A" strokeWidth="1.5" fill="rgba(193,127,58,0.07)" strokeLinejoin="round" />
                   <line x1="22" y1="94" x2="78" y2="94" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" />
                 </g>
-                {/* Feet */}
                 <circle cx="43" cy="101" r="1.5" fill="#C17F3A" />
                 <circle cx="57" cy="101" r="1.5" fill="#C17F3A" />
               </svg>
@@ -186,7 +160,6 @@ export default function SplashPage() {
           </div>
         </div>
 
-        {/* Beat text — energetic word pop-ins */}
         {currentBeat && (
           <p
             key={currentBeat.id}
@@ -194,10 +167,9 @@ export default function SplashPage() {
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               fontStyle: 'italic',
               fontSize: 'clamp(1.35rem, 3vw, 2.6rem)',
-              // Dark warm text on light bg — readable and vivid
               color: '#2C1A08',
               lineHeight: 1.35,
-              maxWidth: 'clamp(260px, 62vw, 720px)',
+              maxWidth: 'clamp(260px, 70vw, 780px)',
               textAlign: 'center',
               margin: 0,
               opacity: textVisible ? 1 : 0,
@@ -221,7 +193,20 @@ export default function SplashPage() {
         )}
       </div>
 
-      {/* ── Two-halves layout ── */}
+      {/* Full-screen cream wipe on click */}
+      {leaving && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: leaving === 'guests' ? '#FAF8F5' : '#0A0908',
+            animation: 'wipeIn 400ms cubic-bezier(0.4,0,0.2,1) forwards',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Two-halves layout */}
       <div
         className="splash-wrap"
         style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden', height: '100dvh' }}
@@ -240,20 +225,20 @@ export default function SplashPage() {
             color: 'rgba(245,230,204,0.95)',
             letterSpacing: '0.01em',
           }}>
-            Stay
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontStyle: 'normal', fontWeight: 600, color: 'rgba(201,168,117,0.9)' }}>
-              scape
-            </span>
+            Stay<span style={{ fontFamily: "'DM Sans', sans-serif", fontStyle: 'normal', fontWeight: 600, color: 'rgba(201,168,117,0.9)' }}>scape</span>
           </span>
         </div>
 
         {/* Hotels half */}
-        <Link
-          href="/hotels"
+        <button
           className="splash-half"
-          style={{ flex: '0 0 50%', height: '100dvh', position: 'relative', overflow: 'hidden', display: 'block', textDecoration: 'none', cursor: 'pointer' }}
+          onClick={() => navigate('hotels')}
           onMouseEnter={() => setHovered('hotels')}
           onMouseLeave={() => setHovered(null)}
+          style={{
+            flex: '0 0 50%', height: '100dvh', position: 'relative', overflow: 'hidden',
+            display: 'block', border: 'none', padding: 0, cursor: 'pointer', background: 'none',
+          }}
         >
           <video
             autoPlay muted loop playsInline preload="metadata" aria-hidden="true"
@@ -273,7 +258,6 @@ export default function SplashPage() {
               : 'linear-gradient(180deg, rgba(14,10,6,0.35) 0%, rgba(14,10,6,0.48) 50%, rgba(14,10,6,0.80) 100%)',
             transition: 'background 300ms ease-out',
           }} />
-          {/* Centered text */}
           <div style={{
             position: 'absolute', inset: 0, zIndex: 2,
             display: 'flex', flexDirection: 'column',
@@ -286,9 +270,7 @@ export default function SplashPage() {
               fontWeight: 700, color: 'rgba(201,168,117,0.95)',
               letterSpacing: '0.24em', textTransform: 'uppercase',
               margin: '0 0 clamp(12px, 2vh, 20px)',
-            }}>
-              For Hotels
-            </p>
+            }}>For Hotels</p>
             <p style={{
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               fontStyle: 'italic',
@@ -296,11 +278,8 @@ export default function SplashPage() {
               fontWeight: 500, color: '#FAF8F5',
               lineHeight: 1.12, margin: 0,
               maxWidth: 'clamp(240px, 26vw, 440px)',
-            }}>
-              Run a better property.
-            </p>
+            }}>Run a better property.</p>
           </div>
-          {/* Chevron */}
           <div style={{
             position: 'absolute', bottom: 'clamp(18px, 3vh, 32px)', right: 'clamp(18px, 3vw, 32px)',
             zIndex: 3,
@@ -309,7 +288,7 @@ export default function SplashPage() {
           }}>
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(26px, 3vw, 34px)', color: 'rgba(201,168,117,0.9)', lineHeight: 1 }}>›</span>
           </div>
-        </Link>
+        </button>
 
         {/* Gold seam */}
         <div aria-hidden="true" className="splash-seam" style={{
@@ -320,13 +299,17 @@ export default function SplashPage() {
         }} />
 
         {/* Guests half */}
-        <Link
-          href="/guests"
+        <button
           className="splash-half"
-          style={{ flex: '0 0 50%', height: '100dvh', position: 'relative', overflow: 'hidden', display: 'block', textDecoration: 'none', cursor: 'pointer' }}
+          onClick={() => navigate('guests')}
           onMouseEnter={() => setHovered('guests')}
           onMouseLeave={() => setHovered(null)}
+          style={{
+            flex: '0 0 50%', height: '100dvh', position: 'relative', overflow: 'hidden',
+            display: 'block', border: 'none', padding: 0, cursor: 'pointer', background: 'none',
+          }}
         >
+          {/* Guests video */}
           <video
             autoPlay muted loop playsInline preload="metadata" aria-hidden="true"
             style={{
@@ -345,7 +328,6 @@ export default function SplashPage() {
               : 'linear-gradient(180deg, rgba(14,10,6,0.35) 0%, rgba(14,10,6,0.48) 50%, rgba(14,10,6,0.80) 100%)',
             transition: 'background 300ms ease-out',
           }} />
-          {/* Centered text */}
           <div style={{
             position: 'absolute', inset: 0, zIndex: 2,
             display: 'flex', flexDirection: 'column',
@@ -358,9 +340,7 @@ export default function SplashPage() {
               fontWeight: 700, color: 'rgba(201,168,117,0.95)',
               letterSpacing: '0.24em', textTransform: 'uppercase',
               margin: '0 0 clamp(12px, 2vh, 20px)',
-            }}>
-              For Guests
-            </p>
+            }}>For Guests</p>
             <p style={{
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               fontStyle: 'italic',
@@ -368,11 +348,8 @@ export default function SplashPage() {
               fontWeight: 500, color: '#FAF8F5',
               lineHeight: 1.12, margin: 0,
               maxWidth: 'clamp(240px, 26vw, 440px)',
-            }}>
-              Step into your stay.
-            </p>
+            }}>Step into your stay.</p>
           </div>
-          {/* Chevron */}
           <div style={{
             position: 'absolute', bottom: 'clamp(18px, 3vh, 32px)', right: 'clamp(18px, 3vw, 32px)',
             zIndex: 3,
@@ -381,11 +358,14 @@ export default function SplashPage() {
           }}>
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(26px, 3vw, 34px)', color: 'rgba(201,168,117,0.9)', lineHeight: 1 }}>›</span>
           </div>
-        </Link>
+        </button>
       </div>
 
       <style>{`
-        /* ── Gold line draw / shrink ── */
+        @keyframes wipeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
         @keyframes goldLineDraw {
           from { width: 0; }
           to   { width: clamp(200px, 36vw, 500px); }
@@ -397,14 +377,12 @@ export default function SplashPage() {
         .aria-gold-line-enter { animation: goldLineDraw 700ms cubic-bezier(0.22,1,0.36,1) forwards; }
         .aria-gold-line-exit  { animation: goldLineShrink 380ms ease-in forwards; }
 
-        /* ── Glow expand ── */
         @keyframes ariaGlowExpand {
           0%   { transform: scale(0); opacity: 0.7; }
           100% { transform: scale(4); opacity: 0; }
         }
         .aria-glow { animation: ariaGlowExpand 900ms ease-out forwards; }
 
-        /* ── Aria entrance ── */
         @keyframes ariaRise {
           from { opacity: 0; transform: translateY(10px) scale(0.94); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -412,40 +390,27 @@ export default function SplashPage() {
         .aria-enter    { animation: ariaRise 600ms cubic-bezier(0.34,1.56,0.64,1) both; }
         .aria-no-enter { opacity: 1; }
 
-        /* ── Bow ── */
         @keyframes ariaBowAnim {
           0%   { transform: rotate(0deg); }
           45%  { transform: rotate(14deg); }
           62%  { transform: rotate(14deg); }
           100% { transform: rotate(0deg); }
         }
-        .aria-bow-active {
-          animation: ariaBowAnim 900ms ease-in-out forwards;
-          transform-origin: bottom center;
-        }
-        .aria-bow-rest { transform: rotate(0deg); }
+        .aria-bow-active { animation: ariaBowAnim 900ms ease-in-out forwards; transform-origin: bottom center; }
+        .aria-bow-rest   { transform: rotate(0deg); }
 
-        /* ── Halo pulse ── */
         @keyframes haloPulse {
           0%, 100% { opacity: 0.65; transform: scale(1); }
           50%       { opacity: 1;    transform: scale(1.07); }
         }
-        .aria-halo {
-          transform-box: fill-box; transform-origin: 50% 50%;
-          animation: haloPulse 2.2s ease-in-out infinite;
-        }
+        .aria-halo { transform-box: fill-box; transform-origin: 50% 50%; animation: haloPulse 2.2s ease-in-out infinite; }
 
-        /* ── Bell sway ── */
         @keyframes bellSway {
           0%, 100% { transform: rotate(-2deg); }
           50%       { transform: rotate(2deg); }
         }
-        .aria-bell {
-          transform-box: fill-box; transform-origin: 50% 0%;
-          animation: bellSway 2.8s ease-in-out infinite;
-        }
+        .aria-bell { transform-box: fill-box; transform-origin: 50% 0%; animation: bellSway 2.8s ease-in-out infinite; }
 
-        /* ── Arm wave ── */
         @keyframes ariaWave {
           0%   { transform: rotate(0deg); }
           18%  { transform: rotate(-14deg); }
@@ -454,12 +419,8 @@ export default function SplashPage() {
           84%  { transform: rotate(18deg); }
           100% { transform: rotate(0deg); }
         }
-        .aria-wave {
-          transform-box: fill-box; transform-origin: 0% 0%;
-          animation: ariaWave 1.6s 0.6s ease-in-out 1 both;
-        }
+        .aria-wave { transform-box: fill-box; transform-origin: 0% 0%; animation: ariaWave 1.6s 0.6s ease-in-out 1 both; }
 
-        /* ── Blink ── */
         @keyframes ariaBlinkO {
           0%, 85%  { opacity: 1; }
           88%, 94% { opacity: 0; }
@@ -470,33 +431,24 @@ export default function SplashPage() {
           88%, 94% { opacity: 1; }
           100%     { opacity: 0; }
         }
-        .aria-blink-open  { animation: ariaBlinkO 3.2s 1.2s ease-in-out infinite; }
-        .aria-blink-closed {
-          opacity: 0;
-          animation: ariaBlinkC 3.2s 1.2s ease-in-out infinite;
-        }
+        .aria-blink-open   { animation: ariaBlinkO 3.2s 1.2s ease-in-out infinite; }
+        .aria-blink-closed { opacity: 0; animation: ariaBlinkC 3.2s 1.2s ease-in-out infinite; }
 
-        /* ── ENERGETIC word pop-ins — each direction distinct ── */
-
-        /* Up: pops from below with overshoot */
         @keyframes wordPopUp {
           0%   { opacity: 0; transform: translateY(18px) scale(0.82); }
           65%  { opacity: 1; transform: translateY(-4px) scale(1.06); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-        /* Left: slides in from the left */
         @keyframes wordPopLeft {
           0%   { opacity: 0; transform: translateX(-16px) scale(0.85) rotate(-3deg); }
           65%  { opacity: 1; transform: translateX(3px) scale(1.04) rotate(0.5deg); }
           100% { opacity: 1; transform: translateX(0) scale(1) rotate(0); }
         }
-        /* Right: slides in from the right */
         @keyframes wordPopRight {
           0%   { opacity: 0; transform: translateX(16px) scale(0.85) rotate(3deg); }
           65%  { opacity: 1; transform: translateX(-3px) scale(1.04) rotate(-0.5deg); }
           100% { opacity: 1; transform: translateX(0) scale(1) rotate(0); }
         }
-        /* Down: drops from above */
         @keyframes wordPopDown {
           0%   { opacity: 0; transform: translateY(-16px) scale(0.85); }
           65%  { opacity: 1; transform: translateY(3px) scale(1.05); }
@@ -514,7 +466,6 @@ export default function SplashPage() {
         .word-pop-right { animation-name: wordPopRight; }
         .word-pop-down  { animation-name: wordPopDown; }
 
-        /* ── Reduced motion ── */
         @media (prefers-reduced-motion: reduce) {
           .aria-halo, .aria-bell, .aria-wave,
           .aria-blink-open, .aria-blink-closed,
@@ -529,7 +480,6 @@ export default function SplashPage() {
           }
         }
 
-        /* ── Mobile stacked halves ── */
         @media (max-width: 767px) {
           .splash-wrap { flex-direction: column !important; overflow: hidden !important; }
           .splash-half { flex: 0 0 50dvh !important; height: 50dvh !important; width: 100vw !important; }
@@ -538,9 +488,7 @@ export default function SplashPage() {
             top: 50dvh !important; bottom: auto !important;
             width: 100vw !important; height: 1px !important;
             transform: none !important;
-            background: linear-gradient(to right,
-              transparent 0%, rgba(201,168,117,0.5) 20%,
-              rgba(201,168,117,0.5) 80%, transparent 100%) !important;
+            background: linear-gradient(to right, transparent 0%, rgba(201,168,117,0.5) 20%, rgba(201,168,117,0.5) 80%, transparent 100%) !important;
           }
         }
       `}</style>
