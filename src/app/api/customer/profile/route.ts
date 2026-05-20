@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 const AGE_BANDS = new Set(['under_20', '20_25', '26_30', '31_40', '41_55', '56_plus']);
 const NOVELTY_VALUES = new Set(['adventurous', 'balanced', 'comfortable']);
-const VIBE_VALUES = new Set(['city', 'culture', 'nature', 'beach', 'mixed']);
+const VIBE_VALUES = new Set(['city', 'culture', 'nature', 'beach']);
 const DISCOVERY_VALUES = new Set(['icons', 'hidden', 'mix']);
 const FOOD_VALUES = new Set(['street', 'sit_down', 'easy', 'food_first']);
 const PLANNING_VALUES = new Set(['planner', 'loose', 'improviser']);
@@ -90,9 +90,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: novelty_result.error }, { status: 400, headers: rateLimit.headers });
   }
 
-  const vibe_result = validateEnum(body.vibe, VIBE_VALUES, 'vibe');
-  if (vibe_result.error) {
-    return NextResponse.json({ error: vibe_result.error }, { status: 400, headers: rateLimit.headers });
+  // ── Validate vibe (array, max 2) ─────────────────────────────────────────
+
+  let vibes: string[] = [];
+  if (body.vibe !== undefined && body.vibe !== null) {
+    if (!Array.isArray(body.vibe)) {
+      return NextResponse.json(
+        { error: 'vibe must be an array' },
+        { status: 400, headers: rateLimit.headers },
+      );
+    }
+    const rawVibes = (body.vibe as unknown[])
+      .filter((v): v is string => typeof v === 'string')
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean);
+    const dedupedVibes = Array.from(new Set(rawVibes));
+    const invalidVibe = dedupedVibes.find((v) => !VIBE_VALUES.has(v));
+    if (invalidVibe) {
+      return NextResponse.json(
+        { error: `Invalid vibe: ${invalidVibe}` },
+        { status: 400, headers: rateLimit.headers },
+      );
+    }
+    if (dedupedVibes.length > 2) {
+      return NextResponse.json(
+        { error: 'vibe may contain at most 2 values' },
+        { status: 400, headers: rateLimit.headers },
+      );
+    }
+    vibes = dedupedVibes;
   }
 
   const discovery_result = validateEnum(body.discovery, DISCOVERY_VALUES, 'discovery');
@@ -181,7 +207,7 @@ export async function POST(request: NextRequest) {
         location_city,
         location_country,
         novelty: novelty_result.value,
-        vibe: vibe_result.value,
+        vibe: vibes,
         discovery: discovery_result.value,
         food: food_result.value,
         planning: planning_result.value,
