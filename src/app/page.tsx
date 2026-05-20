@@ -85,8 +85,7 @@ export default function SplashPage() {
     t(() => setBeat('idle'), 7500)
 
     return () => timers.current.forEach(clearTimeout)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rm, skipIntro])
+  }, [rm, skipIntro]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentBeat = BEATS.find(b => b.id === beat)
 

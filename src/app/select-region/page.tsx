@@ -2,16 +2,14 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function SelectRegionPage() {
   const router = useRouter()
   const overlayRef = useRef<HTMLDivElement>(null)
   const pageExitRef = useRef<HTMLDivElement>(null)
-  const bodyRef = useRef<HTMLBodyElement | null>(null)
 
   useEffect(() => {
-    bodyRef.current = document.body as HTMLBodyElement
-
     // Dismiss loading overlay
     const overlay = overlayRef.current
     if (overlay) {
@@ -165,13 +163,13 @@ export default function SelectRegionPage() {
         <div className="grain" />
 
         <nav className="sr-nav">
-          <a href="/" className="sr-logo">
+          <Link href="/" className="sr-logo">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
               <path d="M14 2L3 8.5V19.5L14 26L25 19.5V8.5L14 2Z" stroke="#c9a84c" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M14 2V26M3 8.5L25 19.5M25 8.5L3 19.5" stroke="#c9a84c" strokeWidth="0.75" strokeOpacity="0.4"/>
             </svg>
             <span className="sr-logo-text">Stayscape</span>
-          </a>
+          </Link>
           <button className="sr-back" onClick={() => router.back()}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 2L4 7l5 5"/></svg>
             Back
@@ -254,8 +252,8 @@ export default function SelectRegionPage() {
           </div>
 
           <p className="sr-footnote">
-            Not sure yet? <a href="/app">Explore the demo</a>&nbsp;·&nbsp;
-            Already have access? <a href="/login">Sign in</a>
+            Not sure yet? <Link href="/app">Explore the demo</Link>&nbsp;·&nbsp;
+            Already have access? <Link href="/login">Sign in</Link>
           </p>
         </main>
       </div>

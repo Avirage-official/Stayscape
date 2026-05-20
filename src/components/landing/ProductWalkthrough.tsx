@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { motion, AnimatePresence, useReducedMotion, useInView } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import type { ReactElement } from 'react'
 
 const REVEAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
