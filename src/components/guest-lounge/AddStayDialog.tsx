@@ -29,8 +29,14 @@ interface AddStayDialogProps {
   onActivated?: () => void;
 }
 
+/* ── Input style ──────────────────────────────────────────────────────────────
+   bg-[#1E1814]       solid espresso bg — matches the autofill override in globals.css
+   text-[#F5E6CC]     explicit cream text — prevents black-on-dark-bg when clicking
+   caret-[#C9A875]    gold caret
+   focus:bg-[#241C14] subtle lightening on focus for visual feedback
+   ──────────────────────────────────────────────────────────────────────────── */
 const inputClassName =
-  'w-full h-11 px-4 rounded-xl bg-white/[0.10] border border-white/[0.12] text-[14px] text-white/85 placeholder:text-white/40 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13] transition-all duration-300';
+  'w-full h-11 px-4 rounded-xl bg-[#1E1814] border border-white/[0.12] text-[14px] text-[#F5E6CC] caret-[#C9A875] placeholder:text-white/35 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-[#241C14] transition-all duration-300';
 
 export default function AddStayDialog({
   open,
