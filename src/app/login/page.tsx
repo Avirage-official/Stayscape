@@ -9,7 +9,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [mode, setMode] = useState<'guest' | 'hotel'>('guest');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +24,6 @@ export default function LoginPage() {
     if (result.error) {
       setError(result.error);
       setIsSubmitting(false);
-      return;
-    }
-
-    if (mode === 'guest') {
-      router.push('/dashboard');
       return;
     }
 
@@ -67,40 +61,23 @@ export default function LoginPage() {
           from { opacity: 0; }
           to   { opacity: 1; }
         }
-        @keyframes slideIndicator {
-          from { opacity: 0; transform: scaleX(0.6); }
-          to   { opacity: 1; transform: scaleX(1); }
-        }
         @keyframes fieldIn {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .anim-card {
-          animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0.1s both;
-        }
-        .anim-brand {
-          animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0s both;
-        }
-        .anim-overlay {
-          animation: fadeIn 1.2s ease both;
-        }
-        .field-row {
-          animation: fieldIn 0.45s cubic-bezier(0.16,1,0.3,1) both;
-        }
+        .anim-card  { animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+        .anim-brand { animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0s both; }
+        .anim-overlay { animation: fadeIn 1.2s ease both; }
+        .field-row { animation: fieldIn 0.45s cubic-bezier(0.16,1,0.3,1) both; }
         .field-row:nth-child(1) { animation-delay: 0.05s; }
         .field-row:nth-child(2) { animation-delay: 0.12s; }
         .field-row:nth-child(3) { animation-delay: 0.19s; }
-
         .login-input {
-          width: 100%;
-          height: 44px;
-          padding: 0 16px;
+          width: 100%; height: 44px; padding: 0 16px;
           border-radius: 8px;
           background: rgba(250,248,245,0.06);
           border: 1px solid rgba(250,248,245,0.12);
-          color: #FAF8F5;
-          font-size: 14px;
-          font-family: inherit;
+          color: #FAF8F5; font-size: 14px; font-family: inherit;
           outline: none;
           transition: border-color 0.2s, background 0.2s;
           -webkit-appearance: none;
@@ -111,115 +88,50 @@ export default function LoginPage() {
           background: rgba(250,248,245,0.09);
           box-shadow: 0 0 0 3px rgba(193,127,58,0.1);
         }
-
-        .mode-btn {
-          position: relative;
-          flex: 1;
-          height: 36px;
-          border: none;
-          background: transparent;
-          font-size: 12px;
-          font-weight: 500;
-          letter-spacing: 0.06em;
-          cursor: pointer;
-          transition: color 0.25s;
-          font-family: inherit;
-        }
-        .mode-btn.active  { color: #FAF8F5; }
-        .mode-btn.inactive { color: rgba(250,248,245,0.35); }
-        .mode-btn.inactive:hover { color: rgba(250,248,245,0.6); }
-
-        .mode-pill {
-          position: absolute;
-          inset: 0;
-          border-radius: 6px;
-          background: rgba(193,127,58,0.22);
-          border: 1px solid rgba(193,127,58,0.35);
-          animation: slideIndicator 0.3s cubic-bezier(0.16,1,0.3,1) both;
-          pointer-events: none;
-        }
-
         .submit-btn {
-          width: 100%;
-          height: 44px;
-          border-radius: 8px;
-          background: #C17F3A;
-          color: #FAF8F5;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: 0.07em;
-          border: none;
-          cursor: pointer;
+          width: 100%; height: 44px; border-radius: 8px;
+          background: #C17F3A; color: #FAF8F5;
+          font-size: 13px; font-weight: 600; letter-spacing: 0.07em;
+          border: none; cursor: pointer;
           transition: background 0.2s, opacity 0.2s;
           font-family: inherit;
         }
         .submit-btn:hover:not(:disabled) { background: #D6A252; }
         .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-        .demo-box {
-          border: 1px solid rgba(193,127,58,0.2);
-          background: rgba(193,127,58,0.06);
-          border-radius: 10px;
-          padding: 14px 18px;
-          margin-top: 16px;
-          animation: fadeUp 0.75s cubic-bezier(0.16,1,0.3,1) 0.4s both;
-        }
-
         .error-box {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          border-radius: 8px;
+          display: flex; align-items: center; gap: 8px;
+          padding: 10px 12px; border-radius: 8px;
           background: rgba(239,68,68,0.08);
           border: 1px solid rgba(239,68,68,0.2);
-          color: #F87171;
-          font-size: 12px;
+          color: #F87171; font-size: 12px;
           animation: fieldIn 0.3s ease both;
         }
       `}</style>
 
       <div className="relative min-h-screen flex items-center justify-center px-4">
 
-        {/* ── Video background ── */}
+        {/* Video background */}
         <div className="fixed inset-0 z-0 overflow-hidden">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 h-full w-full object-cover"
-            aria-hidden="true"
-          >
+          <video autoPlay muted loop playsInline className="absolute inset-0 h-full w-full object-cover" aria-hidden="true">
             <source src="/videos/login.mp4" type="video/mp4" />
           </video>
-          {/* Dark base overlay */}
           <div className="anim-overlay absolute inset-0" style={{ background: 'rgba(8,6,4,0.62)' }} />
-          {/* Radial vignette */}
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 35%, rgba(4,2,0,0.65) 100%)' }} />
-          {/* Gold top rule */}
           <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: 'linear-gradient(90deg, transparent, rgba(193,127,58,0.6) 30%, rgba(214,162,82,0.85) 50%, rgba(193,127,58,0.6) 70%, transparent)' }} />
         </div>
 
-        {/* ── Content ── */}
+        {/* Content */}
         <div className="relative z-10 w-full max-w-[400px]">
 
           {/* Brand */}
           <div className="anim-brand text-center mb-10">
-            <a href="/admin" style={{ textDecoration: 'none' }}>
-              <h1 style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: '2rem',
-                color: '#C17F3A',
-                letterSpacing: '0.06em',
-                fontWeight: 400,
-                margin: '0 0 6px',
-              }}>
-                StayScape
-              </h1>
-            </a>
+            <h1 style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: '2rem', color: '#C17F3A',
+              letterSpacing: '0.06em', fontWeight: 400, margin: '0 0 6px',
+            }}>StayScape</h1>
             <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              {mode === 'guest' ? 'Guest Access' : 'Hotel Admin Portal'}
+              Hotel Admin Portal
             </p>
           </div>
 
@@ -229,42 +141,11 @@ export default function LoginPage() {
             style={{
               background: 'rgba(10,8,6,0.7)',
               border: '1px solid rgba(250,248,245,0.1)',
-              borderRadius: '16px',
-              padding: '28px',
-              backdropFilter: 'blur(28px)',
-              WebkitBackdropFilter: 'blur(28px)',
+              borderRadius: '16px', padding: '28px',
+              backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
               boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 1px 0 rgba(193,127,58,0.1) inset',
             }}
           >
-            {/* Mode toggle */}
-            <div
-              style={{
-                display: 'flex',
-                background: 'rgba(250,248,245,0.05)',
-                border: '1px solid rgba(250,248,245,0.08)',
-                borderRadius: '8px',
-                padding: '3px',
-                marginBottom: '24px',
-              }}
-            >
-              {(['guest', 'hotel'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => { setMode(m); setError(null); }}
-                  aria-pressed={mode === m}
-                  className={`mode-btn ${mode === m ? 'active' : 'inactive'}`}
-                  style={{ textTransform: 'uppercase' }}
-                >
-                  {mode === m && <span className="mode-pill" />}
-                  <span style={{ position: 'relative', zIndex: 1 }}>
-                    {m === 'guest' ? 'Guest' : 'Hotel'}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Fields */}
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
                 <div className="field-row">
@@ -272,11 +153,8 @@ export default function LoginPage() {
                     Email
                   </label>
                   <input
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="email" autoComplete="email" required
+                    value={email} onChange={e => { setEmail(e.target.value); setError(null); }}
                     placeholder="your@email.com"
                     className="login-input"
                   />
@@ -287,11 +165,8 @@ export default function LoginPage() {
                     Password
                   </label>
                   <input
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    type="password" autoComplete="current-password" required
+                    value={password} onChange={e => { setPassword(e.target.value); setError(null); }}
                     placeholder="••••••••"
                     className="login-input"
                   />
@@ -323,56 +198,44 @@ export default function LoginPage() {
             </form>
           </div>
 
-          {/* Demo box */}
-          <div className="demo-box">
+          {/* Hotel onboarding note */}
+          <div style={{
+            border: '1px solid rgba(193,127,58,0.2)',
+            background: 'rgba(193,127,58,0.06)',
+            borderRadius: '10px', padding: '14px 18px', marginTop: '16px',
+          }}>
             <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C17F3A', marginBottom: '8px' }}>
-              {mode === 'guest' ? 'Demo Credentials' : 'Hotel Admin'}
+              Hotel Admin
             </p>
-            {mode === 'guest' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)' }}>
-                  Email: <code style={{ color: 'rgba(250,248,245,0.7)', fontFamily: 'monospace' }}>ben.test@stayscape-demo.com</code>
-                </p>
-                <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)' }}>
-                  Password: <code style={{ color: 'rgba(250,248,245,0.7)', fontFamily: 'monospace' }}>Demo1234!</code>
-                </p>
-              </div>
-            ) : (
-              <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6 }}>
-                Use the credentials from your Stayscape onboarding invite.
-              </p>
-            )}
+            <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6, margin: 0 }}>
+              Use the credentials from your Stayscape onboarding invite.
+            </p>
           </div>
 
-          {/* Skip link */}
+          {/* Guest redirect */}
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             <a
-              href="/dashboard"
+              href="/guests"
               style={{ fontSize: '12px', color: 'rgba(250,248,245,0.25)', letterSpacing: '0.05em', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(250,248,245,0.5)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(250,248,245,0.25)')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.5)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.25)')}
             >
-              Explore without signing in →
+              Are you a guest? Sign in here →
             </a>
           </div>
         </div>
 
-        {/* ── Superadmin — very discreet ── */}
+        {/* Superadmin — discreet dot */}
         <a
           href="/admin"
           style={{
-            position: 'fixed',
-            bottom: '16px',
-            right: '20px',
-            fontSize: '10px',
-            color: 'rgba(250,248,245,0.18)',
-            textDecoration: 'none',
-            letterSpacing: '0.08em',
-            transition: 'color 0.2s',
-            zIndex: 20,
+            position: 'fixed', bottom: '16px', right: '20px',
+            fontSize: '10px', color: 'rgba(250,248,245,0.18)',
+            textDecoration: 'none', letterSpacing: '0.08em',
+            transition: 'color 0.2s', zIndex: 20,
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(193,127,58,0.6)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(250,248,245,0.18)')}
+          onMouseEnter={e => (e.currentTarget.style.color = 'rgba(193,127,58,0.6)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.18)')}
         >
           ·
         </a>

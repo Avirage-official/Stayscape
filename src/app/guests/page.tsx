@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useAuth } from '@/lib/context/auth-context'
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
@@ -46,14 +47,21 @@ const TRANSITION_MS = 600
 
 export default function GuestsPage() {
   const router = useRouter()
-  const [bookingRef, setBookingRef] = useState('')
-  const [findError, setFindError] = useState('')
+  const { login } = useAuth()
+
+  // carousel
   const [slide, setSlide] = useState(0)
   const [visible, setVisible] = useState(true)
   const [progressKey, setProgressKey] = useState(0)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [mounted, setMounted] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // auth
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -98,10 +106,17 @@ export default function GuestsPage() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); document.removeEventListener('visibilitychange', onVisibility) }
   }, [slide, progressKey, prefersReducedMotion])
 
-  function handleFind() {
-    setFindError('')
-    if (!bookingRef.trim()) { setFindError('Please enter a booking reference.'); return }
-    router.push('/login')
+  async function handleLogin(e: FormEvent) {
+    e.preventDefault()
+    setAuthError(null)
+    setIsSubmitting(true)
+    const result = await login(email, password)
+    if (result.error) {
+      setAuthError(result.error)
+      setIsSubmitting(false)
+      return
+    }
+    router.push('/dashboard')
   }
 
   return (
@@ -138,6 +153,7 @@ export default function GuestsPage() {
         background: 'radial-gradient(ellipse 80% 65% at 30% 50%, rgba(201,168,117,0.10) 0%, transparent 70%)',
       }} />
 
+      {/* Nav */}
       <div
         style={{
           flexShrink: 0, position: 'relative', zIndex: 10,
@@ -176,6 +192,7 @@ export default function GuestsPage() {
         <span style={{ width: '48px' }} aria-hidden="true" />
       </div>
 
+      {/* Main two-col layout */}
       <div
         className="guests-main"
         style={{
@@ -183,6 +200,7 @@ export default function GuestsPage() {
           display: 'flex', flexDirection: 'row', overflow: 'hidden',
         }}
       >
+        {/* ── LEFT: carousel ── */}
         <div
           className="carousel-col"
           style={{
@@ -196,7 +214,6 @@ export default function GuestsPage() {
             style={{
               flex: 1, minHeight: 0,
               background: `linear-gradient(135deg, rgba(245,240,232,0.88) 0%, rgba(235,228,216,0.92) 100%)`,
-              backgroundBlendMode: 'normal',
               boxShadow: `0 4px 32px rgba(193,127,58,0.12), 0 1px 0 rgba(255,255,255,0.9) inset, inset 0 0 0 2000px ${SLIDE_TINTS[slide]}`,
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
@@ -275,6 +292,7 @@ export default function GuestsPage() {
           </div>
         </div>
 
+        {/* ── RIGHT: guest login form ── */}
         <div
           className="auth-col"
           style={{
@@ -282,89 +300,148 @@ export default function GuestsPage() {
             display: 'flex', flexDirection: 'column', justifyContent: 'center',
             padding: 'clamp(20px, 3vw, 48px)',
             paddingLeft: 'clamp(16px, 2.5vw, 40px)',
-            gap: '28px',
+            gap: '8px',
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '11px', fontWeight: 600,
-              color: '#C17F3A', letterSpacing: '0.18em',
-              textTransform: 'uppercase', margin: 0,
-            }}>I have a booking reference</p>
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '11px', fontWeight: 600,
+            color: '#C17F3A', letterSpacing: '0.18em',
+            textTransform: 'uppercase', margin: '0 0 4px',
+          }}>Guest Sign In</p>
 
-            <input
-              type="text"
-              value={bookingRef}
-              onChange={e => { setBookingRef(e.target.value); setFindError('') }}
-              placeholder="BK-12345"
-              className="discovery-ref-input"
-              style={{
-                width: '100%', height: '48px',
-                colorScheme: 'light',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid rgba(193,127,58,0.28)',
-                borderRadius: '8px', padding: '0 16px',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px', color: '#2C1A08',
-                outline: 'none', boxSizing: 'border-box',
-                transition: 'border-color 180ms ease, box-shadow 180ms ease',
-              }}
-              onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
-              onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
-            />
+          <h3 style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontStyle: 'italic',
+            fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)',
+            fontWeight: 500, color: '#2C1A08',
+            lineHeight: 1.2, margin: '0 0 24px',
+          }}>Welcome back.</h3>
+
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{
+                display: 'block', fontSize: '10px', fontWeight: 600,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
+              }}>Email</label>
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={e => { setEmail(e.target.value); setAuthError(null) }}
+                placeholder="your@email.com"
+                className="guest-input"
+                style={{
+                  width: '100%', height: '46px',
+                  padding: '0 16px',
+                  borderRadius: '8px',
+                  background: '#FFFFFF',
+                  border: '1px solid rgba(193,127,58,0.28)',
+                  color: '#2C1A08',
+                  fontSize: '14px',
+                  fontFamily: "'DM Sans', sans-serif",
+                  outline: 'none',
+                  transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+                onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block', fontSize: '10px', fontWeight: 600,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
+              }}>Password</label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={e => { setPassword(e.target.value); setAuthError(null) }}
+                placeholder="••••••••"
+                className="guest-input"
+                style={{
+                  width: '100%', height: '46px',
+                  padding: '0 16px',
+                  borderRadius: '8px',
+                  background: '#FFFFFF',
+                  border: '1px solid rgba(193,127,58,0.28)',
+                  color: '#2C1A08',
+                  fontSize: '14px',
+                  fontFamily: "'DM Sans', sans-serif",
+                  outline: 'none',
+                  transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+                onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
+              />
+            </div>
+
+            {authError && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 12px', borderRadius: '8px',
+                background: 'rgba(193,58,58,0.06)',
+                border: '1px solid rgba(193,58,58,0.2)',
+                color: '#C13A3A', fontSize: '12px',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                {authError}
+              </div>
+            )}
 
             <button
-              onClick={handleFind}
+              type="submit"
+              disabled={isSubmitting}
               style={{
+                width: '100%', height: '46px',
+                borderRadius: '8px',
                 background: '#C17F3A',
-                border: 'none', borderRadius: '8px',
-                padding: '14px 24px',
+                color: '#FAF8F5',
+                fontSize: '13px', fontWeight: 600,
+                letterSpacing: '0.07em',
+                border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
                 fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px', fontWeight: 600,
-                color: '#FAF8F5', letterSpacing: '0.03em',
-                cursor: 'pointer',
-                transition: 'opacity 180ms ease, transform 180ms ease',
-                alignSelf: 'flex-start',
-                boxShadow: '0 4px 14px rgba(193,127,58,0.3)',
+                opacity: isSubmitting ? 0.55 : 1,
+                transition: 'background 180ms ease, opacity 180ms ease',
+                boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
               }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
+              onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#D6A252' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A' }}
             >
-              Find my stay
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75" />
+                  </svg>
+                  Signing in…
+                </>
+              ) : 'Sign In'}
             </button>
+          </form>
 
-            {findError && (
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', color: '#C14A3A', margin: 0 }}>{findError}</p>
-            )}
-          </div>
-
-          <div style={{ height: '1px', background: 'rgba(193,127,58,0.2)' }} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '11px', fontWeight: 600,
-              color: '#C17F3A', letterSpacing: '0.18em',
-              textTransform: 'uppercase', margin: 0,
-            }}>I already have an account</p>
-
-            <Link
-              href="/login"
-              style={{
-                display: 'inline-block',
-                border: '1.5px solid rgba(193,127,58,0.5)',
-                borderRadius: '8px', padding: '13px 24px',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px', fontWeight: 600,
-                color: '#2C1A08', letterSpacing: '0.03em',
-                textDecoration: 'none',
-                transition: 'background 180ms ease, border-color 180ms ease',
-                background: 'transparent', alignSelf: 'flex-start',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.08)'; e.currentTarget.style.borderColor = '#C17F3A' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(193,127,58,0.5)' }}
-            >Sign in</Link>
+          <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <p style={{ fontSize: '11px', color: 'rgba(44,26,8,0.35)', fontFamily: "'DM Sans', sans-serif", margin: 0 }}>
+              Demo: <code style={{ color: 'rgba(44,26,8,0.55)' }}>ben.test@stayscape-demo.com</code> / <code style={{ color: 'rgba(44,26,8,0.55)' }}>Demo1234!</code>
+            </p>
+            <a
+              href="/dashboard"
+              style={{ fontSize: '12px', color: 'rgba(44,26,8,0.3)', fontFamily: "'DM Sans', sans-serif", textDecoration: 'none', transition: 'color 180ms ease' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.6)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.3)')}
+            >
+              Explore without signing in →
+            </a>
           </div>
         </div>
       </div>
@@ -374,29 +451,19 @@ export default function GuestsPage() {
           from { transform: scaleX(0); }
           to   { transform: scaleX(1); }
         }
-
-        /* Scoped autofill override — keeps this light input white.
-           globals.css sets dark autofill bg for all inputs (dark dashboard);
-           this !important block wins for .discovery-ref-input only. */
-        .discovery-ref-input,
-        .discovery-ref-input:focus,
-        .discovery-ref-input:hover,
-        .discovery-ref-input:active {
+        .guest-input, .guest-input:focus, .guest-input:hover, .guest-input:active {
           background-color: #FFFFFF !important;
           color: #2C1A08 !important;
           -webkit-text-fill-color: #2C1A08 !important;
         }
-
-        .discovery-ref-input:-webkit-autofill,
-        .discovery-ref-input:-webkit-autofill:hover,
-        .discovery-ref-input:-webkit-autofill:focus,
-        .discovery-ref-input:-webkit-autofill:active {
+        .guest-input:-webkit-autofill,
+        .guest-input:-webkit-autofill:hover,
+        .guest-input:-webkit-autofill:focus,
+        .guest-input:-webkit-autofill:active {
           -webkit-text-fill-color: #2C1A08 !important;
           -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
-          box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
           caret-color: #C17F3A !important;
         }
-
         @media (max-width: 1023px) {
           .guests-main { flex-direction: column !important; }
           .carousel-col { flex: 0 0 55% !important; padding-right: clamp(20px, 3vw, 48px) !important; }
