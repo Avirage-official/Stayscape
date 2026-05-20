@@ -7,6 +7,11 @@
  * Body: { name?, age_band?, location_city?, location_country?, novelty?, vibe?,
  *         discovery?, food?, planning?, spend?, dealbreakers? }
  * Reply: { ok: true } | { error }
+ *
+ * GET /api/customer/profile
+ *
+ * Returns whether the authed user has completed their profile.
+ * Reply: { completed: boolean }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -35,6 +40,60 @@ function validateEnum(
   if (!allowed.has(cleaned)) return { value: null, error: `Invalid ${fieldName}: ${cleaned}` };
   return { value: cleaned };
 }
+
+// ── GET — profile completion check ───────────────────────────────────────────
+
+export async function GET(request: NextRequest) {
+  const rateLimit = await applyRateLimit(request);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
+  const authHeader = request.headers.get('authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
+  const supabase = getSupabaseAdmin();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: rateLimit.headers },
+    );
+  }
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('completed')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[profile GET] Failed to fetch user_profiles:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to check profile' },
+      { status: 500, headers: rateLimit.headers },
+    );
+  }
+
+  const completed = data?.completed === true;
+  return NextResponse.json({ completed }, { headers: rateLimit.headers });
+}
+
+// ── POST — save profile ───────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const rateLimit = await applyRateLimit(request);
