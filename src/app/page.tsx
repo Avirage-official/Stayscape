@@ -34,19 +34,26 @@ export default function SplashPage() {
     timers.current.push(id)
   }
 
-  useEffect(() => { setRm(window.matchMedia('(prefers-reduced-motion: reduce)').matches) }, [])
+  useEffect(() => {
+    const id = setTimeout(() => setRm(window.matchMedia('(prefers-reduced-motion: reduce)').matches), 0)
+    return () => clearTimeout(id)
+  }, [])
 
   // Check session cookie — if already seen this session, skip straight to idle
   useEffect(() => {
     const alreadySeen = document.cookie.split(';').some(c => c.trim().startsWith('aria_intro_seen=1'))
-    if (alreadySeen) {
-      setSkipIntro(true)
-      setBeat('idle')
-    } else {
-      setSkipIntro(false)
-      // Mark as seen for the rest of this browser session (no Max-Age = session cookie)
+    if (!alreadySeen) {
       document.cookie = 'aria_intro_seen=1; path=/; SameSite=Lax'
     }
+    const id = setTimeout(() => {
+      if (alreadySeen) {
+        setSkipIntro(true)
+        setBeat('idle')
+      } else {
+        setSkipIntro(false)
+      }
+    }, 0)
+    return () => clearTimeout(id)
   }, [])
 
   useEffect(() => {
@@ -85,8 +92,7 @@ export default function SplashPage() {
     t(() => setBeat('idle'), 7500)
 
     return () => timers.current.forEach(clearTimeout)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rm, skipIntro])
+  }, [rm, skipIntro]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentBeat = BEATS.find(b => b.id === beat)
 
