@@ -8,57 +8,48 @@ import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
-const SLIDE_TINTS = [
-  'rgba(201,168,117,0.07)',
-  'rgba(117,155,201,0.06)',
-  'rgba(117,201,155,0.06)',
-  'rgba(168,117,201,0.06)',
-] as const
-
 const SLIDES = [
   {
     eyebrow: '01 · Profile',
     headline: 'We\'re getting to know you.',
-    subline:
-      'Stayscape is quietly building a travel profile from your stays — preferences, pace, the kind of places that move you — so every trip after this feels less like starting over.',
+    subline: 'Stayscape quietly builds a travel profile from your stays — preferences, pace, the kind of places that move you.',
+    image: '/images/onboarding/slide-1.jpg',
   },
   {
     eyebrow: '02 · Connect',
     headline: 'One thread to your hotel.',
-    subline:
-      'From the moment your booking lands, you\'re connected to the property — requests, questions, late check-outs, everything in one place. No phone tag, no front-desk queue.',
+    subline: 'From the moment your booking lands, you\'re connected to the property — requests, questions, late check-outs, all in one place.',
+    image: '/images/onboarding/slide-2.jpg',
   },
   {
     eyebrow: '03 · During your stay',
     headline: 'Your stay, in your pocket.',
-    subline:
-      'Plan your days, order room service, request the things you need, and explore a map of places worth your time — all without leaving the experience.',
+    subline: 'Plan your days, order room service, request what you need, and explore places worth your time — without leaving the experience.',
+    image: '/images/onboarding/slide-3.jpg',
   },
   {
     eyebrow: '04 · Aria',
     headline: 'A concierge that knows the city.',
-    subline:
-      'Aria, your AI concierge, is along for the trip — answering questions, suggesting where to go, and quietly making your stay easier, 24/7.',
+    subline: 'Aria, your AI concierge, is along for the trip — answering questions, suggesting where to go, making your stay easier, 24/7.',
+    image: '/images/onboarding/slide-4.jpg',
   },
 ] as const
 
-const DWELL_MS = 4000
-const REDUCED_DWELL_MS = 6000
-const TRANSITION_MS = 600
+const DWELL_MS = 5000
+const REDUCED_DWELL_MS = 8000
+const TRANSITION_MS = 800
 
 export default function GuestsPage() {
   const router = useRouter()
   const { login } = useAuth()
 
-  // carousel
   const [slide, setSlide] = useState(0)
-  const [visible, setVisible] = useState(true)
+  const [nextSlide, setNextSlide] = useState<number | null>(null)
   const [progressKey, setProgressKey] = useState(0)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [mounted, setMounted] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // auth
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -75,8 +66,18 @@ export default function GuestsPage() {
     return () => clearTimeout(id)
   }, [])
 
-  const advance = () => { setSlide(s => (s + 1) % SLIDES.length); setProgressKey(k => k + 1) }
-  const retreat = () => { setSlide(s => (s - 1 + SLIDES.length) % SLIDES.length); setProgressKey(k => k + 1) }
+  function goTo(idx: number) {
+    if (idx === slide) return
+    setNextSlide(idx)
+    setProgressKey(k => k + 1)
+    setTimeout(() => {
+      setSlide(idx)
+      setNextSlide(null)
+    }, TRANSITION_MS)
+  }
+
+  const advance = () => goTo((slide + 1) % SLIDES.length)
+  const retreat = () => goTo((slide - 1 + SLIDES.length) % SLIDES.length)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -93,12 +94,7 @@ export default function GuestsPage() {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         if (document.visibilityState === 'hidden') return
-        if (!prefersReducedMotion) {
-          setVisible(false)
-          setTimeout(() => { setSlide(s => (s + 1) % SLIDES.length); setProgressKey(k => k + 1); setVisible(true) }, TRANSITION_MS)
-        } else {
-          setSlide(s => (s + 1) % SLIDES.length); setProgressKey(k => k + 1)
-        }
+        advance()
       }, dwell)
     }
     schedule()
@@ -107,7 +103,10 @@ export default function GuestsPage() {
       else if (timerRef.current) clearTimeout(timerRef.current)
     }
     document.addEventListener('visibilitychange', onVisibility)
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); document.removeEventListener('visibilitychange', onVisibility) }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [slide, progressKey, prefersReducedMotion])
 
   async function handleLogin(e: FormEvent) {
@@ -166,43 +165,22 @@ export default function GuestsPage() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        background: '#FAF8F5',
+        background: '#0E0B08',
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'scale(1)' : 'scale(0.98)',
         transition: 'opacity 420ms ease-out, transform 420ms cubic-bezier(0.34,1,0.64,1)',
       }}
     >
-      <video
-        autoPlay muted loop playsInline preload="metadata"
-        aria-hidden="true"
-        style={{
-          position: 'fixed', inset: 0,
-          width: '100%', height: '100%',
-          objectFit: 'cover',
-          zIndex: 0,
-          opacity: 0.18,
-          mixBlendMode: 'multiply',
-          pointerEvents: 'none',
-        }}
-      >
-        <source src="/videos/guests-bg.mp4" type="video/mp4" />
-      </video>
-
-      <div aria-hidden="true" style={{
-        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 80% 65% at 30% 50%, rgba(201,168,117,0.10) 0%, transparent 70%)',
-      }} />
-
       {/* Nav */}
       <div
         style={{
-          flexShrink: 0, position: 'relative', zIndex: 10,
+          flexShrink: 0, position: 'relative', zIndex: 20,
           padding: '18px 24px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(193,127,58,0.18)',
-          background: 'rgba(250,248,245,0.88)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(14,11,8,0.7)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
       >
         <Link
@@ -210,13 +188,13 @@ export default function GuestsPage() {
           style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '13px',
-            color: '#7A6B57',
+            color: 'rgba(250,248,245,0.5)',
             textDecoration: 'none',
             letterSpacing: '0.01em',
             transition: 'color 180ms ease',
           }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#2C1A08')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#7A6B57')}
+          onMouseEnter={e => (e.currentTarget.style.color = '#FAF8F5')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.5)')}
         >
           ← Back
         </Link>
@@ -224,7 +202,7 @@ export default function GuestsPage() {
         <span style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
           fontStyle: 'italic', fontSize: '18px', fontWeight: 600,
-          color: '#2C1A08', letterSpacing: '0.01em',
+          color: '#FAF8F5', letterSpacing: '0.01em',
         }}>
           Stay<span style={{ fontFamily: "'DM Sans', sans-serif", fontStyle: 'normal', fontWeight: 600, color: '#C17F3A' }}>scape</span>
         </span>
@@ -232,7 +210,7 @@ export default function GuestsPage() {
         <span style={{ width: '48px' }} aria-hidden="true" />
       </div>
 
-      {/* Main two-col layout */}
+      {/* Main layout */}
       <div
         className="guests-main"
         style={{
@@ -240,107 +218,177 @@ export default function GuestsPage() {
           display: 'flex', flexDirection: 'row', overflow: 'hidden',
         }}
       >
-        {/* ── LEFT: carousel ── */}
+        {/* ── LEFT: full-bleed image carousel ── */}
         <div
           className="carousel-col"
           style={{
             flex: '0 0 60%', minWidth: 0,
-            display: 'flex', flexDirection: 'column',
-            padding: 'clamp(20px, 3vw, 48px)',
-            paddingRight: 'clamp(16px, 2.5vw, 40px)',
+            position: 'relative', overflow: 'hidden',
           }}
         >
+          {/* Image layers — current + next crossfade */}
+          {SLIDES.map((s, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute', inset: 0,
+                opacity: i === slide ? 1 : i === nextSlide ? 0 : 0,
+                transition: `opacity ${TRANSITION_MS}ms ease`,
+                zIndex: i === nextSlide ? 2 : i === slide ? 1 : 0,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={s.image}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  animation: i === slide && !prefersReducedMotion
+                    ? 'kenBurns 12s ease-out forwards'
+                    : 'none',
+                }}
+              />
+            </div>
+          ))}
+
+          {/* Dark gradient overlay — bottom-heavy for text legibility */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+              background: 'linear-gradient(to top, rgba(8,5,2,0.88) 0%, rgba(8,5,2,0.45) 40%, rgba(8,5,2,0.1) 70%, transparent 100%)',
+            }}
+          />
+
+          {/* Subtle top vignette */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+              background: 'linear-gradient(to bottom, rgba(8,5,2,0.35) 0%, transparent 25%)',
+            }}
+          />
+
+          {/* Text content — bottom of card */}
           <div
             style={{
-              flex: 1, minHeight: 0,
-              background: `linear-gradient(135deg, rgba(245,240,232,0.88) 0%, rgba(235,228,216,0.92) 100%)`,
-              boxShadow: `0 4px 32px rgba(193,127,58,0.12), 0 1px 0 rgba(255,255,255,0.9) inset, inset 0 0 0 2000px ${SLIDE_TINTS[slide]}`,
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(193,127,58,0.22)',
-              borderRadius: '20px',
-              padding: 'clamp(28px, 4vw, 56px)',
-              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-              position: 'relative', overflow: 'hidden',
-              transition: 'box-shadow 600ms ease',
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              zIndex: 4,
+              padding: 'clamp(28px, 4vw, 52px)',
+              paddingBottom: 'clamp(32px, 4.5vw, 56px)',
             }}
           >
-            <div aria-hidden="true" style={{
-              position: 'absolute',
-              top: 'clamp(20px, 3vw, 32px)', right: 'clamp(20px, 3vw, 32px)',
-              display: 'flex', alignItems: 'center', gap: '10px',
-            }}>
-              <div style={{ width: '1px', height: '32px', background: '#C17F3A', opacity: 0.5 }} />
+            {/* Roman numeral + line */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ width: '28px', height: '1px', background: 'rgba(193,127,58,0.7)' }} />
               <span style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontStyle: 'italic', fontSize: '13px',
-                color: '#C17F3A', opacity: 0.7,
-                minWidth: '24px', transition: 'opacity 300ms ease',
-              }}>{ROMAN[slide]}</span>
+                color: 'rgba(193,127,58,0.85)',
+                letterSpacing: '0.04em',
+                transition: 'opacity 300ms ease',
+              }}>{SLIDES[slide].eyebrow}</span>
             </div>
 
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-              opacity: visible ? 1 : 0,
-              transform: visible ? 'translateX(0)' : 'translateX(20px)',
-              transition: `opacity ${TRANSITION_MS}ms ease, transform ${TRANSITION_MS}ms ease`,
-            }}>
-              <p style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '11px', fontWeight: 600,
-                color: '#C17F3A', letterSpacing: '0.18em',
-                textTransform: 'uppercase', margin: '0 0 20px',
-              }}>{SLIDES[slide].eyebrow}</p>
-
-              <h2 style={{
+            <h2
+              key={slide}
+              style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontStyle: 'italic',
-                fontSize: 'clamp(2rem, 3.6vw, 3.4rem)',
-                fontWeight: 500, color: '#2C1A08',
-                lineHeight: 1.18, letterSpacing: '-0.01em',
-                margin: '0 0 20px',
-              }}>{SLIDES[slide].headline}</h2>
+                fontSize: 'clamp(2rem, 3.8vw, 3.6rem)',
+                fontWeight: 500,
+                color: '#FAF8F5',
+                lineHeight: 1.15,
+                letterSpacing: '-0.01em',
+                margin: '0 0 14px',
+                animation: 'slideUp 600ms cubic-bezier(0.16,1,0.3,1) both',
+              }}
+            >
+              {SLIDES[slide].headline}
+            </h2>
 
-              <p style={{
+            <p
+              key={`sub-${slide}`}
+              style={{
                 fontFamily: "'DM Sans', sans-serif",
-                fontSize: '15px', lineHeight: 1.65,
-                color: '#5C4A35', maxWidth: '46ch', margin: 0,
-              }}>{SLIDES[slide].subline}</p>
-            </div>
+                fontSize: '14px',
+                lineHeight: 1.65,
+                color: 'rgba(250,248,245,0.7)',
+                maxWidth: '44ch',
+                margin: '0 0 28px',
+                animation: 'slideUp 600ms 80ms cubic-bezier(0.16,1,0.3,1) both',
+              }}
+            >
+              {SLIDES[slide].subline}
+            </p>
 
-            <div style={{ display: 'flex', gap: '8px', paddingTop: '28px', flexShrink: 0 }}>
+            {/* Progress bars */}
+            <div style={{ display: 'flex', gap: '6px' }}>
               {SLIDES.map((_, i) => (
-                <div key={i} style={{
-                  width: '36px', height: '2px',
-                  background: 'rgba(193,127,58,0.25)',
-                  position: 'relative', overflow: 'hidden',
-                }}>
+                <button
+                  key={i}
+                  aria-label={`Go to slide ${i + 1}`}
+                  onClick={() => goTo(i)}
+                  style={{
+                    width: '36px', height: '2px',
+                    background: 'rgba(255,255,255,0.2)',
+                    position: 'relative', overflow: 'hidden',
+                    border: 'none', padding: 0, cursor: 'pointer',
+                    borderRadius: '2px',
+                  }}
+                >
                   {i === slide && (
-                    <div key={progressKey} style={{
-                      position: 'absolute', inset: 0,
-                      background: '#C17F3A',
-                      transformOrigin: 'left',
-                      animation: `progressFill ${prefersReducedMotion ? 0 : DWELL_MS}ms linear forwards`,
-                    }} />
+                    <div
+                      key={progressKey}
+                      style={{
+                        position: 'absolute', inset: 0,
+                        background: '#C17F3A',
+                        transformOrigin: 'left',
+                        animation: `progressFill ${prefersReducedMotion ? 0 : DWELL_MS}ms linear forwards`,
+                      }}
+                    />
                   )}
                   {i < slide && (
-                    <div style={{ position: 'absolute', inset: 0, background: '#C17F3A', opacity: 0.35 }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(193,127,58,0.6)' }} />
                   )}
-                </div>
+                </button>
               ))}
             </div>
           </div>
+
+          {/* Prev / Next tap zones */}
+          <button
+            aria-label="Previous slide"
+            onClick={retreat}
+            style={{
+              position: 'absolute', left: 0, top: '10%', bottom: '20%',
+              width: '30%', zIndex: 5,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+            }}
+          />
+          <button
+            aria-label="Next slide"
+            onClick={advance}
+            style={{
+              position: 'absolute', right: 0, top: '10%', bottom: '20%',
+              width: '30%', zIndex: 5,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+            }}
+          />
         </div>
 
-        {/* ── RIGHT: guest login form ── */}
+        {/* ── RIGHT: auth form ── */}
         <div
           className="auth-col"
           style={{
             flex: '0 0 40%', minWidth: 0,
             display: 'flex', flexDirection: 'column', justifyContent: 'center',
             padding: 'clamp(20px, 3vw, 48px)',
-            paddingLeft: 'clamp(16px, 2.5vw, 40px)',
+            paddingLeft: 'clamp(24px, 3vw, 52px)',
             gap: '8px',
+            background: '#FAF8F5',
           }}
         >
           <p style={{
@@ -584,6 +632,14 @@ export default function GuestsPage() {
           from { transform: scaleX(0); }
           to   { transform: scaleX(1); }
         }
+        @keyframes kenBurns {
+          from { transform: scale(1.0) translate(0px, 0px); }
+          to   { transform: scale(1.07) translate(-10px, -6px); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         .guest-input, .guest-input:focus, .guest-input:hover, .guest-input:active {
           background-color: #FFFFFF !important;
           color: #2C1A08 !important;
@@ -599,12 +655,12 @@ export default function GuestsPage() {
         }
         @media (max-width: 1023px) {
           .guests-main { flex-direction: column !important; }
-          .carousel-col { flex: 0 0 55% !important; padding-right: clamp(20px, 3vw, 48px) !important; }
-          .auth-col { flex: 0 0 auto !important; justify-content: flex-start !important; padding-top: 0 !important; padding-left: clamp(20px, 3vw, 48px) !important; }
+          .carousel-col { flex: 0 0 52% !important; }
+          .auth-col { flex: 0 0 auto !important; justify-content: flex-start !important; overflow-y: auto; padding-top: 24px !important; }
         }
         @media (max-width: 430px) {
-          .carousel-col { padding: 12px !important; }
-          .auth-col { padding: 12px !important; gap: 16px !important; }
+          .carousel-col { flex: 0 0 45% !important; }
+          .auth-col { padding: 16px !important; gap: 16px !important; }
         }
       `}</style>
     </div>
