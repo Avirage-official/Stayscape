@@ -23,20 +23,19 @@ type ActivationResponse = {
 interface AddStayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The logged-in user's ID. */
   userId?: string;
-  /** Called after a successful activation so the parent can refetch. */
   onActivated?: () => void;
 }
 
-/* ── Input style ──────────────────────────────────────────────────────────────
-   bg-[#1E1814]       solid espresso bg — matches the autofill override in globals.css
-   text-[#F5E6CC]     explicit cream text — prevents black-on-dark-bg when clicking
-   caret-[#C9A875]    gold caret
-   focus:bg-[#241C14] subtle lightening on focus for visual feedback
-   ──────────────────────────────────────────────────────────────────────────── */
 const inputClassName =
-  'w-full h-11 px-4 rounded-xl bg-[#1E1814] border border-white/[0.12] text-[14px] text-[#F5E6CC] caret-[#C9A875] placeholder:text-white/35 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-[#241C14] transition-all duration-300';
+  'w-full h-11 px-4 rounded-xl border border-white/[0.12] text-[14px] placeholder:text-white/35 focus:outline-none focus:border-[var(--gold)]/40 transition-all duration-300';
+
+/* Inline styles guarantee colour values survive Tailwind purge */
+const inputStyle: React.CSSProperties = {
+  backgroundColor: '#1E1814',
+  color: '#F5E6CC',
+  caretColor: '#C9A875',
+};
 
 export default function AddStayDialog({
   open,
@@ -48,8 +47,6 @@ export default function AddStayDialog({
   const prefersReducedMotion = useReducedMotion();
   const [state, setState] = useState<ActivationState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Form fields
   const [bookingRef, setBookingRef] = useState('');
 
   const reset = useCallback(() => {
@@ -258,6 +255,7 @@ export default function AddStayDialog({
                               value={bookingRef}
                               onChange={(e) => setBookingRef(e.target.value)}
                               className={inputClassName}
+                              style={inputStyle}
                               placeholder="e.g. RES-123456"
                               autoComplete="off"
                               spellCheck={false}
