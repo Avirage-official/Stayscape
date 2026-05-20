@@ -6,13 +6,11 @@ import { useState, useEffect, useRef } from 'react'
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
-// Subtle per-slide tint applied to the carousel glass panel
-// so each slide has its own quiet character
 const SLIDE_TINTS = [
-  'rgba(201,168,117,0.07)',  // Slide 1 — warm gold
-  'rgba(117,155,201,0.06)',  // Slide 2 — soft blue
-  'rgba(117,201,155,0.06)',  // Slide 3 — sage green
-  'rgba(168,117,201,0.06)',  // Slide 4 — muted violet
+  'rgba(201,168,117,0.07)',
+  'rgba(117,155,201,0.06)',
+  'rgba(117,201,155,0.06)',
+  'rgba(168,117,201,0.06)',
 ] as const
 
 const SLIDES = [
@@ -117,7 +115,6 @@ export default function GuestsPage() {
         transition: 'opacity 420ms ease-out, transform 420ms cubic-bezier(0.34,1,0.64,1)',
       }}
     >
-      {/* Background video */}
       <video
         autoPlay muted loop playsInline preload="metadata"
         aria-hidden="true"
@@ -134,13 +131,11 @@ export default function GuestsPage() {
         <source src="/videos/guests-bg.mp4" type="video/mp4" />
       </video>
 
-      {/* Warm sunburst */}
       <div aria-hidden="true" style={{
         position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
         background: 'radial-gradient(ellipse 80% 65% at 30% 50%, rgba(201,168,117,0.10) 0%, transparent 70%)',
       }} />
 
-      {/* ── Top bar ── */}
       <div
         style={{
           flexShrink: 0, position: 'relative', zIndex: 10,
@@ -179,7 +174,6 @@ export default function GuestsPage() {
         <span style={{ width: '48px' }} aria-hidden="true" />
       </div>
 
-      {/* ── Main two-column area ── */}
       <div
         className="guests-main"
         style={{
@@ -187,7 +181,6 @@ export default function GuestsPage() {
           display: 'flex', flexDirection: 'row', overflow: 'hidden',
         }}
       >
-        {/* LEFT: Slide carousel */}
         <div
           className="carousel-col"
           style={{
@@ -200,11 +193,8 @@ export default function GuestsPage() {
           <div
             style={{
               flex: 1, minHeight: 0,
-              // Darker base overlay + per-slide colour tint for visual distinction
               background: `linear-gradient(135deg, rgba(245,240,232,0.88) 0%, rgba(235,228,216,0.92) 100%)`,
               backgroundBlendMode: 'normal',
-              // Per-slide tint layer applied via outline-offset trick isn't possible;
-              // we instead layer it as a box-shadow inset tint
               boxShadow: `0 4px 32px rgba(193,127,58,0.12), 0 1px 0 rgba(255,255,255,0.9) inset, inset 0 0 0 2000px ${SLIDE_TINTS[slide]}`,
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
@@ -216,7 +206,6 @@ export default function GuestsPage() {
               transition: 'box-shadow 600ms ease',
             }}
           >
-            {/* Top-right roman numeral */}
             <div aria-hidden="true" style={{
               position: 'absolute',
               top: 'clamp(20px, 3vw, 32px)', right: 'clamp(20px, 3vw, 32px)',
@@ -231,7 +220,6 @@ export default function GuestsPage() {
               }}>{ROMAN[slide]}</span>
             </div>
 
-            {/* Slide content */}
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
               opacity: visible ? 1 : 0,
@@ -261,7 +249,6 @@ export default function GuestsPage() {
               }}>{SLIDES[slide].subline}</p>
             </div>
 
-            {/* Progress bars */}
             <div style={{ display: 'flex', gap: '8px', paddingTop: '28px', flexShrink: 0 }}>
               {SLIDES.map((_, i) => (
                 <div key={i} style={{
@@ -286,7 +273,6 @@ export default function GuestsPage() {
           </div>
         </div>
 
-        {/* RIGHT: Auth block */}
         <div
           className="auth-col"
           style={{
@@ -297,7 +283,6 @@ export default function GuestsPage() {
             gap: '28px',
           }}
         >
-          {/* Section A — booking reference */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <p style={{
               fontFamily: "'DM Sans', sans-serif",
@@ -314,8 +299,6 @@ export default function GuestsPage() {
               className="discovery-ref-input"
               style={{
                 width: '100%', height: '48px',
-                // Explicit light color-scheme prevents browser dark-mode from
-                // injecting a black background over our custom background color
                 colorScheme: 'light',
                 backgroundColor: '#FFFFFF',
                 border: '1px solid rgba(193,127,58,0.28)',
@@ -354,10 +337,8 @@ export default function GuestsPage() {
             )}
           </div>
 
-          {/* Divider */}
           <div style={{ height: '1px', background: 'rgba(193,127,58,0.2)' }} />
 
-          {/* Section B — sign in */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <p style={{
               fontFamily: "'DM Sans', sans-serif",
@@ -391,6 +372,20 @@ export default function GuestsPage() {
           from { transform: scaleX(0); }
           to   { transform: scaleX(1); }
         }
+
+        /* Scoped autofill override — keeps this light input white.
+           globals.css sets dark autofill bg for all inputs (dark dashboard);
+           this !important block wins for .discovery-ref-input only. */
+        .discovery-ref-input:-webkit-autofill,
+        .discovery-ref-input:-webkit-autofill:hover,
+        .discovery-ref-input:-webkit-autofill:focus,
+        .discovery-ref-input:-webkit-autofill:active {
+          -webkit-text-fill-color: #2C1A08 !important;
+          -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+          box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+          caret-color: #C17F3A !important;
+        }
+
         @media (max-width: 1023px) {
           .guests-main { flex-direction: column !important; }
           .carousel-col { flex: 0 0 55% !important; padding-right: clamp(20px, 3vw, 48px) !important; }
