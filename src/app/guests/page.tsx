@@ -6,13 +6,6 @@ import { useState, useEffect, useRef } from 'react'
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
-const SLIDE_TINTS = [
-  'rgba(201,168,117,0.07)',
-  'rgba(117,155,201,0.06)',
-  'rgba(117,201,155,0.06)',
-  'rgba(168,117,201,0.06)',
-] as const
-
 const SLIDES = [
   {
     eyebrow: '01 · Profile',
@@ -195,43 +188,64 @@ export default function GuestsPage() {
           <div
             style={{
               flex: 1, minHeight: 0,
-              background: `linear-gradient(135deg, rgba(245,240,232,0.88) 0%, rgba(235,228,216,0.92) 100%)`,
-              backgroundBlendMode: 'normal',
-              boxShadow: `0 4px 32px rgba(193,127,58,0.12), 0 1px 0 rgba(255,255,255,0.9) inset, inset 0 0 0 2000px ${SLIDE_TINTS[slide]}`,
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(193,127,58,0.22)',
+              background: '#1A120A',
+              boxShadow: '0 4px 32px rgba(0,0,0,0.5)',
+              border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: '20px',
               padding: 'clamp(28px, 4vw, 56px)',
               display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
               position: 'relative', overflow: 'hidden',
-              transition: 'box-shadow 600ms ease',
             }}
           >
+            {/* Background image — fades with slide */}
+            <img
+              src={`/images/onboarding/slide-${slide + 1}.jpg`}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                opacity: visible ? 1 : 0,
+                transition: `opacity ${TRANSITION_MS}ms ease`,
+                zIndex: 0,
+              }}
+            />
+
+            {/* Dark overlay — heavier at bottom so text stays readable */}
+            <div aria-hidden="true" style={{
+              position: 'absolute', inset: 0, zIndex: 1,
+              background: 'linear-gradient(to bottom, rgba(10,8,6,0.42) 0%, rgba(10,8,6,0.68) 55%, rgba(10,8,6,0.88) 100%)',
+            }} />
+
+            {/* Roman numeral corner tag */}
             <div aria-hidden="true" style={{
               position: 'absolute',
               top: 'clamp(20px, 3vw, 32px)', right: 'clamp(20px, 3vw, 32px)',
               display: 'flex', alignItems: 'center', gap: '10px',
+              zIndex: 2,
             }}>
-              <div style={{ width: '1px', height: '32px', background: '#C17F3A', opacity: 0.5 }} />
+              <div style={{ width: '1px', height: '32px', background: '#C9A875', opacity: 0.7 }} />
               <span style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontStyle: 'italic', fontSize: '13px',
-                color: '#C17F3A', opacity: 0.7,
+                color: '#C9A875',
                 minWidth: '24px', transition: 'opacity 300ms ease',
               }}>{ROMAN[slide]}</span>
             </div>
 
+            {/* Slide text */}
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
               opacity: visible ? 1 : 0,
               transform: visible ? 'translateX(0)' : 'translateX(20px)',
               transition: `opacity ${TRANSITION_MS}ms ease, transform ${TRANSITION_MS}ms ease`,
+              position: 'relative', zIndex: 2,
             }}>
               <p style={{
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '11px', fontWeight: 600,
-                color: '#C17F3A', letterSpacing: '0.18em',
+                color: '#C9A875', letterSpacing: '0.18em',
                 textTransform: 'uppercase', margin: '0 0 20px',
               }}>{SLIDES[slide].eyebrow}</p>
 
@@ -239,7 +253,7 @@ export default function GuestsPage() {
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontStyle: 'italic',
                 fontSize: 'clamp(2rem, 3.6vw, 3.4rem)',
-                fontWeight: 500, color: '#2C1A08',
+                fontWeight: 500, color: '#F5E6CC',
                 lineHeight: 1.18, letterSpacing: '-0.01em',
                 margin: '0 0 20px',
               }}>{SLIDES[slide].headline}</h2>
@@ -247,27 +261,28 @@ export default function GuestsPage() {
               <p style={{
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '15px', lineHeight: 1.65,
-                color: '#5C4A35', maxWidth: '46ch', margin: 0,
+                color: 'rgba(245,230,204,0.78)', maxWidth: '46ch', margin: 0,
               }}>{SLIDES[slide].subline}</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', paddingTop: '28px', flexShrink: 0 }}>
+            {/* Progress bars */}
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '28px', flexShrink: 0, position: 'relative', zIndex: 2 }}>
               {SLIDES.map((_, i) => (
                 <div key={i} style={{
                   width: '36px', height: '2px',
-                  background: 'rgba(193,127,58,0.25)',
+                  background: 'rgba(255,255,255,0.22)',
                   position: 'relative', overflow: 'hidden',
                 }}>
                   {i === slide && (
                     <div key={progressKey} style={{
                       position: 'absolute', inset: 0,
-                      background: '#C17F3A',
+                      background: '#C9A875',
                       transformOrigin: 'left',
                       animation: `progressFill ${prefersReducedMotion ? 0 : DWELL_MS}ms linear forwards`,
                     }} />
                   )}
                   {i < slide && (
-                    <div style={{ position: 'absolute', inset: 0, background: '#C17F3A', opacity: 0.35 }} />
+                    <div style={{ position: 'absolute', inset: 0, background: '#C9A875', opacity: 0.45 }} />
                   )}
                 </div>
               ))}
