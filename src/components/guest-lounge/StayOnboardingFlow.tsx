@@ -16,12 +16,6 @@ const TOTAL_STEPS = 6;
 
 type Step = 'confirm' | 'welcome' | 'trip_type' | 'interests' | 'pace' | 'food_preferences' | 'complete';
 
-/* ── Map each step to one of the 4 slide background images ──
-   slide-1: confirm   → arrival / hotel exterior
-   slide-2: welcome   → lobby / interior ambience
-   slide-3: trip_type, interests, pace, food_preferences  → city / destination
-   slide-4: complete  → celebration / destination view
-*/
 const STEP_SLIDE: Record<Step, 1 | 2 | 3 | 4> = {
   confirm:          1,
   welcome:          2,
@@ -50,8 +44,6 @@ function prettyLabel(value: string): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 }
-
-/* ── Chip component ────────────────────────────────────────────────────────────────── */
 
 function Chip({
   label,
@@ -86,8 +78,6 @@ function Chip({
   );
 }
 
-/* ── Card button (trip type / pace) ──────────────────────────────────────────────────────────────────────────── */
-
 function CardButton({
   label,
   active,
@@ -115,8 +105,6 @@ function CardButton({
     </motion.button>
   );
 }
-
-/* ── Main export ──────────────────────────────────────────────────────────────────────────────────────────── */
 
 export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOnboardingFlowProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -146,7 +134,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     return map[step];
   }, [step]);
 
-  /* Current slide number (1-4) drives the background image */
   const currentSlide = STEP_SLIDE[step];
 
   async function sendAction(payload: Record<string, unknown>) {
@@ -203,8 +190,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     }
   }
 
-  /* ── Motion config ─────────────────────────────────────────────────────────────────────────────── */
-
   const panelMotion = prefersReducedMotion
     ? {}
     : {
@@ -213,8 +198,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
         exit: { opacity: 0, y: -10 },
         transition: { duration: 0.3, ease: EASE_OUT_EXPO },
       };
-
-  /* ── Helper: max-N chip toggle ───────────────────────────────────────────────────────────────────────── */
 
   function toggleChip(
     value: string,
@@ -228,58 +211,61 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     });
   }
 
-  /* ── Layout ──────────────────────────────────────────────────────────────────────────────────────────────── */
-
   return (
-    <div className="relative min-h-[100dvh] text-white overflow-x-hidden">
-      {/* ── Slide background image + dark overlay ──
-          Covers the full viewport behind the card.
-          Image cross-fades when the slide number changes.
-          The gradient is heavier at the bottom so card text stays crisp. */}
+    /*
+     * KEY FIX: position="relative" + z-index="0" on the outer wrapper
+     * so the fixed background image (z-index: 0 inside a stacking context)
+     * sits behind the card (z-10) but is NOT buried under the <body> background.
+     * We also set the wrapper background to transparent so the image shows through.
+     */
+    <div
+      className="relative min-h-[100dvh] text-white overflow-x-hidden"
+      style={{ background: 'transparent' }}
+    >
+      {/* ── Slide background image + dark overlay ── */}
       <AnimatePresence>
         <motion.div
           key={`bg-${currentSlide}`}
-          className="fixed inset-0 -z-10"
+          className="fixed inset-0"
+          style={{ zIndex: 0 }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.7, ease: 'easeInOut' }}
         >
-          {/* Background photo */}
           <img
             src={`/images/onboarding/slide-${currentSlide}.jpg`}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover"
           />
-          {/* Dark gradient overlay — lighter at top, heavier at bottom */}
           <div
             className="absolute inset-0"
             style={{
               background: 'linear-gradient(to bottom, rgba(10,8,6,0.62) 0%, rgba(10,8,6,0.80) 55%, rgba(10,8,6,0.94) 100%)',
+              zIndex: 1,
             }}
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* Skip link — always visible so guests are never fully stuck */}
       {step !== 'complete' && (
         <button
           onClick={onCompleted}
-          className="absolute top-4 right-4 z-10 text-[12px] text-white/30 hover:text-white/60 transition-colors"
+          className="fixed top-4 right-4 text-[12px] text-white/30 hover:text-white/60 transition-colors"
+          style={{ zIndex: 10 }}
           aria-label="Skip onboarding setup"
         >
           Skip setup
         </button>
       )}
 
-      {/* Full-height flex container: centers card vertically on desktop,
-          natural scroll on mobile */}
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-10 sm:px-6">
-        {/* Inner constrained width */}
+      <div
+        className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-10 sm:px-6"
+        style={{ position: 'relative', zIndex: 5 }}
+      >
         <div className="w-full max-w-[480px]">
 
-          {/* Progress bar (hidden on complete + confirm) */}
           {step !== 'complete' && (
             <div className="mb-6 px-1">
               <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--gold)]/60 mb-3 font-medium">
@@ -302,7 +288,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
             </div>
           )}
 
-          {/* Step card */}
           <AnimatePresence mode="wait">
             <motion.section
               key={step}
@@ -310,7 +295,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
               {...panelMotion}
             >
 
-              {/* ── STEP: confirm ───────────────────────────────────────────────────────────────────────── */}
               {step === 'confirm' && (
                 <div className="space-y-6">
                   <div>
@@ -322,12 +306,9 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     >
                       Yay — we found your stay. ✨
                     </motion.h1>
-                    <p className="mt-2 text-[14px] text-white/60">
-                      Is this your stay?
-                    </p>
+                    <p className="mt-2 text-[14px] text-white/60">Is this your stay?</p>
                   </div>
 
-                  {/* Stay details card */}
                   <div className="rounded-2xl border border-white/[0.10] bg-white/[0.04] p-4 text-[14px] space-y-1.5">
                     <p className="font-semibold text-white text-[16px]">
                       {stay.property?.name ?? 'Your hotel'}
@@ -343,7 +324,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     </div>
                   </div>
 
-                  {/* Confirmation buttons */}
                   <div className="grid gap-2.5 sm:grid-cols-2">
                     <button
                       type="button"
@@ -363,7 +343,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     </button>
                   </div>
 
-                  {/* Incorrect stay notice */}
                   {isIncorrect && (
                     <motion.div
                       initial={prefersReducedMotion ? {} : { opacity: 0, y: 6 }}
@@ -385,7 +364,6 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: welcome ───────────────────────────────────────────────────────────────────────── */}
               {step === 'welcome' && (
                 <div className="space-y-6 text-center">
                   <motion.div
@@ -414,197 +392,84 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: trip_type ─────────────────────────────────────────────────────────────────────────── */}
               {step === 'trip_type' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">
-                      What kind of trip is this?
-                    </h2>
+                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">What kind of trip is this?</h2>
                     <p className="mt-1.5 text-[13px] text-white/50">Pick the one that fits best.</p>
                   </div>
-
                   <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3">
                     {TRIP_TYPES.map((option) => (
-                      <CardButton
-                        key={option}
-                        label={prettyLabel(option)}
-                        active={tripType === option}
-                        onClick={() => setTripType(option)}
-                      />
+                      <CardButton key={option} label={prettyLabel(option)} active={tripType === option} onClick={() => setTripType(option)} />
                     ))}
                   </div>
-
-                  {/* Sticky CTA */}
                   <div className="pt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStep('welcome')}
-                      className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer"
-                      aria-label="Back"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep('interests')}
-                      disabled={!tripType}
-                      className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:opacity-40 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
-                    >
-                      Continue
-                    </button>
+                    <button type="button" onClick={() => setStep('welcome')} className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer" aria-label="Back">← Back</button>
+                    <button type="button" onClick={() => setStep('interests')} disabled={!tripType} className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:opacity-40 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">Continue</button>
                   </div>
                 </div>
               )}
 
-              {/* ── STEP: interests ─────────────────────────────────────────────────────────────────────────── */}
               {step === 'interests' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">
-                      What are you most in the mood for?
-                    </h2>
+                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">What are you most in the mood for?</h2>
                     <p className="mt-1.5 text-[13px] text-white/50">Choose up to {MAX_INTERESTS}</p>
                   </div>
-
                   <div className="flex flex-wrap gap-2">
                     {INTERESTS.map((option) => {
                       const active = interests.includes(option);
                       const disabled = !active && interests.length >= MAX_INTERESTS;
-                      return (
-                        <Chip
-                          key={option}
-                          label={prettyLabel(option)}
-                          active={active}
-                          disabled={disabled}
-                          onClick={() => toggleChip(option, setInterests, MAX_INTERESTS)}
-                        />
-                      );
+                      return <Chip key={option} label={prettyLabel(option)} active={active} disabled={disabled} onClick={() => toggleChip(option, setInterests, MAX_INTERESTS)} />;
                     })}
                   </div>
-
-                  {interests.length >= MAX_INTERESTS && (
-                    <p className="text-[12px] text-white/40">
-                      {MAX_INTERESTS} selected — remove one to change your picks.
-                    </p>
-                  )}
-
+                  {interests.length >= MAX_INTERESTS && <p className="text-[12px] text-white/40">{MAX_INTERESTS} selected — remove one to change your picks.</p>}
                   <div className="pt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStep('trip_type')}
-                      className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer"
-                      aria-label="Back"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep('pace')}
-                      className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
-                    >
-                      Continue
-                    </button>
+                    <button type="button" onClick={() => setStep('trip_type')} className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer" aria-label="Back">← Back</button>
+                    <button type="button" onClick={() => setStep('pace')} className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">Continue</button>
                   </div>
                 </div>
               )}
 
-              {/* ── STEP: pace ─────────────────────────────────────────────────────────────────────────────────────────────── */}
               {step === 'pace' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">
-                      How would you like your days to feel?
-                    </h2>
+                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">How would you like your days to feel?</h2>
                     <p className="mt-1.5 text-[13px] text-white/50">Pick your preferred rhythm.</p>
                   </div>
-
                   <div className="grid gap-2.5 grid-cols-3">
                     {PACE_OPTIONS.map((option) => (
-                      <CardButton
-                        key={option}
-                        label={prettyLabel(option)}
-                        active={pace === option}
-                        onClick={() => setPace(option)}
-                      />
+                      <CardButton key={option} label={prettyLabel(option)} active={pace === option} onClick={() => setPace(option)} />
                     ))}
                   </div>
-
                   <div className="pt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStep('interests')}
-                      className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer"
-                      aria-label="Back"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep('food_preferences')}
-                      disabled={!pace}
-                      className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:opacity-40 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
-                    >
-                      Continue
-                    </button>
+                    <button type="button" onClick={() => setStep('interests')} className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer" aria-label="Back">← Back</button>
+                    <button type="button" onClick={() => setStep('food_preferences')} disabled={!pace} className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:opacity-40 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">Continue</button>
                   </div>
                 </div>
               )}
 
-              {/* ── STEP: food_preferences ─────────────────────────────────────────────────────────────────────────── */}
               {step === 'food_preferences' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">
-                      Any food preferences we should know?
-                    </h2>
+                    <h2 className="font-serif text-[24px] sm:text-[28px] text-white">Any food preferences we should know?</h2>
                     <p className="mt-1.5 text-[13px] text-white/50">Choose up to {MAX_FOOD}</p>
                   </div>
-
                   <div className="flex flex-wrap gap-2">
                     {FOOD_OPTIONS.map((option) => {
                       const active = foodPreferences.includes(option);
                       const disabled = !active && foodPreferences.length >= MAX_FOOD;
-                      return (
-                        <Chip
-                          key={option}
-                          label={prettyLabel(option)}
-                          active={active}
-                          disabled={disabled}
-                          onClick={() => toggleChip(option, setFoodPreferences, MAX_FOOD)}
-                        />
-                      );
+                      return <Chip key={option} label={prettyLabel(option)} active={active} disabled={disabled} onClick={() => toggleChip(option, setFoodPreferences, MAX_FOOD)} />;
                     })}
                   </div>
-
-                  {foodPreferences.length >= MAX_FOOD && (
-                    <p className="text-[12px] text-white/40">
-                      {MAX_FOOD} selected — remove one to change your picks.
-                    </p>
-                  )}
-
+                  {foodPreferences.length >= MAX_FOOD && <p className="text-[12px] text-white/40">{MAX_FOOD} selected — remove one to change your picks.</p>}
                   <div className="pt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStep('pace')}
-                      className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer"
-                      aria-label="Back"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void completeOnboarding('complete_onboarding')}
-                      disabled={isSubmitting}
-                      className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:opacity-50 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
-                    >
-                      {isSubmitting ? 'Curating…' : 'Perfect — curate my stay'}
-                    </button>
+                    <button type="button" onClick={() => setStep('pace')} className="h-12 px-4 rounded-xl border border-white/15 text-[14px] text-white/60 hover:text-white/85 hover:border-white/30 transition cursor-pointer" aria-label="Back">← Back</button>
+                    <button type="button" onClick={() => void completeOnboarding('complete_onboarding')} disabled={isSubmitting} className="flex-1 h-12 rounded-xl bg-[var(--gold)] px-5 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:opacity-50 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">{isSubmitting ? 'Curating…' : 'Perfect — curate my stay'}</button>
                   </div>
                 </div>
               )}
 
-              {/* ── STEP: complete ─────────────────────────────────────────────────────────────────────────────────────────── */}
               {step === 'complete' && (
                 <div className="space-y-5 text-center py-4">
                   <motion.div
@@ -616,52 +481,29 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     ✶
                   </motion.div>
                   <div className="space-y-2">
-                    <h2 className="font-serif text-[28px] sm:text-[32px] text-white leading-snug">
-                      Perfect — we&apos;re curating your stay now.
-                    </h2>
-                    <p className="text-[14px] text-white/55 leading-relaxed">
-                      We&apos;re preparing personalised recommendations for your trip. This only takes a moment.
-                    </p>
+                    <h2 className="font-serif text-[28px] sm:text-[32px] text-white leading-snug">Perfect — we&apos;re curating your stay now.</h2>
+                    <p className="text-[14px] text-white/55 leading-relaxed">We&apos;re preparing personalised recommendations for your trip. This only takes a moment.</p>
                   </div>
-                  {/* Animated dots */}
                   <div className="flex justify-center gap-2 pt-2">
                     {[0, 0.18, 0.36].map((delay) => (
-                      <motion.div
-                        key={delay}
-                        className="w-2 h-2 rounded-full bg-[var(--gold)]/60"
-                        animate={prefersReducedMotion ? {} : { opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1.4, repeat: Infinity, delay }}
-                      />
+                      <motion.div key={delay} className="w-2 h-2 rounded-full bg-[var(--gold)]/60" animate={prefersReducedMotion ? {} : { opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.4, repeat: Infinity, delay }} />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Curation failure banner */}
               {curationFailed && step !== 'complete' && (
                 <motion.div
                   initial={prefersReducedMotion ? {} : { opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4"
                 >
-                  <p className="text-[13px] text-red-200 leading-relaxed">
-                    We couldn&apos;t finish curation just yet. No worries — give it another go.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void completeOnboarding('retry_curation')}
-                    disabled={isSubmitting}
-                    className="mt-3 h-10 rounded-lg border border-red-200/40 px-4 text-[12px] font-semibold text-red-200 transition hover:bg-red-200/10 disabled:opacity-50 cursor-pointer"
-                  >
-                    Retry curation
-                  </button>
+                  <p className="text-[13px] text-red-200 leading-relaxed">We couldn&apos;t finish curation just yet. No worries — give it another go.</p>
+                  <button type="button" onClick={() => void completeOnboarding('retry_curation')} disabled={isSubmitting} className="mt-3 h-10 rounded-lg border border-red-200/40 px-4 text-[12px] font-semibold text-red-200 transition hover:bg-red-200/10 disabled:opacity-50 cursor-pointer">Retry curation</button>
                 </motion.div>
               )}
 
-              {/* Inline error */}
-              {error && (
-                <p className="mt-4 text-[13px] text-red-300 leading-relaxed">{error}</p>
-              )}
+              {error && <p className="mt-4 text-[13px] text-red-300 leading-relaxed">{error}</p>}
             </motion.section>
           </AnimatePresence>
         </div>
