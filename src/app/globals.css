@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @config "../../tailwind.config.ts";
 
@@ -431,6 +430,50 @@ input:-webkit-autofill:active {
 .app-discover-link:hover { opacity: 0.75; }
 
 /* ════════════════════════════════════════════════════════════════
+   DIALOG — custom clip-path reveal (replaces tw-animate-css defaults)
+   ════════════════════════════════════════════════════════════════ */
+
+/* Overlay: soft fade with a gentle warmth */
+@keyframes ss-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ss-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.ss-overlay-open  { animation: ss-overlay-in  0.28s ease both; }
+.ss-overlay-close { animation: ss-overlay-out 0.20s ease both; }
+
+/* Dialog content: clip-path curtain reveal — unique to Stayscape */
+@keyframes ss-dialog-reveal {
+  from {
+    opacity: 0;
+    clip-path: inset(6% 3% 6% 3% round 20px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0% 0% 0% 0% round 20px);
+    transform: translateY(0);
+  }
+}
+@keyframes ss-dialog-dismiss {
+  from {
+    opacity: 1;
+    clip-path: inset(0% 0% 0% 0% round 20px);
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    clip-path: inset(4% 2% 4% 2% round 20px);
+    transform: translateY(4px);
+  }
+}
+.ss-dialog-open  { animation: ss-dialog-reveal  0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ss-dialog-close { animation: ss-dialog-dismiss 0.22s cubic-bezier(0.4, 0, 1, 1) both; }
+
+/* ════════════════════════════════════════════════════════════════
    DIMENSIONAL UTILITIES
    ════════════════════════════════════════════════════════════════ */
 
@@ -577,7 +620,8 @@ input:-webkit-autofill:active {
 
 @media (prefers-reduced-motion: reduce) {
   .ss-tile, .ss-card-raised, .ss-gold-btn, .ss-pill, .ss-mount-up,
-  .ss-stagger > *, .ss-breathe, .ss-aurora, .ss-ripple {
+  .ss-stagger > *, .ss-breathe, .ss-aurora, .ss-ripple,
+  .ss-dialog-open, .ss-dialog-close, .ss-overlay-open, .ss-overlay-close {
     animation: none !important;
     transition: none !important;
   }
