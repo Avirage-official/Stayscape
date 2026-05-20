@@ -16,6 +16,22 @@ const TOTAL_STEPS = 6;
 
 type Step = 'confirm' | 'welcome' | 'trip_type' | 'interests' | 'pace' | 'food_preferences' | 'complete';
 
+/* ── Map each step to one of the 4 slide background images ──
+   slide-1: confirm   → arrival / hotel exterior
+   slide-2: welcome   → lobby / interior ambience
+   slide-3: trip_type, interests, pace, food_preferences  → city / destination
+   slide-4: complete  → celebration / destination view
+*/
+const STEP_SLIDE: Record<Step, 1 | 2 | 3 | 4> = {
+  confirm:          1,
+  welcome:          2,
+  trip_type:        3,
+  interests:        3,
+  pace:             3,
+  food_preferences: 3,
+  complete:         4,
+};
+
 interface StayOnboardingFlowProps {
   stay: CustomerStay;
   userId: string;
@@ -35,7 +51,7 @@ function prettyLabel(value: string): string {
     .join(' ');
 }
 
-/* ── Chip component ────────────────────────────────────────────── */
+/* ── Chip component ────────────────────────────────────────────────────────────────── */
 
 function Chip({
   label,
@@ -70,7 +86,7 @@ function Chip({
   );
 }
 
-/* ── Card button (trip type / pace) ───────────────────────────── */
+/* ── Card button (trip type / pace) ──────────────────────────────────────────────────────────────────────────── */
 
 function CardButton({
   label,
@@ -100,7 +116,7 @@ function CardButton({
   );
 }
 
-/* ── Main export ───────────────────────────────────────────────── */
+/* ── Main export ──────────────────────────────────────────────────────────────────────────────────────────── */
 
 export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOnboardingFlowProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -129,6 +145,9 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     };
     return map[step];
   }, [step]);
+
+  /* Current slide number (1-4) drives the background image */
+  const currentSlide = STEP_SLIDE[step];
 
   async function sendAction(payload: Record<string, unknown>) {
     const response = await fetch(
@@ -184,7 +203,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     }
   }
 
-  /* ── Motion config ──────────────────────────────────────────── */
+  /* ── Motion config ─────────────────────────────────────────────────────────────────────────────── */
 
   const panelMotion = prefersReducedMotion
     ? {}
@@ -195,7 +214,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
         transition: { duration: 0.3, ease: EASE_OUT_EXPO },
       };
 
-  /* ── Helper: max-N chip toggle ──────────────────────────────── */
+  /* ── Helper: max-N chip toggle ───────────────────────────────────────────────────────────────────────── */
 
   function toggleChip(
     value: string,
@@ -209,11 +228,39 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
     });
   }
 
-  /* ── Layout ──────────────────────────────────────────────────── */
+  /* ── Layout ──────────────────────────────────────────────────────────────────────────────────────────────── */
 
   return (
     <div className="relative min-h-[100dvh] text-white overflow-x-hidden">
-      <div className="fixed inset-0 -z-10 bg-[#0F0E0C]" />
+      {/* ── Slide background image + dark overlay ──
+          Covers the full viewport behind the card.
+          Image cross-fades when the slide number changes.
+          The gradient is heavier at the bottom so card text stays crisp. */}
+      <AnimatePresence>
+        <motion.div
+          key={`bg-${currentSlide}`}
+          className="fixed inset-0 -z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.7, ease: 'easeInOut' }}
+        >
+          {/* Background photo */}
+          <img
+            src={`/images/onboarding/slide-${currentSlide}.jpg`}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Dark gradient overlay — lighter at top, heavier at bottom */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(10,8,6,0.62) 0%, rgba(10,8,6,0.80) 55%, rgba(10,8,6,0.94) 100%)',
+            }}
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* Skip link — always visible so guests are never fully stuck */}
       {step !== 'complete' && (
@@ -263,7 +310,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
               {...panelMotion}
             >
 
-              {/* ── STEP: confirm ─────────────────────────────── */}
+              {/* ── STEP: confirm ───────────────────────────────────────────────────────────────────────── */}
               {step === 'confirm' && (
                 <div className="space-y-6">
                   <div>
@@ -338,7 +385,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: welcome ─────────────────────────────── */}
+              {/* ── STEP: welcome ───────────────────────────────────────────────────────────────────────── */}
               {step === 'welcome' && (
                 <div className="space-y-6 text-center">
                   <motion.div
@@ -347,7 +394,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
                     className="mx-auto w-14 h-14 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 flex items-center justify-center text-2xl"
                   >
-                    ✦
+                    ✶
                   </motion.div>
                   <div className="space-y-2">
                     <h1 className="font-serif text-[28px] sm:text-[32px] text-white leading-snug">
@@ -367,7 +414,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: trip_type ───────────────────────────── */}
+              {/* ── STEP: trip_type ─────────────────────────────────────────────────────────────────────────── */}
               {step === 'trip_type' && (
                 <div className="space-y-6">
                   <div>
@@ -410,7 +457,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: interests ───────────────────────────── */}
+              {/* ── STEP: interests ─────────────────────────────────────────────────────────────────────────── */}
               {step === 'interests' && (
                 <div className="space-y-6">
                   <div>
@@ -462,7 +509,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: pace ────────────────────────────────── */}
+              {/* ── STEP: pace ─────────────────────────────────────────────────────────────────────────────────────────────── */}
               {step === 'pace' && (
                 <div className="space-y-6">
                   <div>
@@ -504,7 +551,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: food_preferences ────────────────────── */}
+              {/* ── STEP: food_preferences ─────────────────────────────────────────────────────────────────────────── */}
               {step === 'food_preferences' && (
                 <div className="space-y-6">
                   <div>
@@ -557,7 +604,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                 </div>
               )}
 
-              {/* ── STEP: complete ────────────────────────────── */}
+              {/* ── STEP: complete ─────────────────────────────────────────────────────────────────────────────────────────── */}
               {step === 'complete' && (
                 <div className="space-y-5 text-center py-4">
                   <motion.div
@@ -566,7 +613,7 @@ export default function StayOnboardingFlow({ stay, userId, onCompleted }: StayOn
                     transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
                     className="mx-auto w-16 h-16 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/15 flex items-center justify-center text-2xl"
                   >
-                    ✦
+                    ✶
                   </motion.div>
                   <div className="space-y-2">
                     <h2 className="font-serif text-[28px] sm:text-[32px] text-white leading-snug">
