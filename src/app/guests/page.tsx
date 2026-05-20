@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useAuth } from '@/lib/context/auth-context'
+import { getSupabaseBrowser } from '@/lib/supabase/client'
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
@@ -58,10 +59,13 @@ export default function GuestsPage() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // auth
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [authError, setAuthError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [signupDone, setSignupDone] = useState(false)
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -117,6 +121,42 @@ export default function GuestsPage() {
       return
     }
     router.push('/dashboard')
+  }
+
+  async function handleSignUp(e: FormEvent) {
+    e.preventDefault()
+    setAuthError(null)
+    if (password !== confirmPassword) {
+      setAuthError("Passwords don't match")
+      return
+    }
+    setIsSubmitting(true)
+    const supabase = getSupabaseBrowser()
+    if (!supabase) {
+      setAuthError('Sign-up is not available in this environment')
+      setIsSubmitting(false)
+      return
+    }
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      setAuthError(error.message)
+      setIsSubmitting(false)
+      return
+    }
+    if (data.session) {
+      router.push('/dashboard')
+    } else {
+      setSignupDone(true)
+      setIsSubmitting(false)
+    }
+  }
+
+  function switchMode(next: 'signin' | 'signup') {
+    setMode(next)
+    setAuthError(null)
+    setSignupDone(false)
+    setPassword('')
+    setConfirmPassword('')
   }
 
   return (
@@ -308,7 +348,7 @@ export default function GuestsPage() {
             fontSize: '11px', fontWeight: 600,
             color: '#C17F3A', letterSpacing: '0.18em',
             textTransform: 'uppercase', margin: '0 0 4px',
-          }}>Guest Sign In</p>
+          }}>{mode === 'signin' ? 'Guest Sign In' : 'Create Account'}</p>
 
           <h3 style={{
             fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -316,124 +356,201 @@ export default function GuestsPage() {
             fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)',
             fontWeight: 500, color: '#2C1A08',
             lineHeight: 1.2, margin: '0 0 24px',
-          }}>Welcome back.</h3>
+          }}>{mode === 'signin' ? 'Welcome back.' : 'Create your account.'}</h3>
 
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{
-                display: 'block', fontSize: '10px', fontWeight: 600,
-                letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
-              }}>Email</label>
-              <input
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={e => { setEmail(e.target.value); setAuthError(null) }}
-                placeholder="your@email.com"
-                className="guest-input"
-                style={{
-                  width: '100%', height: '46px',
-                  padding: '0 16px',
-                  borderRadius: '8px',
-                  background: '#FFFFFF',
-                  border: '1px solid rgba(193,127,58,0.28)',
-                  color: '#2C1A08',
-                  fontSize: '14px',
-                  fontFamily: "'DM Sans', sans-serif",
-                  outline: 'none',
-                  transition: 'border-color 180ms ease, box-shadow 180ms ease',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
-                onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block', fontSize: '10px', fontWeight: 600,
-                letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
-              }}>Password</label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={e => { setPassword(e.target.value); setAuthError(null) }}
-                placeholder="••••••••"
-                className="guest-input"
-                style={{
-                  width: '100%', height: '46px',
-                  padding: '0 16px',
-                  borderRadius: '8px',
-                  background: '#FFFFFF',
-                  border: '1px solid rgba(193,127,58,0.28)',
-                  color: '#2C1A08',
-                  fontSize: '14px',
-                  fontFamily: "'DM Sans', sans-serif",
-                  outline: 'none',
-                  transition: 'border-color 180ms ease, box-shadow 180ms ease',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
-                onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
-              />
-            </div>
-
-            {authError && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 12px', borderRadius: '8px',
-                background: 'rgba(193,58,58,0.06)',
-                border: '1px solid rgba(193,58,58,0.2)',
-                color: '#C13A3A', fontSize: '12px',
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-                </svg>
-                {authError}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                width: '100%', height: '46px',
-                borderRadius: '8px',
-                background: '#C17F3A',
-                color: '#FAF8F5',
-                fontSize: '13px', fontWeight: 600,
-                letterSpacing: '0.07em',
-                border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+          {signupDone ? (
+            <div style={{
+              padding: '20px',
+              borderRadius: '12px',
+              background: 'rgba(193,127,58,0.07)',
+              border: '1px solid rgba(193,127,58,0.22)',
+              display: 'flex', flexDirection: 'column', gap: '8px',
+            }}>
+              <p style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic', fontSize: '17px',
+                color: '#2C1A08', margin: 0, fontWeight: 500,
+              }}>Check your email.</p>
+              <p style={{
                 fontFamily: "'DM Sans', sans-serif",
-                opacity: isSubmitting ? 0.55 : 1,
-                transition: 'background 180ms ease, opacity 180ms ease',
-                boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              }}
-              onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#D6A252' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A' }}
+                fontSize: '13px', lineHeight: 1.6,
+                color: 'rgba(44,26,8,0.6)', margin: 0,
+              }}>
+                We&apos;ve sent a confirmation link to <strong style={{ color: '#2C1A08' }}>{email}</strong>.
+                Click it to activate your account, then come back and sign in.
+              </p>
+              <button
+                type="button"
+                onClick={() => switchMode('signin')}
+                style={{
+                  marginTop: '4px', background: 'none', border: 'none', padding: 0,
+                  fontSize: '12px', color: '#C17F3A', cursor: 'pointer',
+                  fontFamily: "'DM Sans', sans-serif", textAlign: 'left',
+                  transition: 'color 180ms ease',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#D6A252')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#C17F3A')}
+              >
+                Back to sign in →
+              </button>
+            </div>
+          ) : (
+            <form
+              onSubmit={mode === 'signin' ? handleLogin : handleSignUp}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
             >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75" />
+              <div>
+                <label style={{
+                  display: 'block', fontSize: '10px', fontWeight: 600,
+                  letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
+                }}>Email</label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setAuthError(null) }}
+                  placeholder="your@email.com"
+                  className="guest-input"
+                  style={{
+                    width: '100%', height: '46px',
+                    padding: '0 16px',
+                    borderRadius: '8px',
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(193,127,58,0.28)',
+                    color: '#2C1A08',
+                    fontSize: '14px',
+                    fontFamily: "'DM Sans', sans-serif",
+                    outline: 'none',
+                    transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block', fontSize: '10px', fontWeight: 600,
+                  letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
+                }}>Password</label>
+                <input
+                  type="password"
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  required
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setAuthError(null) }}
+                  placeholder="••••••••"
+                  className="guest-input"
+                  style={{
+                    width: '100%', height: '46px',
+                    padding: '0 16px',
+                    borderRadius: '8px',
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(193,127,58,0.28)',
+                    color: '#2C1A08',
+                    fontSize: '14px',
+                    fontFamily: "'DM Sans', sans-serif",
+                    outline: 'none',
+                    transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+
+              {mode === 'signup' && (
+                <div>
+                  <label style={{
+                    display: 'block', fontSize: '10px', fontWeight: 600,
+                    letterSpacing: '0.14em', textTransform: 'uppercase',
+                    color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
+                  }}>Confirm Password</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={e => { setConfirmPassword(e.target.value); setAuthError(null) }}
+                    placeholder="••••••••"
+                    className="guest-input"
+                    style={{
+                      width: '100%', height: '46px',
+                      padding: '0 16px',
+                      borderRadius: '8px',
+                      background: '#FFFFFF',
+                      border: '1px solid rgba(193,127,58,0.28)',
+                      color: '#2C1A08',
+                      fontSize: '14px',
+                      fontFamily: "'DM Sans', sans-serif",
+                      outline: 'none',
+                      transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                      boxSizing: 'border-box',
+                    }}
+                    onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+                    onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
+                  />
+                </div>
+              )}
+
+              {authError && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 12px', borderRadius: '8px',
+                  background: 'rgba(193,58,58,0.06)',
+                  border: '1px solid rgba(193,58,58,0.2)',
+                  color: '#C13A3A', fontSize: '12px',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
                   </svg>
-                  Signing in…
-                </>
-              ) : 'Sign In'}
-            </button>
-          </form>
+                  {authError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%', height: '46px',
+                  borderRadius: '8px',
+                  background: '#C17F3A',
+                  color: '#FAF8F5',
+                  fontSize: '13px', fontWeight: 600,
+                  letterSpacing: '0.07em',
+                  border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  fontFamily: "'DM Sans', sans-serif",
+                  opacity: isSubmitting ? 0.55 : 1,
+                  transition: 'background 180ms ease, opacity 180ms ease',
+                  boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+                onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#D6A252' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A' }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75" />
+                    </svg>
+                    {mode === 'signin' ? 'Signing in…' : 'Creating account…'}
+                  </>
+                ) : (mode === 'signin' ? 'Sign In' : 'Create Account')}
+              </button>
+            </form>
+          )}
 
           <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <p style={{ fontSize: '11px', color: 'rgba(44,26,8,0.35)', fontFamily: "'DM Sans', sans-serif", margin: 0 }}>
-              Demo: <code style={{ color: 'rgba(44,26,8,0.55)' }}>ben.test@stayscape-demo.com</code> / <code style={{ color: 'rgba(44,26,8,0.55)' }}>Demo1234!</code>
-            </p>
+            {mode === 'signin' && (
+              <p style={{ fontSize: '11px', color: 'rgba(44,26,8,0.35)', fontFamily: "'DM Sans', sans-serif", margin: 0 }}>
+                Demo: <code style={{ color: 'rgba(44,26,8,0.55)' }}>ben.test@stayscape-demo.com</code> / <code style={{ color: 'rgba(44,26,8,0.55)' }}>Demo1234!</code>
+              </p>
+            )}
             <a
               href="/dashboard"
               style={{ fontSize: '12px', color: 'rgba(44,26,8,0.3)', fontFamily: "'DM Sans', sans-serif", textDecoration: 'none', transition: 'color 180ms ease' }}
@@ -442,6 +559,22 @@ export default function GuestsPage() {
             >
               Explore without signing in →
             </a>
+            {!signupDone && (
+              <button
+                type="button"
+                onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
+                style={{
+                  background: 'none', border: 'none', padding: 0, textAlign: 'left',
+                  fontSize: '12px', color: 'rgba(44,26,8,0.3)',
+                  fontFamily: "'DM Sans', sans-serif",
+                  cursor: 'pointer', transition: 'color 180ms ease',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.6)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.3)')}
+              >
+                {mode === 'signin' ? 'New here? Create an account →' : 'Already have an account? Sign in →'}
+              </button>
+            )}
           </div>
         </div>
       </div>

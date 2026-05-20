@@ -35,7 +35,6 @@ const VIBE_OPTIONS = [
   { value: 'culture', label: 'Culture' },
   { value: 'nature', label: 'Nature' },
   { value: 'beach', label: 'Beach' },
-  { value: 'mixed', label: 'Mixed' },
 ] as const;
 
 const DISCOVERY_OPTIONS = [
@@ -350,7 +349,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
   const [locationInput, setLocationInput] = useState('');
   const [locationCity, setLocationCity] = useState('');
   const [novelty, setNovelty] = useState('');
-  const [vibe, setVibe] = useState('');
+  const [vibe, setVibe] = useState<string[]>([]);
   const [discovery, setDiscovery] = useState('');
   const [food, setFood] = useState('');
   const [planning, setPlanning] = useState('');
@@ -408,7 +407,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
           location_city: city || undefined,
           location_country: country || undefined,
           novelty: novelty || undefined,
-          vibe: vibe || undefined,
+          vibe: vibe.length ? vibe : undefined,
           discovery: discovery || undefined,
           food: food || undefined,
           planning: planning || undefined,
@@ -781,34 +780,44 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
           {/* ── Q2 vibe ──────────────────────────────────────────────────── */}
           {step === 'q_vibe' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <p
-                style={{
-                  fontFamily: 'var(--font-cormorant)',
-                  fontStyle: 'italic',
-                  fontSize: 'clamp(22px, 6vw, 27px)',
-                  fontWeight: 500,
-                  lineHeight: 1.35,
-                  color: C.text,
-                  margin: 0,
-                }}
-              >
-                If you could return to one kind of place again and again — where&apos;s pulling you?
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-cormorant)',
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(22px, 6vw, 27px)',
+                    fontWeight: 500,
+                    lineHeight: 1.35,
+                    color: C.text,
+                    margin: 0,
+                  }}
+                >
+                  If you could return to one kind of place again and again — where&apos;s pulling you?
+                </p>
+                <p style={{ fontSize: '13px', color: C.muted, margin: 0 }}>Choose up to 2</p>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {VIBE_OPTIONS.map(({ value, label }) => (
                   <ImageTile
                     key={value}
                     src={`/onboarding/vibe/${value}.jpg`}
                     label={label}
-                    selected={vibe === value}
+                    selected={vibe.includes(value)}
                     onClick={() => {
-                      if (vibe) return;
-                      setVibe(value);
-                      scheduleAdvance('q_discovery', 560);
+                      if (!vibe.includes(value) && vibe.length >= 2) return;
+                      setVibe((prev) =>
+                        prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+                      );
                     }}
                   />
                 ))}
               </div>
+              <Btn
+                onClick={() => advance('q_discovery')}
+                disabled={vibe.length === 0}
+              >
+                Continue
+              </Btn>
             </div>
           )}
 
