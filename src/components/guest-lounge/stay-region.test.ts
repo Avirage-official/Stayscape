@@ -52,9 +52,33 @@ describe('getStaySelectedRegion', () => {
     });
   });
 
+  it('returns top-level region when property region is absent', () => {
+    const stay = buildStay();
+    if (stay.property) stay.property.region = null;
+    stay.region = {
+      id: 'region-1',
+      name: 'Singapore',
+      slug: 'singapore',
+      latitude: 1.2,
+      longitude: 103.8,
+      radius_km: 25,
+      country_code: 'SG',
+    };
+    expect(getStaySelectedRegion(stay)).toEqual({
+      id: 'region-1',
+      name: 'Singapore',
+      slug: 'singapore',
+      latitude: 1.2,
+      longitude: 103.8,
+      radius_km: 25,
+      country_code: 'SG',
+    });
+  });
+
   it('returns null when stay has no region', () => {
     const stay = buildStay();
     if (stay.property) stay.property.region = null;
+    stay.region = null;
     expect(getStaySelectedRegion(stay)).toBeNull();
   });
 });

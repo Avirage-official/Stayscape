@@ -2,7 +2,7 @@ import type { SelectedRegion } from '@/lib/context/region-context';
 import type { CustomerStay } from '@/types/customer';
 
 export function getStaySelectedRegion(stay: CustomerStay): SelectedRegion | null {
-  const region = stay.property?.region;
+  const region = stay.property?.region ?? stay.region;
   if (!region) return null;
 
   return {

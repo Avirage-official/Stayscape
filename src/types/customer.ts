@@ -49,6 +49,15 @@ export interface CustomerStay {
   onboarding_completed_at?: string | null;
   curation_status?: string | null;
   curated_at?: string | null;
+  region?: {
+    id: string;
+    name: string;
+    slug: string;
+    latitude: number;
+    longitude: number;
+    radius_km: number;
+    country_code: string;
+  } | null;
   property?: {
     id: string;
     name: string;
