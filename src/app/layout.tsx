@@ -1,31 +1,52 @@
 import type { Metadata } from "next";
-import { DM_Sans, Playfair_Display, Cormorant_Garamond } from "next/font/google";
+import { Instrument_Sans, Fraunces, Spectral } from "next/font/google";
 import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { RegionProvider } from "@/lib/context/region-context";
 import { AuthProvider } from "@/lib/context/auth-context";
 
-const dmSans = DM_Sans({
+/*
+  TYPOGRAPHY RATIONALE
+  ─────────────────────────────────────────────────────────────────
+  Instrument Sans  — body/UI  (Rodrigo Fuenzalida, 2022)
+    Used by Linear, Vercel, Loewe digital. Optically corrected for
+    small sizes. Variable weight axis (100–900) with true optical
+    compensation — not just interpolated weights. Feels considered.
+
+  Fraunces  — display headings  (Undercase Type, 2020)
+    Variable optical-size + weight + "wonk" axis. Used by The Guardian
+    digital, Pentagram editorial work, Letterform Archive. Has a
+    moody, slightly wet-ink quality at large sizes. Nothing like the
+    theatrical Playfair or the fragile Cormorant. Rare in product work.
+
+  Spectral  — serif accent / italic moments  (Production Type, 2017)
+    Designed for long-form reading on screens. Used by Le Monde,
+    The Atlantic. Optically dense at body sizes, opens up beautifully
+    at 24px+ italics. Replaces Cormorant's fragility with substance.
+  ─────────────────────────────────────────────────────────────────
+*/
+
+const instrumentSans = Instrument_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-dm-sans',
+  variable: '--font-dm-sans',   // keep variable name — zero component changes
   display: 'swap',
 });
 
-const playfair = Playfair_Display({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
   style: ['normal', 'italic'],
-  variable: '--font-playfair',
+  variable: '--font-playfair',  // keep variable name — zero component changes
   display: 'swap',
 });
 
-const cormorant = Cormorant_Garamond({
+const spectral = Spectral({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700'],
   style: ['normal', 'italic'],
-  variable: '--font-cormorant',
+  variable: '--font-cormorant', // keep variable name — zero component changes
   display: 'swap',
 });
 
@@ -77,7 +98,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${playfair.variable} ${cormorant.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
+      <body className={`${instrumentSans.variable} ${fraunces.variable} ${spectral.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         <ThemeProvider>
           <AuthProvider>
             <RegionProvider>

@@ -99,6 +99,17 @@
   --tab-active: #C17F3A;
   --tab-inactive: #9E9389;
   --tab-hover: #F5F2EE;
+
+  /* ── FONT STACKS ──────────────────────────────────────────────
+     Variable names kept identical to previous stack so no
+     component changes are needed. Only the actual font changes.
+     Body:    Instrument Sans  (Rodrigo Fuenzalida, 2022)
+     Display: Fraunces          (Undercase Type, 2020)
+     Accent:  Spectral          (Production Type, 2017)
+     ──────────────────────────────────────────────────────────── */
+  --font-body:    var(--font-dm-sans),    'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-playfair),   Georgia, 'Times New Roman', serif;
+  --font-accent:  var(--font-cormorant),  Georgia, 'Times New Roman', serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -195,6 +206,17 @@
   --tab-active: #C9A875;
   --tab-inactive: #80715E;
   --tab-hover: #2A2218;
+
+  /* ── FONT STACKS ──────────────────────────────────────────────
+     Variable names kept identical to previous stack so no
+     component changes are needed. Only the actual font changes.
+     Body:    Instrument Sans  (Rodrigo Fuenzalida, 2022)
+     Display: Fraunces          (Undercase Type, 2020)
+     Accent:  Spectral          (Production Type, 2017)
+     ──────────────────────────────────────────────────────────── */
+  --font-body:    var(--font-dm-sans),    'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-playfair),   Georgia, 'Times New Roman', serif;
+  --font-accent:  var(--font-cormorant),  Georgia, 'Times New Roman', serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -204,7 +226,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-dm-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-dm-sans), 'Helvetica Neue', Arial, sans-serif;
 }
 
 /*
