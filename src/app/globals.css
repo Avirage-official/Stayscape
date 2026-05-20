@@ -228,6 +228,21 @@ body {
   display: none;
 }
 
+/* ── Booking reference input autofill fix ─────────────────────────
+   Prevents the browser from overriding the background with white/
+   light-blue on autofill, which causes black-on-black text.
+   ──────────────────────────────────────────────────────────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #F5E6CC !important;
+  -webkit-box-shadow: 0 0 0px 1000px #1E1814 inset !important;
+  box-shadow: 0 0 0px 1000px #1E1814 inset !important;
+  caret-color: #C9A875;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* ════════════════════════════════════════════════════════════════
    ANIMATIONS — kept identical in motion, recoloured for espresso
    ════════════════════════════════════════════════════════════════ */
