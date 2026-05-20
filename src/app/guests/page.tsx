@@ -56,8 +56,10 @@ export default function GuestsPage() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-    const id = setTimeout(() => setMounted(true), 60)
+    const id = setTimeout(() => {
+      setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      setMounted(true)
+    }, 60)
     return () => clearTimeout(id)
   }, [])
 
