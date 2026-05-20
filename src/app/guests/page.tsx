@@ -56,8 +56,10 @@ export default function GuestsPage() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-    const id = setTimeout(() => setMounted(true), 60)
+    const id = setTimeout(() => {
+      setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      setMounted(true)
+    }, 60)
     return () => clearTimeout(id)
   }, [])
 
@@ -376,6 +378,15 @@ export default function GuestsPage() {
         /* Scoped autofill override — keeps this light input white.
            globals.css sets dark autofill bg for all inputs (dark dashboard);
            this !important block wins for .discovery-ref-input only. */
+        .discovery-ref-input,
+        .discovery-ref-input:focus,
+        .discovery-ref-input:hover,
+        .discovery-ref-input:active {
+          background-color: #FFFFFF !important;
+          color: #2C1A08 !important;
+          -webkit-text-fill-color: #2C1A08 !important;
+        }
+
         .discovery-ref-input:-webkit-autofill,
         .discovery-ref-input:-webkit-autofill:hover,
         .discovery-ref-input:-webkit-autofill:focus,
