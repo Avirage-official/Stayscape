@@ -103,7 +103,7 @@ export default function ExploreSwiper({
       className="flex flex-col md:flex-row"
       style={{
         height: 'calc(100dvh - 68px)',
-        background: '#0E0B08',
+        background: '#EDE8E1',
         padding: '12px',
         gap: '12px',
         boxSizing: 'border-box',
@@ -111,55 +111,36 @@ export default function ExploreSwiper({
     >
       {/* ── Hero card — full height on desktop, fixed height on mobile ── */}
       <div
-        className="flex-shrink-0 md:flex-1 md:h-auto"
-        style={{ height: 'clamp(240px, 44dvh, 360px)', position: 'relative', userSelect: 'none' }}
+        className="flex-shrink-0 md:flex-1 h-[44dvh] md:h-full"
+        style={{
+          position: 'relative',
+          userSelect: 'none',
+          borderRadius: '20px',
+          overflow: 'hidden',
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <ExploreCard section={active} />
+        <ExploreCard
+          section={active}
+          sections={sections}
+          activeIndex={activeIndex}
+          onSectionChange={goTo}
+        />
 
-        {/* Section pips — bottom-right inside the card */}
-        <div
-          style={{
-            position: 'absolute', bottom: '18px', right: '18px',
-            zIndex: 20,
-            display: 'flex', gap: '5px', alignItems: 'center',
-          }}
-        >
-          {sections.map((_, i) => (
-            <button
-              key={i}
-              aria-label={`Go to section ${i + 1}`}
-              onClick={() => goTo(i)}
-              style={{
-                width: i === activeIndex ? '28px' : '6px',
-                height: '6px',
-                borderRadius: '3px',
-                background: i === activeIndex ? '#C17F3A' : 'rgba(250,248,245,0.3)',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                transition: 'width 280ms ease, background 280ms ease',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Greeting — top-left of card */}
-        <p
-          style={{
-            position: 'absolute', top: '18px', left: '18px',
-            zIndex: 20,
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '10px',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: 'rgba(250,248,245,0.35)',
-            margin: 0,
-            pointerEvents: 'none',
-          }}
-        >
+        {/* Greeting — top-left */}
+        <p style={{
+          position: 'absolute', top: '16px', left: '20px',
+          zIndex: 20,
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '10px',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: 'rgba(250,248,245,0.45)',
+          margin: 0,
+          pointerEvents: 'none',
+        }}>
           Explore {greeting}
         </p>
       </div>
@@ -185,8 +166,8 @@ export default function ExploreSwiper({
                 onClick={() => goTo(i)}
                 style={{
                   flex: 1,
-                  background: isActive ? '#C17F3A' : 'rgba(250,248,245,0.04)',
-                  border: `1px solid ${isActive ? '#C17F3A' : 'rgba(250,248,245,0.09)'}`,
+                  background: isActive ? '#C17F3A' : '#FAF8F5',
+                  border: `1px solid ${isActive ? '#C17F3A' : 'rgba(193,127,58,0.18)'}`,
                   borderRadius: '12px',
                   padding: '9px 4px',
                   cursor: 'pointer',
@@ -201,7 +182,7 @@ export default function ExploreSwiper({
                   fontFamily: "'Cormorant Garamond', Georgia, serif",
                   fontStyle: 'italic',
                   fontSize: '15px', fontWeight: 600,
-                  color: isActive ? '#FAF8F5' : 'rgba(250,248,245,0.35)',
+                  color: isActive ? '#FAF8F5' : 'rgba(44,26,8,0.4)',
                   lineHeight: 1,
                 }}>{NUMERALS[i]}</span>
                 <span style={{
@@ -209,7 +190,7 @@ export default function ExploreSwiper({
                   fontSize: '9px',
                   letterSpacing: '0.07em',
                   textTransform: 'uppercase',
-                  color: isActive ? 'rgba(250,248,245,0.8)' : 'rgba(250,248,245,0.28)',
+                  color: isActive ? 'rgba(250,248,245,0.85)' : 'rgba(44,26,8,0.35)',
                 }}>{sectionShortLabel(s.id)}</span>
               </button>
             );
@@ -221,8 +202,8 @@ export default function ExploreSwiper({
           style={{
             flex: 1,
             minHeight: 0,
-            background: 'rgba(250,248,245,0.04)',
-            border: '1px solid rgba(250,248,245,0.07)',
+            background: '#FAF8F5',
+            border: '1px solid rgba(193,127,58,0.14)',
             borderRadius: '18px',
             padding: '14px',
             display: 'flex',
@@ -235,7 +216,7 @@ export default function ExploreSwiper({
             fontSize: '10px', fontWeight: 600,
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
-            color: 'rgba(250,248,245,0.28)',
+            color: 'rgba(44,26,8,0.3)',
             margin: '0 0 8px',
             flexShrink: 0,
           }}>{active ? listLabel(active.content_type) : ''}</p>
@@ -245,7 +226,7 @@ export default function ExploreSwiper({
               <p style={{
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '13px',
-                color: 'rgba(250,248,245,0.22)',
+                color: 'rgba(44,26,8,0.25)',
                 textAlign: 'center',
                 padding: '20px 0',
                 margin: 0,
@@ -271,7 +252,7 @@ export default function ExploreSwiper({
                     padding: '10px 0',
                     background: 'none',
                     border: 'none',
-                    borderBottom: '1px solid rgba(250,248,245,0.06)',
+                    borderBottom: '1px solid rgba(193,127,58,0.1)',
                     cursor: 'pointer',
                     textAlign: 'left',
                     boxSizing: 'border-box',
@@ -282,7 +263,7 @@ export default function ExploreSwiper({
                     borderRadius: '10px',
                     overflow: 'hidden',
                     flexShrink: 0,
-                    background: 'rgba(250,248,245,0.08)',
+                    background: 'rgba(44,26,8,0.07)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {imageUrl ? (
@@ -293,7 +274,7 @@ export default function ExploreSwiper({
                         loading="lazy"
                       />
                     ) : (
-                      <span style={{ color: 'rgba(250,248,245,0.3)', fontSize: '11px' }}>
+                      <span style={{ color: 'rgba(44,26,8,0.3)', fontSize: '11px' }}>
                         {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
                       </span>
                     )}
@@ -302,7 +283,7 @@ export default function ExploreSwiper({
                     <p style={{
                       fontFamily: "'DM Sans', sans-serif",
                       fontSize: '13px', fontWeight: 500,
-                      color: '#FAF8F5',
+                      color: '#2C1A08',
                       margin: 0,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>{name}</p>
@@ -310,13 +291,13 @@ export default function ExploreSwiper({
                       <p style={{
                         fontFamily: "'DM Sans', sans-serif",
                         fontSize: '11px',
-                        color: 'rgba(250,248,245,0.38)',
+                        color: 'rgba(44,26,8,0.45)',
                         margin: '2px 0 0',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{meta}</p>
                     )}
                   </div>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(44,26,8,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>

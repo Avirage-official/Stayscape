@@ -39,10 +39,11 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('en-SG', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+/* Shared card surface — cream white, warm border */
 const CARD: React.CSSProperties = {
-  background: 'rgba(250,248,245,0.04)',
-  border: '1px solid rgba(250,248,245,0.07)',
-  borderRadius: '18px',
+  background: '#FAF8F5',
+  border: '1px solid rgba(193,127,58,0.14)',
+  borderRadius: '16px',
   padding: '16px',
 };
 
@@ -55,11 +56,11 @@ function ItemRow({
   contentType: ExploreSection['content_type'];
   onClick: () => void;
 }) {
-  const isEvent = contentType === 'events';
-  const isRegion = contentType === 'regions';
+  const isEvent    = contentType === 'events';
+  const isRegion   = contentType === 'regions';
   const isProperty = contentType === 'properties';
 
-  const name = 'name' in item ? item.name : '';
+  const name     = 'name' in item ? item.name : '';
   const imageUrl = 'image_url' in item ? (item as DiscoveryPlaceCard).image_url : null;
 
   let metaChip: string | null = null;
@@ -74,15 +75,16 @@ function ItemRow({
   } else if (isProperty) {
     const p = item as ExplorePropertyCard;
     const stars = p.star_rating ? '★'.repeat(p.star_rating) : null;
-    const price = p.price_from != null
+    const price  = p.price_from != null
       ? `From ${p.currency === 'SGD' ? 'S$' : (p.currency ?? '$')}${p.price_from}`
       : null;
     metaText = [stars, price].filter(Boolean).join(' · ');
   } else {
     const p = item as DiscoveryPlaceCard;
-    const rating = p.rating ? `★ ${p.rating.toFixed(1)}` : null;
-    const vibe = p.vibes?.[0] ?? null;
-    metaText = [rating, vibe].filter(Boolean).join(' · ');
+    metaText = [
+      p.rating  ? `★ ${p.rating.toFixed(1)}` : null,
+      p.vibes?.[0] ?? null,
+    ].filter(Boolean).join(' · ');
   }
 
   return (
@@ -112,18 +114,13 @@ function ItemRow({
         borderRadius: '10px',
         overflow: 'hidden',
         flexShrink: 0,
-        background: 'rgba(250,248,245,0.08)',
+        background: 'rgba(44,26,8,0.07)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            loading="lazy"
-          />
+          <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
         ) : (
-          <span style={{ color: 'rgba(250,248,245,0.3)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>
+          <span style={{ color: 'rgba(44,26,8,0.3)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>
             {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
           </span>
         )}
@@ -134,22 +131,18 @@ function ItemRow({
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '13px', fontWeight: 500,
-          color: '#FAF8F5',
+          color: '#2C1A08',
           margin: 0,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {name}
-        </p>
+        }}>{name}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
           {metaChip && (
             <span style={{
               fontFamily: "'DM Sans', sans-serif",
-              fontSize: '10px',
-              color: '#C17F3A',
-              background: 'rgba(193,127,58,0.12)',
-              border: '1px solid rgba(193,127,58,0.2)',
-              borderRadius: '20px',
-              padding: '1px 8px',
+              fontSize: '10px', color: '#C17F3A',
+              background: 'rgba(193,127,58,0.1)',
+              border: '1px solid rgba(193,127,58,0.22)',
+              borderRadius: '20px', padding: '1px 8px',
               whiteSpace: 'nowrap',
             }}>{metaChip}</span>
           )}
@@ -157,7 +150,7 @@ function ItemRow({
             <span style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '11px',
-              color: 'rgba(250,248,245,0.38)',
+              color: 'rgba(44,26,8,0.45)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{metaText}</span>
           )}
@@ -165,7 +158,7 @@ function ItemRow({
       </div>
 
       {/* Chevron */}
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(44,26,8,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
     </button>
@@ -208,9 +201,9 @@ export default function ExploreWebPanel({
                 key={s.id}
                 onClick={() => onSectionChange(i)}
                 style={{
-                  background: isActive ? '#C17F3A' : 'rgba(250,248,245,0.04)',
-                  border: `1px solid ${isActive ? '#C17F3A' : 'rgba(250,248,245,0.09)'}`,
-                  borderRadius: '12px',
+                  background: isActive ? '#C17F3A' : 'rgba(44,26,8,0.05)',
+                  border: `1px solid ${isActive ? '#C17F3A' : 'rgba(193,127,58,0.18)'}`,
+                  borderRadius: '10px',
                   padding: '10px 4px',
                   cursor: 'pointer',
                   transition: 'all 200ms ease',
@@ -220,27 +213,24 @@ export default function ExploreWebPanel({
                   gap: '3px',
                 }}
                 onMouseEnter={e => {
-                  if (!isActive) e.currentTarget.style.background = 'rgba(250,248,245,0.08)';
+                  if (!isActive) e.currentTarget.style.background = 'rgba(193,127,58,0.1)';
                 }}
                 onMouseLeave={e => {
-                  if (!isActive) e.currentTarget.style.background = 'rgba(250,248,245,0.04)';
+                  if (!isActive) e.currentTarget.style.background = 'rgba(44,26,8,0.05)';
                 }}
               >
                 <span style={{
                   fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontStyle: 'italic',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  color: isActive ? '#FAF8F5' : 'rgba(250,248,245,0.35)',
+                  fontStyle: 'italic', fontSize: '16px', fontWeight: 600,
+                  color: isActive ? '#FAF8F5' : 'rgba(44,26,8,0.4)',
                   lineHeight: 1,
                   transition: 'color 200ms ease',
                 }}>{NUMERALS[i]}</span>
                 <span style={{
                   fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '9px',
-                  letterSpacing: '0.08em',
+                  fontSize: '9px', letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  color: isActive ? 'rgba(250,248,245,0.8)' : 'rgba(250,248,245,0.28)',
+                  color: isActive ? 'rgba(250,248,245,0.85)' : 'rgba(44,26,8,0.35)',
                   transition: 'color 200ms ease',
                 }}>{sectionShortLabel(s.id)}</span>
               </button>
@@ -254,23 +244,17 @@ export default function ExploreWebPanel({
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '10px', fontWeight: 600,
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          color: '#C17F3A',
-          margin: '0 0 5px',
+          letterSpacing: '0.18em', textTransform: 'uppercase',
+          color: '#C17F3A', margin: '0 0 5px',
         }}>{active?.label}</p>
         <h3 style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontStyle: 'italic',
-          fontSize: '21px', fontWeight: 500,
-          color: '#FAF8F5',
-          margin: '0 0 5px',
-          lineHeight: 1.2,
+          fontStyle: 'italic', fontSize: '21px', fontWeight: 500,
+          color: '#2C1A08', margin: '0 0 5px', lineHeight: 1.2,
         }}>{active?.title}</h3>
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
-          fontSize: '12px',
-          color: 'rgba(250,248,245,0.42)',
+          fontSize: '12px', color: 'rgba(44,26,8,0.45)',
           margin: 0, lineHeight: 1.5,
         }}>{active?.subtitle}</p>
       </div>
@@ -280,21 +264,16 @@ export default function ExploreWebPanel({
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '10px', fontWeight: 600,
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          color: 'rgba(250,248,245,0.28)',
-          margin: '0 0 6px',
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: 'rgba(44,26,8,0.3)', margin: '0 0 4px', flexShrink: 0,
         }}>{active ? listLabel(active.content_type) : ''}</p>
 
         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {active?.items.length === 0 && (
             <p style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '13px',
-              color: 'rgba(250,248,245,0.22)',
-              textAlign: 'center',
-              padding: '28px 0',
-              margin: 0,
+              fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
+              color: 'rgba(44,26,8,0.25)', textAlign: 'center',
+              padding: '28px 0', margin: 0,
             }}>
               {active.content_type === 'events' ? 'No upcoming events yet.' : 'More coming soon.'}
             </p>
@@ -318,33 +297,26 @@ export default function ExploreWebPanel({
               display: 'block',
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '10px', fontWeight: 600,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'rgba(250,248,245,0.28)',
-              marginBottom: '7px',
+              letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: 'rgba(44,26,8,0.35)', marginBottom: '7px',
             }}>Region</label>
             <select
               value={selectedRegionId ?? ''}
               onChange={(e) => onRegionChange(e.target.value)}
               aria-label="Change region"
               style={{
-                width: '100%',
-                height: '40px',
-                padding: '0 12px',
+                width: '100%', height: '40px', padding: '0 12px',
                 borderRadius: '10px',
-                background: 'rgba(250,248,245,0.06)',
-                border: '1px solid rgba(250,248,245,0.12)',
-                color: '#FAF8F5',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '13px',
-                outline: 'none',
-                cursor: 'pointer',
-                appearance: 'none',
+                background: '#FFFFFF',
+                border: '1px solid rgba(193,127,58,0.28)',
+                color: '#2C1A08',
+                fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
+                outline: 'none', cursor: 'pointer', appearance: 'none',
                 boxSizing: 'border-box',
               }}
             >
               {regions.map((r) => (
-                <option key={r.id} value={r.id} style={{ background: '#1a1208' }}>
+                <option key={r.id} value={r.id}>
                   {r.name}{r.country_code ? ` · ${r.country_code}` : ''}
                 </option>
               ))}
@@ -356,19 +328,17 @@ export default function ExploreWebPanel({
           onClick={onPersonalise}
           disabled={isPersonalising}
           style={{
-            width: '100%',
-            height: '44px',
+            width: '100%', height: '44px',
             borderRadius: '12px',
             background: '#C17F3A',
             color: '#FAF8F5',
             fontFamily: "'DM Sans', sans-serif",
-            fontSize: '13px', fontWeight: 600,
-            letterSpacing: '0.07em',
+            fontSize: '13px', fontWeight: 600, letterSpacing: '0.07em',
             border: 'none',
             cursor: isPersonalising ? 'not-allowed' : 'pointer',
             opacity: isPersonalising ? 0.55 : 1,
             transition: 'background 180ms ease, opacity 180ms ease',
-            boxShadow: '0 4px 14px rgba(193,127,58,0.22)',
+            boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
           }}
           onMouseEnter={e => { if (!isPersonalising) e.currentTarget.style.background = '#D6A252'; }}

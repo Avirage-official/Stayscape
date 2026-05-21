@@ -8,13 +8,8 @@ export default function DashboardLayout({
   return (
     <>
       <GuestNavBar />
-      {/* Offset content on desktop so it clears the 68px sidebar */}
-      <div
-        style={{
-          paddingLeft: 0,
-        }}
-        className="md:pl-[68px]"
-      >
+      {/* Offset content on desktop — padding driven by --sidebar-w CSS var */}
+      <div className="dashboard-content">
         {children}
       </div>
     </>
