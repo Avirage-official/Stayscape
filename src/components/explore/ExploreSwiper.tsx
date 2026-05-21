@@ -112,54 +112,36 @@ export default function ExploreSwiper({
       {/* ── Hero card — full height on desktop, fixed height on mobile ── */}
       <div
         className="flex-shrink-0 md:flex-1 md:h-auto"
-        style={{ height: 'clamp(240px, 44dvh, 360px)', position: 'relative', userSelect: 'none' }}
+        style={{
+          height: 'clamp(240px, 44dvh, 360px)',
+          position: 'relative',
+          userSelect: 'none',
+          borderRadius: '20px',
+          overflow: 'hidden',
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <ExploreCard section={active} />
+        <ExploreCard
+          section={active}
+          sections={sections}
+          activeIndex={activeIndex}
+          onSectionChange={goTo}
+        />
 
-        {/* Section pips — bottom-right inside the card */}
-        <div
-          style={{
-            position: 'absolute', bottom: '18px', right: '18px',
-            zIndex: 20,
-            display: 'flex', gap: '5px', alignItems: 'center',
-          }}
-        >
-          {sections.map((_, i) => (
-            <button
-              key={i}
-              aria-label={`Go to section ${i + 1}`}
-              onClick={() => goTo(i)}
-              style={{
-                width: i === activeIndex ? '28px' : '6px',
-                height: '6px',
-                borderRadius: '3px',
-                background: i === activeIndex ? '#C17F3A' : 'rgba(250,248,245,0.3)',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                transition: 'width 280ms ease, background 280ms ease',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Greeting — top-left of card */}
-        <p
-          style={{
-            position: 'absolute', top: '18px', left: '18px',
-            zIndex: 20,
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '10px',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: 'rgba(250,248,245,0.35)',
-            margin: 0,
-            pointerEvents: 'none',
-          }}
-        >
+        {/* Greeting — top-left */}
+        <p style={{
+          position: 'absolute', top: '16px', left: '20px',
+          zIndex: 20,
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '10px',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: 'rgba(250,248,245,0.45)',
+          margin: 0,
+          pointerEvents: 'none',
+        }}>
           Explore {greeting}
         </p>
       </div>
