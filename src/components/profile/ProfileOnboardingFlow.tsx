@@ -102,13 +102,16 @@ const PANEL_IMAGE: Partial<Record<Step, string>> = {
 
 const ALL_IMAGES: string[] = [
   ...Object.values(PANEL_IMAGE) as string[],
+  // public/onboarding/novelty/
   '/onboarding/novelty/adventurous.jpg',
   '/onboarding/novelty/balanced.jpg',
   '/onboarding/novelty/comfortable.jpg',
+  // public/onboarding/vibe/
   '/onboarding/vibe/city.jpg',
   '/onboarding/vibe/culture.jpg',
   '/onboarding/vibe/nature.jpg',
   '/onboarding/vibe/beach.jpg',
+  '/onboarding/vibe/mixed.jpg',
 ];
 
 const NOVELTY_IMG: Record<string, string> = {
@@ -305,7 +308,7 @@ function RightPanel({ src, step }: { src: string; step: Step }) {
     <div
       className="ob-right"
       style={{
-        flex: '0 0 46%',
+        flex: '1 1 0',
         margin: '14px 14px 14px 0',
         borderRadius: '20px',
         overflow: 'hidden',
@@ -746,11 +749,10 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
 
         {/* ═══ LEFT PANEL ═══ */}
         <div style={{
-          flex: '1 1 0',
+          flex: '0 0 46%',
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
-          maxWidth: '560px',
         }}>
           {/* Header: wordmark + progress */}
           <div style={{
@@ -780,9 +782,11 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            padding: 'clamp(28px,4.5vh,52px) clamp(32px,5vw,60px)',
+            padding: 'clamp(28px,4.5vh,52px) clamp(32px,5vw,64px)',
             minHeight: 0,
           }}>
+            {/* Inner width cap keeps text readable on very wide viewports */}
+            <div style={{ maxWidth: '520px' }}>
             <div
               key={`content-${step}-${animKey}`}
               style={{ animation: 'ob-up 0.42s cubic-bezier(0.22,1,0.36,1) both' }}
@@ -1224,6 +1228,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               )}
 
             </div>
+            </div>{/* /inner width cap */}
           </div>
         </div>
 
