@@ -1,8 +1,14 @@
 'use client';
 
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
+import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
+import type { RegionOption } from '@/app/dashboard/explore/page';
 
-export type ExploreItem = DiscoveryPlaceCard | DiscoveryEventCard;
+export type ExploreItem =
+  | DiscoveryPlaceCard
+  | DiscoveryEventCard
+  | ExplorePropertyCard
+  | RegionOption;
 
 export interface ExploreSection {
   id: string;
@@ -11,6 +17,7 @@ export interface ExploreSection {
   subtitle: string;
   image_url: string | null;
   gradient: string;
+  content_type: 'places' | 'events' | 'properties' | 'regions';
   items: ExploreItem[];
 }
 
@@ -20,30 +27,48 @@ interface ExploreCardProps {
   onItemClick: (item: ExploreItem) => void;
 }
 
-/** Price dots helper */
-function PriceDots({ level }: { level?: number | null }) {
-  if (!level) return null;
+/** Stars for hotels */
+function StarRating({ count }: { count?: number | null }) {
+  if (!count) return null;
   return (
-    <span className="text-white/50 text-xs tracking-widest">
-      {'$'.repeat(level)}
-      <span className="opacity-30">{'$'.repeat(4 - level)}</span>
+    <span className="text-white/50 text-xs">
+      {'★'.repeat(count)}
+      <span className="opacity-30">{'★'.repeat(5 - count)}</span>
     </span>
   );
 }
 
-/** Single detail row inside the card detail list */
+/** Single detail row inside the card item list */
 function DetailRow({
   item,
+  contentType,
   onClick,
 }: {
   item: ExploreItem;
+  contentType: ExploreSection['content_type'];
   onClick: () => void;
 }) {
-  const isEvent = 'start_date' in item;
-  const subtitle = isEvent
-    ? (item as DiscoveryEventCard).venue_name ?? (item as DiscoveryEventCard).category
-    : (item as DiscoveryPlaceCard).editorial_summary ??
-      (item as DiscoveryPlaceCard).description?.slice(0, 60);
+  const isEvent = contentType === 'events';
+  const isRegion = contentType === 'regions';
+  const isProperty = contentType === 'properties';
+
+  const name = 'name' in item ? item.name : '';
+  const imageUrl = 'image_url' in item ? item.image_url : null;
+
+  let subtitle = '';
+  if (isEvent) {
+    const e = item as DiscoveryEventCard;
+    subtitle = e.venue_name ?? e.category ?? '';
+  } else if (isRegion) {
+    const r = item as RegionOption;
+    subtitle = r.country_code ?? '';
+  } else if (isProperty) {
+    const p = item as ExplorePropertyCard;
+    subtitle = p.editorial_summary?.slice(0, 55) ?? p.city ?? '';
+  } else {
+    const p = item as DiscoveryPlaceCard;
+    subtitle = p.editorial_summary?.slice(0, 55) ?? p.description?.slice(0, 55) ?? '';
+  }
 
   return (
     <button
@@ -52,22 +77,26 @@ function DetailRow({
     >
       {/* Thumbnail */}
       <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
-        {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+        {imageUrl ? (
+          <img src={imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${'gradient' in item ? item.gradient : 'from-stone-800 to-stone-900'}`} />
+          <div className="w-full h-full flex items-center justify-center">
+            {isRegion && (
+              <span className="text-white/30 text-lg">
+                {(item as RegionOption).country_code ?? '🌍'}
+              </span>
+            )}
+          </div>
         )}
       </div>
+
       {/* Text */}
       <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-medium truncate">{item.name}</p>
+        <p className="text-white text-sm font-medium truncate">{name}</p>
         {subtitle && (
-          <p className="text-white/50 text-xs mt-0.5 line-clamp-1">{subtitle}</p>
+          <p className="text-white/50 text-xs mt-0.5 line-clamp-1">
+            {subtitle}{subtitle.length === 55 ? '…' : ''}
+          </p>
         )}
         {'vibes' in item && (item as DiscoveryPlaceCard).vibes?.length > 0 && (
           <div className="flex gap-1 mt-1 flex-wrap">
@@ -82,8 +111,9 @@ function DetailRow({
           </div>
         )}
       </div>
-      {'price_level' in item && (
-        <PriceDots level={(item as DiscoveryPlaceCard).price_level} />
+
+      {isProperty && (
+        <StarRating count={(item as ExplorePropertyCard).star_rating} />
       )}
     </button>
   );
@@ -94,6 +124,22 @@ export default function ExploreCard({
   isActive,
   onItemClick,
 }: ExploreCardProps) {
+  const emptyLabel =
+    section.content_type === 'events'
+      ? 'No upcoming events in this region yet.'
+      : section.content_type === 'regions'
+      ? 'No other destinations available yet.'
+      : 'More coming soon.';
+
+  const listLabel =
+    section.content_type === 'events'
+      ? 'Coming up'
+      : section.content_type === 'regions'
+      ? 'Destinations'
+      : section.content_type === 'properties'
+      ? 'Stays'
+      : 'Top picks';
+
   return (
     <div
       className={`relative w-full flex-shrink-0 transition-opacity duration-300 ${
@@ -101,7 +147,7 @@ export default function ExploreCard({
       }`}
       style={{ height: 'calc(100dvh - 68px)' }}
     >
-      {/* ── Background image ───────────────────────────────── */}
+      {/* Background image */}
       <div className="absolute inset-0">
         {section.image_url ? (
           <img
@@ -113,15 +159,14 @@ export default function ExploreCard({
         ) : (
           <div className="w-full h-full bg-stone-900" />
         )}
-        {/* Gradient overlay — stronger at bottom for legibility */}
         <div
           className={`absolute inset-0 bg-gradient-to-b ${section.gradient} opacity-90`}
         />
       </div>
 
-      {/* ── Content ────────────────────────────────────────── */}
+      {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-between p-6 pt-8">
-        {/* Top label */}
+        {/* Top label + headline */}
         <div>
           <p className="text-white/50 text-[10px] tracking-[0.2em] font-medium uppercase mb-2">
             {section.label}
@@ -135,32 +180,26 @@ export default function ExploreCard({
           <p className="text-white/60 text-sm mt-1">{section.subtitle}</p>
         </div>
 
-        {/* Detail items list */}
-        {section.items.length > 0 && (
+        {/* Item list */}
+        {section.items.length > 0 ? (
           <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 mt-4">
             <p className="text-white/40 text-[10px] tracking-widest uppercase mb-3">
-              {section.id === 'events' ? 'Coming up' : 'Top picks'}
+              {listLabel}
             </p>
-            <div className="space-y-0">
+            <div>
               {section.items.slice(0, 4).map((item) => (
                 <DetailRow
-                  key={item.id}
+                  key={'id' in item ? item.id : (item as RegionOption).id}
                   item={item}
+                  contentType={section.content_type}
                   onClick={() => onItemClick(item)}
                 />
               ))}
             </div>
           </div>
-        )}
-
-        {/* Empty state */}
-        {section.items.length === 0 && (
+        ) : (
           <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 text-center">
-            <p className="text-white/40 text-sm">
-              {section.id === 'events'
-                ? 'No upcoming events in this region yet.'
-                : 'More coming soon.'}
-            </p>
+            <p className="text-white/40 text-sm">{emptyLabel}</p>
           </div>
         )}
       </div>
