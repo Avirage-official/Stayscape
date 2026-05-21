@@ -111,9 +111,8 @@ export default function ExploreSwiper({
     >
       {/* ── Hero card — full height on desktop, fixed height on mobile ── */}
       <div
-        className="flex-shrink-0 md:flex-1 md:h-auto"
+        className="flex-shrink-0 md:flex-1 h-[44dvh] md:h-full"
         style={{
-          height: 'clamp(240px, 44dvh, 360px)',
           position: 'relative',
           userSelect: 'none',
           borderRadius: '20px',
