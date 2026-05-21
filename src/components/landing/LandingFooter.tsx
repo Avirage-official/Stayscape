@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 export default function LandingFooter() {
   return (
     <footer
@@ -25,20 +27,33 @@ export default function LandingFooter() {
         </span>
 
         {/* Nav */}
-        <nav className="flex items-center gap-6">
+        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {[
             { label: 'For Hotels', href: '#for-hotels' },
             { label: 'The App',    href: '/dashboard' },
             { label: 'Contact',    href: 'mailto:Obajews@hotmail.com' },
+            { label: 'Privacy',    href: '/privacy' },
+            { label: 'Terms',      href: '/terms' },
           ].map(({ label, href }) => (
-            <a
-              key={label}
-              href={href}
-              className="footer-link text-[13px] transition-colors duration-200"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {label}
-            </a>
+            href.startsWith('/') ? (
+              <Link
+                key={label}
+                href={href}
+                className="footer-link text-[13px] transition-colors duration-200"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {label}
+              </Link>
+            ) : (
+              <a
+                key={label}
+                href={href}
+                className="footer-link text-[13px] transition-colors duration-200"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {label}
+              </a>
+            )
           ))}
         </nav>
 

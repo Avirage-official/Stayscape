@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { RegionProvider } from "@/lib/context/region-context";
 import { AuthProvider } from "@/lib/context/auth-context";
+import CookieConsent from "@/components/CookieConsent";
 
 /*
   TYPOGRAPHY RATIONALE
@@ -106,6 +107,7 @@ export default function RootLayout({
             </RegionProvider>
           </AuthProvider>
         </ThemeProvider>
+        <CookieConsent />
       </body>
     </html>
   );

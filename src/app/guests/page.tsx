@@ -57,6 +57,7 @@ export default function GuestsPage() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [signupDone, setSignupDone] = useState(false)
+  const [consentChecked, setConsentChecked] = useState(false)
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -125,6 +126,10 @@ export default function GuestsPage() {
   async function handleSignUp(e: FormEvent) {
     e.preventDefault()
     setAuthError(null)
+    if (!consentChecked) {
+      setAuthError('Please agree to the Privacy Policy and Terms to continue')
+      return
+    }
     if (password !== confirmPassword) {
       setAuthError("Passwords don't match")
       return
@@ -156,6 +161,7 @@ export default function GuestsPage() {
     setSignupDone(false)
     setPassword('')
     setConfirmPassword('')
+    setConsentChecked(false)
   }
 
   return (
@@ -538,6 +544,39 @@ export default function GuestsPage() {
                 </div>
               )}
 
+              {mode === 'signup' && (
+                <label style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  cursor: 'pointer', userSelect: 'none',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={consentChecked}
+                    onChange={e => { setConsentChecked(e.target.checked); setAuthError(null) }}
+                    style={{
+                      width: '16px', height: '16px', marginTop: '2px',
+                      accentColor: '#C17F3A', cursor: 'pointer', flexShrink: 0,
+                    }}
+                  />
+                  <span style={{
+                    fontSize: '12px', lineHeight: 1.5,
+                    color: 'rgba(44,26,8,0.6)',
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>
+                    I agree to the{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                       style={{ color: '#C17F3A', textDecoration: 'underline' }}>
+                      Privacy Policy
+                    </a>{' '}
+                    and{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer"
+                       style={{ color: '#C17F3A', textDecoration: 'underline' }}>
+                      Terms of Service
+                    </a>.
+                  </span>
+                </label>
+              )}
+
               {authError && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
@@ -555,7 +594,7 @@ export default function GuestsPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (mode === 'signup' && !consentChecked)}
                 style={{
                   width: '100%', height: '46px',
                   borderRadius: '8px',
@@ -563,14 +602,14 @@ export default function GuestsPage() {
                   color: '#FAF8F5',
                   fontSize: '13px', fontWeight: 600,
                   letterSpacing: '0.07em',
-                  border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  border: 'none', cursor: (isSubmitting || (mode === 'signup' && !consentChecked)) ? 'not-allowed' : 'pointer',
                   fontFamily: "'DM Sans', sans-serif",
-                  opacity: isSubmitting ? 0.55 : 1,
+                  opacity: (isSubmitting || (mode === 'signup' && !consentChecked)) ? 0.55 : 1,
                   transition: 'background 180ms ease, opacity 180ms ease',
                   boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 }}
-                onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#D6A252' }}
+                onMouseEnter={e => { if (!isSubmitting && !(mode === 'signup' && !consentChecked)) e.currentTarget.style.background = '#D6A252' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A' }}
               >
                 {isSubmitting ? (
