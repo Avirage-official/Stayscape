@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants — all workflow logic unchanged
+// Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AGE_BANDS = [
@@ -99,7 +99,7 @@ const ALL_STEPS: Step[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Right-panel image map — one dedicated image per step
+// Right-panel image map
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PANEL_IMAGE: Partial<Record<Step, string>> = {
@@ -118,27 +118,39 @@ const PANEL_IMAGE: Partial<Record<Step, string>> = {
   close:           '/onboarding/scenes/closing.jpg',
 };
 
+// Scene images used as fallback for image tiles when novelty/vibe folders don't exist
+const NOVELTY_FALLBACK: Record<string, string> = {
+  adventurous: '/onboarding/scenes/discovery-editorial.jpg',
+  balanced:    '/onboarding/scenes/planning-editorial.jpg',
+  comfortable: '/onboarding/scenes/spend-editorial.jpg',
+};
+
+const VIBE_FALLBACK: Record<string, string> = {
+  city:    '/onboarding/scenes/closing.jpg',
+  culture: '/onboarding/scenes/age-era.jpg',
+  nature:  '/onboarding/scenes/bridge-curiosity.jpg',
+  beach:   '/onboarding/scenes/home-origin.jpg',
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Palette — content on dark background
+// Palette — mirrors /guests page exactly
 // ─────────────────────────────────────────────────────────────────────────────
 
 const C = {
-  // Left content — on dark bg
-  text:           '#FAF8F5',
-  soft:           'rgba(250,248,245,0.70)',
-  muted:          'rgba(250,248,245,0.44)',
-  amber:          '#C17F3A',
-  amberHover:     '#D6A252',
-  amberAlpha:     'rgba(193,127,58,0.18)',
-  amberBorder:    'rgba(193,127,58,0.40)',
-  border:         'rgba(250,248,245,0.14)',
-  // Input — slightly raised surface on dark bg
-  inputBg:        'rgba(255,255,255,0.07)',
-  inputBorder:    'rgba(250,248,245,0.18)',
-  // Age band chip hover
-  chipHover:      'rgba(250,248,245,0.06)',
-  // Right card overlay text
-  onImage:        '#FAF8F5',
+  bg:           '#FAF8F5',   // same as guest login right panel
+  surface:      '#FFFFFF',   // white card / input bg
+  text:         '#2C1A08',   // dark warm brown
+  soft:         'rgba(44,26,8,0.60)',
+  muted:        'rgba(44,26,8,0.40)',
+  faint:        'rgba(44,26,8,0.28)',
+  amber:        '#C17F3A',
+  amberHover:   '#D6A252',
+  amberAlpha:   'rgba(193,127,58,0.08)',
+  amberBorder:  'rgba(193,127,58,0.28)',
+  amberFocus:   'rgba(193,127,58,0.15)',
+  border:       'rgba(193,127,58,0.28)',
+  borderSubtle: 'rgba(44,26,8,0.10)',
+  onImage:      '#FAF8F5',
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,78 +164,82 @@ function parseLocation(raw: string): { city: string; country: string } {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Global CSS — pure keyframes, no component styles
+// Global CSS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GLOBAL_CSS = `
-  /* Left panel content entrance */
   @keyframes ob-up {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  /* Staggered text lines */
   @keyframes ob-line {
-    from { opacity: 0; transform: translateY(12px); }
+    from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  /* Image tile entrance */
   @keyframes ob-tile {
-    from { opacity: 0; transform: translateY(16px) scale(0.97); }
-    to   { opacity: 1; transform: translateY(0)   scale(1); }
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
-  /* Slow ambient zoom on right card image */
   @keyframes ob-zoom {
     from { transform: scale(1); }
     to   { transform: scale(1.055); }
   }
-  /* Greeting headline warmth shake */
   @keyframes ob-shake {
-    0%,100% { transform: translateX(0) rotate(0deg); }
-    15%     { transform: translateX(-3px) rotate(-0.4deg); }
-    30%     { transform: translateX(3px)  rotate(0.4deg); }
-    55%     { transform: translateX(-2px) rotate(-0.25deg); }
-    75%     { transform: translateX(2px)  rotate(0.25deg); }
-    90%     { transform: translateX(-1px) rotate(-0.1deg); }
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-3px); }
+    40%     { transform: translateX(3px); }
+    60%     { transform: translateX(-2px); }
+    80%     { transform: translateX(2px); }
   }
-  /* Save dots */
   @keyframes ob-dot {
-    0%,100% { opacity: 0.22; transform: scale(0.75); }
-    50%     { opacity: 1;    transform: scale(1); }
+    0%,100% { opacity: 0.25; transform: scale(0.75); }
+    50%     { opacity: 1; transform: scale(1); }
   }
-  /* Age reaction reveal */
   @keyframes ob-reaction {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Input styles — glass-like on dark background */
+  /* Input: white with amber focus, exact match to guest login */
   .ob-input {
-    background: rgba(255,255,255,0.07) !important;
-    color: #FAF8F5 !important;
+    background: #FFFFFF !important;
+    color: #2C1A08 !important;
+    -webkit-text-fill-color: #2C1A08 !important;
   }
   .ob-input:focus {
     border-color: #C17F3A !important;
-    box-shadow: 0 0 0 3px rgba(193,127,58,0.18) !important;
-    background: rgba(255,255,255,0.10) !important;
+    box-shadow: 0 0 0 3px rgba(193,127,58,0.15) !important;
   }
-  .ob-input::placeholder { color: rgba(250,248,245,0.32); }
+  .ob-input::placeholder { color: rgba(44,26,8,0.32); }
+  .ob-input:-webkit-autofill,
+  .ob-input:-webkit-autofill:hover,
+  .ob-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #2C1A08 !important;
+    -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+    caret-color: #C17F3A !important;
+  }
 
-  /* Right panel card on mobile — hide on small screens */
+  /* Option button hover — warm bg tint */
+  .ob-option:hover:not(:disabled) {
+    background: rgba(193,127,58,0.05) !important;
+    border-color: rgba(193,127,58,0.40) !important;
+  }
+
+  /* Age chip hover */
+  .ob-chip:hover:not(:disabled) {
+    border-color: rgba(193,127,58,0.50) !important;
+    background: rgba(193,127,58,0.05) !important;
+  }
+
+  /* Mobile: hide right panel */
   @media (max-width: 767px) {
-    .ob-right-panel { display: none !important; }
-    .ob-layout      { padding: 0 !important; }
-    .ob-left-panel  {
-      border-radius: 0 !important;
-      min-height: 100dvh !important;
-      max-width: 100% !important;
-      width: 100% !important;
-    }
+    .ob-right { display: none !important; }
+    .ob-layout { padding: 0 !important; }
   }
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RightImageCard — the floating editorial image card
-// Pure CSS crossfade: renders two layers, transitions opacity on src change
+// RightImageCard — editorial photo card, crossfade on step change
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RightImageCard({ src }: { src: string }) {
@@ -246,67 +262,64 @@ function RightImageCard({ src }: { src: string }) {
       setNext(null);
       setFading(false);
       setNextReady(false);
-    }, 820);
+    }, 800);
     return () => clearTimeout(t);
   }, [src]);
 
   return (
     <div
-      className="ob-right-panel"
+      className="ob-right"
       style={{
         flex: '0 0 42%',
-        position: 'relative',
-        borderRadius: '24px',
-        overflow: 'hidden',
-        boxShadow: '0 24px 64px rgba(20,10,2,0.38), 0 4px 16px rgba(20,10,2,0.18)',
-        background: '#1A0E04',
         margin: '20px 20px 20px 0',
-        minHeight: 0,
+        borderRadius: '20px',
+        overflow: 'hidden',
+        position: 'relative',
+        // Warm shadow — tone-matched to the cream background
+        boxShadow: '0 20px 60px rgba(44,26,8,0.18), 0 4px 16px rgba(44,26,8,0.10)',
+        background: '#E8DFD0',
       }}
     >
       {/* Current image */}
       <div style={{
         position: 'absolute', inset: 0,
-        animation: 'ob-zoom 22s ease-in-out alternate infinite',
-        transformOrigin: 'center center',
+        animation: 'ob-zoom 24s ease-in-out alternate infinite',
+        transformOrigin: 'center',
       }}>
         <img
-          src={current}
-          alt=""
+          src={current} alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       </div>
 
-      {/* Next image — fades in on top when ready */}
+      {/* Next image — crossfades in */}
       {next && (
         <div style={{
           position: 'absolute', inset: 0,
           opacity: fading && nextReady ? 1 : 0,
-          transition: 'opacity 0.78s cubic-bezier(0.4,0,0.2,1)',
-          animation: nextReady ? 'ob-zoom 22s ease-in-out alternate infinite' : 'none',
-          transformOrigin: 'center center',
+          transition: 'opacity 0.75s cubic-bezier(0.4,0,0.2,1)',
+          animation: nextReady ? 'ob-zoom 24s ease-in-out alternate infinite' : 'none',
+          transformOrigin: 'center',
         }}>
           <img
-            src={next}
-            alt=""
+            src={next} alt=""
             onLoad={handleNextLoad}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </div>
       )}
 
-      {/* Darker overlay */}
+      {/* Overlay — lighter than before, lets the image breathe */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(to bottom, rgba(14,7,2,0.22) 0%, rgba(14,7,2,0.52) 55%, rgba(14,7,2,0.82) 100%)',
+        background: 'linear-gradient(to bottom, rgba(8,5,2,0.10) 0%, rgba(8,5,2,0.30) 50%, rgba(8,5,2,0.68) 100%)',
         pointerEvents: 'none',
       }} />
 
-      {/* Subtle amber vignette at bottom */}
+      {/* Amber bottom vignette */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        height: '35%',
-        background: 'linear-gradient(to top, rgba(193,127,58,0.14) 0%, transparent 100%)',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%',
+        background: 'linear-gradient(to top, rgba(193,127,58,0.10) 0%, transparent 100%)',
         pointerEvents: 'none',
       }} />
     </div>
@@ -314,7 +327,7 @@ function RightImageCard({ src }: { src: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TopProgress — thin amber bar across the full top
+// TopProgress — thin amber rule, same as guest login slide indicators
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TopProgress({ step }: { step: Step }) {
@@ -324,7 +337,7 @@ function TopProgress({ step }: { step: Step }) {
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0,
       height: '2px',
-      background: 'rgba(250,248,245,0.08)',
+      background: C.borderSubtle,
       zIndex: 200,
     }}>
       <div style={{
@@ -333,14 +346,13 @@ function TopProgress({ step }: { step: Step }) {
         background: C.amber,
         transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
         borderRadius: '0 2px 2px 0',
-        boxShadow: `0 0 6px ${C.amber}88`,
       }} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Btn — button on dark/transparent background
+// Btn — matches guest login submit button exactly
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Btn({
@@ -350,38 +362,40 @@ function Btn({
   variant?: 'primary' | 'ghost'; fullWidth?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+
   const base: CSSProperties = {
-    height: '52px',
-    borderRadius: '14px',
+    height: '46px',
+    borderRadius: '8px',
     cursor: disabled ? 'not-allowed' : 'pointer',
-    fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
-    fontSize: '15px',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: '13px',
     fontWeight: 600,
-    transition: 'background 0.22s, color 0.22s, box-shadow 0.22s, border-color 0.22s',
-    opacity: disabled ? 0.38 : 1,
+    letterSpacing: '0.07em',
+    transition: 'background 180ms ease, opacity 180ms ease, border-color 180ms ease, color 180ms ease',
+    opacity: disabled ? 0.45 : 1,
+    border: 'none',
     outline: 'none',
     width: fullWidth ? '100%' : 'auto',
-    border: 'none',
-    letterSpacing: '0.01em',
     padding: '0 24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: '8px',
   };
-  const variants: Record<string, CSSProperties> = {
+
+  const styles: Record<string, CSSProperties> = {
     primary: {
       background: hovered && !disabled ? C.amberHover : C.amber,
-      color: '#FAF7F2',
-      boxShadow: hovered && !disabled
-        ? '0 6px 22px rgba(193,127,58,0.42)'
-        : '0 2px 10px rgba(193,127,58,0.22)',
+      color: '#FAF8F5',
+      boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
     },
     ghost: {
-      background: hovered && !disabled ? 'rgba(250,248,245,0.08)' : 'transparent',
+      background: 'transparent',
       color: hovered && !disabled ? C.text : C.soft,
-      border: `1.5px solid ${C.border}`,
+      border: `1px solid ${C.borderSubtle}`,
     },
   };
+
   return (
     <button
       type="button"
@@ -389,7 +403,7 @@ function Btn({
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ ...base, ...variants[variant] }}
+      style={{ ...base, ...styles[variant] }}
     >
       {children}
     </button>
@@ -397,7 +411,7 @@ function Btn({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TextOption — pill option on dark background
+// TextOption — list-style option, matches guest login card aesthetic
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TextOption({
@@ -405,41 +419,33 @@ function TextOption({
 }: {
   label: string; selected: boolean; onClick: () => void; disabled?: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      onMouseEnter={() => !disabled && setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className="ob-option"
       style={{
         display: 'flex',
         alignItems: 'center',
-        minHeight: '52px',
-        padding: '13px 18px',
-        borderRadius: '14px',
-        border: `1.5px solid ${selected ? C.amber : C.border}`,
-        background: selected
-          ? C.amberAlpha
-          : hovered
-            ? 'rgba(250,248,245,0.06)'
-            : 'rgba(255,255,255,0.05)',
-        color: selected ? C.amber : disabled ? C.muted : C.text,
-        fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
+        minHeight: '46px',
+        padding: '11px 16px',
+        borderRadius: '8px',
+        border: `1px solid ${selected ? C.amber : C.borderSubtle}`,
+        background: selected ? C.amberAlpha : C.surface,
+        color: selected ? C.amber : disabled ? C.faint : C.text,
+        fontFamily: "'DM Sans', sans-serif",
         fontSize: '14px',
         fontWeight: selected ? 600 : 400,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'all 0.2s ease',
+        transition: 'all 180ms ease',
         outline: 'none',
-        opacity: disabled && !selected ? 0.38 : 1,
+        opacity: disabled && !selected ? 0.45 : 1,
         textAlign: 'left',
-        lineHeight: 1.45,
+        lineHeight: 1.5,
         width: '100%',
         boxSizing: 'border-box',
-        boxShadow: selected ? `0 0 0 1px ${C.amber}` : 'none',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
+        boxShadow: selected ? `0 0 0 1px ${C.amber}` : '0 1px 3px rgba(44,26,8,0.05)',
       }}
     >
       {label}
@@ -448,7 +454,7 @@ function TextOption({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ImageTile — portrait 4:5 option tile (Q1 novelty, Q2 vibe)
+// ImageTile — portrait tile for Q1/Q2 using real scene images
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ImageTile({
@@ -457,7 +463,6 @@ function ImageTile({
   src: string; label: string; selected: boolean;
   onClick: () => void; disabled?: boolean; delay?: number;
 }) {
-  const [imgError, setImgError] = useState(false);
   return (
     <button
       type="button"
@@ -465,137 +470,129 @@ function ImageTile({
       disabled={disabled}
       style={{
         position: 'relative',
-        aspectRatio: '4 / 5',
-        borderRadius: '18px',
+        aspectRatio: '3 / 4',
+        borderRadius: '12px',
         overflow: 'hidden',
-        border: 'none',
-        outline: selected ? `2.5px solid ${C.amber}` : '2.5px solid transparent',
-        outlineOffset: selected ? '2px' : '0px',
+        border: selected ? `2px solid ${C.amber}` : '2px solid transparent',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        background: imgError ? 'linear-gradient(135deg, #2A1A08 0%, #4A2E10 100%)' : '#1A0E04',
-        transition: 'outline 0.2s, box-shadow 0.2s, transform 0.2s',
+        background: '#E8DFD0',
+        transition: 'border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease',
         padding: 0,
         display: 'block',
         width: '100%',
         boxShadow: selected
-          ? `0 6px 24px rgba(193,127,58,0.38)`
-          : '0 4px 16px rgba(20,10,2,0.28)',
+          ? `0 4px 20px rgba(193,127,58,0.30), 0 0 0 1px ${C.amber}`
+          : '0 2px 8px rgba(44,26,8,0.10)',
         transform: selected ? 'scale(1.02)' : 'scale(1)',
-        opacity: disabled && !selected ? 0.38 : 1,
-        animation: `ob-tile 0.42s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
+        opacity: disabled && !selected ? 0.45 : 1,
+        animation: `ob-tile 0.4s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
       }}
     >
-      {!imgError ? (
-        <>
-          <img
-            src={src}
-            alt={label}
-            onError={() => setImgError(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0,
-            height: '55%',
-            background: 'linear-gradient(to top, rgba(14,7,2,0.80) 0%, rgba(14,7,2,0.18) 60%, transparent 100%)',
-            pointerEvents: 'none',
-          }} />
-          <span style={{
-            position: 'absolute', bottom: '14px', left: '14px', right: '14px',
-            fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
-            fontStyle: 'italic',
-            fontSize: '18px',
-            fontWeight: 500,
-            color: C.onImage,
-            pointerEvents: 'none',
-            textShadow: '0 1px 6px rgba(0,0,0,0.5)',
-          }}>
-            {label}
-          </span>
-        </>
-      ) : (
-        <div style={{
-          width: '100%', height: '100%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(135deg, #2A1A08 0%, #4A2E10 100%)',
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
-            fontStyle: 'italic', fontSize: '18px', fontWeight: 500,
-            color: C.text, textAlign: 'center', padding: '8px',
-          }}>
-            {label}
-          </span>
-        </div>
-      )}
+      <img
+        src={src}
+        alt={label}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+      />
+      {/* gradient overlay */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: '60%',
+        background: 'linear-gradient(to top, rgba(8,5,2,0.78) 0%, rgba(8,5,2,0.12) 60%, transparent 100%)',
+        pointerEvents: 'none',
+      }} />
+      {/* selected tint */}
       {selected && (
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'rgba(193,127,58,0.18)',
+          background: 'rgba(193,127,58,0.15)',
           pointerEvents: 'none',
         }} />
       )}
+      <span style={{
+        position: 'absolute', bottom: '12px', left: '12px', right: '12px',
+        fontFamily: "'Cormorant Garamond', Georgia, serif",
+        fontStyle: 'italic',
+        fontSize: '17px',
+        fontWeight: 500,
+        color: '#FAF8F5',
+        pointerEvents: 'none',
+        textShadow: '0 1px 6px rgba(0,0,0,0.6)',
+      }}>
+        {label}
+      </span>
     </button>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared left-panel text styles — light on dark
+// Shared text styles — mirrors guest login typography
 // ─────────────────────────────────────────────────────────────────────────────
 
-const lHead: CSSProperties = {
-  fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
-  fontStyle: 'italic',
-  color: C.text,
-  margin: 0,
-  lineHeight: 1.2,
-};
-
-const lSub: CSSProperties = {
-  fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
-  fontSize: '15px',
-  color: C.soft,
-  margin: 0,
-  lineHeight: 1.68,
-};
-
-const qCounter: CSSProperties = {
-  fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
+const eyebrow: CSSProperties = {
+  fontFamily: "'DM Sans', sans-serif",
   fontSize: '11px',
+  fontWeight: 600,
   color: C.amber,
-  fontWeight: 700,
-  letterSpacing: '0.09em',
+  letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   margin: 0,
 };
 
-const qHead: CSSProperties = {
-  fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
+const lHead: CSSProperties = {
+  fontFamily: "'Cormorant Garamond', Georgia, serif",
   fontStyle: 'italic',
-  fontSize: 'clamp(22px, 4vw, 28px)',
+  color: C.text,
   fontWeight: 500,
-  lineHeight: 1.35,
+  lineHeight: 1.2,
+  margin: 0,
+};
+
+const lSub: CSSProperties = {
+  fontFamily: "'DM Sans', sans-serif",
+  fontSize: '14px',
+  color: C.soft,
+  margin: 0,
+  lineHeight: 1.65,
+};
+
+const qHead: CSSProperties = {
+  fontFamily: "'Cormorant Garamond', Georgia, serif",
+  fontStyle: 'italic',
+  fontSize: 'clamp(20px, 2.8vw, 26px)',
+  fontWeight: 500,
+  lineHeight: 1.3,
   color: C.text,
   margin: 0,
 };
 
-const inputStyle: CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  border: `1.5px solid rgba(250,248,245,0.18)`,
-  borderRadius: '14px',
-  padding: '15px 18px',
-  fontSize: '16px',
-  fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
-  color: C.text,
-  outline: 'none',
-  width: '100%',
-  boxSizing: 'border-box' as const,
-  transition: 'border-color 0.22s, box-shadow 0.22s, background 0.22s',
-  backdropFilter: 'blur(4px)',
-  WebkitBackdropFilter: 'blur(4px)',
+const labelStyle: CSSProperties = {
+  display: 'block',
+  fontSize: '10px',
+  fontWeight: 600,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase' as const,
+  color: C.muted,
+  marginBottom: '8px',
+  fontFamily: "'DM Sans', sans-serif",
 };
 
-const stagger = (i: number, base = 0.08): CSSProperties => ({
-  animation: `ob-line 0.45s cubic-bezier(0.22,1,0.36,1) ${i * base}s both`,
+const inputStyle: CSSProperties = {
+  width: '100%',
+  height: '46px',
+  padding: '0 16px',
+  borderRadius: '8px',
+  background: C.surface,
+  border: `1px solid ${C.amberBorder}`,
+  color: C.text,
+  fontSize: '14px',
+  fontFamily: "'DM Sans', sans-serif",
+  outline: 'none',
+  transition: 'border-color 180ms ease, box-shadow 180ms ease',
+  boxSizing: 'border-box' as const,
+};
+
+const stagger = (i: number, base = 0.07): CSSProperties => ({
+  animation: `ob-line 0.42s cubic-bezier(0.22,1,0.36,1) ${i * base}s both`,
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -685,98 +682,86 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
   const displayCity = locationCity || 'That';
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      position: 'relative',
-      fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
-      overflowX: 'hidden',
-      background: '#100902',
-    }}>
+    <div
+      style={{
+        minHeight: '100dvh',
+        background: C.bg,
+        fontFamily: "'DM Sans', sans-serif",
+        overflowX: 'hidden',
+        position: 'relative',
+      }}
+    >
       <style>{GLOBAL_CSS}</style>
-
-      {/* ── Persistent background */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        backgroundImage: 'url(/onboarding/scenes/Onboarding-Background.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'rgba(12,6,2,0.72)',
-        }} />
-      </div>
-
-      {/* ── Progress bar */}
       <TopProgress step={step} />
 
-      {/* ── Full-viewport split layout */}
+      {/* ── Full-viewport layout ── */}
       <div
         className="ob-layout"
         style={{
-          position: 'relative',
-          zIndex: 10,
           minHeight: '100dvh',
           display: 'flex',
           alignItems: 'stretch',
-          padding: '0 0 0 20px',
-          gap: '20px',
+          padding: '0 0 0 0',
           boxSizing: 'border-box',
         }}
       >
-
-        {/* ════════════════════════════════════════════════════
-            LEFT — transparent, content directly on dark bg
-        ════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════
+            LEFT — cream panel, content area, no background card
+        ══════════════════════════════════════════════════════ */}
         <div
-          className="ob-left-panel"
           style={{
             flex: '1 1 0',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            padding: 'clamp(40px, 6vh, 72px) clamp(32px, 5vw, 64px)',
+            padding: 'clamp(48px, 7vh, 88px) clamp(36px, 5vw, 72px)',
             boxSizing: 'border-box',
             overflowY: 'auto',
             position: 'relative',
-            // No background — transparent over the dark scene
+            maxWidth: '640px',
           }}
         >
-          {/* Aria wordmark top-left */}
+          {/* Stayscape wordmark — matches guest login nav */}
           <div style={{
             position: 'absolute',
-            top: '28px', left: 'clamp(32px, 5vw, 64px)',
-            fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
-            fontStyle: 'italic',
-            fontSize: '22px',
-            fontWeight: 500,
-            color: C.amber,
-            letterSpacing: '0.01em',
-            userSelect: 'none',
+            top: '28px',
+            left: 'clamp(36px, 5vw, 72px)',
           }}>
-            Aria
+            <span style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontStyle: 'italic',
+              fontSize: '18px',
+              fontWeight: 600,
+              color: C.text,
+              letterSpacing: '0.01em',
+            }}>
+              Stay<span style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontStyle: 'normal',
+                fontWeight: 600,
+                color: C.amber,
+              }}>scape</span>
+            </span>
           </div>
 
           {/* Step content */}
           <div
             key={`content-${step}-${animKey}`}
-            style={{ animation: 'ob-up 0.44s cubic-bezier(0.22,1,0.36,1) both' }}
+            style={{ animation: 'ob-up 0.42s cubic-bezier(0.22,1,0.36,1) both' }}
           >
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* GREETING                                       */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── GREETING ── */}
             {step === 'greeting' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <p style={{
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Welcome</p>
+                  <h1 style={{
                     ...lHead,
-                    fontSize: 'clamp(34px, 5vw, 48px)',
-                    fontWeight: 600,
-                    animation: 'ob-shake 1s ease-in-out 0.6s, ob-line 0.5s cubic-bezier(0.22,1,0.36,1) both',
+                    fontSize: 'clamp(2rem, 3.5vw, 3rem)',
+                    animation: 'ob-shake 0.9s ease-in-out 0.5s, ob-line 0.5s cubic-bezier(0.22,1,0.36,1) both',
                   }}>
                     Hello! I&apos;m so happy you&apos;re here.
-                  </p>
+                  </h1>
                   <p style={{ ...lSub, ...stagger(1, 0.12), maxWidth: '38ch' }}>
                     I&apos;m Aria — your personal travel curator. A couple of honest questions and I&apos;ll know your taste better than most apps ever will.
                   </p>
@@ -787,20 +772,21 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* NAME                                           */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── NAME ── */}
             {step === 'name' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                <p style={{
-                  ...lHead,
-                  fontSize: 'clamp(28px, 4.5vw, 40px)',
-                  fontWeight: 500,
-                  ...stagger(0),
-                }}>
-                  I&apos;m Aria — and you are?
-                </p>
-                <div style={stagger(1)}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>About you</p>
+                  <h2 style={{
+                    ...lHead,
+                    fontSize: 'clamp(1.8rem, 3vw, 2.6rem)',
+                    ...stagger(1),
+                  }}>
+                    I&apos;m Aria — and you are?
+                  </h2>
+                </div>
+                <div style={stagger(2)}>
+                  <label style={labelStyle}>Your name</label>
                   <input
                     className="ob-input"
                     type="text"
@@ -817,7 +803,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                     style={inputStyle}
                   />
                 </div>
-                <div style={stagger(2)}>
+                <div style={stagger(3)}>
                   <Btn
                     onClick={() => { setUserName(nameInput.trim()); advance('age_band'); }}
                     disabled={!nameInput.trim()}
@@ -828,21 +814,20 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* AGE BAND                                       */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── AGE BAND ── */}
             {step === 'age_band' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <p style={{
-                  ...lHead,
-                  fontSize: 'clamp(22px, 3.5vw, 32px)',
-                  fontWeight: 500,
-                  lineHeight: 1.3,
-                  ...stagger(0),
-                }}>
-                  Lovely to meet you{userName ? `, ${userName}` : ''}. And roughly which era do I have the pleasure of?
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', ...stagger(1) }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>About you</p>
+                  <h2 style={{
+                    ...lHead,
+                    fontSize: 'clamp(1.6rem, 2.8vw, 2.2rem)',
+                    ...stagger(1),
+                  }}>
+                    Lovely to meet you{userName ? `, ${userName}` : ''}. Which era do I have the pleasure of?
+                  </h2>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', ...stagger(2) }}>
                   {AGE_BANDS.map(({ value, label }) => {
                     const sel = ageBand === value;
                     return (
@@ -850,6 +835,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                         key={value}
                         type="button"
                         disabled={!!ageBand}
+                        className="ob-chip"
                         onClick={() => {
                           if (ageBand) return;
                           setAgeBand(value);
@@ -857,20 +843,20 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                           schedule('location', 1800);
                         }}
                         style={{
-                          height: '48px',
-                          borderRadius: '12px',
-                          border: `1.5px solid ${sel ? C.amber : C.border}`,
-                          background: sel ? C.amberAlpha : 'rgba(255,255,255,0.05)',
+                          height: '44px',
+                          borderRadius: '8px',
+                          border: `1px solid ${sel ? C.amber : C.borderSubtle}`,
+                          background: sel ? C.amberAlpha : C.surface,
                           color: sel ? C.amber : C.text,
-                          fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
-                          fontSize: '14px',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: '13px',
                           fontWeight: sel ? 700 : 400,
                           cursor: ageBand ? 'not-allowed' : 'pointer',
-                          transition: 'all 0.2s ease',
+                          transition: 'all 180ms ease',
                           outline: 'none',
-                          boxShadow: sel ? `0 0 0 1px ${C.amber}` : 'none',
-                          backdropFilter: 'blur(4px)',
-                          WebkitBackdropFilter: 'blur(4px)',
+                          boxShadow: sel
+                            ? `0 0 0 1px ${C.amber}, 0 4px 14px rgba(193,127,58,0.15)`
+                            : '0 1px 3px rgba(44,26,8,0.06)',
                         }}
                       >
                         {label}
@@ -891,20 +877,21 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* LOCATION                                       */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── LOCATION ── */}
             {step === 'location' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                <p style={{
-                  ...lHead,
-                  fontSize: 'clamp(28px, 4.5vw, 40px)',
-                  fontWeight: 500,
-                  ...stagger(0),
-                }}>
-                  And where do you call mi casa?
-                </p>
-                <div style={stagger(1)}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Home base</p>
+                  <h2 style={{
+                    ...lHead,
+                    fontSize: 'clamp(1.8rem, 3vw, 2.6rem)',
+                    ...stagger(1),
+                  }}>
+                    And where do you call mi casa?
+                  </h2>
+                </div>
+                <div style={stagger(2)}>
+                  <label style={labelStyle}>City, Country</label>
                   <input
                     className="ob-input"
                     type="text"
@@ -917,12 +904,12 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                         advance('location_bridge');
                       }
                     }}
-                    placeholder="City, Country"
+                    placeholder="e.g. Singapore, Singapore"
                     autoFocus
                     style={inputStyle}
                   />
                 </div>
-                <div style={stagger(2)}>
+                <div style={stagger(3)}>
                   <Btn
                     onClick={() => {
                       const { city } = parseLocation(locationInput);
@@ -937,29 +924,21 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* LOCATION BRIDGE                                */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── LOCATION BRIDGE ── */}
             {step === 'location_bridge' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <p style={{
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <h2 style={{
                     ...lHead,
-                    fontSize: 'clamp(26px, 4vw, 36px)',
-                    fontWeight: 500,
+                    fontSize: 'clamp(1.8rem, 3vw, 2.6rem)',
                     ...stagger(0),
                   }}>
                     {displayCity} — noted. Perfect. Thank you, {displayName}.
-                  </p>
+                  </h2>
                   <p style={{ ...lSub, ...stagger(1), maxWidth: '40ch' }}>
                     Now — the real questions. This is how I learn your taste, so every place and plan I suggest actually fits you.
                   </p>
-                  <p style={{
-                    ...lSub,
-                    fontStyle: 'italic',
-                    color: C.amber,
-                    ...stagger(2),
-                  }}>
+                  <p style={{ ...lSub, fontStyle: 'italic', color: C.amber, ...stagger(2) }}>
                     I&apos;m a little too excited for this.
                   </p>
                 </div>
@@ -969,29 +948,27 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q1 NOVELTY                                     */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q1 NOVELTY ── */}
             {step === 'q_novelty' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q1 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q1 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>
                     New place, new food, new everything — thrilling, or a bit much?
-                  </p>
+                  </h2>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   {NOVELTY_OPTIONS.map(({ value, label }, i) => (
                     <ImageTile
                       key={value}
-                      src={`/onboarding/novelty/${value}.jpg`}
+                      src={NOVELTY_FALLBACK[value] ?? '/onboarding/scenes/welcome.jpg'}
                       label={label}
                       selected={novelty === value}
                       delay={(i + 2) * 60}
                       onClick={() => {
                         if (novelty) return;
                         setNovelty(value);
-                        schedule('q_vibe', 580);
+                        schedule('q_vibe', 600);
                       }}
                     />
                   ))}
@@ -999,27 +976,25 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q2 VIBE                                        */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q2 VIBE ── */}
             {step === 'q_vibe' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q2 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q2 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>
                     If you could return to one kind of place again and again — where&apos;s pulling you?
-                  </p>
-                  <p style={{ fontSize: '13px', color: C.muted, margin: 0, ...stagger(2) }}>Pick up to 2</p>
+                  </h2>
+                  <p style={{ fontSize: '12px', color: C.muted, margin: 0, ...stagger(2), fontFamily: "'DM Sans', sans-serif" }}>Pick up to 2</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   {VIBE_OPTIONS.map(({ value, label }, i) => (
                     <ImageTile
                       key={value}
-                      src={`/onboarding/vibe/${value}.jpg`}
+                      src={VIBE_FALLBACK[value] ?? '/onboarding/scenes/welcome.jpg'}
                       label={label}
                       selected={vibe.includes(value)}
                       disabled={!vibe.includes(value) && vibe.length >= 2}
-                      delay={(i + 3) * 60}
+                      delay={(i + 3) * 55}
                       onClick={() => {
                         if (!vibe.includes(value) && vibe.length >= 2) return;
                         setVibe((prev) =>
@@ -1035,16 +1010,14 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q3 DISCOVERY                                   */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q3 DISCOVERY ── */}
             {step === 'q_discovery' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q3 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>Somewhere new — the famous must-sees, or the things only locals know?</p>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q3 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>Somewhere new — the famous must-sees, or the things only locals know?</h2>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {DISCOVERY_OPTIONS.map(({ value, label }, i) => (
                     <div key={value} style={stagger(i + 2)}>
                       <TextOption
@@ -1058,16 +1031,14 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q4 FOOD                                        */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q4 FOOD ── */}
             {step === 'q_food' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q4 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>And a great meal away is…?</p>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q4 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>And a great meal away is…?</h2>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {FOOD_OPTIONS.map(({ value, label }, i) => (
                     <div key={value} style={stagger(i + 2)}>
                       <TextOption
@@ -1081,16 +1052,14 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q5 PLANNING                                    */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q5 PLANNING ── */}
             {step === 'q_planning' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q5 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>Before a trip — spreadsheet, or wing it?</p>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q5 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>Before a trip — spreadsheet, or wing it?</h2>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {PLANNING_OPTIONS.map(({ value, label }, i) => (
                     <div key={value} style={stagger(i + 2)}>
                       <TextOption
@@ -1104,16 +1073,14 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q6 SPEND                                       */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q6 SPEND ── */}
             {step === 'q_spend' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q6 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>When you treat yourself away, it&apos;s usually…</p>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q6 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>When you treat yourself away, it&apos;s usually…</h2>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {SPEND_OPTIONS.map(({ value, label }, i) => (
                     <div key={value} style={stagger(i + 2)}>
                       <TextOption
@@ -1127,17 +1094,15 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Q7 DEALBREAKERS                                */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── Q7 DEALBREAKERS ── */}
             {step === 'q_dealbreakers' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <p style={{ ...qCounter, ...stagger(0) }}>Q7 · 7</p>
-                  <p style={{ ...qHead, ...stagger(1) }}>Be honest — what quietly ruins a trip for you?</p>
-                  <p style={{ fontSize: '13px', color: C.muted, margin: 0, ...stagger(2) }}>Choose up to 2</p>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>Q7 of 7</p>
+                  <h2 style={{ ...qHead, ...stagger(1) }}>Be honest — what quietly ruins a trip for you?</h2>
+                  <p style={{ fontSize: '12px', color: C.muted, margin: 0, ...stagger(2), fontFamily: "'DM Sans', sans-serif" }}>Choose up to 2</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {DEALBREAKER_OPTIONS.map(({ value, label }, i) => {
                     const sel = dealbreakers.includes(value);
                     const dis = !sel && dealbreakers.length >= 2;
@@ -1167,33 +1132,28 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* CLOSE                                          */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* ── CLOSE ── */}
             {step === 'close' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <p style={{
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <p style={{ ...eyebrow, ...stagger(0) }}>All done</p>
+                  <h2 style={{
                     ...lHead,
-                    fontSize: 'clamp(28px, 4.5vw, 42px)',
-                    fontWeight: 600,
-                    lineHeight: 1.18,
-                    ...stagger(0),
+                    fontSize: 'clamp(1.8rem, 3vw, 2.8rem)',
+                    ...stagger(1),
                   }}>
                     That&apos;s all I need{userName ? `, ${userName}` : ''}.
-                  </p>
-                  <p style={{ ...lSub, ...stagger(1) }}>
-                    I&apos;ve got a real feel for you now.
-                  </p>
-                  <p style={{ ...lSub, fontStyle: 'italic', color: C.amber, ...stagger(2) }}>
+                  </h2>
+                  <p style={{ ...lSub, ...stagger(2) }}>I&apos;ve got a real feel for you now.</p>
+                  <p style={{ ...lSub, fontStyle: 'italic', color: C.amber, ...stagger(3) }}>
                     Let&apos;s go find your kind of places.
                   </p>
                 </div>
                 {isSaving && !saveError && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {[0, 1, 2].map((i) => (
                       <div key={i} style={{
-                        width: '8px', height: '8px',
+                        width: '7px', height: '7px',
                         borderRadius: '50%',
                         background: C.amber,
                         animation: `ob-dot 1.2s ease-in-out ${i * 0.22}s infinite`,
@@ -1202,8 +1162,15 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                   </div>
                 )}
                 {saveError && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', ...stagger(3) }}>
-                    <p style={{ fontSize: '14px', color: '#e07a3a', margin: 0, lineHeight: 1.5 }}>
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(193,58,58,0.06)',
+                    border: '1px solid rgba(193,58,58,0.18)',
+                    display: 'flex', flexDirection: 'column', gap: '10px',
+                    ...stagger(4),
+                  }}>
+                    <p style={{ fontSize: '13px', color: '#C13A3A', margin: 0, lineHeight: 1.5 }}>
                       {saveError}
                     </p>
                     <Btn variant="ghost" fullWidth={false} onClick={() => { void handleSave(); }}>Try again</Btn>
@@ -1213,11 +1180,11 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
             )}
 
           </div>{/* /step content */}
-        </div>{/* /left panel */}
+        </div>{/* /left */}
 
-        {/* ════════════════════════════════════════════════════
-            RIGHT PANEL — editorial image card, CSS crossfade
-        ════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════
+            RIGHT — editorial image card, CSS crossfade
+        ══════════════════════════════════════════════════════ */}
         <RightImageCard src={panelSrc} />
 
       </div>{/* /layout */}
