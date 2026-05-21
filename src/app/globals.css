@@ -626,3 +626,11 @@ input:-webkit-autofill:active {
     transition: none !important;
   }
 }
+
+/* Sidebar-offset wrapper — padding driven by --sidebar-w CSS var set by GuestNavBar */
+@media (min-width: 768px) {
+  .dashboard-content {
+    padding-left: var(--sidebar-w, 52px);
+    transition: padding-left 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
