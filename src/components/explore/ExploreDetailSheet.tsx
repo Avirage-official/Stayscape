@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react';
 import type { ExploreItem } from './ExploreCard';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
+import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
+import type { RegionOption } from '@/app/dashboard/explore/page';
 
 interface ExploreDetailSheetProps {
   item: ExploreItem | null;
@@ -29,13 +31,17 @@ function formatPrice(
   return `${sym}${min ?? max}`;
 }
 
+/** Type guard — RegionOption has no image_url */
+function isRegionOption(item: ExploreItem): item is RegionOption {
+  return !('image_url' in item);
+}
+
 export default function ExploreDetailSheet({
   item,
   onClose,
 }: ExploreDetailSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  // Close on backdrop click
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -44,7 +50,6 @@ export default function ExploreDetailSheet({
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  // Lock body scroll when open
   useEffect(() => {
     if (item) {
       document.body.style.overflow = 'hidden';
@@ -54,9 +59,21 @@ export default function ExploreDetailSheet({
     return () => { document.body.style.overflow = ''; };
   }, [item]);
 
-  const isEvent = item && 'start_date' in item;
-  const place = item && !isEvent ? (item as DiscoveryPlaceCard) : null;
-  const event = item && isEvent ? (item as DiscoveryEventCard) : null;
+  const isRegion = item ? isRegionOption(item) : false;
+  const isEvent = item && !isRegion && 'start_date' in item;
+  const isProperty = item && !isRegion && !isEvent && 'star_rating' in item;
+
+  const place = item && !isRegion && !isEvent && !isProperty ? (item as DiscoveryPlaceCard) : null;
+  const event = isEvent ? (item as DiscoveryEventCard) : null;
+  const property = isProperty ? (item as ExplorePropertyCard) : null;
+  const region = isRegion ? (item as RegionOption) : null;
+
+  const imageUrl = item && !isRegion ? (item as DiscoveryPlaceCard).image_url : null;
+  const itemName = item ? item.name : '';
+  const itemCategory =
+    item && !isRegion && 'category' in item
+      ? (item as DiscoveryPlaceCard).category
+      : null;
 
   return (
     <>
@@ -74,7 +91,7 @@ export default function ExploreDetailSheet({
         ref={sheetRef}
         role="dialog"
         aria-modal="true"
-        aria-label={item?.name ?? 'Detail'}
+        aria-label={itemName || 'Detail'}
         className={`fixed bottom-0 left-0 right-0 z-50 bg-[#1a1916] rounded-t-3xl max-h-[85dvh] overflow-y-auto transition-transform duration-300 ease-out ${
           item ? 'translate-y-0' : 'translate-y-full'
         }`}
@@ -86,114 +103,158 @@ export default function ExploreDetailSheet({
 
         {item && (
           <div className="px-6 pb-10 pt-2">
-            {/* Hero image */}
-            {item.image_url && (
-              <div className="w-full h-48 rounded-2xl overflow-hidden mb-5">
-                <img
-                  src={item.image_url}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+
+            {/* Region — simple display, no image */}
+            {region && (
+              <div className="py-4 text-center">
+                <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase mb-2">
+                  Destination
+                </p>
+                <h3 className="font-serif text-white text-3xl">{region.name}</h3>
+                {region.country_code && (
+                  <p className="text-white/50 text-sm mt-1">{region.country_code}</p>
+                )}
+                <button
+                  onClick={onClose}
+                  className="mt-6 px-5 py-3 border border-white/20 text-white/60 text-sm rounded-xl"
+                >
+                  Close
+                </button>
               </div>
             )}
 
-            {/* Name + category */}
-            <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase mb-1">
-              {item.category}
-            </p>
-            <h3 className="font-serif text-white text-2xl leading-tight mb-2">
-              {item.name}
-            </h3>
+            {/* Place / Event / Property */}
+            {!region && (
+              <>
+                {imageUrl && (
+                  <div className="w-full h-48 rounded-2xl overflow-hidden mb-5">
+                    <img
+                      src={imageUrl}
+                      alt={itemName}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
 
-            {/* Event-specific meta */}
-            {event && (
-              <div className="flex flex-wrap gap-3 mb-4">
-                {event.start_date && (
-                  <span className="text-white/60 text-sm">
-                    📅 {formatDate(event.start_date)}
-                    {event.start_time ? ` · ${event.start_time}` : ''}
-                  </span>
+                {itemCategory && (
+                  <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase mb-1">
+                    {itemCategory}
+                  </p>
                 )}
-                {event.venue_name && (
-                  <span className="text-white/60 text-sm">📍 {event.venue_name}</span>
-                )}
-                {(event.price_min != null || event.price_max != null) && (
-                  <span className="text-white/60 text-sm">
-                    {formatPrice(event.price_min, event.price_max, event.currency)}
-                  </span>
-                )}
-              </div>
-            )}
+                <h3 className="font-serif text-white text-2xl leading-tight mb-2">
+                  {itemName}
+                </h3>
 
-            {/* Place-specific meta */}
-            {place && (
-              <div className="flex flex-wrap gap-3 mb-4">
-                {place.rating && (
-                  <span className="text-white/60 text-sm">★ {place.rating.toFixed(1)}</span>
+                {event && (
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {event.start_date && (
+                      <span className="text-white/60 text-sm">
+                        📅 {formatDate(event.start_date)}
+                        {event.start_time ? ` · ${event.start_time}` : ''}
+                      </span>
+                    )}
+                    {event.venue_name && (
+                      <span className="text-white/60 text-sm">📍 {event.venue_name}</span>
+                    )}
+                    {(event.price_min != null || event.price_max != null) && (
+                      <span className="text-white/60 text-sm">
+                        {formatPrice(event.price_min, event.price_max, event.currency)}
+                      </span>
+                    )}
+                  </div>
                 )}
-                {place.price_level && (
-                  <span className="text-white/60 text-sm">
-                    {'$'.repeat(place.price_level)}
-                  </span>
+
+                {property && (
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {property.star_rating && (
+                      <span className="text-white/60 text-sm">
+                        {'★'.repeat(property.star_rating)}
+                      </span>
+                    )}
+                    {property.city && (
+                      <span className="text-white/60 text-sm">📍 {property.city}</span>
+                    )}
+                    {property.price_from != null && (
+                      <span className="text-white/60 text-sm">
+                        From {property.currency === 'SGD' ? 'S$' : (property.currency ?? '$')}
+                        {property.price_from}
+                      </span>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
 
-            {/* Description */}
-            {(item as DiscoveryPlaceCard).editorial_summary ? (
-              <p className="text-white/70 text-sm leading-relaxed mb-5">
-                {(item as DiscoveryPlaceCard).editorial_summary}
-              </p>
-            ) : (
-              <p className="text-white/70 text-sm leading-relaxed mb-5">
-                {(item as DiscoveryPlaceCard).description}
-              </p>
-            )}
+                {place && (
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {place.rating && (
+                      <span className="text-white/60 text-sm">★ {place.rating.toFixed(1)}</span>
+                    )}
+                    {place.price_level && (
+                      <span className="text-white/60 text-sm">{'$'.repeat(place.price_level)}</span>
+                    )}
+                  </div>
+                )}
 
-            {/* Vibes */}
-            {'vibes' in item && (item as DiscoveryPlaceCard).vibes?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {(item as DiscoveryPlaceCard).vibes.map((v) => (
-                  <span
-                    key={v}
-                    className="text-xs text-white/50 border border-white/20 rounded-full px-3 py-1"
+                <p className="text-white/70 text-sm leading-relaxed mb-5">
+                  {(item as DiscoveryPlaceCard).editorial_summary ||
+                    (item as DiscoveryPlaceCard).description ||
+                    (item as ExplorePropertyCard).editorial_summary ||
+                    ''}
+                </p>
+
+                {'vibes' in item && (item as DiscoveryPlaceCard).vibes?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {(item as DiscoveryPlaceCard).vibes.map((v) => (
+                      <span
+                        key={v}
+                        className="text-xs text-white/50 border border-white/20 rounded-full px-3 py-1"
+                      >
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  {event?.ticket_url && (
+                    <a
+                      href={event.ticket_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-white text-black text-sm font-medium py-3 rounded-xl text-center"
+                    >
+                      Get tickets
+                    </a>
+                  )}
+                  {property?.booking_url && (
+                    <a
+                      href={property.booking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-white text-black text-sm font-medium py-3 rounded-xl text-center"
+                    >
+                      Book stay
+                    </a>
+                  )}
+                  {place?.booking_url && (
+                    <a
+                      href={place.booking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-white text-black text-sm font-medium py-3 rounded-xl text-center"
+                    >
+                      Book
+                    </a>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="px-5 py-3 border border-white/20 text-white/60 text-sm rounded-xl"
                   >
-                    {v}
-                  </span>
-                ))}
-              </div>
+                    Close
+                  </button>
+                </div>
+              </>
             )}
-
-            {/* CTA buttons */}
-            <div className="flex gap-3">
-              {event?.ticket_url && (
-                <a
-                  href={event.ticket_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-white text-black text-sm font-medium py-3 rounded-xl text-center"
-                >
-                  Get tickets
-                </a>
-              )}
-              {place?.booking_url && (
-                <a
-                  href={place.booking_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-white text-black text-sm font-medium py-3 rounded-xl text-center"
-                >
-                  Book
-                </a>
-              )}
-              <button
-                onClick={onClose}
-                className="px-5 py-3 border border-white/20 text-white/60 text-sm rounded-xl"
-              >
-                Close
-              </button>
-            </div>
           </div>
         )}
       </div>
