@@ -119,24 +119,26 @@ const PANEL_IMAGE: Partial<Record<Step, string>> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Palette — warm/light left panel
+// Palette — content on dark background
 // ─────────────────────────────────────────────────────────────────────────────
 
 const C = {
-  // Left panel — warm cream
-  panelBg:    '#FAF7F2',
-  text:       '#2C1A08',
-  soft:       'rgba(44,26,8,0.58)',
-  muted:      'rgba(44,26,8,0.38)',
-  amber:      '#C17F3A',
-  amberHover: '#D6A252',
-  amberAlpha: 'rgba(193,127,58,0.12)',
-  amberBorder:'rgba(193,127,58,0.30)',
-  border:     'rgba(193,127,58,0.22)',
-  inputBg:    '#FFFFFF',
-  inputBorder:'rgba(193,127,58,0.28)',
+  // Left content — on dark bg
+  text:           '#FAF8F5',
+  soft:           'rgba(250,248,245,0.70)',
+  muted:          'rgba(250,248,245,0.44)',
+  amber:          '#C17F3A',
+  amberHover:     '#D6A252',
+  amberAlpha:     'rgba(193,127,58,0.18)',
+  amberBorder:    'rgba(193,127,58,0.40)',
+  border:         'rgba(250,248,245,0.14)',
+  // Input — slightly raised surface on dark bg
+  inputBg:        'rgba(255,255,255,0.07)',
+  inputBorder:    'rgba(250,248,245,0.18)',
+  // Age band chip hover
+  chipHover:      'rgba(250,248,245,0.06)',
   // Right card overlay text
-  onImage:    '#FAF8F5',
+  onImage:        '#FAF8F5',
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,12 +196,17 @@ const GLOBAL_CSS = `
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Input focus glow */
+  /* Input styles — glass-like on dark background */
+  .ob-input {
+    background: rgba(255,255,255,0.07) !important;
+    color: #FAF8F5 !important;
+  }
   .ob-input:focus {
     border-color: #C17F3A !important;
-    box-shadow: 0 0 0 3px rgba(193,127,58,0.14) !important;
+    box-shadow: 0 0 0 3px rgba(193,127,58,0.18) !important;
+    background: rgba(255,255,255,0.10) !important;
   }
-  .ob-input::placeholder { color: rgba(44,26,8,0.32); }
+  .ob-input::placeholder { color: rgba(250,248,245,0.32); }
 
   /* Right panel card on mobile — hide on small screens */
   @media (max-width: 767px) {
@@ -220,15 +227,13 @@ const GLOBAL_CSS = `
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RightImageCard({ src }: { src: string }) {
-  // We keep the previous src alive while the new one fades in
-  const [current,  setCurrent]  = useState(src);
-  const [next,     setNext]     = useState<string | null>(null);
-  const [fading,   setFading]   = useState(false);
+  const [current,   setCurrent]   = useState(src);
+  const [next,      setNext]      = useState<string | null>(null);
+  const [fading,    setFading]    = useState(false);
   const [nextReady, setNextReady] = useState(false);
 
   useEffect(() => {
     if (src === current) return;
-    // Preload the new image, then crossfade once loaded
     setNext(src);
     setNextReady(false);
   }, [src, current]);
@@ -236,12 +241,8 @@ function RightImageCard({ src }: { src: string }) {
   const handleNextLoad = useCallback(() => {
     setNextReady(true);
     setFading(true);
-    // After transition completes, swap layers
     const t = setTimeout(() => {
-      setCurrent((prev) => {
-        void prev; // silence lint
-        return src;
-      });
+      setCurrent((prev) => { void prev; return src; });
       setNext(null);
       setFading(false);
       setNextReady(false);
@@ -259,12 +260,11 @@ function RightImageCard({ src }: { src: string }) {
         overflow: 'hidden',
         boxShadow: '0 24px 64px rgba(20,10,2,0.38), 0 4px 16px rgba(20,10,2,0.18)',
         background: '#1A0E04',
-        // Card sits inset from the viewport edges
         margin: '20px 20px 20px 0',
         minHeight: 0,
       }}
     >
-      {/* Current image — underneath, always visible */}
+      {/* Current image */}
       <div style={{
         position: 'absolute', inset: 0,
         animation: 'ob-zoom 22s ease-in-out alternate infinite',
@@ -273,10 +273,7 @@ function RightImageCard({ src }: { src: string }) {
         <img
           src={current}
           alt=""
-          style={{
-            width: '100%', height: '100%',
-            objectFit: 'cover', display: 'block',
-          }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       </div>
 
@@ -293,15 +290,12 @@ function RightImageCard({ src }: { src: string }) {
             src={next}
             alt=""
             onLoad={handleNextLoad}
-            style={{
-              width: '100%', height: '100%',
-              objectFit: 'cover', display: 'block',
-            }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </div>
       )}
 
-      {/* Darker overlay — richer than before */}
+      {/* Darker overlay */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(to bottom, rgba(14,7,2,0.22) 0%, rgba(14,7,2,0.52) 55%, rgba(14,7,2,0.82) 100%)',
@@ -330,7 +324,7 @@ function TopProgress({ step }: { step: Step }) {
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0,
       height: '2px',
-      background: 'rgba(44,26,8,0.08)',
+      background: 'rgba(250,248,245,0.08)',
       zIndex: 200,
     }}>
       <div style={{
@@ -346,7 +340,7 @@ function TopProgress({ step }: { step: Step }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Btn — warm panel button
+// Btn — button on dark/transparent background
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Btn({
@@ -383,9 +377,9 @@ function Btn({
         : '0 2px 10px rgba(193,127,58,0.22)',
     },
     ghost: {
-      background: hovered && !disabled ? 'rgba(193,127,58,0.07)' : 'transparent',
-      color: hovered && !disabled ? C.amber : C.soft,
-      border: `1.5px solid ${C.amberBorder}`,
+      background: hovered && !disabled ? 'rgba(250,248,245,0.08)' : 'transparent',
+      color: hovered && !disabled ? C.text : C.soft,
+      border: `1.5px solid ${C.border}`,
     },
   };
   return (
@@ -403,7 +397,7 @@ function Btn({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TextOption — warm panel pill option
+// TextOption — pill option on dark background
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TextOption({
@@ -429,8 +423,8 @@ function TextOption({
         background: selected
           ? C.amberAlpha
           : hovered
-            ? 'rgba(193,127,58,0.05)'
-            : C.inputBg,
+            ? 'rgba(250,248,245,0.06)'
+            : 'rgba(255,255,255,0.05)',
         color: selected ? C.amber : disabled ? C.muted : C.text,
         fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
         fontSize: '14px',
@@ -444,6 +438,8 @@ function TextOption({
         width: '100%',
         boxSizing: 'border-box',
         boxShadow: selected ? `0 0 0 1px ${C.amber}` : 'none',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
       }}
     >
       {label}
@@ -476,14 +472,14 @@ function ImageTile({
         outline: selected ? `2.5px solid ${C.amber}` : '2.5px solid transparent',
         outlineOffset: selected ? '2px' : '0px',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        background: imgError ? 'linear-gradient(135deg, #E4CDA4 0%, #B88A4E 100%)' : '#1A0E04',
+        background: imgError ? 'linear-gradient(135deg, #2A1A08 0%, #4A2E10 100%)' : '#1A0E04',
         transition: 'outline 0.2s, box-shadow 0.2s, transform 0.2s',
         padding: 0,
         display: 'block',
         width: '100%',
         boxShadow: selected
           ? `0 6px 24px rgba(193,127,58,0.38)`
-          : '0 4px 16px rgba(20,10,2,0.14)',
+          : '0 4px 16px rgba(20,10,2,0.28)',
         transform: selected ? 'scale(1.02)' : 'scale(1)',
         opacity: disabled && !selected ? 0.38 : 1,
         animation: `ob-tile 0.42s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
@@ -520,7 +516,7 @@ function ImageTile({
         <div style={{
           width: '100%', height: '100%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(135deg, #E4CDA4 0%, #B88A4E 100%)',
+          background: 'linear-gradient(135deg, #2A1A08 0%, #4A2E10 100%)',
         }}>
           <span style={{
             fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
@@ -543,10 +539,9 @@ function ImageTile({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared left-panel text styles
+// Shared left-panel text styles — light on dark
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Display headline — Cormorant, warm dark
 const lHead: CSSProperties = {
   fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
   fontStyle: 'italic',
@@ -555,7 +550,6 @@ const lHead: CSSProperties = {
   lineHeight: 1.2,
 };
 
-// Sub-copy — DM Sans, muted
 const lSub: CSSProperties = {
   fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
   fontSize: '15px',
@@ -564,7 +558,6 @@ const lSub: CSSProperties = {
   lineHeight: 1.68,
 };
 
-// Question counter label
 const qCounter: CSSProperties = {
   fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
   fontSize: '11px',
@@ -575,7 +568,6 @@ const qCounter: CSSProperties = {
   margin: 0,
 };
 
-// Question headline
 const qHead: CSSProperties = {
   fontFamily: 'var(--font-cormorant, "Cormorant Garamond", Georgia, serif)',
   fontStyle: 'italic',
@@ -586,10 +578,9 @@ const qHead: CSSProperties = {
   margin: 0,
 };
 
-// Warm input style for left panel
 const inputStyle: CSSProperties = {
-  background: C.inputBg,
-  border: `1.5px solid ${C.inputBorder}`,
+  background: 'rgba(255,255,255,0.07)',
+  border: `1.5px solid rgba(250,248,245,0.18)`,
   borderRadius: '14px',
   padding: '15px 18px',
   fontSize: '16px',
@@ -598,10 +589,11 @@ const inputStyle: CSSProperties = {
   outline: 'none',
   width: '100%',
   boxSizing: 'border-box' as const,
-  transition: 'border-color 0.22s, box-shadow 0.22s',
+  transition: 'border-color 0.22s, box-shadow 0.22s, background 0.22s',
+  backdropFilter: 'blur(4px)',
+  WebkitBackdropFilter: 'blur(4px)',
 };
 
-// Stagger animation helper
 const stagger = (i: number, base = 0.08): CSSProperties => ({
   animation: `ob-line 0.45s cubic-bezier(0.22,1,0.36,1) ${i * base}s both`,
 });
@@ -698,12 +690,11 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
       position: 'relative',
       fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
       overflowX: 'hidden',
-      // Full-page background
       background: '#100902',
     }}>
       <style>{GLOBAL_CSS}</style>
 
-      {/* ── Persistent background — Onboarding-Background.jpg with dark overlay */}
+      {/* ── Persistent background */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: 0,
         backgroundImage: 'url(/onboarding/scenes/Onboarding-Background.jpg)',
@@ -735,15 +726,12 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
       >
 
         {/* ════════════════════════════════════════════════════
-            LEFT PANEL — warm/light, scrollable content
+            LEFT — transparent, content directly on dark bg
         ════════════════════════════════════════════════════ */}
         <div
           className="ob-left-panel"
           style={{
-            flex: '0 0 58%',
-            maxWidth: '580px',
-            background: C.panelBg,
-            borderRadius: '0 0 0 0',
+            flex: '1 1 0',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -751,6 +739,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
             boxSizing: 'border-box',
             overflowY: 'auto',
             position: 'relative',
+            // No background — transparent over the dark scene
           }}
         >
           {/* Aria wordmark top-left */}
@@ -768,7 +757,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
             Aria
           </div>
 
-          {/* Step content — animates in on each step change */}
+          {/* Step content */}
           <div
             key={`content-${step}-${animKey}`}
             style={{ animation: 'ob-up 0.44s cubic-bezier(0.22,1,0.36,1) both' }}
@@ -871,7 +860,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                           height: '48px',
                           borderRadius: '12px',
                           border: `1.5px solid ${sel ? C.amber : C.border}`,
-                          background: sel ? C.amberAlpha : C.inputBg,
+                          background: sel ? C.amberAlpha : 'rgba(255,255,255,0.05)',
                           color: sel ? C.amber : C.text,
                           fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)',
                           fontSize: '14px',
@@ -880,6 +869,8 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                           transition: 'all 0.2s ease',
                           outline: 'none',
                           boxShadow: sel ? `0 0 0 1px ${C.amber}` : 'none',
+                          backdropFilter: 'blur(4px)',
+                          WebkitBackdropFilter: 'blur(4px)',
                         }}
                       >
                         {label}
@@ -1212,7 +1203,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                 )}
                 {saveError && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', ...stagger(3) }}>
-                    <p style={{ fontSize: '14px', color: '#b05a1e', margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: '14px', color: '#e07a3a', margin: 0, lineHeight: 1.5 }}>
                       {saveError}
                     </p>
                     <Btn variant="ghost" fullWidth={false} onClick={() => { void handleSave(); }}>Try again</Btn>
