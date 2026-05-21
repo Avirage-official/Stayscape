@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useAuth } from '@/lib/context/auth-context'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
 
-// ─── Step definitions ────────────────────────────────────────────────────────
+// ─── Step definitions ───────────────────────────────────────────────────────
 
 type StepId = 'welcome' | 'name' | 'origin' | 'style' | 'city' | 'auth'
 
@@ -30,7 +30,7 @@ const STEPS: Step[] = [
   {
     id: 'origin',
     scene: '/onboarding/scenes/home-origin.jpg',
-    sceneCaption: 'Where you're from',
+    sceneCaption: 'Where you\u2019re from',
   },
   {
     id: 'style',
@@ -72,7 +72,6 @@ export default function GuestsPage() {
   const { login } = useAuth()
 
   const [stepIdx, setStepIdx] = useState(0)
-  const [prevStepIdx, setPrevStepIdx] = useState<number | null>(null)
   const [transitioning, setTransitioning] = useState(false)
   const [contentKey, setContentKey] = useState(0)
   const [mounted, setMounted] = useState(false)
@@ -100,18 +99,15 @@ export default function GuestsPage() {
   }, [])
 
   const currentStep = STEPS[stepIdx]
-  const prevStep = prevStepIdx !== null ? STEPS[prevStepIdx] : null
-  const totalOnboarding = STEPS.length - 1 // exclude auth step from dot count
+  const totalOnboarding = STEPS.length - 1
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function goTo(idx: number) {
     if (idx === stepIdx || transitioning) return
-    setPrevStepIdx(stepIdx)
     setTransitioning(true)
     setTimeout(() => {
       setStepIdx(idx)
       setContentKey(k => k + 1)
-      setPrevStepIdx(null)
       setTransitioning(false)
     }, 480)
   }
@@ -158,9 +154,8 @@ export default function GuestsPage() {
         @keyframes ob-fade-in  { from { opacity:0 } to { opacity:1 } }
         @keyframes ob-slide-up { from { opacity:0; transform:translateY(22px) } to { opacity:1; transform:translateY(0) } }
         @keyframes ob-slide-down { from { opacity:0; transform:translateY(-14px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes ob-scale-in { from { opacity:0; transform:scale(0.97) } to { opacity:1; transform:scale(1) } }
 
-        .ob-content-enter { animation: ob-slide-up 0.55s ${EASE_OUT} both; }
+        .ob-content-enter   { animation: ob-slide-up 0.55s ${EASE_OUT} both; }
         .ob-content-enter-1 { animation: ob-slide-up 0.55s 0.05s ${EASE_OUT} both; }
         .ob-content-enter-2 { animation: ob-slide-up 0.55s 0.10s ${EASE_OUT} both; }
         .ob-content-enter-3 { animation: ob-slide-up 0.55s 0.16s ${EASE_OUT} both; }
@@ -272,7 +267,7 @@ export default function GuestsPage() {
           minHeight: '100dvh',
           overflow: 'hidden',
           opacity: mounted ? 1 : 0,
-          transition: `opacity 500ms ease`,
+          transition: 'opacity 500ms ease',
         }}
       >
         {/* Fixed background image */}
@@ -319,7 +314,6 @@ export default function GuestsPage() {
           >
             {/* Nav row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'clamp(36px,5vh,60px)' }}>
-              {/* Logo */}
               <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{
                   fontFamily: "'Cormorant Garamond',Georgia,serif",
@@ -330,7 +324,7 @@ export default function GuestsPage() {
                 </span>
               </Link>
 
-              {/* Step dots — only for onboarding steps (not auth) */}
+              {/* Step dots */}
               {currentStep.id !== 'auth' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                   {STEPS.slice(0, totalOnboarding).map((s, i) => (
@@ -434,7 +428,7 @@ export default function GuestsPage() {
                 boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(245,230,204,0.06)',
               }}
             >
-              {/* Scene layers — current + previous crossfade */}
+              {/* Scene layers — crossfade */}
               {STEPS.map((s, i) => (
                 <div
                   key={s.id}
@@ -459,7 +453,7 @@ export default function GuestsPage() {
                 </div>
               ))}
 
-              {/* Darker overlay on scene image */}
+              {/* Darker overlay */}
               <div
                 aria-hidden="true"
                 style={{
@@ -489,10 +483,7 @@ export default function GuestsPage() {
                   key={`caption-${stepIdx}`}
                   style={{ animation: `ob-slide-up 0.6s 0.2s ${EASE_OUT} both` }}
                 >
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    marginBottom: '6px',
-                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <div style={{ width: '20px', height: '1px', background: 'rgba(201,168,117,0.7)' }} />
                     <span style={{
                       fontFamily: "'Cormorant Garamond',Georgia,serif",
@@ -512,7 +503,7 @@ export default function GuestsPage() {
                   </p>
                 </div>
 
-                {/* Step indicator dots on card */}
+                {/* Step dots on card */}
                 <div style={{ display: 'flex', gap: '5px' }}>
                   {STEPS.map((_, i) => (
                     <div
@@ -535,7 +526,7 @@ export default function GuestsPage() {
   )
 }
 
-// ─── Step sub-components ─────────────────────────────────────────────────────
+// ─── Step sub-components ──────────────────────────────────────────────────────
 
 function StepKicker({ children }: { children: React.ReactNode }) {
   return (
@@ -592,7 +583,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
   )
 }
 
-// ── Welcome ──────────────────────────────────────────────────────────────────
+// ── Welcome ───────────────────────────────────────────────────────────────────
 
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
@@ -600,11 +591,11 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       <StepKicker>Welcome to Stayscape</StepKicker>
       <StepHeading>Every great stay<br />starts with you.</StepHeading>
       <StepSub>
-        A few questions, and we'll have a profile that helps us match you to the right places — and make every stay feel like it was made for you.
+        A few questions, and we&apos;ll have a profile that helps us match you to the right places — and make every stay feel like it was made for you.
       </StepSub>
       <div className="ob-content-enter-3">
         <NextBtn onClick={onNext}>
-          Let's begin
+          Let&apos;s begin
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </NextBtn>
       </div>
@@ -630,7 +621,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   )
 }
 
-// ── Name ─────────────────────────────────────────────────────────────────────
+// ── Name ──────────────────────────────────────────────────────────────────────
 
 function NameStep({
   firstName, setFirstName, lastName, setLastName, onNext, onBack,
@@ -686,7 +677,7 @@ function NameStep({
   )
 }
 
-// ── Origin ───────────────────────────────────────────────────────────────────
+// ── Origin ────────────────────────────────────────────────────────────────────
 
 function OriginStep({
   origin, setOrigin, onNext, onBack,
@@ -727,7 +718,7 @@ function OriginStep({
   )
 }
 
-// ── Travel Style ─────────────────────────────────────────────────────────────
+// ── Travel Style ──────────────────────────────────────────────────────────────
 
 function StyleStep({
   travelStyle, setTravelStyle, onNext, onBack,
@@ -776,7 +767,7 @@ function StyleStep({
   )
 }
 
-// ── City ─────────────────────────────────────────────────────────────────────
+// ── City ──────────────────────────────────────────────────────────────────────
 
 function CityStep({
   city, setCity, cityQuery, setCityQuery,
@@ -795,7 +786,7 @@ function CityStep({
         {firstName ? `${firstName}, where` : 'Where'}<br />are you headed?
       </StepHeading>
       <StepSub>
-        Tell us the city for your next trip — we'll build your stay around it.
+        Tell us the city for your next trip — we&apos;ll build your stay around it.
       </StepSub>
 
       <div className="ob-content-enter-3" style={{ marginBottom: '16px' }}>
@@ -842,7 +833,7 @@ function CityStep({
   )
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
 function AuthStep({
   mode, switchMode,
