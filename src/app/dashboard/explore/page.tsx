@@ -8,8 +8,17 @@ import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton
 import ExploreSwiper from '@/components/explore/ExploreSwiper';
 import type { ExploreSection } from '@/components/explore/ExploreCard';
 
+export interface RegionOption {
+  id: string;
+  name: string;
+  slug: string;
+  country_code: string | null;
+}
+
 interface ExploreResponse {
   firstName: string | null;
+  activeRegionId: string | null;
+  regions: RegionOption[];
   sections: ExploreSection[];
 }
 
@@ -30,6 +39,7 @@ export default function ExplorePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPersonalising, setIsPersonalising] = useState(false);
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
 
   // Redirect unauthenticated visitors
   useEffect(() => {
@@ -38,33 +48,45 @@ export default function ExplorePage() {
     }
   }, [authLoading, user, router]);
 
-  const fetchExplore = useCallback(async () => {
-    const token = await getBearerToken();
-    if (!token) return;
-    try {
-      const res = await fetch('/api/explore', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to load explore data');
-      const json = (await res.json()) as ExploreResponse;
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchExplore = useCallback(
+    async (regionId?: string | null) => {
+      const token = await getBearerToken();
+      if (!token) return;
+      try {
+        const url = regionId
+          ? `/api/explore?region_id=${regionId}`
+          : '/api/explore';
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to load explore data');
+        const json = (await res.json()) as ExploreResponse;
+        setData(json);
+        // Sync selected region with what the API resolved
+        if (!regionId) setSelectedRegionId(json.activeRegionId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!user) return;
     void fetchExplore();
   }, [user, fetchExplore]);
 
-  // "Personalise for me" — refetches the same endpoint;
-  // Phase 2 will add ?personalised=true with vibe-mapping logic
+  function handleRegionChange(regionId: string) {
+    setSelectedRegionId(regionId);
+    setIsLoading(true);
+    void fetchExplore(regionId);
+  }
+
   async function handlePersonalise() {
     setIsPersonalising(true);
-    await fetchExplore();
+    await fetchExplore(selectedRegionId);
     setIsPersonalising(false);
   }
 
@@ -81,7 +103,11 @@ export default function ExplorePage() {
         <div className="text-center">
           <p className="mb-3">{error}</p>
           <button
-            onClick={() => { setError(null); setIsLoading(true); void fetchExplore(); }}
+            onClick={() => {
+              setError(null);
+              setIsLoading(true);
+              void fetchExplore(selectedRegionId);
+            }}
             className="text-white/60 border border-white/20 px-4 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors"
           >
             Try again
@@ -105,7 +131,10 @@ export default function ExplorePage() {
   return (
     <ExploreSwiper
       sections={data.sections}
+      regions={data.regions}
+      selectedRegionId={selectedRegionId}
       firstName={data.firstName}
+      onRegionChange={handleRegionChange}
       onPersonalise={handlePersonalise}
       isPersonalising={isPersonalising}
     />
