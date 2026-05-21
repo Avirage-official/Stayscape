@@ -4,6 +4,8 @@ import { useRef, useState, useCallback } from 'react';
 import ExploreCard, { type ExploreSection, type ExploreItem } from './ExploreCard';
 import ExploreDetailSheet from './ExploreDetailSheet';
 import ExploreWebPanel from './ExploreWebPanel';
+import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
+import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 
 interface ExploreSwiperProps {
@@ -14,6 +16,44 @@ interface ExploreSwiperProps {
   onRegionChange: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
+}
+
+const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
+
+function sectionShortLabel(id: string) {
+  if (id === 'made_for_you') return 'For You';
+  if (id === 'in_your_world') return 'World';
+  if (id === 'happening_now') return 'Now';
+  if (id === 'arias_picks') return "Aria's";
+  return id;
+}
+
+function listLabel(ct: ExploreSection['content_type']) {
+  if (ct === 'events') return 'Coming up';
+  if (ct === 'regions') return 'Destinations';
+  if (ct === 'properties') return 'Stays';
+  return 'Top picks';
+}
+
+function mobileItemMeta(item: ExploreItem, ct: ExploreSection['content_type']): string {
+  if (ct === 'events') {
+    const e = item as DiscoveryEventCard;
+    const date = e.start_date
+      ? new Date(e.start_date).toLocaleDateString('en-SG', { month: 'short', day: 'numeric' })
+      : null;
+    return [date, e.venue_name].filter(Boolean).join(' · ');
+  }
+  if (ct === 'regions') return (item as RegionOption).country_code ?? '';
+  if (ct === 'properties') {
+    const p = item as ExplorePropertyCard;
+    const stars = p.star_rating ? '★'.repeat(p.star_rating) : null;
+    const price = p.price_from != null ? `S$${p.price_from}` : null;
+    return [stars, price].filter(Boolean).join(' · ');
+  }
+  const p = item as DiscoveryPlaceCard;
+  const rating = p.rating ? `★ ${p.rating.toFixed(1)}` : null;
+  const vibe = p.vibes?.[0] ?? null;
+  return [rating, vibe].filter(Boolean).join(' · ');
 }
 
 export default function ExploreSwiper({
@@ -27,121 +67,291 @@ export default function ExploreSwiper({
 }: ExploreSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<ExploreItem | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const startXRef = useRef<number | null>(null);
-  const isDraggingRef = useRef(false);
+  const pointerStartX = useRef<number | null>(null);
+  const isDragging = useRef(false);
 
   const goTo = useCallback(
     (index: number) => {
-      const clamped = Math.max(0, Math.min(sections.length - 1, index));
-      setActiveIndex(clamped);
-      trackRef.current?.scrollTo({
-        left: clamped * (trackRef.current.offsetWidth),
-        behavior: 'smooth',
-      });
+      setActiveIndex(Math.max(0, Math.min(sections.length - 1, index)));
     },
     [sections.length],
   );
 
   function handlePointerDown(e: React.PointerEvent) {
-    startXRef.current = e.clientX;
-    isDraggingRef.current = false;
+    pointerStartX.current = e.clientX;
+    isDragging.current = false;
   }
   function handlePointerMove(e: React.PointerEvent) {
-    if (startXRef.current === null) return;
-    if (Math.abs(e.clientX - startXRef.current) > 5) isDraggingRef.current = true;
+    if (pointerStartX.current !== null && Math.abs(e.clientX - pointerStartX.current) > 6) {
+      isDragging.current = true;
+    }
   }
   function handlePointerUp(e: React.PointerEvent) {
-    if (startXRef.current === null) return;
-    const delta = e.clientX - startXRef.current;
-    startXRef.current = null;
-    if (!isDraggingRef.current) return;
+    if (pointerStartX.current === null) return;
+    const delta = e.clientX - pointerStartX.current;
+    pointerStartX.current = null;
+    if (!isDragging.current) return;
     if (delta < -50) goTo(activeIndex + 1);
     else if (delta > 50) goTo(activeIndex - 1);
   }
-  function handleScroll() {
-    const el = trackRef.current;
-    if (!el) return;
-    const index = Math.round(el.scrollLeft / el.offsetWidth);
-    if (index !== activeIndex) setActiveIndex(index);
-  }
 
-  const selectedRegion = regions.find((r) => r.id === selectedRegionId);
+  const active = sections[activeIndex];
   const greeting = firstName ? `for ${firstName}` : 'for you';
 
   return (
-    <div className="flex" style={{ height: 'calc(100dvh - 68px)' }}>
-      {/* ── Mobile / Card track ─────────────────────────────── */}
-      <div className="relative flex-1 overflow-hidden">
+    <div
+      className="flex flex-col md:flex-row"
+      style={{
+        height: 'calc(100dvh - 68px)',
+        background: '#0E0B08',
+        padding: '12px',
+        gap: '12px',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* ── Hero card — full height on desktop, fixed height on mobile ── */}
+      <div
+        className="flex-shrink-0 md:flex-1 md:h-auto"
+        style={{ height: 'clamp(240px, 44dvh, 360px)', position: 'relative', userSelect: 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <ExploreCard section={active} />
 
-        {/* Top bar: greeting + region dropdown */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-5 pt-5 pointer-events-none">
-          <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase">
-            Explore {greeting}
-          </p>
-
-          {/* Region dropdown — pointer-events back on */}
-          {regions.length > 1 && (
-            <div className="pointer-events-auto">
-              <select
-                value={selectedRegionId ?? ''}
-                onChange={(e) => onRegionChange(e.target.value)}
-                className="appearance-none bg-black/40 backdrop-blur-sm border border-white/20 text-white text-xs px-3 py-1.5 rounded-full cursor-pointer focus:outline-none focus:border-white/40 transition-colors"
-                aria-label="Change region"
-              >
-                {regions.map((r) => (
-                  <option key={r.id} value={r.id} className="bg-stone-900 text-white">
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Pagination dots */}
-        <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center gap-1.5 pointer-events-none">
+        {/* Section pips — bottom-right inside the card */}
+        <div
+          style={{
+            position: 'absolute', bottom: '18px', right: '18px',
+            zIndex: 20,
+            display: 'flex', gap: '5px', alignItems: 'center',
+          }}
+        >
           {sections.map((_, i) => (
             <button
               key={i}
               aria-label={`Go to section ${i + 1}`}
-              className={`rounded-full transition-all duration-300 pointer-events-auto ${
-                i === activeIndex
-                  ? 'w-5 h-1.5 bg-white'
-                  : 'w-1.5 h-1.5 bg-white/30'
-              }`}
               onClick={() => goTo(i)}
+              style={{
+                width: i === activeIndex ? '28px' : '6px',
+                height: '6px',
+                borderRadius: '3px',
+                background: i === activeIndex ? '#C17F3A' : 'rgba(250,248,245,0.3)',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                transition: 'width 280ms ease, background 280ms ease',
+              }}
             />
           ))}
         </div>
 
-        {/* Card track — scroll-snap */}
-        <div
-          ref={trackRef}
-          className="flex w-full h-full overflow-x-auto snap-x snap-mandatory"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          onScroll={handleScroll}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+        {/* Greeting — top-left of card */}
+        <p
+          style={{
+            position: 'absolute', top: '18px', left: '18px',
+            zIndex: 20,
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '10px',
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: 'rgba(250,248,245,0.35)',
+            margin: 0,
+            pointerEvents: 'none',
+          }}
         >
-          {sections.map((section, i) => (
-            <div
-              key={section.id}
-              className="w-full flex-shrink-0 snap-start"
-              style={{ minWidth: '100%' }}
-            >
-              <ExploreCard
-                section={section}
-                isActive={i === activeIndex}
-                onItemClick={(item) => setSelectedItem(item)}
-              />
-            </div>
-          ))}
+          Explore {greeting}
+        </p>
+      </div>
+
+      {/* ── Mobile-only: section switcher + items ── */}
+      <div
+        className="flex flex-col md:hidden"
+        style={{ flex: 1, minHeight: 0, gap: '10px', overflow: 'hidden' }}
+      >
+        {/* Section pills */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '6px',
+            flexShrink: 0,
+          }}
+        >
+          {sections.map((s, i) => {
+            const isActive = i === activeIndex;
+            return (
+              <button
+                key={s.id}
+                onClick={() => goTo(i)}
+                style={{
+                  flex: 1,
+                  background: isActive ? '#C17F3A' : 'rgba(250,248,245,0.04)',
+                  border: `1px solid ${isActive ? '#C17F3A' : 'rgba(250,248,245,0.09)'}`,
+                  borderRadius: '12px',
+                  padding: '9px 4px',
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '2px',
+                }}
+              >
+                <span style={{
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontStyle: 'italic',
+                  fontSize: '15px', fontWeight: 600,
+                  color: isActive ? '#FAF8F5' : 'rgba(250,248,245,0.35)',
+                  lineHeight: 1,
+                }}>{NUMERALS[i]}</span>
+                <span style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: '9px',
+                  letterSpacing: '0.07em',
+                  textTransform: 'uppercase',
+                  color: isActive ? 'rgba(250,248,245,0.8)' : 'rgba(250,248,245,0.28)',
+                }}>{sectionShortLabel(s.id)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Items container */}
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            background: 'rgba(250,248,245,0.04)',
+            border: '1px solid rgba(250,248,245,0.07)',
+            borderRadius: '18px',
+            padding: '14px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '10px', fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'rgba(250,248,245,0.28)',
+            margin: '0 0 8px',
+            flexShrink: 0,
+          }}>{active ? listLabel(active.content_type) : ''}</p>
+
+          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+            {active?.items.length === 0 && (
+              <p style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '13px',
+                color: 'rgba(250,248,245,0.22)',
+                textAlign: 'center',
+                padding: '20px 0',
+                margin: 0,
+              }}>
+                {active.content_type === 'events' ? 'No upcoming events yet.' : 'More coming soon.'}
+              </p>
+            )}
+            {active?.items.map((item) => {
+              const name = 'name' in item ? item.name : '';
+              const imageUrl = 'image_url' in item ? (item as DiscoveryPlaceCard).image_url : null;
+              const meta = mobileItemMeta(item, active.content_type);
+              const isRegion = active.content_type === 'regions';
+
+              return (
+                <button
+                  key={'id' in item ? item.id : name}
+                  onClick={() => setSelectedItem(item)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '11px',
+                    padding: '10px 0',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: '1px solid rgba(250,248,245,0.06)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div style={{
+                    width: '38px', height: '38px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: 'rgba(250,248,245,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span style={{ color: 'rgba(250,248,245,0.3)', fontSize: '11px' }}>
+                        {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '13px', fontWeight: 500,
+                      color: '#FAF8F5',
+                      margin: 0,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{name}</p>
+                    {meta && (
+                      <p style={{
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontSize: '11px',
+                        color: 'rgba(250,248,245,0.38)',
+                        margin: '2px 0 0',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{meta}</p>
+                    )}
+                  </div>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Personalise — mobile */}
+          <button
+            onClick={onPersonalise}
+            disabled={isPersonalising}
+            style={{
+              flexShrink: 0,
+              marginTop: '10px',
+              width: '100%',
+              height: '40px',
+              borderRadius: '11px',
+              background: '#C17F3A',
+              color: '#FAF8F5',
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '12px', fontWeight: 600,
+              letterSpacing: '0.06em',
+              border: 'none',
+              cursor: isPersonalising ? 'not-allowed' : 'pointer',
+              opacity: isPersonalising ? 0.55 : 1,
+              transition: 'opacity 180ms ease',
+              boxShadow: '0 4px 12px rgba(193,127,58,0.22)',
+            }}
+          >
+            {isPersonalising ? 'Personalising…' : 'Personalise for me'}
+          </button>
         </div>
       </div>
 
-      {/* ── Web panel (desktop only) ─────────────────────── */}
+      {/* ── Desktop web panel ── */}
       <ExploreWebPanel
         sections={sections}
         regions={regions}
@@ -154,7 +364,7 @@ export default function ExploreSwiper({
         isPersonalising={isPersonalising}
       />
 
-      {/* ── Detail sheet ─────────────────────────────────── */}
+      {/* ── Detail sheet (unchanged) ── */}
       <ExploreDetailSheet
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
