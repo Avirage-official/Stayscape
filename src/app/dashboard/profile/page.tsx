@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
-import WarmBottomTabBar from '@/components/guest-lounge/WarmBottomTabBar';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -167,8 +166,6 @@ function ProfileContent({ _userId }: { _userId: string }) {
           )}
         </div>
       </div>
-
-      <WarmBottomTabBar />
     </div>
   );
 }
