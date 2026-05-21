@@ -43,12 +43,15 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
         width: '100%',
         height: '100%',
         background: FALLBACK[section.id] ?? FALLBACK.made_for_you,
+        animation: 'ecFadeIn 350ms ease both',
       }}
     >
-      {/* Background — plain <img> so any URL works (no Next.js domain restrictions) */}
+      {/* Background — plain <img> so any URL works (no Next.js domain restrictions).
+          key forces a remount + fade-in whenever the image source changes. */}
       {section.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          key={section.image_url}
           src={section.image_url}
           alt=""
           aria-hidden="true"
@@ -56,6 +59,7 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
             position: 'absolute', inset: 0,
             width: '100%', height: '100%',
             objectFit: 'cover',
+            animation: 'ecFadeIn 500ms ease both',
           }}
         />
       )}
@@ -142,6 +146,10 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
         @keyframes ecSlideUp {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ecFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
       `}</style>
     </div>
