@@ -33,6 +33,13 @@ import {
 } from '@/lib/supabase/explore-properties-repository';
 import { applyRateLimit } from '@/lib/rate-limit';
 
+function regionImageUrl(imagePath: string | null): string | null {
+  if (!imagePath) return null;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/region-images/${imagePath}`;
+}
+
 export async function GET(request: NextRequest) {
   const rateLimit = await applyRateLimit(request);
   if (!rateLimit.success) {
@@ -84,7 +91,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle(),
       supabase
         .from('regions')
-        .select('id, name, slug, country_code')
+        .select('id, name, slug, country_code, image_path')
         .eq('is_active', true)
         .order('name', { ascending: true }),
       supabase
@@ -124,7 +131,6 @@ export async function GET(request: NextRequest) {
     const heroPlace = scoredPlaces[0] ?? null;
 
     // ── 2. In your world — other regions ────────────────────────
-    // Show regions the user hasn't stayed in (or all if no stays)
     const otherRegions = regions
       .filter((r) => r.id !== stayRegionId)
       .slice(0, 6)
@@ -133,8 +139,7 @@ export async function GET(request: NextRequest) {
         name: r.name,
         slug: r.slug,
         country_code: r.country_code,
-        // No image at region level yet — Phase 2 will add region hero images
-        image_url: null as string | null,
+        image_url: regionImageUrl((r.image_path as string | null) ?? null),
         description: `Explore ${r.name}`,
         gradient: 'from-stone-900/80 via-stone-950/60 to-black/80',
       }));
@@ -224,7 +229,7 @@ export async function GET(request: NextRequest) {
       {
         firstName,
         activeRegionId: regionId,
-        regions,          // full list for dropdown
+        regions,
         sections,
       },
       { headers: rateLimit.headers },
