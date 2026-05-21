@@ -261,7 +261,7 @@ export default function ExploreSwiper({
 
               return (
                 <button
-                  key={'id' in item ? item.id : name}
+                  key={item.id}
                   onClick={() => setSelectedItem(item)}
                   style={{
                     width: '100%',

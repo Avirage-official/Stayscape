@@ -301,7 +301,7 @@ export default function ExploreWebPanel({
           )}
           {active?.items.map((item) => (
             <ItemRow
-              key={'id' in item ? item.id : item.name}
+              key={item.id}
               item={item}
               contentType={active.content_type}
               onClick={() => onItemClick(item)}
