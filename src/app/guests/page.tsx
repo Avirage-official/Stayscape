@@ -1,12 +1,11 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import { useAuth } from '@/lib/context/auth-context'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-
-const ROMAN = ['I', 'II', 'III', 'IV'] as const
 
 const SLIDES = [
   {
@@ -67,7 +66,7 @@ export default function GuestsPage() {
     return () => clearTimeout(id)
   }, [])
 
-  function goTo(idx: number) {
+  const goTo = useCallback((idx: number) => {
     if (idx === slide) return
     setNextSlide(idx)
     setProgressKey(k => k + 1)
@@ -75,10 +74,10 @@ export default function GuestsPage() {
       setSlide(idx)
       setNextSlide(null)
     }, TRANSITION_MS)
-  }
+  }, [slide])
 
-  const advance = () => goTo((slide + 1) % SLIDES.length)
-  const retreat = () => goTo((slide - 1 + SLIDES.length) % SLIDES.length)
+  const advance = useCallback(() => goTo((slide + 1) % SLIDES.length), [goTo, slide])
+  const retreat = useCallback(() => goTo((slide - 1 + SLIDES.length) % SLIDES.length), [goTo, slide])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -87,7 +86,7 @@ export default function GuestsPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
+  }, [advance, retreat])
 
   useEffect(() => {
     const dwell = prefersReducedMotion ? REDUCED_DWELL_MS : DWELL_MS
@@ -108,7 +107,7 @@ export default function GuestsPage() {
       if (timerRef.current) clearTimeout(timerRef.current)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [slide, progressKey, prefersReducedMotion])
+  }, [slide, progressKey, prefersReducedMotion, advance])
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault()
@@ -128,6 +127,10 @@ export default function GuestsPage() {
     setAuthError(null)
     if (!consentChecked) {
       setAuthError('Please agree to the Privacy Policy and Terms to continue')
+      return
+    }
+    if (password.length < 8) {
+      setAuthError('Password must be at least 8 characters')
       return
     }
     if (password !== confirmPassword) {
@@ -242,13 +245,14 @@ export default function GuestsPage() {
                 zIndex: i === nextSlide ? 2 : i === slide ? 1 : 0,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={s.image}
                 alt=""
                 aria-hidden="true"
+                fill
+                sizes="60vw"
+                priority={i === 0}
                 style={{
-                  width: '100%', height: '100%',
                   objectFit: 'cover',
                   animation: i === slide && !prefersReducedMotion
                     ? 'kenBurns 12s ease-out forwards'
@@ -626,9 +630,9 @@ export default function GuestsPage() {
           )}
 
           <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {mode === 'signin' && (
-              <p style={{ fontSize: '11px', color: 'rgba(44,26,8,0.35)', fontFamily: "'DM Sans', sans-serif", margin: 0 }}>
-                Demo: <code style={{ color: 'rgba(44,26,8,0.55)' }}>ben.test@stayscape-demo.com</code> / <code style={{ color: 'rgba(44,26,8,0.55)' }}>Demo1234!</code>
+            {mode === 'signup' && !consentChecked && (
+              <p style={{ fontSize: '11px', color: 'rgba(44,26,8,0.45)', fontFamily: "'DM Sans', sans-serif", margin: 0 }}>
+                Please agree to the Privacy Policy and Terms to continue.
               </p>
             )}
             <a
