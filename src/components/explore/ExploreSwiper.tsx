@@ -16,6 +16,7 @@ interface ExploreSwiperProps {
   onRegionChange: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
+  isRefreshing?: boolean;
 }
 
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
@@ -64,6 +65,7 @@ export default function ExploreSwiper({
   onRegionChange,
   onPersonalise,
   isPersonalising,
+  isRefreshing,
 }: ExploreSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<ExploreItem | null>(null);
@@ -117,17 +119,42 @@ export default function ExploreSwiper({
           userSelect: 'none',
           borderRadius: '20px',
           overflow: 'hidden',
+          touchAction: 'none',
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
+        {/* key forces a full remount → triggers ExploreCard's fade-in animation */}
         <ExploreCard
+          key={active.id}
           section={active}
           sections={sections}
           activeIndex={activeIndex}
           onSectionChange={goTo}
         />
+
+        {/* Region-change overlay — keeps current content visible while fetching */}
+        {isRefreshing && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute', inset: 0, zIndex: 25,
+              background: 'rgba(8,5,2,0.38)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+              animation: 'ecFadeIn 200ms ease both',
+            }}
+          >
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: '#C17F3A',
+              boxShadow: '0 0 16px rgba(193,127,58,0.7)',
+              animation: 'ecPulse 1.1s ease-in-out infinite',
+            }} />
+          </div>
+        )}
 
         {/* Greeting — top-left */}
         <p style={{
@@ -236,7 +263,7 @@ export default function ExploreSwiper({
             )}
             {active?.items.map((item) => {
               const name = 'name' in item ? item.name : '';
-              const imageUrl = 'image_url' in item ? (item as DiscoveryPlaceCard).image_url : null;
+              const imageUrl = 'image_url' in item ? (item as { image_url: string | null }).image_url : null;
               const meta = mobileItemMeta(item, active.content_type);
               const isRegion = active.content_type === 'regions';
 
@@ -350,6 +377,11 @@ export default function ExploreSwiper({
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
       />
+
+      <style>{`
+        @keyframes ecFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes ecPulse  { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
+      `}</style>
     </div>
   );
 }

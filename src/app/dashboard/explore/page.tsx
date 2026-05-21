@@ -13,6 +13,8 @@ export interface RegionOption {
   name: string;
   slug: string;
   country_code: string | null;
+  /** Populated on section items by the API — may be absent on dropdown-only region objects */
+  image_url?: string | null;
 }
 
 interface ExploreResponse {
@@ -37,6 +39,7 @@ export default function ExplorePage() {
 
   const [data, setData] = useState<ExploreResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPersonalising, setIsPersonalising] = useState(false);
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
@@ -78,10 +81,11 @@ export default function ExplorePage() {
     void fetchExplore();
   }, [user, fetchExplore]);
 
-  function handleRegionChange(regionId: string) {
+  async function handleRegionChange(regionId: string) {
     setSelectedRegionId(regionId);
-    setIsLoading(true);
-    void fetchExplore(regionId);
+    setIsRefreshing(true);
+    await fetchExplore(regionId);
+    setIsRefreshing(false);
   }
 
   async function handlePersonalise() {
@@ -137,6 +141,7 @@ export default function ExplorePage() {
       onRegionChange={handleRegionChange}
       onPersonalise={handlePersonalise}
       isPersonalising={isPersonalising}
+      isRefreshing={isRefreshing}
     />
   );
 }

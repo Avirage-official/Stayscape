@@ -35,9 +35,13 @@ import { applyRateLimit } from '@/lib/rate-limit';
 
 function regionImageUrl(imagePath: string | null): string | null {
   if (!imagePath) return null;
+  // Already a full URL (e.g. stored via Supabase Studio or older upload flows)
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!base) return null;
-  return `${base}/storage/v1/object/public/region-images/${imagePath}`;
+  // Strip accidental bucket-name prefix so we never double it
+  const clean = imagePath.replace(/^region-images\//, '');
+  return `${base}/storage/v1/object/public/region-images/${clean}`;
 }
 
 export async function GET(request: NextRequest) {

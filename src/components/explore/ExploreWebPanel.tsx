@@ -61,7 +61,7 @@ function ItemRow({
   const isProperty = contentType === 'properties';
 
   const name     = 'name' in item ? item.name : '';
-  const imageUrl = 'image_url' in item ? (item as DiscoveryPlaceCard).image_url : null;
+  const imageUrl = 'image_url' in item ? (item as { image_url: string | null }).image_url : null;
 
   let metaChip: string | null = null;
   let metaText = '';
