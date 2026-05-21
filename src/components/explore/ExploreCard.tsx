@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
@@ -23,186 +24,113 @@ export interface ExploreSection {
 
 interface ExploreCardProps {
   section: ExploreSection;
-  isActive: boolean;
-  onItemClick: (item: ExploreItem) => void;
 }
 
-/** Stars for hotels */
-function StarRating({ count }: { count?: number | null }) {
-  if (!count) return null;
-  return (
-    <span className="text-white/50 text-xs">
-      {'★'.repeat(count)}
-      <span className="opacity-30">{'★'.repeat(5 - count)}</span>
-    </span>
-  );
-}
-
-/** Single detail row inside the card item list */
-function DetailRow({
-  item,
-  contentType,
-  onClick,
-}: {
-  item: ExploreItem;
-  contentType: ExploreSection['content_type'];
-  onClick: () => void;
-}) {
-  const isEvent = contentType === 'events';
-  const isRegion = contentType === 'regions';
-  const isProperty = contentType === 'properties';
-
-  const name = 'name' in item ? item.name : '';
-  const imageUrl = 'image_url' in item ? item.image_url : null;
-
-  let subtitle = '';
-  if (isEvent) {
-    const e = item as DiscoveryEventCard;
-    subtitle = e.venue_name ?? e.category ?? '';
-  } else if (isRegion) {
-    const r = item as RegionOption;
-    subtitle = r.country_code ?? '';
-  } else if (isProperty) {
-    const p = item as ExplorePropertyCard;
-    subtitle = p.editorial_summary?.slice(0, 55) ?? p.city ?? '';
-  } else {
-    const p = item as DiscoveryPlaceCard;
-    subtitle = p.editorial_summary?.slice(0, 55) ?? p.description?.slice(0, 55) ?? '';
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-start gap-3 py-3 border-b border-white/10 last:border-0 text-left hover:bg-white/5 transition-colors rounded-lg px-2 -mx-2"
-    >
-      {/* Thumbnail */}
-      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
-        {imageUrl ? (
-          <img src={imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            {isRegion && (
-              <span className="text-white/30 text-lg">
-                {(item as RegionOption).country_code ?? '🌍'}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-medium truncate">{name}</p>
-        {subtitle && (
-          <p className="text-white/50 text-xs mt-0.5 line-clamp-1">
-            {subtitle}{subtitle.length === 55 ? '…' : ''}
-          </p>
-        )}
-        {'vibes' in item && (item as DiscoveryPlaceCard).vibes?.length > 0 && (
-          <div className="flex gap-1 mt-1 flex-wrap">
-            {(item as DiscoveryPlaceCard).vibes.slice(0, 2).map((v) => (
-              <span
-                key={v}
-                className="text-[10px] text-white/40 border border-white/20 rounded-full px-1.5 py-0.5"
-              >
-                {v}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {isProperty && (
-        <StarRating count={(item as ExplorePropertyCard).star_rating} />
-      )}
-    </button>
-  );
-}
-
-export default function ExploreCard({
-  section,
-  isActive,
-  onItemClick,
-}: ExploreCardProps) {
-  const emptyLabel =
-    section.content_type === 'events'
-      ? 'No upcoming events in this region yet.'
-      : section.content_type === 'regions'
-      ? 'No other destinations available yet.'
-      : 'More coming soon.';
-
-  const listLabel =
-    section.content_type === 'events'
-      ? 'Coming up'
-      : section.content_type === 'regions'
-      ? 'Destinations'
-      : section.content_type === 'properties'
-      ? 'Stays'
-      : 'Top picks';
-
+export default function ExploreCard({ section }: ExploreCardProps) {
   return (
     <div
-      className={`relative w-full flex-shrink-0 transition-opacity duration-300 ${
-        isActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      }`}
-      style={{ height: 'calc(100dvh - 68px)' }}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        borderRadius: '24px',
+        overflow: 'hidden',
+        background: '#1a1208',
+      }}
     >
-      {/* Background image */}
-      <div className="absolute inset-0">
-        {section.image_url ? (
-          <img
-            src={section.image_url}
-            alt={section.title}
-            className="w-full h-full object-cover"
-            loading={isActive ? 'eager' : 'lazy'}
-          />
-        ) : (
-          <div className="w-full h-full bg-stone-900" />
-        )}
-        <div
-          className={`absolute inset-0 bg-gradient-to-b ${section.gradient} opacity-90`}
+      {/* Background image — no key so it crossfades in place */}
+      {section.image_url ? (
+        <Image
+          src={section.image_url}
+          alt={section.title}
+          fill
+          sizes="(max-width: 768px) 100vw, 60vw"
+          priority
+          style={{ objectFit: 'cover' }}
         />
-      </div>
+      ) : (
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, #1a1208 0%, #2c1f0c 100%)',
+          }}
+        />
+      )}
 
-      {/* Content */}
-      <div className="relative z-10 h-full flex flex-col justify-between p-6 pt-8">
-        {/* Top label + headline */}
-        <div>
-          <p className="text-white/50 text-[10px] tracking-[0.2em] font-medium uppercase mb-2">
+      {/* Bottom vignette */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'linear-gradient(to top, rgba(14,11,8,0.97) 0%, rgba(14,11,8,0.62) 36%, rgba(14,11,8,0.08) 64%, transparent 100%)',
+        }}
+      />
+      {/* Top fade */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'linear-gradient(to bottom, rgba(14,11,8,0.52) 0%, transparent 28%)',
+        }}
+      />
+
+      {/* Text overlay */}
+      <div
+        style={{
+          position: 'absolute', inset: 0, zIndex: 10,
+          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          padding: '20px',
+        }}
+      >
+        {/* Eyebrow — re-animates on section change via key */}
+        <div key={`ey-${section.id}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', animation: 'ecFadeDown 380ms cubic-bezier(0.16,1,0.3,1) both' }}>
+          <div style={{ width: '24px', height: '1px', background: 'rgba(193,127,58,0.7)', flexShrink: 0 }} />
+          <span style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontStyle: 'italic',
+            fontSize: '12px',
+            color: 'rgba(193,127,58,0.85)',
+            letterSpacing: '0.04em',
+          }}>
             {section.label}
-          </p>
-          <h2
-            className="font-serif text-white leading-tight"
-            style={{ fontSize: 'clamp(1.75rem, 6vw, 3rem)' }}
-          >
-            {section.title}
-          </h2>
-          <p className="text-white/60 text-sm mt-1">{section.subtitle}</p>
+          </span>
         </div>
 
-        {/* Item list */}
-        {section.items.length > 0 ? (
-          <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 mt-4">
-            <p className="text-white/40 text-[10px] tracking-widest uppercase mb-3">
-              {listLabel}
-            </p>
-            <div>
-              {section.items.slice(0, 4).map((item) => (
-                <DetailRow
-                  key={'id' in item ? item.id : (item as RegionOption).id}
-                  item={item}
-                  contentType={section.content_type}
-                  onClick={() => onItemClick(item)}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 text-center">
-            <p className="text-white/40 text-sm">{emptyLabel}</p>
-          </div>
-        )}
+        {/* Title + subtitle */}
+        <div key={`tx-${section.id}`} style={{ animation: 'ecSlideUp 460ms cubic-bezier(0.16,1,0.3,1) both' }}>
+          <h2 style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontStyle: 'italic',
+            fontSize: 'clamp(1.9rem, 5vw, 3rem)',
+            fontWeight: 500,
+            color: '#FAF8F5',
+            lineHeight: 1.1,
+            margin: '0 0 7px',
+          }}>
+            {section.title}
+          </h2>
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '13px',
+            color: 'rgba(250,248,245,0.58)',
+            margin: 0,
+            lineHeight: 1.5,
+          }}>
+            {section.subtitle}
+          </p>
+        </div>
       </div>
+
+      <style>{`
+        @keyframes ecSlideUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ecFadeDown {
+          from { opacity: 0; transform: translateY(-7px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
