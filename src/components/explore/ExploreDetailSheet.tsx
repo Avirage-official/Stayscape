@@ -21,9 +21,9 @@ function formatDate(iso: string | null | undefined) {
 }
 
 function formatPrice(min?: number | null, max?: number | null, currency?: string | null) {
-  if (!min && !max) return null;
+  if (min == null && max == null) return null;
   const sym = currency === 'SGD' ? 'S$' : (currency ?? '$');
-  if (min && max && min !== max) return `${sym}${min} – ${sym}${max}`;
+  if (min != null && max != null && min !== max) return `${sym}${min} – ${sym}${max}`;
   return `${sym}${min ?? max}`;
 }
 

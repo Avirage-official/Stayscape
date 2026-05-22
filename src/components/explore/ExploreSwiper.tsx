@@ -145,6 +145,8 @@ export default function ExploreSwiper({
 
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
+  const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const goTo = useCallback(
     (index: number) => {
@@ -196,14 +198,21 @@ export default function ExploreSwiper({
   }, []);
 
   const transitionPanel = useCallback((fn: () => void) => {
+    if (panelT1Ref.current) clearTimeout(panelT1Ref.current);
+    if (panelT2Ref.current) clearTimeout(panelT2Ref.current);
     setPanelPhase('exiting');
-    const t = setTimeout(() => {
+    panelT1Ref.current = setTimeout(() => {
       fn();
       setPanelPhase('entering');
-      const t2 = setTimeout(() => setPanelPhase('idle'), 500);
-      return () => clearTimeout(t2);
+      panelT2Ref.current = setTimeout(() => setPanelPhase('idle'), 500);
     }, 160);
-    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (panelT1Ref.current) clearTimeout(panelT1Ref.current);
+      if (panelT2Ref.current) clearTimeout(panelT2Ref.current);
+    };
   }, []);
 
   const drillToRegion = useCallback((region: RegionOption) => {
@@ -255,10 +264,14 @@ export default function ExploreSwiper({
         if (cached) {
           setDrillItems(cached.items);
           setDrillCategories(cached.categories);
+        } else {
+          setDrillItems([]);
+          setDrillCategories([]);
+          fetchDrillData(v.sectionId, v.region, null);
         }
       });
     }
-  }, [view, sections, activeIndex, transitionPanel]);
+  }, [view, sections, activeIndex, transitionPanel, fetchDrillData]);
 
   useEffect(() => {
     if (view.level === 0) {
@@ -497,8 +510,6 @@ export default function ExploreSwiper({
             sections={view.level === 0 ? sections : undefined}
             activeIndex={view.level === 0 ? activeIndex : undefined}
             onSectionChange={view.level === 0 ? goTo : undefined}
-            drillView={view}
-            onBack={isDrilled ? navigateBack : undefined}
           />
 
           {isRefreshing && (

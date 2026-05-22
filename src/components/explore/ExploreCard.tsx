@@ -3,7 +3,6 @@
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
-import type { ExploreView } from '@/types/explore';
 
 export type ExploreItem =
   | DiscoveryPlaceCard
@@ -27,8 +26,6 @@ interface ExploreCardProps {
   sections?: ExploreSection[];
   activeIndex?: number;
   onSectionChange?: (i: number) => void;
-  drillView?: ExploreView;
-  onBack?: () => void;
 }
 
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;

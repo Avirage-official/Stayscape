@@ -54,7 +54,7 @@ export default function ExplorePage() {
   const fetchExplore = useCallback(
     async (regionId?: string | null) => {
       const token = await getBearerToken();
-      if (!token) return;
+      if (!token) { setIsLoading(false); return; }
       try {
         const url = regionId
           ? `/api/explore?region_id=${regionId}`
