@@ -12,6 +12,7 @@ import type {
   DiscoveryEventCard,
   DiscoveryEventDetail,
 } from '@/types/database';
+import type { DrillEventCard } from '@/types/explore';
 
 /* ── Read operations ─────────────────────────────────────── */
 
@@ -65,6 +66,68 @@ export async function getEventTags(
     .eq('event_id', eventId);
   if (error) throw new Error(`getEventTags failed: ${error.message}`);
   return (data ?? []) as EventTag[];
+}
+
+/* ── Drill-in: top events by region + optional category ──── */
+
+/**
+ * Fetch the top events for the explore drill-in (Tonight, L1–L3).
+ *
+ * Rules:
+ *   - Active events only (is_active = true)
+ *   - Not yet expired: end_date IS NULL OR end_date >= now()
+ *   - Optional category filter (pass null to fetch all for category derivation)
+ *   - Ordered by is_featured DESC, start_date ASC (soonest first within featured)
+ *   - Capped at `limit` (default 6, matching the UX spec)
+ *
+ * The caller should call this once with category = null to derive the
+ * category list (L2), then again per category for L3.
+ * Results are cached by ExploreSwiper so re-navigation doesn’t re-fetch.
+ */
+export async function getEventsByRegionAndCategory(
+  supabase: SupabaseClient,
+  regionId: string,
+  category: string | null,
+  limit = 6,
+): Promise<DrillEventCard[]> {
+  const now = new Date().toISOString();
+
+  let query = supabase
+    .from('events')
+    .select(
+      'id, name, category, subcategory, image_url, venue_name, address, city, start_date, end_date, start_time, price_min, price_max, currency, ticket_url, is_featured, editorial_summary',
+    )
+    .eq('is_active', true)
+    .eq('region_id', regionId)
+    .or(`end_date.is.null,end_date.gte.${now}`)
+    .order('is_featured', { ascending: false })
+    .order('start_date', { ascending: true })
+    .limit(limit);
+
+  if (category) query = query.eq('category', category);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`getEventsByRegionAndCategory failed: ${error.message}`);
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    category: row.category as string,
+    subcategory: (row.subcategory as string | null) ?? null,
+    image_url: (row.image_url as string | null) ?? null,
+    venue_name: (row.venue_name as string | null) ?? null,
+    address: (row.address as string | null) ?? null,
+    city: (row.city as string | null) ?? null,
+    start_date: row.start_date as string,
+    end_date: (row.end_date as string | null) ?? null,
+    start_time: (row.start_time as string | null) ?? null,
+    price_min: (row.price_min as number | null) ?? null,
+    price_max: (row.price_max as number | null) ?? null,
+    currency: (row.currency as string | null) ?? null,
+    ticket_url: (row.ticket_url as string | null) ?? null,
+    is_featured: (row.is_featured as boolean) ?? false,
+    editorial_summary: (row.editorial_summary as string | null) ?? null,
+  })) as DrillEventCard[];
 }
 
 /* ── Write operations (admin / sync) ─────────────────────── */
