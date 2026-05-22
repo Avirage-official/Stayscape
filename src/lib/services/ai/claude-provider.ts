@@ -69,7 +69,7 @@ export class ClaudeProvider implements AIEnrichmentProvider {
   private async callClaude(userMessage: string): Promise<string> {
     const body: ClaudeRequest = {
       model: ANTHROPIC_MODEL,
-      max_tokens: 1024,
+      max_tokens: 1500,
       messages: [{ role: 'user', content: userMessage }],
     };
 
@@ -98,38 +98,65 @@ export class ClaudeProvider implements AIEnrichmentProvider {
 /* ── Prompt builders ────────────────────────────────────────── */
 
 function buildPlacePrompt(place: InternalPlace): string {
-  return `You are a luxury travel editor for Stayscape, a premium hospitality platform. Your job has two parts:
+  const ratingLine = place.rating
+    ? `Rating: ${place.rating}/5 (${place.rating_count ?? 'unknown'} reviews)`
+    : 'Rating: Not available';
+
+  const websiteLine = place.website ? `Website: ${place.website}` : 'Website: Not listed';
+  const phoneLine = place.phone ? `Phone: ${place.phone}` : '';
+  const descLine = place.description?.trim() ? `Raw description: ${place.description}` : '';
+
+  const contextLines = [ratingLine, websiteLine, phoneLine, descLine]
+    .filter(Boolean)
+    .join('\n');
+
+  return `You are a researcher and city insider working for Stayscape — a travel platform built around curated, story-driven recommendations. Your job is to dig into this place, understand what makes it genuinely worth visiting, and write about it the way a well-travelled friend would — honest, specific, and direct. Not a brochure. Not a listing. A recommendation from someone who actually knows.
+
+You have access to your training knowledge of this place — use it. Draw on everything you know: the neighbourhood, the reputation, the kind of people who go there, the time of day it comes alive, the thing that makes it different. If you know a signature dish, a piece of history, a quirk of the space — include it. Specificity is everything.
+
+---
 
 PART 1 — QUALITY GATE
-Decide if this place should be hidden from guests. The default answer is YES, this place should be shown. Only reject when you have ACTIVE EVIDENCE that the place is unsuitable.
 
-REJECT (score 1-3) ONLY when at least one of these is clearly true:
-- The place is permanently closed, defunct, or demolished (you have specific knowledge of this)
-- It is a generic global fast-food chain (McDonald's, Burger King, KFC, Subway, Starbucks, 7-Eleven, Pizza Hut, Domino's, Dunkin')
-- It is clearly NOT a hospitality-relevant venue (e.g. dental clinic, hardware store, government office, car dealership, post office, bank)
-- It has well-documented major safety, legal, or reputational issues
+Your first job is to decide whether this place belongs in a curated travel guide at all.
 
-ACCEPT (score 4-10) — this is the DEFAULT. Use this when:
-- The place is named, located, and looks like a normal operating venue, even if you have never heard of it
-- It is an independent, local, or boutique establishment (most hidden gems fall here — UNFAMILIARITY IS NOT A REJECTION REASON)
-- It is a legitimate tourist site, restaurant, bar, café, museum, park, or shop
+REJECT (quality_score 1–3) only when you have real evidence of one of the following:
+- The place is permanently closed, demolished, or no longer operating
+- It is a global chain with no local character: McDonald's, KFC, Burger King, Subway, Starbucks, 7-Eleven, Pizza Hut, Domino's, Dunkin', Tim Hortons, or similar
+- It is not a hospitality venue — dental clinic, hardware store, petrol station, government office, car workshop, bank branch, post office
+- It has documented serious issues: safety concerns, legal trouble, persistent hygiene failures
 
-Within ACCEPT, scale the score by how confidently premium-worthy you find it:
-- 4-5: Likely legitimate but limited information — write a careful, generic-but-accurate summary
-- 6-7: Solid, recognisable, decent reputation
-- 8-10: Iconic, highly-rated, must-visit — these are the standouts
+ACCEPT (quality_score 4–10) in all other cases — independent restaurants, local cafés, bars, museums, markets, parks, temples, galleries, boutique shops, wellness studios, nature spots. Unfamiliarity is not a reason to reject.
 
-CRITICAL RULE: If you do not recognise the place, score it 4-5 and write a SAFE editorial summary based on its name, category, address, and the surrounding city/neighbourhood context. DO NOT reject it just because you have no detailed knowledge.
+Score within the ACCEPT range by how compelling the place is:
+- 4–5: Real place, operating, but limited character or information — write a grounded, honest summary
+- 6–7: Solid, worth visiting, has a clear identity
+- 8–10: Exceptional — the kind of place that ends up on someone's list for years
 
-PART 2 — ENRICHMENT (always required if score >= 4)
-Write a luxury editorial entry. If you have specific knowledge of the place from Google Maps, TripAdvisor, Yelp, or its website, use it. If you don't, write a SAFE summary that:
-- Describes its category and neighbourhood truthfully
-- Avoids inventing specific details (no fake awards, no fake quotes, no fake history)
-- Captures the likely vibe based on the area and category
-- Sounds genuinely editorial, not generic
+If you don't recognise the place: default to 4–5, write from what you know about the neighbourhood and category. Do not invent facts. Do not reject.
 
-Example of a SAFE summary for an unfamiliar place:
-"This intimate neighbourhood spot in [actual neighbourhood] offers [category-appropriate experience] in one of [city]'s [authentic / atmospheric / lively] historic quarters. A solid choice for travellers wanting to step away from the main tourist circuit."
+---
+
+PART 2 — THE STORY (required for quality_score >= 4)
+
+Write the editorial_summary as if you are telling a well-travelled friend about this place. This should feel like a message from someone who knows the city well — not a listing, not a press release.
+
+Rules for the story:
+- 2–4 sentences. Tight. Every sentence earns its place.
+- Open with what the place *is* — not with its name, not with "this is a..."
+- Use specific details when you know them: a signature item, a neighbourhood fact, a time of day, a crowd, an atmosphere
+- Avoid: "nestled", "boasts", "vibrant", "gem", "hidden", "premium", "luxury", "curated", "perfect for", "a must-visit", "world-class", "stunning", "delightful", "beautiful experience"
+- Write in present tense
+- Do not start with the name of the place
+- Tone: informed, warm, direct. Like a text message from a knowledgeable friend, not a hotel concierge script
+
+Good example:
+"The char kway teow here has regulars who've been coming since the 1980s — the hawker still does it the old way, lard and all, in a wok that hasn't been replaced since then. Go before 1pm or you'll miss out. It's inside the old Tiong Bahru market, downstairs, look for the longest queue."
+
+Bad example:
+"This vibrant establishment nestled in the heart of the city offers a premium dining experience that is perfect for both locals and travellers seeking authentic flavours in a stunning setting."
+
+---
 
 Place details:
 Name: ${place.name}
@@ -137,19 +164,19 @@ Category: ${place.category}
 Address: ${place.address}
 City: ${place.city}
 Country: ${place.country_code}
-Description: ${place.description ?? 'N/A'}
-Website: ${place.website ?? 'N/A'}
-Rating: ${place.rating ?? 'N/A'}
+${contextLines}
 
-Respond with a single JSON object only — no markdown, no extra text:
+---
+
+Respond with a single JSON object only — no markdown fences, no explanation, no extra text:
 {
-  "quality_score": <number 1-10>,
-  "rejection_reason": "<short reason if score < 4, otherwise empty string>",
-  "editorial_summary": "<2-3 sentences in a premium hospitality tone, required if score >= 4>",
-  "recommended_duration": "<e.g. 1-2 hours, Half day, Full day, 30 minutes — required if score >= 4>",
-  "best_time_to_go": "<e.g. Evening, Morning, Weekday afternoons, Sunset — required if score >= 4>",
-  "vibes": [<3-5 atmosphere words if score >= 4, otherwise empty array>],
-  "best_for": [<3-5 visitor types if score >= 4, otherwise empty array>]
+  "quality_score": <integer 1–10>,
+  "rejection_reason": "<one sentence if score < 4, otherwise leave as empty string>",
+  "editorial_summary": "<the story — 2–4 sentences, written as described above — required if score >= 4>",
+  "recommended_duration": "<honest estimate, e.g. '20–30 minutes', '1–2 hours', 'Half a day' — required if score >= 4>",
+  "best_time_to_go": "<specific and useful, e.g. 'Weekend mornings before 10am', 'Friday evenings', 'Weekday lunch' — required if score >= 4>",
+  "vibes": [<3–6 single words or short phrases that capture the atmosphere — required if score >= 4, empty array if not>],
+  "best_for": [<2–5 specific visitor types or occasions, e.g. 'date night', 'solo lunch', 'families with young kids', 'early risers', 'after-work drinks' — required if score >= 4, empty array if not>]
 }`;
 }
 
@@ -161,18 +188,22 @@ function buildEventPrompt(event: InternalEvent): string {
   if (event.venue_name) lines.push(`Venue: ${event.venue_name}`);
   if (event.city) lines.push(`City: ${event.city}`);
   if (event.country_code) lines.push(`Country: ${event.country_code}`);
-  if (event.description) lines.push(`Description: ${event.description}`);
+  if (event.description?.trim()) lines.push(`Description: ${event.description}`);
+  if (event.start_date) lines.push(`Date: ${event.start_date}`);
+  if (event.start_time) lines.push(`Time: ${event.start_time}`);
 
-  return `You are a luxury travel writer for Stayscape, a premium hospitality platform. Generate enrichment data for this event.
+  return `You are a city insider writing for Stayscape — a travel platform that recommends experiences worth clearing your schedule for. Your job is to write about this event the way a knowledgeable local would describe it to a friend visiting for the week: honest, specific, and useful.
 
 Event details:
 ${lines.join('\n')}
 
-Respond with a single JSON object — no markdown, no extra text — containing exactly these fields:
+Write the editorial_summary in 2–3 sentences. Be direct about what the event actually is and why it's worth attending. Use specific details if you know them. Avoid filler phrases like "not to be missed", "a must-attend", "vibrant", "stunning", or "world-class". Write in present tense. Don't open with the event name.
+
+Respond with a single JSON object only — no markdown fences, no extra text:
 {
-  "editorial_summary": "1-3 sentences in a premium hospitality tone describing the event and its appeal",
-  "vibes": ["2-5 vibe tags from: romantic, lively, intimate, family-friendly, luxury, casual, cultural, trendy, scenic, peaceful, adventurous, foodie, historic, wellness, instagrammable, late-night"],
-  "best_for": ["1-3 labels from: date night, solo traveler, family outing, group dinner, business meeting, romantic dinner, quick bite, sightseeing"]
+  "editorial_summary": "<2–3 sentences, written as a knowledgeable local would — honest, specific, direct>",
+  "vibes": ["2–5 words or short phrases from this list: romantic, lively, intimate, family-friendly, casual, cultural, trendy, scenic, peaceful, adventurous, foodie, historic, wellness, late-night, immersive, community, high-energy"],
+  "best_for": ["1–4 specific occasions or visitor types, e.g. 'date night', 'solo traveler', 'families with young kids', 'group outing', 'culture lovers', 'foodies', 'first-time visitors'"]
 }`;
 }
 
@@ -213,7 +244,7 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
 
   const qualityScore = toNumberOrNull(parsed.quality_score);
 
-  /* ── Quality gate: reject only when AI is actively confident the place is unsuitable ── */
+  /* ── Quality gate ── */
   if (qualityScore !== null && qualityScore < QUALITY_THRESHOLD) {
     return {
       editorial_summary: '',
