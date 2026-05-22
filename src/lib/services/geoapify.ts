@@ -94,14 +94,18 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
 };
 
 export function mapGeoapifyCategory(categories: string[]): string {
-  for (const cat of categories) {
-    // Try exact match first, then prefix match
-    if (GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat]) {
-      return GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat];
-    }
-    const prefix = cat.split('.')[0];
-    if (GEOAPIFY_TO_STAYSCAPE_CATEGORY[prefix]) {
-      return GEOAPIFY_TO_STAYSCAPE_CATEGORY[prefix];
+  // Two-pass priority: non-catering first so that a shrine or park tagged with
+  // both catering.restaurant and tourism.sights resolves to historical/nature,
+  // not dining. Catering is only used when no other category matches.
+  const passes = [
+    categories.filter((c) => !c.startsWith('catering')),
+    categories.filter((c) => c.startsWith('catering')),
+  ];
+  for (const pass of passes) {
+    for (const cat of pass) {
+      if (GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat]) return GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat];
+      const prefix = cat.split('.')[0];
+      if (GEOAPIFY_TO_STAYSCAPE_CATEGORY[prefix]) return GEOAPIFY_TO_STAYSCAPE_CATEGORY[prefix];
     }
   }
   return 'local_spots';
@@ -150,6 +154,7 @@ export interface GeoapifySearchParams {
   radius_meters?: number;
   categories?: string[];
   limit?: number;
+  countryCode?: string;
 }
 
 /**
@@ -166,6 +171,7 @@ export async function searchPlaces(
     radius_meters = 5000,
     categories = DEFAULT_CATEGORIES,
     limit = 50,
+    countryCode,
   } = params;
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
@@ -181,9 +187,14 @@ export async function searchPlaces(
     throw new Error(`Geoapify API error: ${res.status} ${res.statusText}`);
   }
 
+  const expectedCountry = countryCode?.toUpperCase();
   const json = (await res.json()) as GeoapifyResponse;
   return json.features
     .filter((f) => f.properties.name)
+    .filter((f) =>
+      !expectedCountry ||
+      f.properties.country_code?.toUpperCase() === expectedCountry,
+    )
     .map((f) => normalizeFeature(f));
 }
 

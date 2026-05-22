@@ -14,6 +14,7 @@ import { requireAdminKey } from '@/lib/auth/require-admin-key';
 interface SyncPlacesBody {
   mode?: 'single_region' | 'all_active_regions';
   region_id?: string;
+  country_code?: string;
   latitude?: number;
   longitude?: number;
   radius_meters?: number;

@@ -29,6 +29,7 @@ const DEFAULT_SYNC_RADIUS_METERS = 5000;
 
 export interface PlaceSyncOptions {
   region_id: string;
+  country_code?: string;
   latitude: number;
   longitude: number;
   radius_meters?: number;
@@ -66,6 +67,7 @@ export async function syncPlaces(
       radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
       categories: options.categories,
       limit: options.limit ?? 50,
+      countryCode: options.country_code,
     };
 
     const rawPlaces = await searchPlaces(searchParams);

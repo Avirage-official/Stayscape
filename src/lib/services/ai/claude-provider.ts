@@ -43,6 +43,7 @@ interface ClaudePlaceEnrichment {
   best_time_to_go?: string | null;
   vibes?: string[];
   best_for?: string[];
+  category?: string;
 }
 
 /* ── Provider implementation ────────────────────────────────── */
@@ -141,6 +142,24 @@ Description: ${place.description ?? 'N/A'}
 Website: ${place.website ?? 'N/A'}
 Rating: ${place.rating ?? 'N/A'}
 
+PART 4 — CATEGORY CORRECTION
+The place was auto-classified by a mapping algorithm. Check if the category is correct given the actual nature of the place.
+
+Valid Stayscape categories: dining, nightlife, shopping, nature, historical, wellness, family, fun_places, top_places, local_spots
+
+Rules:
+- A shrine, memorial, war site, temple, mosque, church, or monument → historical
+- A park, forest, beach, mountain, lake, or nature reserve → nature (even if it has a café on-site)
+- A museum, gallery, or cultural institution → historical
+- A restaurant, café, or food court → dining
+- A bar, pub, or nightclub → nightlife
+- A zoo, aquarium, or theme park → family
+- An escape room, bowling alley, or activity park → fun_places
+- A spa, gym, or beauty salon → wellness
+- A shopping mall or market → shopping
+- An iconic landmark or tourist attraction → top_places
+- If the current category is correct, return it unchanged.
+
 Respond with a single JSON object only — no markdown, no extra text:
 {
   "quality_score": <number 1-10>,
@@ -149,7 +168,8 @@ Respond with a single JSON object only — no markdown, no extra text:
   "recommended_duration": "<e.g. 1-2 hours, Half day, Full day, 30 minutes — required if score >= 4>",
   "best_time_to_go": "<e.g. Evening, Morning, Weekday afternoons, Sunset — required if score >= 4>",
   "vibes": [<3-5 atmosphere words if score >= 4, otherwise empty array>],
-  "best_for": [<3-5 visitor types if score >= 4, otherwise empty array>]
+  "best_for": [<3-5 visitor types if score >= 4, otherwise empty array>],
+  "category": "<the correct Stayscape category from the valid list above>"
 }`;
 }
 
@@ -205,6 +225,11 @@ function toNumberOrNull(value: unknown): number | null {
 
 const QUALITY_THRESHOLD = 4;
 
+const VALID_CATEGORIES = new Set([
+  'dining', 'nightlife', 'shopping', 'nature', 'historical',
+  'wellness', 'family', 'fun_places', 'top_places', 'local_spots',
+]);
+
 function parsePlaceResponse(raw: string): EnrichmentResult {
   const parsed = safeParseJSON(raw) as ClaudePlaceEnrichment | null;
   if (!parsed) {
@@ -235,6 +260,9 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     tags.push({ tag: label, tag_type: 'best_for' as TagType, confidence: 0.9 });
   }
 
+  const rawCategory = toStringOrNull(parsed.category);
+  const category = rawCategory && VALID_CATEGORIES.has(rawCategory) ? rawCategory : undefined;
+
   return {
     editorial_summary: toStringOrNull(parsed.editorial_summary) ?? '',
     recommended_duration: toStringOrNull(parsed.recommended_duration),
@@ -243,6 +271,7 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     best_for: bestFor.length > 0 ? bestFor : null,
     tags,
     quality_score: qualityScore ?? undefined,
+    category,
   };
 }
 

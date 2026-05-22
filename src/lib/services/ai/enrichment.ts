@@ -48,6 +48,8 @@ export interface EnrichmentResult {
   /* Quality gate fields — populated by Claude provider */
   quality_score?: number;
   rejection_reason?: string;
+  /* Category correction — AI may override the algorithmic mapping */
+  category?: string | null;
 }
 
 export interface AIEnrichmentProvider {
@@ -178,17 +180,26 @@ export async function enrichPlace(
   if (!result.editorial_summary && result.tags.length === 0) return;
 
   // Step 5 – Write AI results back to the place record
+  const placeUpdates: Record<string, unknown> = {
+    editorial_summary: result.editorial_summary ?? null,
+    recommended_duration: result.recommended_duration ?? null,
+    best_time_to_go: result.best_time_to_go ?? null,
+    vibes: result.vibes ?? null,
+    best_for: result.best_for ?? null,
+    ai_enriched_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (result.category && result.category !== place.category) {
+    placeUpdates.category = result.category;
+    console.log(
+      `[enrichPlace] Category corrected "${place.name}": ${place.category} → ${result.category}`,
+    );
+  }
+
   const { error } = await supabase
     .from('places')
-    .update({
-      editorial_summary: result.editorial_summary ?? null,
-      recommended_duration: result.recommended_duration ?? null,
-      best_time_to_go: result.best_time_to_go ?? null,
-      vibes: result.vibes ?? null,
-      best_for: result.best_for ?? null,
-      ai_enriched_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    .update(placeUpdates)
     .eq('id', place.id);
 
   if (error) {
