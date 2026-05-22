@@ -33,6 +33,7 @@ import { ClaudeProvider } from './claude-provider';
 
 export interface EnrichmentResult {
   editorial_summary: string;
+  category?: string | null;
   booking_url?: string | null;
   website?: string | null;
   recommended_duration?: string | null;
@@ -203,7 +204,6 @@ export async function enrichPlace(
   if (!result.editorial_summary && result.tags.length === 0) return;
 
   // Step 5 – Write AI results back to the place record
-  // Only write Claude's rating estimate if the place has no real rating yet
   const placeUpdates: Record<string, unknown> = {
     editorial_summary: result.editorial_summary ?? null,
     recommended_duration: result.recommended_duration ?? null,
@@ -214,6 +214,15 @@ export async function enrichPlace(
     updated_at: new Date().toISOString(),
   };
 
+  // Apply Claude's category correction if it differs from the Geoapify-derived one
+  if (result.category && result.category !== place.category) {
+    placeUpdates.category = result.category;
+    console.log(
+      `[enrichPlace] Category corrected "${place.name}": ${place.category} → ${result.category}`,
+    );
+  }
+
+  // Only write Claude's rating estimate if the place has no real rating yet
   if (result.rating != null && !place.rating) {
     placeUpdates.rating = result.rating;
   }

@@ -14,6 +14,7 @@ import { requireAdminKey } from '@/lib/auth/require-admin-key';
 interface SyncPlacesBody {
   mode?: 'single_region' | 'all_active_regions';
   region_id?: string;
+  country_code?: string;
   latitude?: number;
   longitude?: number;
   radius_meters?: number;
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       const supabase = getSupabaseAdmin();
       const { data: regions, error } = await supabase
         .from('regions')
-        .select('id, latitude, longitude, radius_km')
+        .select('id, latitude, longitude, radius_km, country_code')
         .eq('is_active', true)
         .order('name');
 
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
         latitude: number;
         longitude: number;
         radius_km: number;
+        country_code: string | null;
       }>;
 
       if (activeRegions.length === 0) {
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
       for (const region of activeRegions) {
         const options: PlaceSyncOptions = {
           region_id: region.id,
+          country_code: region.country_code ?? undefined,
           latitude: region.latitude,
           longitude: region.longitude,
           radius_meters: body.radius_meters ?? Math.round(region.radius_km * 1000),
@@ -101,6 +104,7 @@ export async function POST(request: NextRequest) {
     // Safe to cast — hasCoordinates guard above confirms these are defined numbers
     const options: PlaceSyncOptions = {
       region_id: body.region_id,
+      country_code: body.country_code,
       latitude: body.latitude as number,
       longitude: body.longitude as number,
       radius_meters: body.radius_meters,

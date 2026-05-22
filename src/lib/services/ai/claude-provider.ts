@@ -50,6 +50,7 @@ interface ClaudeResponse {
 interface ClaudePlaceEnrichment {
   quality_score?: number;
   rejection_reason?: string;
+  category?: string;
   editorial_summary?: string;
   recommended_duration?: string | null;
   best_time_to_go?: string | null;
@@ -119,10 +120,36 @@ If the rating supplied says "Not available", estimate the place's real-world rat
 
 ---
 
+PART 4 — CATEGORY CORRECTION
+
+The "Current category" field is derived from map data and is sometimes wrong. Correct it using your knowledge of what the place actually is.
+
+Valid Stayscape categories:
+- dining       — restaurants, cafés, hawker stalls, food markets, any place primarily for eating
+- nightlife    — bars, pubs, clubs, cocktail lounges
+- shopping     — markets, malls, boutiques, retail streets
+- nature       — parks, beaches, forests, nature reserves, gardens, waterfalls
+- historical   — temples, shrines, monuments, heritage sites, museums of history, ruins, war memorials
+- wellness     — spas, gyms, yoga studios, retreat centres
+- family       — zoos, aquariums, theme parks, activity parks, child-friendly attractions
+- fun_places   — cinemas, escape rooms, bowling, entertainment venues not covered above
+- top_places   — landmark attractions, iconic viewpoints, major tourist sights
+- local_spots  — neighbourhood icons, community spots, hard-to-categorise but genuinely local
+
+Rules:
+- A shrine, memorial, or war site → historical (not dining, even if it has a café on-site)
+- A park with a restaurant inside → nature (the restaurant is not the place)
+- A hawker centre or food court → dining
+- A heritage shophouse that is now a restaurant → dining
+- Return the same category if it is already correct
+
+---
+
 Respond with a single JSON object only — no markdown fences, no explanation, no extra text:
 {
   "quality_score": <integer 1–10>,
   "rejection_reason": "<one sentence if score < 4, otherwise empty string>",
+  "category": "<corrected Stayscape category — one of: dining, nightlife, shopping, nature, historical, wellness, family, fun_places, top_places, local_spots>",
   "editorial_summary": "<the story — 2–4 sentences — required if score >= 4>",
   "recommended_duration": "<honest estimate, e.g. '20–30 minutes', '1–2 hours', 'Half a day' — required if score >= 4>",
   "best_time_to_go": "<specific and useful, e.g. 'Weekend mornings before 10am', 'Friday evenings' — required if score >= 4>",
@@ -299,8 +326,15 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     ratingEstimate = Math.min(5.0, Math.max(1.0, Math.round(rawRating * 10) / 10));
   }
 
+  const VALID_CATEGORIES = new Set([
+    'dining', 'nightlife', 'shopping', 'nature', 'historical',
+    'wellness', 'family', 'fun_places', 'top_places', 'local_spots', 'events',
+  ]);
+  const correctedCategory = toStringOrNull(parsed.category);
+
   return {
     editorial_summary: toStringOrNull(parsed.editorial_summary) ?? '',
+    category: correctedCategory && VALID_CATEGORIES.has(correctedCategory) ? correctedCategory : null,
     recommended_duration: toStringOrNull(parsed.recommended_duration),
     best_time_to_go: toStringOrNull(parsed.best_time_to_go),
     vibes: vibes.length > 0 ? vibes : null,
