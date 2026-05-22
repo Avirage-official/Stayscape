@@ -222,7 +222,7 @@ export default function ExploreSwiper({
   const drillToCategory = useCallback((region: RegionOption, category: string) => {
     const active = sections[activeIndex];
     transitionPanel(() => {
-      setView({ level: 2, sectionId: active.id, region });
+      setView({ level: 2, sectionId: active.id, region, category });
       fetchDrillData(active.id, region, category);
     });
   }, [sections, activeIndex, transitionPanel, fetchDrillData]);

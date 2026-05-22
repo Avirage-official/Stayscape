@@ -5,6 +5,7 @@ import type { ExploreSection, ExploreItem } from './ExploreCard';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
+import type { ExploreView, DrillPlaceCard, DrillEventCard, AnimPhase } from '@/types/explore';
 
 interface ExploreWebPanelProps {
   sections: ExploreSection[];
@@ -16,6 +17,15 @@ interface ExploreWebPanelProps {
   onRegionChange: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
+  drillView: ExploreView;
+  drillItems: (DrillPlaceCard | DrillEventCard)[];
+  drillCategories: string[];
+  drillLoading: boolean;
+  panelPhase: AnimPhase;
+  onDrillRegion: (region: RegionOption) => void;
+  onDrillCategory: (region: RegionOption, category: string) => void;
+  onDrillItem: (item: DrillPlaceCard | DrillEventCard, sectionId: string) => void;
+  onBack: () => void;
 }
 
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
@@ -38,6 +48,19 @@ function listLabel(ct: ExploreSection['content_type']) {
 function formatDate(iso: string | null | undefined) {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString('en-SG', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function categoryLabel(raw: string): string {
+  const map: Record<string, string> = {
+    dining: 'Dining', nightlife: 'Nightlife', shopping: 'Shopping',
+    nature: 'Nature', historical: 'Historical', wellness: 'Wellness',
+    family: 'Family', events: 'Events', localspots: 'Local Spots',
+    topplaces: 'Top Places', local_spots: 'Local Spots', fun_places: 'Fun Places',
+    top_places: 'Top Places', general: 'General', music: 'Music',
+    arts: 'Arts', sports: 'Sports', food: 'Food & Drink',
+    culture: 'Culture', outdoor: 'Outdoors',
+  };
+  return map[raw.toLowerCase()] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 /* Glass surface */
@@ -164,6 +187,54 @@ function ItemRow({
   );
 }
 
+function DrillRow({
+  item,
+  isEvent,
+  onClick,
+}: {
+  item: DrillPlaceCard | DrillEventCard;
+  isEvent: boolean;
+  onClick: () => void;
+}) {
+  const ev = item as DrillEventCard;
+  const pl = item as DrillPlaceCard;
+  const meta = isEvent
+    ? [formatDate(ev.start_date), ev.venue_name].filter(Boolean).join(' · ')
+    : pl.rating ? `★ ${pl.rating.toFixed(1)}` : null;
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '11px',
+        padding: '9px 10px', marginBottom: '5px', width: '100%',
+        background: 'rgba(250,248,245,0.05)', border: '1px solid rgba(250,248,245,0.08)',
+        borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+        transition: 'background 160ms ease', boxSizing: 'border-box',
+      } as React.CSSProperties}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.12)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.05)'; }}
+    >
+      <div style={{
+        width: '38px', height: '38px', borderRadius: '10px', overflow: 'hidden',
+        flexShrink: 0, background: 'rgba(250,248,245,0.08)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {item.image_url
+          ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+          : <span style={{ color: 'rgba(250,248,245,0.35)', fontSize: '11px' }}>·</span>}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 500, color: '#FAF8F5', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+        {meta && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</p>}
+      </div>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  );
+}
+
 export default function ExploreWebPanel({
   sections,
   regions,
@@ -174,9 +245,26 @@ export default function ExploreWebPanel({
   onRegionChange,
   onPersonalise,
   isPersonalising,
+  drillView,
+  drillItems,
+  drillCategories,
+  drillLoading,
+  panelPhase,
+  onDrillRegion,
+  onDrillCategory,
+  onDrillItem,
+  onBack,
 }: ExploreWebPanelProps) {
   const active = sections[activeIndex];
   const [ariaQuery, setAriaQuery] = useState('');
+  const isDrilled = drillView.level > 0;
+
+  const panelStyle: React.CSSProperties =
+    panelPhase === 'exiting'
+      ? { opacity: 0, transition: 'opacity 160ms ease-in' }
+      : panelPhase === 'entering'
+      ? { opacity: 1, animation: 'hsPanelIn 440ms 60ms cubic-bezier(0.25,0,0,1) both' }
+      : {};
 
   return (
     <div
@@ -241,108 +329,160 @@ export default function ExploreWebPanel({
         })}
       </div>
 
-      {/* Section headline — tighter padding, editorial feel */}
+      {/* Section headline — adapts to drill level */}
       <div style={{ ...GLASS, padding: '14px 16px', flexShrink: 0 }}>
-        <p style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '10px', fontWeight: 600,
-          letterSpacing: '0.18em', textTransform: 'uppercase',
-          color: '#C17F3A', margin: '0 0 4px',
-        }}>{active?.label}</p>
-        <h3 style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontStyle: 'italic', fontSize: '20px', fontWeight: 500,
-          color: '#FAF8F5', margin: '0 0 4px', lineHeight: 1.2,
-        }}>{active?.title}</h3>
-        <p style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '12px', color: 'rgba(250,248,245,0.4)',
-          margin: 0, lineHeight: 1.55,
-        }}>{active?.subtitle}</p>
+        {isDrilled ? (
+          <>
+            <button
+              onClick={onBack}
+              style={{ background: 'none', border: 'none', padding: '0 0 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', color: 'rgba(250,248,245,0.4)' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                {drillView.level === 2
+                  ? `${sectionShortLabel(drillView.sectionId)} / ${categoryLabel((drillView as Extract<ExploreView, { level: 2 }>).category)}`
+                  : sectionShortLabel((drillView as Extract<ExploreView, { level: 1 }>).sectionId)}
+              </span>
+            </button>
+            {drillView.level === 1 && (
+              <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '20px', fontWeight: 500, color: '#FAF8F5', margin: 0, lineHeight: 1.2 }}>
+                {(drillView as Extract<ExploreView, { level: 1 }>).sectionId === 'happening_now' ? 'Tonight' : 'Nearby'}
+              </h3>
+            )}
+            {drillView.level === 2 && (
+              <>
+                <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '20px', fontWeight: 500, color: '#FAF8F5', margin: '0 0 2px', lineHeight: 1.2 }}>
+                  {categoryLabel((drillView as Extract<ExploreView, { level: 2 }>).category)}
+                </h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.35)', margin: 0 }}>
+                  in {(drillView as Extract<ExploreView, { level: 2 }>).region.name}
+                </p>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C17F3A', margin: '0 0 4px' }}>{active?.label}</p>
+            <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '20px', fontWeight: 500, color: '#FAF8F5', margin: '0 0 4px', lineHeight: 1.2 }}>{active?.title}</h3>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.4)', margin: 0, lineHeight: 1.55 }}>{active?.subtitle}</p>
+          </>
+        )}
       </div>
 
-      {/* Items — generous padding, editorial subheader */}
-      <div style={{
-        ...GLASS,
-        padding: '14px 16px',
-        flex: 1,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
-      }}>
-        {/* Editorial subheader — label + subtle count */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          flexShrink: 0,
-          marginBottom: '10px',
-        }}>
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '10px', fontWeight: 600,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: 'rgba(250,248,245,0.38)', margin: 0,
-          }}>{active ? listLabel(active.content_type) : ''}</p>
-          {(active?.items.length ?? 0) > 0 && (
-            <span style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '10px',
-              color: 'rgba(250,248,245,0.22)',
-              letterSpacing: '0.04em',
-            }}>{active.items.length} curated</span>
+      {/* Items panel — L0 list, L1 categories, L2 drill items */}
+      <div style={{ ...GLASS, padding: '14px 16px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, ...panelStyle }}>
+        {/* Panel header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0, marginBottom: '10px' }}>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>
+            {drillView.level === 1 ? 'Categories' : drillView.level === 2 ? 'Places' : active ? listLabel(active.content_type) : ''}
+          </p>
+          {drillView.level === 0 && (active?.items.length ?? 0) > 0 && (
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', color: 'rgba(250,248,245,0.22)', letterSpacing: '0.04em' }}>{active.items.length} curated</span>
+          )}
+          {drillView.level === 2 && drillItems.length > 0 && (
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', color: 'rgba(250,248,245,0.22)', letterSpacing: '0.04em' }}>{drillItems.length} found</span>
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
-          {active?.items.length === 0 && (
-            <p style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontStyle: 'italic',
-              fontSize: '15px',
-              color: 'rgba(250,248,245,0.22)',
-              textAlign: 'center',
-              padding: '28px 0', margin: 0,
-            }}>
-              {active.content_type === 'events' ? 'Nothing on just yet.' : 'More coming soon.'}
-            </p>
-          )}
-          {active?.items.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              contentType={active.content_type}
-              onClick={() => onItemClick(item)}
-            />
-          ))}
-        </div>
+        {/* L0: section items (or "Yours" placeholder) */}
+        {drillView.level === 0 && (
+          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+            {active?.id === 'made_for_you' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '24px 8px', textAlign: 'center' }}>
+                <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(250,248,245,0.7)', lineHeight: 1.4 }}>
+                  Your personal curation is on its way.
+                </span>
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.35)', lineHeight: 1.6 }}>
+                  Aria will start tailoring places once your profile and stays are in.
+                </span>
+                <button style={{ marginTop: '4px', background: 'none', border: '1px solid rgba(193,127,58,0.4)', borderRadius: '8px', padding: '8px 18px', color: '#C17F3A', fontFamily: "'DM Sans', sans-serif", fontSize: '12px', cursor: 'pointer', letterSpacing: '0.05em' }}>
+                  Complete your profile →
+                </button>
+              </div>
+            ) : (
+              <>
+                {active?.items.length === 0 && (
+                  <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', padding: '28px 0', margin: 0 }}>
+                    {active.content_type === 'events' ? 'Nothing on just yet.' : 'More coming soon.'}
+                  </p>
+                )}
+                {active?.items.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    contentType={active.content_type}
+                    onClick={() => {
+                      if (active.content_type === 'regions') onDrillRegion(item as RegionOption);
+                      else onItemClick(item);
+                    }}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* L1: categories list */}
+        {drillView.level === 1 && (
+          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+            {drillLoading ? (
+              [0, 1, 2].map(i => (
+                <div key={i} style={{ height: '46px', borderRadius: '12px', background: 'rgba(250,248,245,0.06)', marginBottom: '5px', animation: `hsSkeletonPulse 1.4s ${i * 0.15}s ease-in-out infinite` }} />
+              ))
+            ) : drillCategories.length === 0 ? (
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', padding: '28px 0', margin: 0 }}>Nothing to show here yet.</p>
+            ) : (
+              drillCategories.map((cat) => {
+                const region = regions.find(r => r.id === selectedRegionId) ?? regions[0];
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => { if (region) onDrillCategory(region, cat); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', marginBottom: '5px', background: 'rgba(250,248,245,0.06)', border: '1px solid rgba(250,248,245,0.08)', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box', transition: 'background 160ms ease' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.12)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.06)'; }}
+                  >
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 500, color: '#FAF8F5' }}>{categoryLabel(cat)}</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* L2: drill items */}
+        {drillView.level === 2 && (
+          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+            {drillLoading ? (
+              [0, 1, 2].map(i => (
+                <div key={i} style={{ height: '52px', borderRadius: '12px', background: 'rgba(250,248,245,0.06)', marginBottom: '5px', animation: `hsSkeletonPulse 1.4s ${i * 0.15}s ease-in-out infinite` }} />
+              ))
+            ) : drillItems.length === 0 ? (
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', padding: '28px 0', margin: 0 }}>Nothing on just yet.</p>
+            ) : (
+              drillItems.map((item) => (
+                <DrillRow
+                  key={item.id}
+                  item={item}
+                  isEvent={active?.id === 'happening_now'}
+                  onClick={() => onDrillItem(item, active?.id ?? '')}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Region selector */}
-      {regions.length > 1 && (
+      {/* Region selector — hidden when drilled in */}
+      {!isDrilled && regions.length > 1 && (
         <div style={{ ...GLASS, padding: '12px 14px', flexShrink: 0 }}>
-          <label style={{
-            display: 'block',
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '10px', fontWeight: 600,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: 'rgba(250,248,245,0.35)', marginBottom: '7px',
-          }}>Destination</label>
+          <label style={{ display: 'block', fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.35)', marginBottom: '7px' }}>Destination</label>
           <select
             value={selectedRegionId ?? ''}
             onChange={(e) => onRegionChange(e.target.value)}
             aria-label="Change destination"
-            style={{
-              width: '100%', height: '38px', padding: '0 12px',
-              borderRadius: '10px',
-              background: 'rgba(250,248,245,0.07)',
-              border: '1px solid rgba(193,127,58,0.28)',
-              color: '#FAF8F5',
-              fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
-              outline: 'none', cursor: 'pointer', appearance: 'none',
-              boxSizing: 'border-box',
-            }}
+            style={{ width: '100%', height: '38px', padding: '0 12px', borderRadius: '10px', background: 'rgba(250,248,245,0.07)', border: '1px solid rgba(193,127,58,0.28)', color: '#FAF8F5', fontFamily: "'DM Sans', sans-serif", fontSize: '13px', outline: 'none', cursor: 'pointer', appearance: 'none', boxSizing: 'border-box' }}
           >
             {regions.map((r) => (
               <option key={r.id} value={r.id} style={{ background: '#1a1208', color: '#FAF8F5' }}>
@@ -451,6 +591,16 @@ export default function ExploreWebPanel({
         </button>
       </div>
 
+      <style>{`
+        @keyframes hsPanelIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes hsSkeletonPulse {
+          0%, 100% { opacity: 0.06; }
+          50%       { opacity: 0.13; }
+        }
+      `}</style>
     </div>
   );
 }
