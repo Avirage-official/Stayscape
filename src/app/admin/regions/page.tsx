@@ -99,10 +99,15 @@ export default function AdminRegionsPage() {
 
     setAction(regionId, key, { state: 'loading', message: '' });
 
+    const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY ?? '';
+
     try {
       const res = await fetch(endpoints[key], {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-admin-key': adminKey,
+        },
         body: JSON.stringify({ region_id: regionId }),
       });
       const json = await res.json();
