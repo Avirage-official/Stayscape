@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { CalendarDays, Plus, X, User, BedDouble } from 'lucide-react';
+import { CalendarDays, Plus, X, User, BedDouble, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useHotelAdmin } from '@/lib/context/hotel-admin-context';
 import { getHotelAdminToken } from '@/lib/hotel-admin-token';
 
-/* ── Types ──────────────────────────────────────────────────────── */
+/* ── Types ──────────────────────────────────────────── */
 
 type StayStatus = 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'pending';
 
@@ -42,7 +42,9 @@ const EMPTY_FORM: NewStayForm = {
   notes: '',
 };
 
-/* ── Helpers ────────────────────────────────────────────────────── */
+const PAGE_LIMIT = 20;
+
+/* ── Helpers ────────────────────────────────────────── */
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-SG', {
@@ -57,7 +59,7 @@ function nightsBetween(from: string, to: string): number {
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
-/* ── Status badge ───────────────────────────────────────────────── */
+/* ── Status badge ─────────────────────────────────────── */
 
 function StatusBadge({ status }: { status: StayStatus }) {
   const styles: Record<StayStatus, string> = {
@@ -83,7 +85,7 @@ function StatusBadge({ status }: { status: StayStatus }) {
   );
 }
 
-/* ── Loading skeleton ───────────────────────────────────────────── */
+/* ── Loading skeleton ───────────────────────────────────── */
 
 function SkeletonRow() {
   return (
@@ -97,7 +99,7 @@ function SkeletonRow() {
   );
 }
 
-/* ── Add Stay Modal ─────────────────────────────────────────────── */
+/* ── Add Stay Modal ─────────────────────────────────────── */
 
 function AddStayModal({
   onClose,
@@ -279,7 +281,7 @@ function AddStayModal({
   );
 }
 
-/* ── Main page ──────────────────────────────────────────────────── */
+/* ── Main page ────────────────────────────────────────── */
 
 const TABS: { key: FilterTab; label: string }[] = [
   { key: 'all',         label: 'All' },
@@ -291,13 +293,18 @@ const TABS: { key: FilterTab; label: string }[] = [
 export default function StaysPage() {
   useHotelAdmin();
 
-  const [stays, setStays]         = useState<Stay[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [showModal, setShowModal] = useState(false);
+  const [stays, setStays]           = useState<Stay[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [activeTab, setActiveTab]   = useState<FilterTab>('all');
+  const [showModal, setShowModal]   = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchStays = useCallback(async () => {
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_LIMIT));
+
+  const fetchStays = useCallback(async (page: number, tab: FilterTab) => {
+    setLoading(true);
     const token = await getHotelAdminToken();
     if (!token) {
       setError('Session expired. Please sign in again.');
@@ -306,7 +313,13 @@ export default function StaysPage() {
     }
 
     try {
-      const res = await fetch('/api/hotel-admin/stays', {
+      const params = new URLSearchParams({
+        page:  String(page),
+        limit: String(PAGE_LIMIT),
+      });
+      if (tab !== 'all') params.set('status', tab);
+
+      const res = await fetch(`/api/hotel-admin/stays?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -316,8 +329,12 @@ export default function StaysPage() {
         return;
       }
 
-      const data = (await res.json()) as { data: Stay[] };
-      setStays(data.data);
+      const json = (await res.json()) as {
+        data: Stay[];
+        meta: { total: number; page: number; limit: number };
+      };
+      setStays(json.data);
+      setTotalCount(json.meta.total);
       setError(null);
     } catch {
       setError('Failed to load stays');
@@ -326,14 +343,20 @@ export default function StaysPage() {
     }
   }, []);
 
+  // Refetch whenever page or tab changes
   useEffect(() => {
-    void fetchStays();
-  }, [fetchStays]);
+    void fetchStays(currentPage, activeTab);
+  }, [fetchStays, currentPage, activeTab]);
+
+  // Reset to page 1 when switching tabs
+  function handleTabChange(tab: FilterTab) {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  }
 
   async function handleCancel(stay: Stay) {
     if (!confirm(`Cancel stay for ${stay.guest_name}?`)) return;
 
-    // Optimistic update
     setStays((prev) =>
       prev.map((s) => (s.id === stay.id ? { ...s, status: 'cancelled' } : s)),
     );
@@ -348,10 +371,12 @@ export default function StaysPage() {
       });
 
       if (!res.ok) {
-        // Revert on failure
         setStays((prev) =>
           prev.map((s) => (s.id === stay.id ? { ...s, status: stay.status } : s)),
         );
+      } else {
+        // Refresh the current page so count stays accurate
+        void fetchStays(currentPage, activeTab);
       }
     } catch {
       setStays((prev) =>
@@ -360,24 +385,17 @@ export default function StaysPage() {
     }
   }
 
-  const counts: Record<FilterTab, number> = {
-    all:         stays.filter((s) => s.status !== 'cancelled').length,
-    confirmed:   stays.filter((s) => s.status === 'confirmed').length,
-    checked_in:  stays.filter((s) => s.status === 'checked_in').length,
-    checked_out: stays.filter((s) => s.status === 'checked_out').length,
-  };
-
-  const filtered =
-    activeTab === 'all'
-      ? stays.filter((s) => s.status !== 'cancelled')
-      : stays.filter((s) => s.status === activeTab);
-
   return (
     <div className="px-5 py-8 md:px-8 space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-[22px] font-semibold text-white">Stays</h1>
+        <div>
+          <h1 className="text-[22px] font-semibold text-white">Stays</h1>
+          {totalCount > 0 && (
+            <p className="text-[12px] text-white/30 mt-0.5">{totalCount} total</p>
+          )}
+        </div>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 text-[13px] font-medium text-[#0d0d0d] bg-[#C9A84C] hover:bg-[#d4b35f] rounded-lg px-4 py-2 transition-colors"
@@ -394,17 +412,12 @@ export default function StaysPage() {
           return (
             <button
               key={key}
-              onClick={() => setActiveTab(key)}
+              onClick={() => handleTabChange(key)}
               className={`relative px-4 py-2.5 text-[13px] font-medium transition-colors ${
                 isActive ? 'text-[#C9A84C]' : 'text-white/40 hover:text-white/60'
               }`}
             >
               {label}
-              {counts[key] > 0 && (
-                <span className={`ml-1.5 text-[11px] ${isActive ? 'text-[#C9A84C]/70' : 'text-white/20'}`}>
-                  {counts[key]}
-                </span>
-              )}
               {isActive && (
                 <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#C9A84C] rounded-t" />
               )}
@@ -430,7 +443,7 @@ export default function StaysPage() {
       )}
 
       {/* Empty state */}
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && !error && stays.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <CalendarDays size={32} className="text-white/20" />
           <p className="text-[13px] text-white/30">No stays yet</p>
@@ -444,9 +457,9 @@ export default function StaysPage() {
       )}
 
       {/* Stays list */}
-      {!loading && filtered.length > 0 && (
+      {!loading && stays.length > 0 && (
         <div className="space-y-3">
-          {filtered.map((stay) => (
+          {stays.map((stay) => (
             <div
               key={stay.id}
               className="bg-white/[0.02] border border-white/[0.06] rounded-xl px-5 py-4 flex items-center gap-4"
@@ -499,11 +512,41 @@ export default function StaysPage() {
         </div>
       )}
 
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-[12px] text-white/30">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 text-[12px] font-medium text-white/40 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] rounded-lg px-3 py-1.5 transition-colors"
+            >
+              <ChevronLeft size={14} />
+              Prev
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 text-[12px] font-medium text-white/40 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] rounded-lg px-3 py-1.5 transition-colors"
+            >
+              Next
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add Stay modal */}
       {showModal && (
         <AddStayModal
           onClose={() => setShowModal(false)}
-          onCreated={() => void fetchStays()}
+          onCreated={() => {
+            setCurrentPage(1);
+            void fetchStays(1, activeTab);
+          }}
         />
       )}
     </div>

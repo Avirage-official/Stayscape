@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @config "../../tailwind.config.ts";
 
@@ -99,22 +98,21 @@
   --tab-active: #C17F3A;
   --tab-inactive: #9E9389;
   --tab-hover: #F5F2EE;
+
+  /* ── FONT STACKS ──────────────────────────────────────────────
+     Variable names kept identical to previous stack so no
+     component changes are needed. Only the actual font changes.
+     Body:    Instrument Sans  (Rodrigo Fuenzalida, 2022)
+     Display: Fraunces          (Undercase Type, 2020)
+     Accent:  Spectral          (Production Type, 2017)
+     ──────────────────────────────────────────────────────────── */
+  --font-body:    var(--font-dm-sans),    'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-playfair),   Georgia, 'Times New Roman', serif;
+  --font-accent:  var(--font-cormorant),  Georgia, 'Times New Roman', serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
    DARK THEME — DEEP ESPRESSO (the active palette).
-   Cozy + premium + futuristic. Warm browns, soft cream text, gold
-   stays as the editorial accent.
-
-   Palette anchors:
-     #14100D   nearly black, warm undertone (background)
-     #1E1814   deep espresso (surface base)
-     #2A2218   raised espresso (cards)
-     #3A2E22   warm walnut border tone
-     #C9A875   refined antique gold (accent)
-     #F5E6CC   warm ivory cream (text)
-     #B8A088   tan caramel (secondary text)
-     #80715E   dim caramel (muted)
    ════════════════════════════════════════════════════════════════ */
 
 [data-theme="dark"] {
@@ -207,6 +205,17 @@
   --tab-active: #C9A875;
   --tab-inactive: #80715E;
   --tab-hover: #2A2218;
+
+  /* ── FONT STACKS ──────────────────────────────────────────────
+     Variable names kept identical to previous stack so no
+     component changes are needed. Only the actual font changes.
+     Body:    Instrument Sans  (Rodrigo Fuenzalida, 2022)
+     Display: Fraunces          (Undercase Type, 2020)
+     Accent:  Spectral          (Production Type, 2017)
+     ──────────────────────────────────────────────────────────── */
+  --font-body:    var(--font-dm-sans),    'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-playfair),   Georgia, 'Times New Roman', serif;
+  --font-accent:  var(--font-cormorant),  Georgia, 'Times New Roman', serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -216,7 +225,43 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-dm-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-dm-sans), 'Helvetica Neue', Arial, sans-serif;
+}
+
+/*
+ * ONBOARDING PAGE — let the slide image show through.
+ * The StayOnboardingFlow component sets body background to transparent
+ * via a wrapper. This ensures the <body> solid bg doesn't paint over
+ * the fixed-position slide image.
+ */
+body:has(.onboarding-bg-active) {
+  background: transparent !important;
+}
+
+/* ── Global input colour fix ────────────────────────────────────────
+   Ensures ALL inputs in dark theme have the correct background and
+   text colour — no Tailwind dependency, no purge risk.
+   ──────────────────────────────────────────────────────────────── */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: #1E1814;
+  color: #F5E6CC;
+  caret-color: #C9A875;
+}
+
+/* ── Booking reference input autofill fix ────────────────────────
+   Prevents the browser overriding background on autofill.
+   ──────────────────────────────────────────────────────────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #F5E6CC !important;
+  -webkit-box-shadow: 0 0 0px 1000px #1E1814 inset !important;
+  box-shadow: 0 0 0px 1000px #1E1814 inset !important;
+  caret-color: #C9A875;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Hide scrollbar but allow scrolling */
@@ -229,29 +274,25 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   ANIMATIONS — kept identical in motion, recoloured for espresso
+   ANIMATIONS
    ════════════════════════════════════════════════════════════════ */
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-12px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(12px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes gentlePulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
@@ -270,31 +311,22 @@ body {
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.30s; }
 
-/* Espresso shimmer skeleton — replaces warmShimmer */
 @keyframes warmShimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
 }
 .skeleton-warm {
-  background: linear-gradient(
-    90deg,
-    #1E1814 25%,
-    #2A2218 50%,
-    #1E1814 75%
-  );
+  background: linear-gradient(90deg, #1E1814 25%, #2A2218 50%, #1E1814 75%);
   background-size: 200% 100%;
   animation: warmShimmer 1.8s ease-in-out infinite;
 }
 
-/* Booking reference input attention glow — gold-tinted */
 @keyframes referenceGlow {
   0%   { box-shadow: 0 0 0 0   rgba(201, 168, 117, 0); }
   40%  { box-shadow: 0 0 0 8px rgba(201, 168, 117, 0.20); }
   100% { box-shadow: 0 0 0 0   rgba(201, 168, 117, 0); }
 }
-.reference-glow {
-  animation: referenceGlow 1.2s ease-out 2.5s both;
-}
+.reference-glow { animation: referenceGlow 1.2s ease-out 2.5s both; }
 
 @keyframes tabIndicator {
   from { transform: scaleX(0); }
@@ -306,51 +338,32 @@ body {
   50%  { box-shadow: 0 0 6px 2px rgba(201, 168, 117, 0.18); }
   100% { box-shadow: 0 0 0 0 rgba(201, 168, 117, 0); }
 }
-.gold-check-pulse {
-  animation: goldCheckPulse 1.2s ease-in-out 1;
-}
+.gold-check-pulse { animation: goldCheckPulse 1.2s ease-in-out 1; }
 
-/* Hover lift */
-.hover-lift {
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.hover-lift:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
+.hover-lift { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.hover-lift:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); }
 
-/* Discover panel — 4px hover lift */
-.discover-hover-lift {
-  transition: transform 0.25s ease;
-}
-.discover-hover-lift:hover {
-  transform: translateY(-4px);
-}
+.discover-hover-lift { transition: transform 0.25s ease; }
+.discover-hover-lift:hover { transform: translateY(-4px); }
 
 @keyframes discoverCardFadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.discover-card-fade-in {
-  animation: discoverCardFadeIn 0.4s ease-out both;
-}
+.discover-card-fade-in { animation: discoverCardFadeIn 0.4s ease-out both; }
 
 @keyframes discoverSlideIn {
   from { opacity: 0; transform: translateX(-16px); }
   to { opacity: 1; transform: translateX(0); }
 }
-.discover-slide-in {
-  animation: discoverSlideIn 0.4s ease-out both;
-}
+.discover-slide-in { animation: discoverSlideIn 0.4s ease-out both; }
 
-/* Glass utility — espresso-tinted */
 .glass-dark {
   background: var(--dashboard-card-bg);
   border: 1px solid var(--dashboard-card-border);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
 }
 
-/* Map UI animations — colours kept (map stays dark) */
 @keyframes userDotPulse {
   0%   { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0.55); }
   70%  { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
@@ -383,22 +396,18 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Region pill hover (non-selected) */
 .region-pill-btn:not([data-selected="true"]):hover {
   border-color: var(--gold) !important;
   color: var(--text-primary) !important;
   box-shadow: 0 2px 8px rgba(201, 168, 117, 0.15) !important;
 }
 
-/* Discovery booking ref input focus */
 .discovery-ref-input:focus {
   border-color: var(--gold) !important;
   box-shadow: 0 0 0 3px rgba(201, 168, 117, 0.15) !important;
-  background: var(--surface) !important;
   outline: none;
 }
 
-/* Dashboard background motion */
 @keyframes dashboardDrift {
   0%   { transform: translate(0, 0) scale(1); }
   50%  { transform: translate(-12px, 8px) scale(1.02); }
@@ -421,199 +430,132 @@ body {
 .app-discover-link:hover { opacity: 0.75; }
 
 /* ════════════════════════════════════════════════════════════════
-   DIMENSIONAL UTILITIES — espresso depth system
-   Use these on cards, tiles, buttons to get the layered look.
+   DIALOG — custom clip-path reveal (replaces tw-animate-css defaults)
    ════════════════════════════════════════════════════════════════ */
 
-/* ── Raised card: subtle gradient + top highlight + ambient shadow ── */
+/* Overlay: soft fade with a gentle warmth */
+@keyframes ss-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ss-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.ss-overlay-open  { animation: ss-overlay-in  0.28s ease both; }
+.ss-overlay-close { animation: ss-overlay-out 0.20s ease both; }
+
+/* Dialog content: clip-path curtain reveal — unique to Stayscape */
+@keyframes ss-dialog-reveal {
+  from {
+    opacity: 0;
+    clip-path: inset(6% 3% 6% 3% round 20px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0% 0% 0% 0% round 20px);
+    transform: translateY(0);
+  }
+}
+@keyframes ss-dialog-dismiss {
+  from {
+    opacity: 1;
+    clip-path: inset(0% 0% 0% 0% round 20px);
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    clip-path: inset(4% 2% 4% 2% round 20px);
+    transform: translateY(4px);
+  }
+}
+.ss-dialog-open  { animation: ss-dialog-reveal  0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ss-dialog-close { animation: ss-dialog-dismiss 0.22s cubic-bezier(0.4, 0, 1, 1) both; }
+
+/* ════════════════════════════════════════════════════════════════
+   DIMENSIONAL UTILITIES
+   ════════════════════════════════════════════════════════════════ */
+
 .ss-card-raised {
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(245, 230, 204, 0.04) 0%, rgba(245, 230, 204, 0) 30%),
-    var(--surface);
+  background: linear-gradient(180deg, rgba(245, 230, 204, 0.04) 0%, rgba(245, 230, 204, 0) 30%), var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.06),
-    0 1px 0 rgba(0, 0, 0, 0.4),
-    0 8px 24px rgba(0, 0, 0, 0.3);
-  transition:
-    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.35s ease;
+  box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.06), 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
 }
 
-/* ── Tile: same depth recipe but tuned for square buttons ── */
 .ss-tile {
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(245, 230, 204, 0.05) 0%, rgba(245, 230, 204, 0) 35%),
-    var(--surface);
+  background: linear-gradient(180deg, rgba(245, 230, 204, 0.05) 0%, rgba(245, 230, 204, 0) 35%), var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.07),
-    0 1px 0 rgba(0, 0, 0, 0.4),
-    0 6px 18px rgba(0, 0, 0, 0.28);
-  transition:
-    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.25s ease;
+  box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.07), 0 1px 0 rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.28);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
   cursor: pointer;
   overflow: hidden;
   isolation: isolate;
 }
-
-/* Optional gold sheen that lights up on hover, sits under content */
 .ss-tile::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(201, 168, 117, 0.16) 0%, transparent 60%);
+  background: radial-gradient(120% 80% at 50% 0%, rgba(201, 168, 117, 0.16) 0%, transparent 60%);
   opacity: 0;
   transition: opacity 0.4s ease;
   pointer-events: none;
   z-index: 0;
 }
 .ss-tile > * { position: relative; z-index: 1; }
-
-.ss-tile:hover {
-  transform: translateY(-4px);
-  border-color: rgba(201, 168, 117, 0.35);
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.10),
-    0 1px 0 rgba(0, 0, 0, 0.4),
-    0 16px 36px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(201, 168, 117, 0.15);
-}
+.ss-tile:hover { transform: translateY(-4px); border-color: rgba(201, 168, 117, 0.35); box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.10), 0 1px 0 rgba(0, 0, 0, 0.4), 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 117, 0.15); }
 .ss-tile:hover::before { opacity: 1; }
+.ss-tile:active { transform: translateY(-1px) scale(0.985); transition-duration: 0.12s; }
+.ss-card-raised:hover { transform: translateY(-2px); border-color: rgba(201, 168, 117, 0.20); box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.08), 0 1px 0 rgba(0, 0, 0, 0.4), 0 14px 30px rgba(0, 0, 0, 0.38); }
 
-.ss-tile:active {
-  transform: translateY(-1px) scale(0.985);
-  transition-duration: 0.12s;
-}
-
-.ss-card-raised:hover {
-  transform: translateY(-2px);
-  border-color: rgba(201, 168, 117, 0.20);
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.08),
-    0 1px 0 rgba(0, 0, 0, 0.4),
-    0 14px 30px rgba(0, 0, 0, 0.38);
-}
-
-/* ── Icon chip: the inner glowing tile inside a card/tile ── */
 .ss-icon-chip {
   position: relative;
-  background:
-    radial-gradient(100% 100% at 50% 0%, rgba(201, 168, 117, 0.20) 0%, rgba(201, 168, 117, 0.08) 100%);
+  background: radial-gradient(100% 100% at 50% 0%, rgba(201, 168, 117, 0.20) 0%, rgba(201, 168, 117, 0.08) 100%);
   border: 1px solid rgba(201, 168, 117, 0.20);
   border-radius: 14px;
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.10),
-    0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.10), 0 4px 12px rgba(0, 0, 0, 0.25);
   color: var(--gold);
   transition: box-shadow 0.35s ease, transform 0.35s ease;
 }
+.ss-tile:hover .ss-icon-chip { box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.14), 0 6px 18px rgba(201, 168, 117, 0.30), 0 0 24px rgba(201, 168, 117, 0.18); transform: scale(1.06); }
 
-.ss-tile:hover .ss-icon-chip {
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.14),
-    0 6px 18px rgba(201, 168, 117, 0.30),
-    0 0 24px rgba(201, 168, 117, 0.18);
-  transform: scale(1.06);
-}
-
-/* ── Gold accent button (used for primary CTAs and send buttons) ── */
 .ss-gold-btn {
   position: relative;
-  background:
-    linear-gradient(180deg, var(--gold-soft) 0%, var(--gold) 100%);
+  background: linear-gradient(180deg, var(--gold-soft) 0%, var(--gold) 100%);
   color: var(--background);
   border: 1px solid rgba(245, 230, 204, 0.18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.20),
-    0 6px 18px rgba(201, 168, 117, 0.30),
-    0 0 0 0 rgba(201, 168, 117, 0);
-  transition:
-    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.35s ease,
-    filter 0.25s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -1px 0 rgba(0, 0, 0, 0.20), 0 6px 18px rgba(201, 168, 117, 0.30), 0 0 0 0 rgba(201, 168, 117, 0);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, filter 0.25s ease;
   cursor: pointer;
 }
-.ss-gold-btn:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.30),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 10px 26px rgba(201, 168, 117, 0.45),
-    0 0 24px rgba(201, 168, 117, 0.30);
-}
-.ss-gold-btn:active {
-  transform: translateY(0) scale(0.97);
-  transition-duration: 0.1s;
-}
-.ss-gold-btn:disabled,
-.ss-gold-btn[aria-disabled='true'] {
-  cursor: not-allowed;
-  filter: saturate(0.5) brightness(0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
-  transform: none;
-}
+.ss-gold-btn:hover { transform: translateY(-1px); filter: brightness(1.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 10px 26px rgba(201, 168, 117, 0.45), 0 0 24px rgba(201, 168, 117, 0.30); }
+.ss-gold-btn:active { transform: translateY(0) scale(0.97); transition-duration: 0.1s; }
+.ss-gold-btn:disabled, .ss-gold-btn[aria-disabled='true'] { cursor: not-allowed; filter: saturate(0.5) brightness(0.7); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10); transform: none; }
 
-/* ── Soft pill (suggestion chips, secondary buttons) ── */
 .ss-pill {
-  background:
-    linear-gradient(180deg, rgba(245, 230, 204, 0.04) 0%, rgba(245, 230, 204, 0) 60%),
-    var(--surface);
+  background: linear-gradient(180deg, rgba(245, 230, 204, 0.04) 0%, rgba(245, 230, 204, 0) 60%), var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.05),
-    0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.05), 0 2px 8px rgba(0, 0, 0, 0.2);
   color: var(--text-primary);
-  transition:
-    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.25s ease,
-    color 0.25s ease,
-    box-shadow 0.3s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, color 0.25s ease, box-shadow 0.3s ease;
   cursor: pointer;
 }
-.ss-pill:hover {
-  transform: translateY(-2px);
-  border-color: rgba(201, 168, 117, 0.40);
-  color: var(--gold);
-  box-shadow:
-    inset 0 1px 0 rgba(245, 230, 204, 0.08),
-    0 6px 18px rgba(0, 0, 0, 0.28),
-    0 0 18px rgba(201, 168, 117, 0.18);
-}
-.ss-pill:active {
-  transform: translateY(0) scale(0.97);
-}
+.ss-pill:hover { transform: translateY(-2px); border-color: rgba(201, 168, 117, 0.40); color: var(--gold); box-shadow: inset 0 1px 0 rgba(245, 230, 204, 0.08), 0 6px 18px rgba(0, 0, 0, 0.28), 0 0 18px rgba(201, 168, 117, 0.18); }
+.ss-pill:active { transform: translateY(0) scale(0.97); }
 
-/* ── Mount stagger: fade-up in sequence ──
-   Apply .ss-stagger to a parent and .ss-stagger > * gets sequential delay. */
 @keyframes ss-mount-up {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.ss-mount-up {
-  animation: ss-mount-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.ss-stagger > * {
-  animation: ss-mount-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+.ss-mount-up { animation: ss-mount-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ss-stagger > * { animation: ss-mount-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .ss-stagger > *:nth-child(1)  { animation-delay: 0.04s; }
 .ss-stagger > *:nth-child(2)  { animation-delay: 0.08s; }
 .ss-stagger > *:nth-child(3)  { animation-delay: 0.12s; }
@@ -627,22 +569,12 @@ body {
 .ss-stagger > *:nth-child(11) { animation-delay: 0.44s; }
 .ss-stagger > *:nth-child(12) { animation-delay: 0.48s; }
 
-/* ── Breathing gold halo for sparkle / Aria mark ── */
 @keyframes ss-breathe {
-  0%, 100% {
-    box-shadow:
-      0 0 0 0 rgba(201, 168, 117, 0.30),
-      inset 0 1px 0 rgba(245, 230, 204, 0.10);
-  }
-  50% {
-    box-shadow:
-      0 0 28px 4px rgba(201, 168, 117, 0.25),
-      inset 0 1px 0 rgba(245, 230, 204, 0.16);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 117, 0.30), inset 0 1px 0 rgba(245, 230, 204, 0.10); }
+  50% { box-shadow: 0 0 28px 4px rgba(201, 168, 117, 0.25), inset 0 1px 0 rgba(245, 230, 204, 0.16); }
 }
 .ss-breathe { animation: ss-breathe 3.6s ease-in-out infinite; }
 
-/* ── Aurora ambient background (use on hero zones, behind content) ── */
 @keyframes ss-aurora {
   0%   { transform: translate(-8%, -4%) scale(1); opacity: 0.55; }
   50%  { transform: translate(6%, 4%)   scale(1.08); opacity: 0.85; }
@@ -652,24 +584,15 @@ body {
   position: absolute;
   inset: -10%;
   pointer-events: none;
-  background:
-    radial-gradient(40% 35% at 25% 35%, rgba(201, 168, 117, 0.20) 0%, transparent 70%),
-    radial-gradient(40% 35% at 75% 65%, rgba(180, 100, 60, 0.16) 0%, transparent 70%);
+  background: radial-gradient(40% 35% at 25% 35%, rgba(201, 168, 117, 0.20) 0%, transparent 70%), radial-gradient(40% 35% at 75% 65%, rgba(180, 100, 60, 0.16) 0%, transparent 70%);
   filter: blur(40px);
   animation: ss-aurora 22s ease-in-out infinite;
   z-index: 0;
 }
 
-/* ── Ripple on click (apply ripple element absolutely positioned) ── */
 @keyframes ss-ripple {
-  from {
-    opacity: 0.6;
-    transform: scale(0);
-  }
-  to {
-    opacity: 0;
-    transform: scale(4);
-  }
+  from { opacity: 0.6; transform: scale(0); }
+  to { opacity: 0; transform: scale(4); }
 }
 .ss-ripple {
   position: absolute;
@@ -680,7 +603,6 @@ body {
   z-index: 2;
 }
 
-/* ── Typing dots (reused) ── */
 @keyframes ss-dot-pulse {
   0%, 100% { opacity: 0.35; transform: translateY(0) scale(0.9); }
   50%      { opacity: 1;    transform: translateY(-2px) scale(1.05); }
@@ -696,18 +618,19 @@ body {
 .ss-dot:nth-child(2) { animation-delay: 0.15s; }
 .ss-dot:nth-child(3) { animation-delay: 0.30s; }
 
-/* ── Reduced motion respect ── */
 @media (prefers-reduced-motion: reduce) {
-  .ss-tile,
-  .ss-card-raised,
-  .ss-gold-btn,
-  .ss-pill,
-  .ss-mount-up,
-  .ss-stagger > *,
-  .ss-breathe,
-  .ss-aurora,
-  .ss-ripple {
+  .ss-tile, .ss-card-raised, .ss-gold-btn, .ss-pill, .ss-mount-up,
+  .ss-stagger > *, .ss-breathe, .ss-aurora, .ss-ripple,
+  .ss-dialog-open, .ss-dialog-close, .ss-overlay-open, .ss-overlay-close {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Sidebar-offset wrapper — padding driven by --sidebar-w CSS var set by GuestNavBar */
+@media (min-width: 768px) {
+  .dashboard-content {
+    padding-left: var(--sidebar-w, 52px);
+    transition: padding-left 280ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

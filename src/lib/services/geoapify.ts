@@ -15,9 +15,10 @@ const GEOAPIFY_BASE = 'https://api.geoapify.com/v2';
 
 /**
  * Curated list of Geoapify sub-categories to fetch.
- * Avoids broad parent buckets (e.g. 'commercial', 'catering') that
- * pull in junk like phone repair shops, fast food, generic chains.
- * Each entry maps to a Stayscape category in GEOAPIFY_TO_STAYSCAPE_CATEGORY below.
+ * Restaurants and cafes are included — the chain blocklist below and
+ * Claude's quality gate together filter out generic chains, leaving only
+ * independent dining worth featuring.
+ * 'catering.fast_food' remains excluded as it is almost entirely chains.
  */
 const DEFAULT_CATEGORIES = [
   /* Dining */
@@ -59,6 +60,57 @@ const DEFAULT_CATEGORIES = [
   'religion.place_of_worship',
 ];
 
+/* ── Chain / generic dining blocklist ───────────────────── */
+
+/**
+ * Case-insensitive blocklist of known chains, franchises, and generic
+ * brands that should never appear in Stayscape regardless of category.
+ * Checked as a substring match against the place name (lowercased).
+ */
+const CHAIN_BLOCKLIST = [
+  /* Fast food */
+  "mcdonald's", 'mcdonalds', 'kfc', 'burger king', 'subway', 'wendy\'s',
+  'wendys', 'taco bell', 'popeyes', 'five guys', 'shake shack', 'jollibee',
+  'carl\'s jr', 'carls jr', 'hardee\'s', 'hardees', 'jack in the box',
+  'domino\'s', 'dominos', 'pizza hut', 'little caesars', 'papa john\'s',
+  'papa johns',
+  /* Casual dining chains */
+  'swensen\'s', 'swensens', 'the manhattan fish market', 'fish & co',
+  'fish and co', 'sizzler', 'tony roma\'s', 'tony romas', 'applebee\'s',
+  'applebees', 'chili\'s', 'chilis', 'friday\'s', 'fridays', 'denny\'s',
+  'dennys', 'ihop', 'olive garden', 'red lobster', 'outback steakhouse',
+  'nando\'s', 'nandos',
+  /* Café chains */
+  'starbucks', 'costa coffee', 'coffee bean', 'gloria jean\'s', 'gloria jeans',
+  'old town white coffee', 'ya kun', 'toast box', 'toastbox', 'mr bean',
+  'gong cha', 'koi', 'liho', 'each a cup', 'tiger sugar', 'playmade',
+  'the alley', 'ten ren',
+  /* Sushi / Japanese chains */
+  'sushiro', 'sushi express', 'genki sushi', 'itacho sushi', 'sakae sushi',
+  'sushi tei', 'ichiban boshi',
+  /* Asian casual chains */
+  'yoshinoya', 'sukiya', 'mekong', 'imperial treasure', 'paradise dynasty',
+  'din tai fung',  // popular chain — add only if desired to filter
+  'ajisen', 'ramen nagi', 'ippudo', 'butcher boy', 'putien',
+  /* Western chains */
+  'ikura', 'nyonya memories',  // specific to current bad data
+  'bengawan solo', 'bengawan',
+  /* Convenience / grab & go */
+  '7-eleven', '7 eleven', 'cheers', 'fairprice', 'cold storage', 'giant',
+  'watsons', 'guardian',
+  /* Hotel chain restaurants (generic) */
+  'marriott', 'hilton', 'sheraton', 'hyatt', 'westin', 'novotel',
+  'courtyard by marriott',
+];
+
+/**
+ * Returns true if the place name matches a known chain / blocklisted brand.
+ */
+function isBlocklisted(name: string): boolean {
+  const lower = name.toLowerCase();
+  return CHAIN_BLOCKLIST.some((entry) => lower.includes(entry));
+}
+
 /* ── Category mapping ────────────────────────────────────── */
 
 const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
@@ -71,36 +123,42 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
   'entertainment.cinema': 'fun_places',
   'entertainment.theme_park': 'fun_places',
   'entertainment.activity_park': 'fun_places',
+  'entertainment.water_park': 'fun_places',
+  'entertainment.escape_game': 'fun_places',
+  'entertainment.bowling_alley': 'fun_places',
   'entertainment.zoo': 'family',
   'entertainment.aquarium': 'family',
   'entertainment.museum': 'historical',
   'entertainment.culture': 'historical',
   'leisure.park': 'nature',
+  'leisure.spa': 'wellness',
   'natural': 'nature',
   'natural.forest': 'nature',
   'natural.water': 'nature',
-  'tourism': 'top_places',
-  'tourism.sights': 'top_places',
-  'tourism.attraction': 'top_places',
-  'tourism.information': 'top_places',
+  'tourism.sights': 'topplaces',
+  'tourism.attraction': 'topplaces',
+  'tourism.information': 'topplaces',
+  'tourism': 'topplaces',
   'heritage': 'historical',
   'heritage.unesco': 'historical',
   'religion': 'historical',
+  'religion.place_of_worship': 'historical',
   'commercial.shopping_mall': 'shopping',
   'commercial': 'shopping',
   'sport.fitness': 'wellness',
   'healthcare.pharmacy': 'wellness',
   'service.beauty': 'wellness',
+  'beach': 'nature',
 };
 
 export function mapGeoapifyCategory(categories: string[]): string {
-  // Two-pass priority: non-catering first so that a shrine or park tagged with
-  // both catering.restaurant and tourism.sights resolves to historical/nature,
-  // not dining. Catering is only used when no other category matches.
+  // Two-pass priority: non-catering first so that a shrine tagged with both
+  // catering.restaurant and tourism.sights resolves to historical, not dining.
   const passes = [
     categories.filter((c) => !c.startsWith('catering')),
     categories.filter((c) => c.startsWith('catering')),
   ];
+
   for (const pass of passes) {
     for (const cat of pass) {
       if (GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat]) return GEOAPIFY_TO_STAYSCAPE_CATEGORY[cat];
@@ -160,6 +218,7 @@ export interface GeoapifySearchParams {
 /**
  * Search places by radius around a point.
  * Returns normalized PlaceUpsertInput objects ready for Supabase.
+ * Blocklisted chains are silently dropped before returning.
  */
 export async function searchPlaces(
   params: GeoapifySearchParams,
@@ -170,7 +229,7 @@ export async function searchPlaces(
     longitude,
     radius_meters = 5000,
     categories = DEFAULT_CATEGORIES,
-    limit = 50,
+    limit = 100,
     countryCode,
   } = params;
 
@@ -190,10 +249,10 @@ export async function searchPlaces(
   const expectedCountry = countryCode?.toUpperCase();
   const json = (await res.json()) as GeoapifyResponse;
   return json.features
-    .filter((f) => f.properties.name)
+    .filter((f) => f.properties.name && !isBlocklisted(f.properties.name))
     .filter((f) =>
       !expectedCountry ||
-      f.properties.country_code?.toUpperCase() === expectedCountry,
+      (f.properties.country_code?.toUpperCase() === expectedCountry),
     )
     .map((f) => normalizeFeature(f));
 }
@@ -213,7 +272,7 @@ export async function searchPlacesByBounds(params: {
   const {
     north, south, east, west,
     categories = DEFAULT_CATEGORIES,
-    limit = 50,
+    limit = 100,
   } = params;
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
@@ -230,7 +289,7 @@ export async function searchPlacesByBounds(params: {
 
   const json = (await res.json()) as GeoapifyResponse;
   return json.features
-    .filter((f) => f.properties.name)
+    .filter((f) => f.properties.name && !isBlocklisted(f.properties.name))
     .map((f) => normalizeFeature(f));
 }
 
@@ -252,6 +311,7 @@ export async function getPlaceDetails(
   const json = (await res.json()) as { features: GeoapifyFeature[] };
   const feature = json.features?.[0];
   if (!feature?.properties?.name) return null;
+  if (isBlocklisted(feature.properties.name)) return null;
 
   return normalizeFeature(feature);
 }

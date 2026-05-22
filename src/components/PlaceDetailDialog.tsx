@@ -277,11 +277,12 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-[520px] sm:max-w-[580px] max-h-[90vh] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0 flex flex-col"
+        className="max-w-[520px] sm:max-w-[580px] rounded-2xl bg-[var(--discover-surface)] border-[var(--discover-border)] p-0 overflow-hidden gap-0 flex flex-col"
+        style={{ maxHeight: 'calc(90dvh - 64px - env(safe-area-inset-bottom))' }}
       >
 
         {view === 'detail' ? (
-          <div className="flex flex-col max-h-[90vh]">
+          <div className="flex flex-col flex-1 min-h-0">
             <PlaceDetailHeader detail={detail} />
             <PlaceDetailContent detail={detail} onAddToItinerary={() => setView('schedule')} />
           </div>

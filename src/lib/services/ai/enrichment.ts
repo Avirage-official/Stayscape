@@ -33,6 +33,7 @@ import { ClaudeProvider } from './claude-provider';
 
 export interface EnrichmentResult {
   editorial_summary: string;
+  category?: string | null;
   booking_url?: string | null;
   website?: string | null;
   recommended_duration?: string | null;
@@ -48,8 +49,8 @@ export interface EnrichmentResult {
   /* Quality gate fields — populated by Claude provider */
   quality_score?: number;
   rejection_reason?: string;
-  /* Category correction — AI may override the algorithmic mapping */
-  category?: string | null;
+  /* Rating estimate — only set when Claude estimates from knowledge */
+  rating?: number | null;
 }
 
 export interface AIEnrichmentProvider {
@@ -108,17 +109,18 @@ export function setAIProvider(provider: AIEnrichmentProvider): void {
  *
  * Pipeline:
  * 1. Fetch fresh structured data from Geoapify Place Details (website, phone)
- * 2. Update the place record with Geoapify data
+ * 1b. Fetch a high-quality image via Google Places → Unsplash if none exists
+ * 2. Update the place record with Geoapify + image data
  * 3. Call the AI provider — which returns a quality_score (1-10)
  * 4. If score < 5 → mark place as is_active=false (hidden from guests)
- * 5. Otherwise: write editorial_summary, vibes, etc. back to the place
+ * 5. Otherwise: write editorial_summary, vibes, rating estimate (if no real rating), etc. back to the place
  * 6. Upsert vibe/best_for tags into place_tags
  */
 export async function enrichPlace(
   supabase: SupabaseClient,
   place: InternalPlace,
 ): Promise<void> {
-  // Step 1 – Fetch Geoapify Place Details for structured data
+  // Step 1 – Fetch Geoapify Place Details + better image
   let enrichedPlace = place;
   if (place.external_source === 'geoapify' && place.external_id) {
     try {
@@ -149,6 +151,28 @@ export async function enrichPlace(
       }
     } catch {
       // Non-fatal — continue with existing place data
+    }
+  }
+
+  // Step 1b – Fetch a high-quality image if the place has none or only a
+  // Wikipedia-sourced one (which tends to be low-res or off-topic).
+  const needsBetterImage =
+    !place.image_url ||
+    place.image_url.includes('wikimedia') ||
+    place.image_url.includes('wikipedia');
+
+  if (needsBetterImage) {
+    try {
+      const betterImage = await fetchPlaceImage(place.name, place.city ?? '', place.country_code ?? '');
+      if (betterImage) {
+        await supabase
+          .from('places')
+          .update({ image_url: betterImage, updated_at: new Date().toISOString() })
+          .eq('id', place.id);
+        enrichedPlace = { ...enrichedPlace, image_url: betterImage };
+      }
+    } catch {
+      // Non-fatal
     }
   }
 
@@ -190,11 +214,17 @@ export async function enrichPlace(
     updated_at: new Date().toISOString(),
   };
 
+  // Apply Claude's category correction if it differs from the Geoapify-derived one
   if (result.category && result.category !== place.category) {
     placeUpdates.category = result.category;
     console.log(
       `[enrichPlace] Category corrected "${place.name}": ${place.category} → ${result.category}`,
     );
+  }
+
+  // Only write Claude's rating estimate if the place has no real rating yet
+  if (result.rating != null && !place.rating) {
+    placeUpdates.rating = result.rating;
   }
 
   const { error } = await supabase
@@ -338,4 +368,76 @@ export async function enrichNewEvents(
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch a high-quality image for a place.
+ * Strategy: Google Places Photos (1200px) → Unsplash (landscape, relevant).
+ * Both keys are optional — whichever is configured will be tried.
+ */
+async function fetchPlaceImage(
+  name: string,
+  city: string,
+  countryCode: string,
+): Promise<string | null> {
+  const googleKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (googleKey) {
+    try {
+      const query = city ? `${name} ${city}` : `${name} ${countryCode}`;
+      const searchUrl =
+        `https://maps.googleapis.com/maps/api/place/textsearch/json` +
+        `?query=${encodeURIComponent(query)}&key=${googleKey}`;
+
+      const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
+      if (searchRes.ok) {
+        const searchData = (await searchRes.json()) as {
+          results?: Array<{ photos?: Array<{ photo_reference: string }> }>;
+        };
+        const photoRef = searchData.results?.[0]?.photos?.[0]?.photo_reference;
+        if (photoRef) {
+          const photoUrl =
+            `https://maps.googleapis.com/maps/api/place/photo` +
+            `?maxwidth=1600&photoreference=${encodeURIComponent(photoRef)}&key=${googleKey}`;
+          const photoRes = await fetch(photoUrl, {
+            redirect: 'follow',
+            signal: AbortSignal.timeout(8000),
+          });
+          if (photoRes.ok && photoRes.url) return photoRes.url;
+        }
+      }
+    } catch {
+      // Try Unsplash
+    }
+  }
+
+  const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (unsplashKey) {
+    const queries = [
+      city ? `${name} ${city}` : name,
+      city ? `${city} ${name}` : null,
+    ].filter(Boolean) as string[];
+
+    for (const query of queries) {
+      try {
+        const url =
+          `https://api.unsplash.com/search/photos` +
+          `?query=${encodeURIComponent(query)}&orientation=landscape&per_page=3&order_by=relevant`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Client-ID ${unsplashKey}` },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            results?: Array<{ urls?: { regular?: string } }>;
+          };
+          const imageUrl = data.results?.[0]?.urls?.regular;
+          if (imageUrl) return imageUrl;
+        }
+      } catch {
+        // Try next query
+      }
+    }
+  }
+
+  return null;
 }

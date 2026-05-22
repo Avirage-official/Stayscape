@@ -23,14 +23,19 @@ type ActivationResponse = {
 interface AddStayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The logged-in user's ID. */
   userId?: string;
-  /** Called after a successful activation so the parent can refetch. */
   onActivated?: () => void;
 }
 
 const inputClassName =
-  'w-full h-11 px-4 rounded-xl bg-white/[0.10] border border-white/[0.12] text-[14px] text-white/85 placeholder:text-white/40 focus:outline-none focus:border-[var(--gold)]/40 focus:bg-white/[0.13] transition-all duration-300';
+  'w-full h-11 px-4 rounded-xl border border-white/[0.12] text-[14px] placeholder:text-white/35 focus:outline-none focus:border-[var(--gold)]/40 transition-all duration-300';
+
+/* Inline styles guarantee colour values survive Tailwind purge */
+const inputStyle: React.CSSProperties = {
+  backgroundColor: '#1E1814',
+  color: '#F5E6CC',
+  caretColor: '#C9A875',
+};
 
 export default function AddStayDialog({
   open,
@@ -42,8 +47,6 @@ export default function AddStayDialog({
   const prefersReducedMotion = useReducedMotion();
   const [state, setState] = useState<ActivationState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Form fields
   const [bookingRef, setBookingRef] = useState('');
 
   const reset = useCallback(() => {
@@ -252,6 +255,7 @@ export default function AddStayDialog({
                               value={bookingRef}
                               onChange={(e) => setBookingRef(e.target.value)}
                               className={inputClassName}
+                              style={inputStyle}
                               placeholder="e.g. RES-123456"
                               autoComplete="off"
                               spellCheck={false}

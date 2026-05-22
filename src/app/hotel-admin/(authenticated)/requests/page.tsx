@@ -38,19 +38,25 @@ interface TaskMessage {
 
 type FilterTab = 'all' | TaskStatus;
 
+/**
+ * Guest-app task_type values (top section) + hotel-admin-created types (bottom section).
+ * Keep in sync with the tile definitions in guest home/page.tsx.
+ */
 const TASK_TYPES = [
   'all_types',
+  // ── Guest-initiated (must match task_type strings sent by guest app) ──
   'housekeeping',
-  'maintenance',
-  'food_beverage',
-  'concierge',
-  'late_checkout',
-  'early_checkin',
-  'extra_amenities',
-  'transport',
-  'spa',
-  'restaurant',
+  'room_service',
   'laundry',
+  'maintenance',
+  'taxi_booking',
+  'luggage_pickup',
+  'late_checkout',
+  'restaurant_reservation',
+  'wakeup_call',
+  // ── Hotel-admin-created / legacy ──
+  'concierge',
+  'transport',
   'other',
 ] as const;
 
@@ -632,7 +638,7 @@ export default function RequestsPage() {
     .filter((t) => activeTab === 'all' || t.status === activeTab)
     .filter((t) => typeFilter === 'all_types' || t.task_type === typeFilter);
 
-  // Unique task types present in current list for the type filter dropdown
+  // Unique task types present in current list for the type filter chips
   const presentTypes = Array.from(new Set(tasks.map((t) => t.task_type)));
 
   return (
@@ -672,7 +678,7 @@ export default function RequestsPage() {
           })}
         </div>
 
-        {/* Type filter — only show if >1 type exists */}
+        {/* Type filter chips — only show if >1 type exists */}
         {presentTypes.length > 1 && (
           <div className="flex gap-1.5 flex-wrap">
             <button

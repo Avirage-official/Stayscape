@@ -610,9 +610,13 @@ export async function POST(request: NextRequest) {
           // Never surface raw error to the guest
         }
 
-        toolResultContent = toolSucceeded
-          ? 'Service request logged successfully. Tell the guest it has been sent to the team and give a warm, brief confirmation.'
-          : 'FAILED: The service request could not be logged in the system. You must tell the guest honestly that you were unable to log the request automatically, apologise briefly, and ask them to contact reception directly to make the request. Do NOT say the request has been logged or is on its way.';
+        if (toolSucceeded) {
+          toolResultContent = 'Service request logged successfully. Tell the guest it has been sent to the team and give a warm, brief confirmation.';
+        } else if (!propertyId) {
+          toolResultContent = 'Service requests are only available for hotel stays, not self-guided trips — let the guest know politely.';
+        } else {
+          toolResultContent = 'FAILED: The service request could not be logged in the system. You must tell the guest honestly that you were unable to log the request automatically, apologise briefly, and ask them to contact reception directly to make the request. Do NOT say the request has been logged or is on its way.';
+        }
       } else if (toolUseBlock.name === 'get_service_request_status') {
         try {
           const supabase = getSupabaseAdmin();

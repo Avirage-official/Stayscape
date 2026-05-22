@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import type { DashboardData } from '@/types/customer';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
-import WarmBottomTabBar from '@/components/guest-lounge/WarmBottomTabBar';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -20,7 +19,7 @@ async function fetchDashboardApi(): Promise<DashboardData> {
   return res.json() as Promise<DashboardData>;
 }
 
-function ProfileContent({ userId }: { userId: string }) {
+function ProfileContent({ _userId }: { _userId: string }) {
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState('');
   const [data, setData] = useState<DashboardData | null>(null);
@@ -167,8 +166,6 @@ function ProfileContent({ userId }: { userId: string }) {
           )}
         </div>
       </div>
-
-      <WarmBottomTabBar />
     </div>
   );
 }
@@ -225,5 +222,5 @@ export default function ProfilePage() {
     return null;
   }
 
-  return <ProfileContent userId={user.id} />;
+  return <ProfileContent _userId={user.id} />;
 }

@@ -117,12 +117,19 @@ export async function POST(
     );
   }
 
-  const stayRow = stay as { id: string; userid: string | null; propertyid: string };
+  const stayRow = stay as { id: string; userid: string | null; propertyid: string | null };
 
   if (stayRow.userid !== user.id) {
     return NextResponse.json(
       { error: 'Forbidden' },
       { status: 403, headers: rateLimit.headers },
+    );
+  }
+
+  if (stayRow.propertyid === null) {
+    return NextResponse.json(
+      { error: 'Service requests are not available for self-serve trips' },
+      { status: 400, headers: rateLimit.headers },
     );
   }
 

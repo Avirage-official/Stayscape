@@ -221,7 +221,7 @@ export default function HomeDashboard() {
       className={`${dmSans.className} hd-body`}
       style={{
         position: 'relative',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         width: '100%',
         overflowX: 'hidden',
         color: 'var(--text-primary)',
@@ -266,7 +266,7 @@ export default function HomeDashboard() {
         .hd-content {
           position: relative;
           z-index: 1;
-          min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           flex-direction: column;
         }

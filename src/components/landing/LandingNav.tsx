@@ -1,26 +1,33 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 
 const NAV_LINKS = [
-  { label: 'Our Belief',       href: '#our-belief' },
-  { label: 'See It In Action', href: '#product-walkthrough' },
-  { label: 'For Hotels',       href: '#for-hotels' },
-  { label: 'How We Work',      href: '#how-it-works' },
-  { label: 'Try It Out',       href: '#final-cta' },
+  { label: 'Our Belief',       hash: 'our-belief' },
+  { label: 'See It In Action', hash: 'product-walkthrough' },
+  { label: 'For Hotels',       hash: 'for-hotels' },
+  { label: 'How We Work',      hash: 'how-it-works' },
+  { label: 'Try It Out',       hash: 'final-cta' },
+  { label: 'Support',          hash: null, href: '/support' },
 ]
 
 function useMagnetic(strength = 0.35) {
-  const ref = useRef<HTMLAnchorElement>(null)
+  const elementRef = useRef<HTMLAnchorElement | null>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const sx = useSpring(x, { stiffness: 220, damping: 18 })
   const sy = useSpring(y, { stiffness: 220, damping: 18 })
 
+  // Callback ref so callers receive a function, not a MutableRefObject
+  const ref = useCallback((el: HTMLAnchorElement | null) => {
+    elementRef.current = el
+  }, [])
+
   const onMove = (e: React.MouseEvent) => {
-    const el = ref.current
+    const el = elementRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
     const cx = rect.left + rect.width / 2
@@ -64,24 +71,30 @@ export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const magnetic = useMagnetic(0.28)
+  const { ref: magneticRef, sx: magneticX, sy: magneticY, onMove: magneticOnMove, onLeave: magneticOnLeave } = useMagnetic(0.28)
+  const pathname = usePathname()
+  const isHome = pathname === '/'
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  // Resolve href: on home page use bare #hash, elsewhere use /#hash so the
+  // browser navigates to the homepage and then scrolls to the section.
+  const resolveHref = (hash: string | null, href?: string) => {
+    if (href) return href
+    if (!hash) return '/'
+    return isHome ? `#${hash}` : `/#${hash}`
+  }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional hydration guard
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (!mounted) return
-
     const handleScroll = () => setScrolled(window.scrollY > 40)
-    handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [mounted])
 
   useEffect(() => {
     if (!mounted) return
-
     document.body.style.overflow = mobileOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen, mounted])
@@ -112,9 +125,7 @@ export default function LandingNav() {
       <motion.header
         className="sticky top-0 z-50 w-full"
         animate={{
-          backgroundColor: scrolled
-            ? 'rgba(250, 248, 245, 0.92)'
-            : 'rgba(250, 248, 245, 0)',
+          backgroundColor: scrolled ? 'rgba(250, 248, 245, 0.92)' : 'rgba(250, 248, 245, 0)',
           backdropFilter: scrolled ? 'blur(14px)' : 'blur(0px)',
           borderBottomColor: scrolled ? '#EDE8E1' : 'transparent',
         }}
@@ -166,14 +177,18 @@ export default function LandingNav() {
 
           <div className="hidden items-center gap-7 sm:flex">
             {NAV_LINKS.map((link, i) => (
-              <NavLink key={link.href} {...link} delay={0.08 + i * 0.06} />
+              <NavLink
+                key={link.hash ?? link.href}
+                label={link.label}
+                href={resolveHref(link.hash ?? null, link.href)}
+                delay={0.08 + i * 0.06}
+              />
             ))}
           </div>
 
           <div className="flex items-center gap-4">
-            {/* eslint-disable react-hooks/refs */}
             <motion.a
-              ref={magnetic.ref}
+              ref={magneticRef}
               href="/login"
               className="text-[13px] font-semibold"
               style={{
@@ -182,20 +197,19 @@ export default function LandingNav() {
                 borderRadius: '6px',
                 padding: '8px 20px',
                 display: 'inline-block',
-                x: magnetic.sx,
-                y: magnetic.sy,
+                x: magneticX,
+                y: magneticY,
               }}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
-              onMouseMove={magnetic.onMove}
-              onMouseLeave={magnetic.onLeave}
+              onMouseMove={magneticOnMove}
+              onMouseLeave={magneticOnLeave}
             >
               Sign In
             </motion.a>
-            {/* eslint-enable react-hooks/refs */}
 
             <motion.button
               className="flex sm:hidden flex-col justify-center items-center gap-[5px] w-9 h-9"
@@ -242,8 +256,8 @@ export default function LandingNav() {
             <div className="flex flex-col justify-center items-center gap-8 h-full pb-16">
               {NAV_LINKS.map((link, i) => (
                 <motion.a
-                  key={link.href}
-                  href={link.href}
+                  key={link.hash ?? link.href}
+                  href={resolveHref(link.hash ?? null, link.href)}
                   className="text-[22px] font-semibold"
                   style={{ color: 'var(--text-primary)', fontFamily: "'DM Sans', sans-serif" }}
                   initial={{ opacity: 0, y: 24 }}

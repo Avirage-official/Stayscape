@@ -66,7 +66,7 @@ export async function syncPlaces(
       longitude: options.longitude,
       radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
       categories: options.categories,
-      limit: options.limit ?? 50,
+      limit: options.limit ?? 100,
       countryCode: options.country_code,
     };
 

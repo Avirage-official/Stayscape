@@ -41,14 +41,16 @@ async function resolveUserIdByAuthOrEmail(authUserId: string): Promise<string | 
  *   - stays.notes, stays.pms_callback_url (PMS-internal)
  *   - properties.createdat, properties.updatedat (not displayed)
  */
-const STAY_SELECT = `id, userid, propertyid, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount, trip_type,
+const STAY_SELECT = `id, userid, propertyid, region_id, booking_reference, checkindate, checkoutdate, status, roomlabel, guestcount, trip_type,
        stay_confirmed_by_guest, stay_confirmation_status, onboarding_completed, onboarding_completed_at, curation_status, curated_at,
+       regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ),
        properties:propertyid ( id, name, slug, image_url, address, city, country, latitude, longitude, region_id, timezone,
        regions:region_id ( id, name, slug, latitude, longitude, radius_km, country_code ) )`;
 
 function mapStayRow(row: Record<string, unknown>): CustomerStay {
   const propertyRaw = row.properties as Record<string, unknown> | null;
   const regionRaw = propertyRaw?.regions as Record<string, unknown> | null;
+  const stayRegionRaw = row.regions as Record<string, unknown> | null;
 
   return {
     id: row.id as string,
@@ -67,6 +69,17 @@ function mapStayRow(row: Record<string, unknown>): CustomerStay {
     onboarding_completed_at: (row.onboarding_completed_at as string) ?? null,
     curation_status: (row.curation_status as string) ?? null,
     curated_at: (row.curated_at as string) ?? null,
+    region: stayRegionRaw
+      ? {
+          id: stayRegionRaw.id as string,
+          name: stayRegionRaw.name as string,
+          slug: stayRegionRaw.slug as string,
+          latitude: stayRegionRaw.latitude as number,
+          longitude: stayRegionRaw.longitude as number,
+          radius_km: stayRegionRaw.radius_km as number,
+          country_code: stayRegionRaw.country_code as string,
+        }
+      : null,
     property: propertyRaw
       ? {
           id: propertyRaw.id as string,
