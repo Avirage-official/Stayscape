@@ -27,7 +27,7 @@ export type ExploreItem =
 export type ExploreView =
   | { level: 0 }
   | { level: 1; sectionId: string }
-  | { level: 2; sectionId: string; region: RegionOption }
+  | { level: 2; sectionId: string; region: RegionOption; category: string }
   | { level: 3; sectionId: string; region: RegionOption; category: string }
   | { level: 4; sectionId: string; item: ExploreItem; contentType: DrillContentType };
 

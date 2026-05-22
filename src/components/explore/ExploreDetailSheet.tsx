@@ -5,9 +5,10 @@ import type { ExploreItem } from './ExploreCard';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
+import type { DrillPlaceCard, DrillEventCard } from '@/types/explore';
 
 interface ExploreDetailSheetProps {
-  item: ExploreItem | null;
+  item: ExploreItem | DrillPlaceCard | DrillEventCard | null;
   contentType: 'places' | 'events' | 'properties' | 'regions' | null;
   onClose: () => void;
 }
