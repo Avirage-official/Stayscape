@@ -22,18 +22,18 @@ interface ExploreSwiperProps {
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
 
 function sectionShortLabel(id: string) {
-  if (id === 'made_for_you') return 'For You';
-  if (id === 'in_your_world') return 'World';
-  if (id === 'happening_now') return 'Now';
-  if (id === 'arias_picks') return "Aria's";
+  if (id === 'made_for_you') return 'Yours';
+  if (id === 'in_your_world') return 'Nearby';
+  if (id === 'happening_now') return 'Tonight';
+  if (id === 'arias_picks') return 'Aria';
   return id;
 }
 
 function listLabel(ct: ExploreSection['content_type']) {
-  if (ct === 'events') return 'Coming up';
-  if (ct === 'regions') return 'Destinations';
-  if (ct === 'properties') return 'Stays';
-  return 'Top picks';
+  if (ct === 'events') return 'Upcoming experiences';
+  if (ct === 'regions') return 'Where to next';
+  if (ct === 'properties') return 'Curated properties';
+  return 'Worth your time';
 }
 
 function mobileItemMeta(item: ExploreItem, ct: ExploreSection['content_type']): string {
@@ -42,19 +42,19 @@ function mobileItemMeta(item: ExploreItem, ct: ExploreSection['content_type']): 
     const date = e.start_date
       ? new Date(e.start_date).toLocaleDateString('en-SG', { month: 'short', day: 'numeric' })
       : null;
-    return [date, e.venue_name].filter(Boolean).join(' \u00b7 ');
+    return [date, e.venue_name].filter(Boolean).join(' · ');
   }
   if (ct === 'regions') return (item as RegionOption).country_code ?? '';
   if (ct === 'properties') {
     const p = item as ExplorePropertyCard;
-    const stars = p.star_rating ? '\u2605'.repeat(p.star_rating) : null;
+    const stars = p.star_rating ? '★'.repeat(p.star_rating) : null;
     const price = p.price_from != null ? `S$${p.price_from}` : null;
-    return [stars, price].filter(Boolean).join(' \u00b7 ');
+    return [stars, price].filter(Boolean).join(' · ');
   }
   const p = item as DiscoveryPlaceCard;
-  const rating = p.rating ? `\u2605 ${p.rating.toFixed(1)}` : null;
+  const rating = p.rating ? `★ ${p.rating.toFixed(1)}` : null;
   const vibe = p.vibes?.[0] ?? null;
-  return [rating, vibe].filter(Boolean).join(' \u00b7 ');
+  return [rating, vibe].filter(Boolean).join(' · ');
 }
 
 export default function ExploreSwiper({
@@ -68,8 +68,7 @@ export default function ExploreSwiper({
   isRefreshing,
 }: ExploreSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedItem, setSelectedItem] = useState<ExploreItem | null>(null);
-  const [selectedContentType, setSelectedContentType] = useState<ExploreSection['content_type'] | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ item: ExploreItem; contentType: ExploreSection['content_type'] } | null>(null);
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
 
@@ -79,16 +78,6 @@ export default function ExploreSwiper({
     },
     [sections.length],
   );
-
-  function openItem(item: ExploreItem, ct: ExploreSection['content_type']) {
-    setSelectedItem(item);
-    setSelectedContentType(ct);
-  }
-
-  function closeItem() {
-    setSelectedItem(null);
-    setSelectedContentType(null);
-  }
 
   function handlePointerDown(e: React.PointerEvent) {
     pointerStartX.current = e.clientX;
@@ -141,6 +130,7 @@ export default function ExploreSwiper({
           }}
         />
       )}
+      {/* Dark scrim */}
       <div
         aria-hidden="true"
         style={{
@@ -149,6 +139,7 @@ export default function ExploreSwiper({
         }}
       />
 
+      {/* Content layer */}
       <div
         className="flex flex-col md:flex-row"
         style={{
@@ -215,11 +206,12 @@ export default function ExploreSwiper({
           </p>
         </div>
 
-        {/* Mobile: section switcher + items */}
+        {/* Mobile section switcher + items */}
         <div
           className="flex flex-col md:hidden"
           style={{ flex: 1, minHeight: 0, gap: '10px', overflow: 'hidden' }}
         >
+          {/* Section pills */}
           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
             {sections.map((s, i) => {
               const isActive = i === activeIndex;
@@ -262,9 +254,11 @@ export default function ExploreSwiper({
             })}
           </div>
 
+          {/* Items panel */}
           <div
             style={{
-              flex: 1, minHeight: 0,
+              flex: 1,
+              minHeight: 0,
               background: 'rgba(250,248,245,0.07)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
@@ -276,6 +270,7 @@ export default function ExploreSwiper({
               overflow: 'hidden',
             }}
           >
+            {/* Editorial header */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -291,37 +286,40 @@ export default function ExploreSwiper({
                 color: 'rgba(250,248,245,0.4)',
                 margin: 0,
               }}>{active ? listLabel(active.content_type) : ''}</p>
-              <span style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontStyle: 'italic',
-                fontSize: '18px', fontWeight: 600,
-                color: '#C17F3A',
-              }}>{active?.items.length ?? 0}</span>
+              {(active?.items.length ?? 0) > 0 && (
+                <span style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: '10px',
+                  color: 'rgba(250,248,245,0.25)',
+                  letterSpacing: '0.04em',
+                }}>{active.items.length} curated</span>
+              )}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
               {active?.items.length === 0 && (
                 <p style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '13px',
-                  color: 'rgba(250,248,245,0.3)',
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontStyle: 'italic',
+                  fontSize: '15px',
+                  color: 'rgba(250,248,245,0.25)',
                   textAlign: 'center',
-                  padding: '20px 0',
+                  padding: '24px 0',
                   margin: 0,
                 }}>
-                  {active.content_type === 'events' ? 'No upcoming events yet.' : 'More coming soon.'}
+                  {active.content_type === 'events' ? 'Nothing on just yet.' : 'More coming soon.'}
                 </p>
               )}
               {active?.items.map((item) => {
                 const name = 'name' in item ? item.name : '';
                 const imageUrl = 'image_url' in item ? (item as { image_url: string | null }).image_url : null;
                 const meta = mobileItemMeta(item, active.content_type);
-                const isRegionItem = active.content_type === 'regions';
+                const isRegion = active.content_type === 'regions';
 
                 return (
                   <button
                     key={item.id}
-                    onClick={() => openItem(item, active.content_type)}
+                    onClick={() => setSelectedItem({ item, contentType: active.content_type })}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -352,7 +350,7 @@ export default function ExploreSwiper({
                         <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                       ) : (
                         <span style={{ color: 'rgba(250,248,245,0.4)', fontSize: '11px' }}>
-                          {isRegionItem ? ((item as RegionOption).country_code ?? '\u2014') : '\u00b7'}
+                          {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
                         </span>
                       )}
                     </div>
@@ -374,7 +372,7 @@ export default function ExploreSwiper({
                         }}>{meta}</p>
                       )}
                     </div>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2} style={{ flexShrink: 0 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2} style={{ flexShrink: 0 }}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -403,19 +401,19 @@ export default function ExploreSwiper({
                 boxShadow: '0 4px 12px rgba(193,127,58,0.25)',
               }}
             >
-              {isPersonalising ? 'Personalising\u2026' : 'Personalise for me'}
+              {isPersonalising ? 'Refreshing…' : 'Curate for me'}
             </button>
           </div>
         </div>
 
-        {/* Desktop web panel */}
+        {/* Desktop panel */}
         <ExploreWebPanel
           sections={sections}
           regions={regions}
           selectedRegionId={selectedRegionId}
           activeIndex={activeIndex}
           onSectionChange={goTo}
-          onItemClick={(item, ct) => openItem(item, ct)}
+          onItemClick={(item) => setSelectedItem({ item, contentType: active.content_type })}
           onRegionChange={onRegionChange}
           onPersonalise={onPersonalise}
           isPersonalising={isPersonalising}
@@ -423,9 +421,9 @@ export default function ExploreSwiper({
       </div>
 
       <ExploreDetailSheet
-        item={selectedItem}
-        contentType={selectedContentType}
-        onClose={closeItem}
+        item={selectedItem?.item ?? null}
+        contentType={selectedItem?.contentType ?? null}
+        onClose={() => setSelectedItem(null)}
       />
 
       <style>{`

@@ -28,6 +28,16 @@ interface ExploreCardProps {
   onSectionChange?: (i: number) => void;
 }
 
+const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
+
+function sectionShortLabel(id: string) {
+  if (id === 'made_for_you') return 'Yours';
+  if (id === 'in_your_world') return 'Nearby';
+  if (id === 'happening_now') return 'Tonight';
+  if (id === 'arias_picks') return 'Aria';
+  return id;
+}
+
 const FALLBACK: Record<string, string> = {
   made_for_you:  'linear-gradient(145deg, #2C1A08 0%, #4a2e10 45%, #1a1208 100%)',
   in_your_world: 'linear-gradient(145deg, #0e1a2c 0%, #1a3040 45%, #08141a 100%)',
@@ -46,8 +56,6 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
         animation: 'ecFadeIn 350ms ease both',
       }}
     >
-      {/* Background — plain <img> so any URL works (no Next.js domain restrictions).
-          key forces a remount + fade-in whenever the image source changes. */}
       {section.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -64,25 +72,26 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
         />
       )}
 
-      {/* Subtle top shadow so greeting text is readable */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to bottom, rgba(8,5,2,0.45) 0%, transparent 28%)',
       }} />
 
-      {/* Subtle bottom shadow so glass card reads cleanly */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(to top, rgba(8,5,2,0.55) 0%, transparent 42%)',
+        background: 'linear-gradient(to top, rgba(8,5,2,0.65) 0%, transparent 48%)',
       }} />
 
-      {/* Glass card — sits at the bottom, inset from edges */}
-      <div style={{
-        position: 'absolute',
-        bottom: '20px', left: '20px', right: '20px',
-        zIndex: 10,
-        animation: 'ecSlideUp 420ms cubic-bezier(0.16,1,0.3,1) both',
-      }} key={section.id}>
+      {/* Glass card */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '20px', left: '20px', right: '20px',
+          zIndex: 10,
+          animation: 'ecSlideUp 420ms cubic-bezier(0.16,1,0.3,1) both',
+        }}
+        key={section.id}
+      >
         <div style={{
           background: 'rgba(14,11,8,0.52)',
           backdropFilter: 'blur(28px)',
@@ -91,6 +100,7 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
           borderRadius: '16px',
           padding: '18px 20px',
         }}>
+
           {/* Eyebrow */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <div style={{ width: '20px', height: '1px', background: 'rgba(193,127,58,0.8)', flexShrink: 0 }} />
@@ -119,24 +129,61 @@ export default function ExploreCard({ section, sections, activeIndex, onSectionC
             margin: 0, lineHeight: 1.5,
           }}>{section.subtitle}</p>
 
-          {/* Section pips inside the glass card */}
+          {/* Labeled section tabs — replaces anonymous expanding dot pips */}
           {sections && sections.length > 1 && (
-            <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginTop: '14px' }}>
-              {sections.map((_, i) => (
-                <button
-                  key={i}
-                  aria-label={`Go to section ${i + 1}`}
-                  onClick={() => onSectionChange?.(i)}
-                  style={{
-                    width: i === activeIndex ? '28px' : '6px',
-                    height: '6px',
-                    borderRadius: '3px',
-                    background: i === activeIndex ? '#C17F3A' : 'rgba(250,248,245,0.3)',
-                    border: 'none', padding: 0, cursor: 'pointer',
-                    transition: 'width 280ms ease, background 280ms ease',
-                  }}
-                />
-              ))}
+            <div style={{
+              display: 'flex',
+              gap: '4px',
+              marginTop: '16px',
+            }}>
+              {sections.map((s, i) => {
+                const isActive = i === activeIndex;
+                return (
+                  <button
+                    key={s.id}
+                    aria-label={`Switch to ${sectionShortLabel(s.id)}`}
+                    onClick={() => onSectionChange?.(i)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2px',
+                      padding: '6px 10px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background 220ms ease',
+                      background: isActive
+                        ? 'rgba(193,127,58,0.22)'
+                        : 'transparent',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isActive) e.currentTarget.style.background = 'rgba(250,248,245,0.07)';
+                    }}
+                    onMouseLeave={e => {
+                      if (!isActive) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <span style={{
+                      fontFamily: "'Cormorant Garamond', Georgia, serif",
+                      fontStyle: 'italic',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: isActive ? '#C17F3A' : 'rgba(250,248,245,0.35)',
+                      lineHeight: 1,
+                      transition: 'color 220ms ease',
+                    }}>{NUMERALS[i]}</span>
+                    <span style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '8px',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: isActive ? 'rgba(193,127,58,0.85)' : 'rgba(250,248,245,0.25)',
+                      transition: 'color 220ms ease',
+                    }}>{sectionShortLabel(s.id)}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
