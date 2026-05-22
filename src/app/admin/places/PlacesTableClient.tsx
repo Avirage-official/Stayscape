@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PlaceRow } from './page';
 
@@ -10,6 +10,7 @@ const CATEGORIES = [
 ];
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type UploadState = 'idle' | 'uploading' | 'done' | 'error';
 
 interface EditState {
   name: string;
@@ -61,19 +62,92 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
   const [edits, setEdits] = useState<Record<string, EditState>>({});
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [uploadStates, setUploadStates] = useState<Record<string, UploadState>>({});
+  const primaryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const extraInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const allChecked = rows.length > 0 && selected.size === rows.length;
+  const someChecked = selected.size > 0 && !allChecked;
+
+  function toggleAll() {
+    setSelected(allChecked ? new Set() : new Set(rows.map((r) => r.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   function toggle(id: string, row: PlaceRow) {
-    if (expanded === id) {
-      setExpanded(null);
-    } else {
-      setExpanded(id);
-      if (!edits[id]) setEdits((e) => ({ ...e, [id]: toEditState(row) }));
-    }
+    if (expanded === id) { setExpanded(null); return; }
+    setExpanded(id);
+    if (!edits[id]) setEdits((e) => ({ ...e, [id]: toEditState(row) }));
   }
 
   function setField(id: string, field: keyof EditState, value: string | boolean) {
     setEdits((e) => ({ ...e, [id]: { ...e[id], [field]: value } }));
     setSaveStates((s) => ({ ...s, [id]: 'idle' }));
+  }
+
+  async function deleteSingle(id: string) {
+    if (!confirm('Delete this place? This cannot be undone.')) return;
+    const res = await fetch(`/api/admin/places/bulk-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [id] }),
+    });
+    if (res.ok) {
+      setRows((r) => r.filter((row) => row.id !== id));
+      setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+      startTransition(() => router.refresh());
+    }
+  }
+
+  async function bulkDelete() {
+    if (!confirm(`Delete ${selected.size} place(s)? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    const ids = Array.from(selected);
+    const res = await fetch('/api/admin/places/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (res.ok) {
+      setRows((r) => r.filter((row) => !ids.includes(row.id)));
+      setSelected(new Set());
+      startTransition(() => router.refresh());
+    }
+    setBulkDeleting(false);
+  }
+
+  async function uploadImage(placeId: string, file: File, slot: 'primary' | 'extra') {
+    const key = `${placeId}_${slot}`;
+    setUploadStates((s) => ({ ...s, [key]: 'uploading' }));
+    const form = new FormData();
+    form.append('file', file);
+    form.append('placeId', placeId);
+    form.append('slot', slot);
+    try {
+      const res = await fetch('/api/admin/places/upload-image', { method: 'POST', body: form });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed');
+      setUploadStates((s) => ({ ...s, [key]: 'done' }));
+      setEdits((e) => {
+        const edit = e[placeId];
+        if (!edit) return e;
+        if (slot === 'primary') return { ...e, [placeId]: { ...edit, image_url: data.url! } };
+        const existing = edit.image_urls.trim();
+        return { ...e, [placeId]: { ...edit, image_urls: existing ? `${existing}\n${data.url!}` : data.url! } };
+      });
+      setTimeout(() => setUploadStates((s) => ({ ...s, [key]: 'idle' })), 2000);
+    } catch {
+      setUploadStates((s) => ({ ...s, [key]: 'error' }));
+    }
   }
 
   async function handleSave(id: string) {
@@ -110,7 +184,7 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error((body.error as string | undefined) ?? String(res.status));
+        throw new Error(body.error ?? String(res.status));
       }
       setSaveStates((s) => ({ ...s, [id]: 'saved' }));
       setRows((r) => r.map((row) => row.id === id ? { ...row, ...payload, enriched: Boolean(payload.editorial_summary) } : row));
@@ -123,225 +197,285 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
   }
 
   if (rows.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <p className="text-sm text-white/40">No places match the current filters.</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center py-16"><p className="text-sm text-white/40">No places match the current filters.</p></div>;
   }
 
   return (
-    <div className="divide-y divide-white/[0.06] rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-      {rows.map((row) => {
-        const isOpen = expanded === row.id;
-        const edit = edits[row.id];
-        const saveState = saveStates[row.id] ?? 'idle';
-        const saveError = saveErrors[row.id];
+    <div className="space-y-2">
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5">
+          <p className="text-sm text-red-300">{selected.size} place{selected.size > 1 ? 's' : ''} selected</p>
+          <button
+            type="button"
+            disabled={bulkDeleting}
+            onClick={() => void bulkDelete()}
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            {bulkDeleting ? 'Deleting…' : `Delete ${selected.size}`}
+          </button>
+        </div>
+      )}
 
-        return (
-          <div key={row.id}>
-            {/* Row header — click to expand */}
-            <button
-              type="button"
-              onClick={() => toggle(row.id, row)}
-              className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-white/[0.025] transition-colors"
-            >
-              {/* Thumb */}
-              <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-white/5">
-                {row.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={row.image_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20">
-                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
-                    </svg>
-                  </div>
-                )}
-              </div>
+      <div className="divide-y divide-white/[0.06] rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+        {/* Select-all header */}
+        <div className="flex items-center gap-3 px-5 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
+          <input
+            type="checkbox"
+            checked={allChecked}
+            ref={(el) => { if (el) el.indeterminate = someChecked; }}
+            onChange={toggleAll}
+            className="h-4 w-4 accent-[#C9A84C] cursor-pointer"
+          />
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Select all</span>
+        </div>
 
-              {/* Name + meta */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{row.name}</p>
-                <p className="text-xs text-white/40 mt-0.5">{row.region} · {row.category} · {row.city}</p>
-              </div>
+        {rows.map((row) => {
+          const isOpen = expanded === row.id;
+          const edit = edits[row.id];
+          const saveState = saveStates[row.id] ?? 'idle';
+          const saveError = saveErrors[row.id];
+          const isSelected = selected.has(row.id);
+          const primaryUploadState = uploadStates[`${row.id}_primary`] ?? 'idle';
+          const extraUploadState = uploadStates[`${row.id}_extra`] ?? 'idle';
 
-              {/* Badges */}
-              <div className="hidden md:flex items-center gap-2 shrink-0">
-                <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
-                  row.enriched ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                }`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${row.enriched ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                  {row.enriched ? 'Enriched' : 'Pending'}
-                </span>
-                {row.is_featured && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#C9A84C]">Featured</span>
-                )}
-              </div>
+          return (
+            <div key={row.id} className={isSelected ? 'bg-[#C9A84C]/[0.04]' : ''}>
+              {/* Row */}
+              <div className="flex items-center gap-3 px-5 py-3.5">
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleOne(row.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 accent-[#C9A84C] cursor-pointer shrink-0"
+                />
 
-              {/* Chevron */}
-              <svg
-                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                className={`shrink-0 text-white/30 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {/* Expanded editor */}
-            {isOpen && edit && (
-              <div className="border-t border-white/[0.06] bg-black/20 px-5 py-5 space-y-5">
-
-                {/* Images section */}
-                <div className="space-y-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Images</p>
-                  <div className="flex gap-3 flex-wrap">
-                    {/* Primary image preview */}
-                    <div className="relative group">
-                      <div className="h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                        {edit.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={edit.image_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-white/20 text-xs">No image</div>
-                        )}
+                {/* Expand button */}
+                <button
+                  type="button"
+                  onClick={() => toggle(row.id, row)}
+                  className="flex flex-1 items-center gap-4 text-left hover:opacity-80 transition-opacity min-w-0"
+                >
+                  {/* Thumb */}
+                  <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-white/5">
+                    {row.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={row.image_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
                       </div>
-                      <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white/60 px-1.5 py-0.5 rounded">Primary</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{row.name}</p>
+                    <p className="text-xs text-white/40 mt-0.5">{row.region} · {row.category} · {row.city}</p>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 shrink-0">
+                    <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
+                      row.enriched ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${row.enriched ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                      {row.enriched ? 'Enriched' : 'Pending'}
+                    </span>
+                    {row.is_featured && <span className="text-xs px-2 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#C9A84C]">Featured</span>}
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    className={`shrink-0 text-white/30 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Delete single */}
+                <button
+                  type="button"
+                  onClick={() => void deleteSingle(row.id)}
+                  className="shrink-0 p-2 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="Delete place"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+
+              {/* Expanded editor */}
+              {isOpen && edit && (
+                <div className="border-t border-white/[0.06] bg-black/20 px-5 py-5 space-y-5">
+
+                  {/* Images */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Images</p>
+                    <div className="flex gap-3 flex-wrap">
+                      {/* Primary preview + upload */}
+                      <div className="space-y-2">
+                        <div className="relative h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10">
+                          {edit.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={edit.image_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-white/20 text-xs">No image</div>
+                          )}
+                          {primaryUploadState === 'uploading' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                              <span className="text-xs text-white">Uploading…</span>
+                            </div>
+                          )}
+                        </div>
+                        <input
+                          ref={(el) => { primaryInputRefs.current[row.id] = el; }}
+                          type="file" accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void uploadImage(row.id, file, 'primary');
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => primaryInputRefs.current[row.id]?.click()}
+                          className="w-full rounded-md border border-white/10 bg-white/[0.03] py-1 text-[10px] text-white/50 hover:text-white/80 hover:border-white/20 transition-colors"
+                        >
+                          {primaryUploadState === 'done' ? '✓ Uploaded' : 'Upload primary'}
+                        </button>
+                      </div>
+
+                      {/* Extra images */}
+                      {edit.image_urls.split('\n').map((u) => u.trim()).filter(Boolean).map((url, i) => (
+                        <div key={i} className="h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      ))}
+
+                      {/* Upload extra */}
+                      <div className="space-y-2">
+                        <div className="h-24 w-36 rounded-lg border border-dashed border-white/15 bg-white/[0.02] flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <input
+                          ref={(el) => { extraInputRefs.current[row.id] = el; }}
+                          type="file" accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void uploadImage(row.id, file, 'extra');
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => extraInputRefs.current[row.id]?.click()}
+                          className="w-full rounded-md border border-white/10 bg-white/[0.03] py-1 text-[10px] text-white/50 hover:text-white/80 hover:border-white/20 transition-colors"
+                        >
+                          {extraUploadState === 'uploading' ? 'Uploading…' : extraUploadState === 'done' ? '✓ Added' : 'Add extra'}
+                        </button>
+                      </div>
                     </div>
-                    {/* Extra images */}
-                    {edit.image_urls.split('\n').map((u) => u.trim()).filter(Boolean).map((url, i) => (
-                      <div key={i} className="h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </div>
-                    ))}
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Field label="Primary Image URL">
+                        <input type="url" value={edit.image_url} onChange={(e) => setField(row.id, 'image_url', e.target.value)} placeholder="https://…" className={inputCls} />
+                      </Field>
+                      <Field label="Additional Image URLs (one per line)">
+                        <textarea rows={3} value={edit.image_urls} onChange={(e) => setField(row.id, 'image_urls', e.target.value)} placeholder={"https://…\nhttps://…"} className={`${inputCls} resize-none py-2 h-auto`} />
+                      </Field>
+                    </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Primary Image URL">
-                      <input
-                        type="url"
-                        value={edit.image_url}
-                        onChange={(e) => setField(row.id, 'image_url', e.target.value)}
-                        placeholder="https://…"
-                        className={inputCls}
-                      />
-                    </Field>
-                    <Field label="Additional Image URLs (one per line)">
-                      <textarea
-                        rows={3}
-                        value={edit.image_urls}
-                        onChange={(e) => setField(row.id, 'image_urls', e.target.value)}
-                        placeholder={"https://…\nhttps://…"}
-                        className={`${inputCls} resize-none py-2`}
-                      />
-                    </Field>
-                  </div>
-                </div>
 
-                <hr className="border-white/[0.06]" />
+                  <hr className="border-white/[0.06]" />
 
-                {/* Core details */}
-                <div className="space-y-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Core Details</p>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <Field label="Name">
-                      <input type="text" value={edit.name} onChange={(e) => setField(row.id, 'name', e.target.value)} className={inputCls} />
-                    </Field>
-                    <Field label="Category">
-                      <select value={edit.category} onChange={(e) => setField(row.id, 'category', e.target.value)} className={inputCls}>
-                        {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </Field>
-                    <Field label="City">
-                      <input type="text" value={edit.city} onChange={(e) => setField(row.id, 'city', e.target.value)} className={inputCls} />
-                    </Field>
-                    <Field label="Address" className="md:col-span-2">
-                      <input type="text" value={edit.address} onChange={(e) => setField(row.id, 'address', e.target.value)} className={inputCls} />
-                    </Field>
-                    <Field label="Price Level (1–4)">
-                      <input type="number" min={1} max={4} value={edit.price_level} onChange={(e) => setField(row.id, 'price_level', e.target.value)} className={inputCls} />
-                    </Field>
-                  </div>
-                </div>
-
-                <hr className="border-white/[0.06]" />
-
-                {/* Contact & links */}
-                <div className="space-y-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Contact & Links</p>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <Field label="Phone">
-                      <input type="text" value={edit.phone} onChange={(e) => setField(row.id, 'phone', e.target.value)} className={inputCls} />
-                    </Field>
-                    <Field label="Website">
-                      <input type="url" value={edit.website} onChange={(e) => setField(row.id, 'website', e.target.value)} placeholder="https://…" className={inputCls} />
-                    </Field>
-                    <Field label="Booking URL">
-                      <input type="url" value={edit.booking_url} onChange={(e) => setField(row.id, 'booking_url', e.target.value)} placeholder="https://…" className={inputCls} />
-                    </Field>
-                  </div>
-                </div>
-
-                <hr className="border-white/[0.06]" />
-
-                {/* Editorial */}
-                <div className="space-y-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Editorial</p>
-                  <div className="grid gap-3">
-                    <Field label="Editorial Summary">
-                      <textarea rows={3} value={edit.editorial_summary} onChange={(e) => setField(row.id, 'editorial_summary', e.target.value)} className={`${inputCls} resize-none py-2`} />
-                    </Field>
-                    <Field label="Description">
-                      <textarea rows={4} value={edit.description} onChange={(e) => setField(row.id, 'description', e.target.value)} className={`${inputCls} resize-none py-2`} />
-                    </Field>
+                  {/* Core details */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Core Details</p>
                     <div className="grid gap-3 md:grid-cols-3">
-                      <Field label="Recommended Duration">
-                        <input type="text" value={edit.recommended_duration} onChange={(e) => setField(row.id, 'recommended_duration', e.target.value)} placeholder="e.g. 1–2 hours" className={inputCls} />
+                      <Field label="Name">
+                        <input type="text" value={edit.name} onChange={(e) => setField(row.id, 'name', e.target.value)} className={inputCls} />
                       </Field>
-                      <Field label="Vibes (comma-separated)">
-                        <input type="text" value={edit.vibes} onChange={(e) => setField(row.id, 'vibes', e.target.value)} placeholder="romantic, scenic…" className={inputCls} />
+                      <Field label="Category">
+                        <select value={edit.category} onChange={(e) => setField(row.id, 'category', e.target.value)} className={inputCls}>
+                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
                       </Field>
-                      <Field label="Best For (comma-separated)">
-                        <input type="text" value={edit.best_for} onChange={(e) => setField(row.id, 'best_for', e.target.value)} placeholder="couples, solo…" className={inputCls} />
+                      <Field label="City">
+                        <input type="text" value={edit.city} onChange={(e) => setField(row.id, 'city', e.target.value)} className={inputCls} />
+                      </Field>
+                      <Field label="Address" className="md:col-span-2">
+                        <input type="text" value={edit.address} onChange={(e) => setField(row.id, 'address', e.target.value)} className={inputCls} />
+                      </Field>
+                      <Field label="Price Level (1–4)">
+                        <input type="number" min={1} max={4} value={edit.price_level} onChange={(e) => setField(row.id, 'price_level', e.target.value)} className={inputCls} />
                       </Field>
                     </div>
                   </div>
-                </div>
 
-                <hr className="border-white/[0.06]" />
+                  <hr className="border-white/[0.06]" />
 
-                {/* Flags */}
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={edit.is_featured}
-                      onChange={(e) => setField(row.id, 'is_featured', e.target.checked)}
-                      className="h-4 w-4 accent-[#C9A84C] cursor-pointer"
-                    />
-                    <span className="text-sm text-white/70">Featured</span>
-                  </label>
-                </div>
+                  {/* Contact & links */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Contact & Links</p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Field label="Phone"><input type="text" value={edit.phone} onChange={(e) => setField(row.id, 'phone', e.target.value)} className={inputCls} /></Field>
+                      <Field label="Website"><input type="url" value={edit.website} onChange={(e) => setField(row.id, 'website', e.target.value)} placeholder="https://…" className={inputCls} /></Field>
+                      <Field label="Booking URL"><input type="url" value={edit.booking_url} onChange={(e) => setField(row.id, 'booking_url', e.target.value)} placeholder="https://…" className={inputCls} /></Field>
+                    </div>
+                  </div>
 
-                {/* Save bar */}
-                <div className="flex items-center justify-between pt-1">
-                  {saveError && <p className="text-xs text-red-400">{saveError}</p>}
-                  {!saveError && saveState === 'saved' && <p className="text-xs text-emerald-400">✓ Saved successfully</p>}
-                  {!saveError && saveState !== 'saved' && <span />}
-                  <button
-                    type="button"
-                    disabled={saveState === 'saving'}
-                    onClick={() => void handleSave(row.id)}
-                    className="h-9 rounded-lg bg-[#C9A84C] px-5 text-xs font-semibold text-black transition-colors hover:bg-[#d4b35f] disabled:opacity-50"
-                  >
-                    {saveState === 'saving' ? 'Saving…' : 'Save Changes'}
-                  </button>
+                  <hr className="border-white/[0.06]" />
+
+                  {/* Editorial */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Editorial</p>
+                    <div className="grid gap-3">
+                      <Field label="Editorial Summary">
+                        <textarea rows={3} value={edit.editorial_summary} onChange={(e) => setField(row.id, 'editorial_summary', e.target.value)} className={`${inputCls} resize-none py-2 h-auto`} />
+                      </Field>
+                      <Field label="Description">
+                        <textarea rows={4} value={edit.description} onChange={(e) => setField(row.id, 'description', e.target.value)} className={`${inputCls} resize-none py-2 h-auto`} />
+                      </Field>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Field label="Recommended Duration">
+                          <input type="text" value={edit.recommended_duration} onChange={(e) => setField(row.id, 'recommended_duration', e.target.value)} placeholder="e.g. 1–2 hours" className={inputCls} />
+                        </Field>
+                        <Field label="Vibes (comma-separated)">
+                          <input type="text" value={edit.vibes} onChange={(e) => setField(row.id, 'vibes', e.target.value)} placeholder="romantic, scenic…" className={inputCls} />
+                        </Field>
+                        <Field label="Best For (comma-separated)">
+                          <input type="text" value={edit.best_for} onChange={(e) => setField(row.id, 'best_for', e.target.value)} placeholder="couples, solo…" className={inputCls} />
+                        </Field>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-white/[0.06]" />
+
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={edit.is_featured} onChange={(e) => setField(row.id, 'is_featured', e.target.checked)} className="h-4 w-4 accent-[#C9A84C] cursor-pointer" />
+                      <span className="text-sm text-white/70">Featured</span>
+                    </label>
+                  </div>
+
+                  {/* Save bar */}
+                  <div className="flex items-center justify-between pt-1">
+                    {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+                    {!saveError && saveState === 'saved' && <p className="text-xs text-emerald-400">✓ Saved successfully</p>}
+                    {!saveError && saveState !== 'saved' && <span />}
+                    <button
+                      type="button"
+                      disabled={saveState === 'saving'}
+                      onClick={() => void handleSave(row.id)}
+                      className="h-9 rounded-lg bg-[#C9A84C] px-5 text-xs font-semibold text-black transition-colors hover:bg-[#d4b35f] disabled:opacity-50"
+                    >
+                      {saveState === 'saving' ? 'Saving…' : 'Save Changes'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
