@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ExploreSection, ExploreItem } from './ExploreCard';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
@@ -39,11 +40,13 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('en-SG', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-/* Shared card surface — cream white, warm border */
-const CARD: React.CSSProperties = {
-  background: '#FAF8F5',
-  border: '1px solid rgba(193,127,58,0.14)',
-  borderRadius: '16px',
+/* Glass surface — used for each panel card */
+const GLASS: React.CSSProperties = {
+  background: 'rgba(250,248,245,0.07)',
+  backdropFilter: 'blur(24px)',
+  WebkitBackdropFilter: 'blur(24px)',
+  border: '1px solid rgba(250,248,245,0.12)',
+  borderRadius: '18px',
   padding: '16px',
 };
 
@@ -93,34 +96,34 @@ function ItemRow({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        padding: '10px 8px',
-        margin: '0 -8px',
-        width: 'calc(100% + 16px)',
-        background: 'transparent',
-        border: 'none',
-        borderRadius: '10px',
+        gap: '11px',
+        padding: '9px 10px',
+        marginBottom: '5px',
+        width: '100%',
+        background: 'rgba(250,248,245,0.06)',
+        border: '1px solid rgba(250,248,245,0.08)',
+        borderRadius: '12px',
         cursor: 'pointer',
         textAlign: 'left',
         transition: 'background 160ms ease',
         boxSizing: 'border-box',
       } as React.CSSProperties}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.07)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.13)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.06)'; }}
     >
       {/* Thumbnail */}
       <div style={{
-        width: '40px', height: '40px',
+        width: '38px', height: '38px',
         borderRadius: '10px',
         overflow: 'hidden',
         flexShrink: 0,
-        background: 'rgba(44,26,8,0.07)',
+        background: 'rgba(250,248,245,0.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {imageUrl ? (
           <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
         ) : (
-          <span style={{ color: 'rgba(44,26,8,0.3)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>
+          <span style={{ color: 'rgba(250,248,245,0.4)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>
             {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
           </span>
         )}
@@ -131,7 +134,7 @@ function ItemRow({
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '13px', fontWeight: 500,
-          color: '#2C1A08',
+          color: '#FAF8F5',
           margin: 0,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{name}</p>
@@ -140,8 +143,8 @@ function ItemRow({
             <span style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '10px', color: '#C17F3A',
-              background: 'rgba(193,127,58,0.1)',
-              border: '1px solid rgba(193,127,58,0.22)',
+              background: 'rgba(193,127,58,0.15)',
+              border: '1px solid rgba(193,127,58,0.28)',
               borderRadius: '20px', padding: '1px 8px',
               whiteSpace: 'nowrap',
             }}>{metaChip}</span>
@@ -150,7 +153,7 @@ function ItemRow({
             <span style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '11px',
-              color: 'rgba(44,26,8,0.45)',
+              color: 'rgba(250,248,245,0.4)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{metaText}</span>
           )}
@@ -158,7 +161,7 @@ function ItemRow({
       </div>
 
       {/* Chevron */}
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(44,26,8,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2} style={{ flexShrink: 0 }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
     </button>
@@ -177,6 +180,7 @@ export default function ExploreWebPanel({
   isPersonalising,
 }: ExploreWebPanelProps) {
   const active = sections[activeIndex];
+  const [ariaQuery, setAriaQuery] = useState('');
 
   return (
     <div
@@ -191,56 +195,62 @@ export default function ExploreWebPanel({
       }}
     >
 
-      {/* Card 1 — Section switcher */}
-      <div style={{ ...CARD, flexShrink: 0 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-          {sections.map((s, i) => {
-            const isActive = i === activeIndex;
-            return (
-              <button
-                key={s.id}
-                onClick={() => onSectionChange(i)}
-                style={{
-                  background: isActive ? '#C17F3A' : 'rgba(44,26,8,0.05)',
-                  border: `1px solid ${isActive ? '#C17F3A' : 'rgba(193,127,58,0.18)'}`,
-                  borderRadius: '10px',
-                  padding: '10px 4px',
-                  cursor: 'pointer',
-                  transition: 'all 200ms ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '3px',
-                }}
-                onMouseEnter={e => {
-                  if (!isActive) e.currentTarget.style.background = 'rgba(193,127,58,0.1)';
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) e.currentTarget.style.background = 'rgba(44,26,8,0.05)';
-                }}
-              >
-                <span style={{
-                  fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontStyle: 'italic', fontSize: '16px', fontWeight: 600,
-                  color: isActive ? '#FAF8F5' : 'rgba(44,26,8,0.4)',
-                  lineHeight: 1,
-                  transition: 'color 200ms ease',
-                }}>{NUMERALS[i]}</span>
-                <span style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '9px', letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: isActive ? 'rgba(250,248,245,0.85)' : 'rgba(44,26,8,0.35)',
-                  transition: 'color 200ms ease',
-                }}>{sectionShortLabel(s.id)}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Card 1 — Section switcher tabs (Engage/Insights style) */}
+      <div style={{
+        ...GLASS,
+        padding: '6px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '4px',
+        flexShrink: 0,
+      }}>
+        {sections.map((s, i) => {
+          const isActive = i === activeIndex;
+          return (
+            <button
+              key={s.id}
+              onClick={() => onSectionChange(i)}
+              style={{
+                background: isActive ? '#C17F3A' : 'transparent',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 4px',
+                cursor: 'pointer',
+                transition: 'all 200ms ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '3px',
+                boxShadow: isActive ? '0 2px 10px rgba(193,127,58,0.3)' : 'none',
+              }}
+              onMouseEnter={e => {
+                if (!isActive) e.currentTarget.style.background = 'rgba(250,248,245,0.08)';
+              }}
+              onMouseLeave={e => {
+                if (!isActive) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <span style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic', fontSize: '16px', fontWeight: 600,
+                color: isActive ? '#FAF8F5' : 'rgba(250,248,245,0.4)',
+                lineHeight: 1,
+                transition: 'color 200ms ease',
+              }}>{NUMERALS[i]}</span>
+              <span style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '9px', letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: isActive ? 'rgba(250,248,245,0.9)' : 'rgba(250,248,245,0.35)',
+                transition: 'color 200ms ease',
+              }}>{sectionShortLabel(s.id)}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Card 2 — Section headline */}
-      <div style={{ ...CARD, flexShrink: 0 }}>
+      <div style={{ ...GLASS, flexShrink: 0 }}>
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '10px', fontWeight: 600,
@@ -250,29 +260,58 @@ export default function ExploreWebPanel({
         <h3 style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
           fontStyle: 'italic', fontSize: '21px', fontWeight: 500,
-          color: '#2C1A08', margin: '0 0 5px', lineHeight: 1.2,
+          color: '#FAF8F5', margin: '0 0 5px', lineHeight: 1.2,
         }}>{active?.title}</h3>
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
-          fontSize: '12px', color: 'rgba(44,26,8,0.45)',
+          fontSize: '12px', color: 'rgba(250,248,245,0.45)',
           margin: 0, lineHeight: 1.5,
         }}>{active?.subtitle}</p>
       </div>
 
-      {/* Card 3 — Items */}
-      <div style={{ ...CARD, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <p style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '10px', fontWeight: 600,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: 'rgba(44,26,8,0.3)', margin: '0 0 4px', flexShrink: 0,
-        }}>{active ? listLabel(active.content_type) : ''}</p>
+      {/* Card 3 — Stats bar + items */}
+      <div style={{
+        ...GLASS,
+        flex: 1,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+      }}>
+        {/* Stats header — mirrors "Enriched contacts 270/500" */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          flexShrink: 0,
+          marginBottom: '12px',
+        }}>
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '10px', fontWeight: 600,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: 'rgba(250,248,245,0.4)', margin: 0,
+          }}>{active ? listLabel(active.content_type) : ''}</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+            <span style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontSize: '22px', fontWeight: 600, fontStyle: 'italic',
+              color: '#FAF8F5',
+              lineHeight: 1,
+            }}>{active?.items.length ?? 0}</span>
+            <span style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '11px',
+              color: 'rgba(250,248,245,0.3)',
+            }}>places</span>
+          </div>
+        </div>
 
         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {active?.items.length === 0 && (
             <p style={{
               fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
-              color: 'rgba(44,26,8,0.25)', textAlign: 'center',
+              color: 'rgba(250,248,245,0.25)', textAlign: 'center',
               padding: '28px 0', margin: 0,
             }}>
               {active.content_type === 'events' ? 'No upcoming events yet.' : 'More coming soon.'}
@@ -289,41 +328,99 @@ export default function ExploreWebPanel({
         </div>
       </div>
 
-      {/* Card 4 — Actions */}
-      <div style={{ ...CARD, flexShrink: 0, marginTop: 'auto' }}>
-        {regions.length > 1 && (
-          <div style={{ marginBottom: '10px' }}>
-            <label style={{
-              display: 'block',
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '10px', fontWeight: 600,
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(44,26,8,0.35)', marginBottom: '7px',
-            }}>Region</label>
-            <select
-              value={selectedRegionId ?? ''}
-              onChange={(e) => onRegionChange(e.target.value)}
-              aria-label="Change region"
-              style={{
-                width: '100%', height: '40px', padding: '0 12px',
-                borderRadius: '10px',
-                background: '#FFFFFF',
-                border: '1px solid rgba(193,127,58,0.28)',
-                color: '#2C1A08',
-                fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
-                outline: 'none', cursor: 'pointer', appearance: 'none',
-                boxSizing: 'border-box',
-              }}
-            >
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}{r.country_code ? ` · ${r.country_code}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+      {/* Card 4 — Region selector (if multiple) */}
+      {regions.length > 1 && (
+        <div style={{ ...GLASS, flexShrink: 0 }}>
+          <label style={{
+            display: 'block',
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '10px', fontWeight: 600,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: 'rgba(250,248,245,0.4)', marginBottom: '7px',
+          }}>Region</label>
+          <select
+            value={selectedRegionId ?? ''}
+            onChange={(e) => onRegionChange(e.target.value)}
+            aria-label="Change region"
+            style={{
+              width: '100%', height: '40px', padding: '0 12px',
+              borderRadius: '10px',
+              background: 'rgba(250,248,245,0.08)',
+              border: '1px solid rgba(193,127,58,0.3)',
+              color: '#FAF8F5',
+              fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
+              outline: 'none', cursor: 'pointer', appearance: 'none',
+              boxSizing: 'border-box',
+            }}
+          >
+            {regions.map((r) => (
+              <option key={r.id} value={r.id} style={{ background: '#1a1208', color: '#FAF8F5' }}>
+                {r.name}{r.country_code ? ` · ${r.country_code}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
+      {/* Card 5 — Ask Aria input (mirrors "Invite your team" from reference) */}
+      <div style={{ ...GLASS, flexShrink: 0 }}>
+        <p style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '10px', fontWeight: 600,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: 'rgba(250,248,245,0.4)',
+          margin: '0 0 10px',
+        }}>Ask Aria</p>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(250,248,245,0.06)',
+          border: '1px solid rgba(193,127,58,0.3)',
+          borderRadius: '12px',
+          padding: '0 6px 0 14px',
+          height: '44px',
+        }}>
+          <input
+            type="text"
+            value={ariaQuery}
+            onChange={e => setAriaQuery(e.target.value)}
+            placeholder="Where should I eat tonight?"
+            style={{
+              flex: 1,
+              background: 'none',
+              border: 'none',
+              outline: 'none',
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '13px',
+              color: '#FAF8F5',
+              caretColor: '#C17F3A',
+            }}
+          />
+          <button
+            style={{
+              width: '32px', height: '32px',
+              borderRadius: '9px',
+              background: '#C17F3A',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              transition: 'background 160ms ease',
+              boxShadow: '0 2px 8px rgba(193,127,58,0.3)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#D6A252'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A'; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FAF8F5" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Card 6 — Personalise */}
+      <div style={{ ...GLASS, flexShrink: 0 }}>
         <button
           onClick={onPersonalise}
           disabled={isPersonalising}
@@ -362,6 +459,7 @@ export default function ExploreWebPanel({
           )}
         </button>
       </div>
+
     </div>
   );
 }
