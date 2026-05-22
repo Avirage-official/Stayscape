@@ -14,6 +14,16 @@ interface RegionCardData {
   imagePath: string | null;
 }
 
+type ActionKey = 'seed' | 'enrich' | 'reverify';
+type ActionState = 'idle' | 'loading' | 'done' | 'error';
+
+interface RegionAction {
+  state: ActionState;
+  message: string;
+}
+
+type ActionsMap = Record<string, Record<ActionKey, RegionAction>>;
+
 function formatDate(date: string | null): string {
   if (!date) return 'Never';
   const parsed = new Date(date);
@@ -40,22 +50,87 @@ function getImagePublicUrl(path: string | null): string | null {
   return `${base}/storage/v1/object/public/region-images/${path}`;
 }
 
+function defaultAction(): RegionAction {
+  return { state: 'idle', message: '' };
+}
+
+function defaultActions(): Record<ActionKey, RegionAction> {
+  return { seed: defaultAction(), enrich: defaultAction(), reverify: defaultAction() };
+}
+
 export default function AdminRegionsPage() {
   const [regions, setRegions] = useState<RegionCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadMsg, setUploadMsg] = useState<Record<string, string>>({});
+  const [actions, setActions] = useState<ActionsMap>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     fetch('/api/admin/regions')
       .then((r) => r.json())
       .then((data) => {
-        setRegions(data.regions ?? []);
+        const loaded: RegionCardData[] = data.regions ?? [];
+        setRegions(loaded);
+        const initial: ActionsMap = {};
+        for (const r of loaded) initial[r.id] = defaultActions();
+        setActions(initial);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+
+  function setAction(regionId: string, key: ActionKey, patch: Partial<RegionAction>) {
+    setActions((prev) => ({
+      ...prev,
+      [regionId]: {
+        ...prev[regionId],
+        [key]: { ...(prev[regionId]?.[key] ?? defaultAction()), ...patch },
+      },
+    }));
+  }
+
+  async function handleAction(regionId: string, key: ActionKey) {
+    const endpoints: Record<ActionKey, string> = {
+      seed: '/api/admin/sync/places',
+      enrich: '/api/admin/enrich/places',
+      reverify: '/api/admin/places/reverify',
+    };
+
+    setAction(regionId, key, { state: 'loading', message: '' });
+
+    try {
+      const res = await fetch(endpoints[key], {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ region_id: regionId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Request failed');
+
+      const d = json.data ?? {};
+      let msg = '';
+      if (key === 'seed') {
+        msg = `Seeded ${d.upserted ?? d.total ?? 0} places`;
+      } else if (key === 'enrich') {
+        msg = `Enriched ${d.enriched ?? 0}${ d.failed ? `, ${d.failed} failed` : ''}`;
+      } else {
+        msg = `Re-verified ${d.reverified ?? 0}${ d.flagged ? `, ${d.flagged} flagged` : ''}`;
+      }
+
+      setAction(regionId, key, { state: 'done', message: msg });
+
+      // Refresh counts after a short delay
+      setTimeout(() => {
+        fetch('/api/admin/regions')
+          .then((r) => r.json())
+          .then((data) => setRegions(data.regions ?? []))
+          .catch(() => null);
+      }, 1500);
+    } catch (err) {
+      setAction(regionId, key, { state: 'error', message: (err as Error).message });
+    }
+  }
 
   async function handleUpload(regionId: string, file: File) {
     setUploading(regionId);
@@ -74,9 +149,7 @@ export default function AdminRegionsPage() {
       if (!res.ok) throw new Error(json.error ?? 'Upload failed');
 
       setRegions((prev) =>
-        prev.map((r) =>
-          r.id === regionId ? { ...r, imagePath: json.path } : r,
-        ),
+        prev.map((r) => (r.id === regionId ? { ...r, imagePath: json.path } : r)),
       );
       setUploadMsg((prev) => ({ ...prev, [regionId]: 'Saved ✓' }));
     } catch (err) {
@@ -108,23 +181,23 @@ export default function AdminRegionsPage() {
           regions.map((region) => {
             const imgUrl = getImagePublicUrl(region.imagePath);
             const isUploading = uploading === region.id;
-            const msg = uploadMsg[region.id];
+            const uploadMessage = uploadMsg[region.id];
+            const regionActions = actions[region.id] ?? defaultActions();
 
             return (
               <article key={region.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                {/* Header */}
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="font-serif text-2xl text-white">{region.name}</h2>
                     <p className="text-xs uppercase tracking-[0.16em] text-white/55">{region.countryCode}</p>
                   </div>
-                  <span
-                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${getHealthClass(region.healthStatus)}`}
-                  >
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${getHealthClass(region.healthStatus)}`}>
                     {region.healthStatus.replaceAll('_', ' ')}
                   </span>
                 </div>
 
-                {/* Image preview + upload */}
+                {/* Region image upload */}
                 <div className="mb-4">
                   {imgUrl ? (
                     <div className="relative w-full h-32 rounded-xl overflow-hidden mb-2">
@@ -134,10 +207,9 @@ export default function AdminRegionsPage() {
                     </div>
                   ) : (
                     <div className="w-full h-32 rounded-xl border border-dashed border-white/20 bg-white/[0.02] flex items-center justify-center mb-2">
-                      <p className="text-white/30 text-xs">No image</p>
+                      <p className="text-white/30 text-xs">No region image</p>
                     </div>
                   )}
-
                   <div className="flex items-center gap-2">
                     <input
                       ref={(el) => { fileRefs.current[region.id] = el; }}
@@ -158,14 +230,15 @@ export default function AdminRegionsPage() {
                     >
                       {isUploading ? 'Uploading…' : imgUrl ? 'Replace image' : 'Upload image'}
                     </button>
-                    {msg && (
-                      <span className={`text-xs ${msg.startsWith('Saved') ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {msg}
+                    {uploadMessage && (
+                      <span className={`text-xs ${uploadMessage.startsWith('Saved') ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {uploadMessage}
                       </span>
                     )}
                   </div>
                 </div>
 
+                {/* Stats */}
                 <div className="mb-5 grid grid-cols-3 gap-3 text-sm">
                   <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-white/55">Places</p>
@@ -187,19 +260,50 @@ export default function AdminRegionsPage() {
 
                 <p className="mb-4 text-sm text-white/60">Last sync: {formatDate(region.lastSyncAt)}</p>
 
+                {/* Action buttons */}
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#C9A84C]"
-                  >
-                    Trigger Sync
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-white/20 bg-white/[0.03] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-white/75"
-                  >
-                    Enrich Pending
-                  </button>
+                  {(
+                    [
+                      {
+                        key: 'seed' as ActionKey,
+                        label: 'Seed from Geoapify',
+                        loadingLabel: 'Seeding…',
+                        style: 'border-[#C9A84C]/40 bg-[#C9A84C]/15 text-[#C9A84C]',
+                      },
+                      {
+                        key: 'enrich' as ActionKey,
+                        label: 'Enrich with AI',
+                        loadingLabel: 'Enriching…',
+                        style: 'border-white/20 bg-white/[0.03] text-white/75',
+                      },
+                      {
+                        key: 'reverify' as ActionKey,
+                        label: 'Re-verify Places',
+                        loadingLabel: 'Verifying…',
+                        style: 'border-white/20 bg-white/[0.03] text-white/75',
+                      },
+                    ] as const
+                  ).map(({ key, label, loadingLabel, style }) => {
+                    const action = regionActions[key];
+                    const isLoading = action.state === 'loading';
+                    return (
+                      <div key={key} className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          disabled={isLoading}
+                          onClick={() => handleAction(region.id, key)}
+                          className={`rounded-lg border px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] disabled:opacity-40 ${style}`}
+                        >
+                          {isLoading ? loadingLabel : label}
+                        </button>
+                        {action.message && (
+                          <span className={`text-[11px] ${action.state === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {action.message}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </article>
             );
