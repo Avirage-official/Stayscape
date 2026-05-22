@@ -48,6 +48,8 @@ export interface EnrichmentResult {
   /* Quality gate fields — populated by Claude provider */
   quality_score?: number;
   rejection_reason?: string;
+  /* Rating estimate — only set when Claude estimates from knowledge */
+  rating?: number | null;
 }
 
 export interface AIEnrichmentProvider {
@@ -109,7 +111,7 @@ export function setAIProvider(provider: AIEnrichmentProvider): void {
  * 2. Update the place record with Geoapify data
  * 3. Call the AI provider — which returns a quality_score (1-10)
  * 4. If score < 5 → mark place as is_active=false (hidden from guests)
- * 5. Otherwise: write editorial_summary, vibes, etc. back to the place
+ * 5. Otherwise: write editorial_summary, vibes, rating estimate (if no real rating), etc. back to the place
  * 6. Upsert vibe/best_for tags into place_tags
  */
 export async function enrichPlace(
@@ -178,17 +180,24 @@ export async function enrichPlace(
   if (!result.editorial_summary && result.tags.length === 0) return;
 
   // Step 5 – Write AI results back to the place record
+  // Only write Claude's rating estimate if the place has no real rating yet
+  const placeUpdates: Record<string, unknown> = {
+    editorial_summary: result.editorial_summary ?? null,
+    recommended_duration: result.recommended_duration ?? null,
+    best_time_to_go: result.best_time_to_go ?? null,
+    vibes: result.vibes ?? null,
+    best_for: result.best_for ?? null,
+    ai_enriched_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (result.rating != null && !place.rating) {
+    placeUpdates.rating = result.rating;
+  }
+
   const { error } = await supabase
     .from('places')
-    .update({
-      editorial_summary: result.editorial_summary ?? null,
-      recommended_duration: result.recommended_duration ?? null,
-      best_time_to_go: result.best_time_to_go ?? null,
-      vibes: result.vibes ?? null,
-      best_for: result.best_for ?? null,
-      ai_enriched_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    .update(placeUpdates)
     .eq('id', place.id);
 
   if (error) {

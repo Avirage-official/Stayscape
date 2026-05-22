@@ -67,30 +67,35 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
   'catering.fast_food': 'dining',
   'catering.bar': 'nightlife',
   'catering.pub': 'nightlife',
-  'entertainment': 'fun_places',
   'entertainment.cinema': 'fun_places',
   'entertainment.theme_park': 'fun_places',
   'entertainment.activity_park': 'fun_places',
+  'entertainment.water_park': 'fun_places',
+  'entertainment.escape_game': 'fun_places',
+  'entertainment.bowling_alley': 'fun_places',
   'entertainment.zoo': 'family',
   'entertainment.aquarium': 'family',
   'entertainment.museum': 'historical',
   'entertainment.culture': 'historical',
   'leisure.park': 'nature',
+  'leisure.spa': 'wellness',
   'natural': 'nature',
   'natural.forest': 'nature',
   'natural.water': 'nature',
-  'tourism': 'top_places',
-  'tourism.sights': 'top_places',
-  'tourism.attraction': 'top_places',
-  'tourism.information': 'top_places',
+  'tourism.sights': 'topplaces',
+  'tourism.attraction': 'topplaces',
+  'tourism.information': 'topplaces',
+  'tourism': 'topplaces',
   'heritage': 'historical',
   'heritage.unesco': 'historical',
   'religion': 'historical',
+  'religion.place_of_worship': 'historical',
   'commercial.shopping_mall': 'shopping',
   'commercial': 'shopping',
   'sport.fitness': 'wellness',
   'healthcare.pharmacy': 'wellness',
   'service.beauty': 'wellness',
+  'beach': 'nature',
 };
 
 export function mapGeoapifyCategory(categories: string[]): string {
@@ -104,7 +109,7 @@ export function mapGeoapifyCategory(categories: string[]): string {
       return GEOAPIFY_TO_STAYSCAPE_CATEGORY[prefix];
     }
   }
-  return 'local_spots';
+  return 'localspots';
 }
 
 /* ── Geoapify response types (internal) ──────────────────── */

@@ -43,6 +43,7 @@ interface ClaudePlaceEnrichment {
   best_time_to_go?: string | null;
   vibes?: string[];
   best_for?: string[];
+  rating?: number | null;
 }
 
 /* ── Provider implementation ────────────────────────────────── */
@@ -158,6 +159,17 @@ Bad example:
 
 ---
 
+PART 3 — RATING ESTIMATE
+
+If the rating above says "Not available", estimate the place's real-world rating based on your knowledge.
+- Use a float between 1.0 and 5.0 (e.g. 4.3)
+- Base it on reputation, reviews you've seen in training data, and general standing
+- If you genuinely have no knowledge of this specific place, return null
+- Do NOT inflate — be honest. A decent local kopitiam is a 4.0, not a 4.8.
+- Only return null if you truly cannot estimate — an unknown place in a known area can still get a conservative 3.8–4.2
+
+---
+
 Place details:
 Name: ${place.name}
 Category: ${place.category}
@@ -176,7 +188,8 @@ Respond with a single JSON object only — no markdown fences, no explanation, n
   "recommended_duration": "<honest estimate, e.g. '20–30 minutes', '1–2 hours', 'Half a day' — required if score >= 4>",
   "best_time_to_go": "<specific and useful, e.g. 'Weekend mornings before 10am', 'Friday evenings', 'Weekday lunch' — required if score >= 4>",
   "vibes": [<3–6 single words or short phrases that capture the atmosphere — required if score >= 4, empty array if not>],
-  "best_for": [<2–5 specific visitor types or occasions, e.g. 'date night', 'solo lunch', 'families with young kids', 'early risers', 'after-work drinks' — required if score >= 4, empty array if not>]
+  "best_for": [<2–5 specific visitor types or occasions, e.g. 'date night', 'solo lunch', 'families with young kids', 'early risers', 'after-work drinks' — required if score >= 4, empty array if not>],
+  "rating": <float 1.0–5.0 if you can estimate, or null if the place already has a rating or you have no knowledge>
 }`;
 }
 
@@ -266,6 +279,13 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     tags.push({ tag: label, tag_type: 'best_for' as TagType, confidence: 0.9 });
   }
 
+  // Parse Claude's rating estimate — clamp to 1.0–5.0 range
+  let ratingEstimate: number | null = null;
+  const rawRating = toNumberOrNull(parsed.rating ?? null);
+  if (rawRating !== null) {
+    ratingEstimate = Math.min(5.0, Math.max(1.0, Math.round(rawRating * 10) / 10));
+  }
+
   return {
     editorial_summary: toStringOrNull(parsed.editorial_summary) ?? '',
     recommended_duration: toStringOrNull(parsed.recommended_duration),
@@ -274,6 +294,7 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     best_for: bestFor.length > 0 ? bestFor : null,
     tags,
     quality_score: qualityScore ?? undefined,
+    rating: ratingEstimate,
   };
 }
 
