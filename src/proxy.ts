@@ -5,7 +5,7 @@ import {
   NEXT_PUBLIC_SUPABASE_ANON_KEY,
 } from '@/lib/env';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   if (!NEXT_PUBLIC_SUPABASE_URL || !NEXT_PUBLIC_SUPABASE_ANON_KEY) {
