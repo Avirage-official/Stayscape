@@ -3,8 +3,8 @@
  *
  * Re-runs Claude enrichment on already-active places for a region.
  * Used to keep stories fresh and catch places that have closed or
- * degraded in quality. Places whose score drops below 4 are flagged
- * (is_active set to false) for admin review — not auto-deleted.
+ * degraded in quality. Places whose score drops below threshold are
+ * flagged (is_active set to false) for admin review — not auto-deleted.
  *
  * Body:
  *   region_id  — required, which region to re-verify
@@ -74,14 +74,17 @@ export async function POST(request: NextRequest) {
 
       for (const place of batch) {
         try {
-          const result = await enrichPlace(supabase, place as unknown as InternalPlace);
+          // enrichPlace handles the quality gate internally and returns void.
+          // After it runs, check is_active to determine if it was flagged.
+          await enrichPlace(supabase, place as unknown as InternalPlace);
 
-          // If Claude now scores below threshold, flag for human review
-          if (result.quality_score !== undefined && result.quality_score < 4) {
-            await supabase
-              .from('places')
-              .update({ is_active: false, updated_at: new Date().toISOString() })
-              .eq('id', place.id);
+          const { data: updated } = await supabase
+            .from('places')
+            .select('is_active')
+            .eq('id', place.id)
+            .single();
+
+          if (updated?.is_active === false) {
             flagged++;
           } else {
             reverified++;

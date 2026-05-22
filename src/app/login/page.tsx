@@ -224,21 +224,6 @@ export default function LoginPage() {
             </a>
           </div>
         </div>
-
-        {/* Superadmin — discreet dot */}
-        <a
-          href="/admin"
-          style={{
-            position: 'fixed', bottom: '16px', right: '20px',
-            fontSize: '10px', color: 'rgba(250,248,245,0.18)',
-            textDecoration: 'none', letterSpacing: '0.08em',
-            transition: 'color 0.2s', zIndex: 20,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'rgba(193,127,58,0.6)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.18)')}
-        >
-          ·
-        </a>
       </div>
     </>
   );
