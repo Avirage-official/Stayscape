@@ -15,12 +15,15 @@ const GEOAPIFY_BASE = 'https://api.geoapify.com/v2';
 
 /**
  * Curated list of Geoapify sub-categories to fetch.
- * Intentionally excludes 'catering.restaurant' and 'catering.cafe' —
- * these pull in chains, fast food, and generic dining that don't suit
- * a luxury travel app. Dining is covered only via specific heritage
- * or attraction-tagged venues that pass through tourism/heritage buckets.
+ * Restaurants and cafes are included — the chain blocklist below and
+ * Claude's quality gate together filter out generic chains, leaving only
+ * independent dining worth featuring.
+ * 'catering.fast_food' remains excluded as it is almost entirely chains.
  */
 const DEFAULT_CATEGORIES = [
+  /* Dining */
+  'catering.restaurant',
+  'catering.cafe',
   /* Nightlife */
   'catering.bar',
   'catering.pub',
@@ -221,7 +224,7 @@ export async function searchPlaces(
     longitude,
     radius_meters = 5000,
     categories = DEFAULT_CATEGORIES,
-    limit = 50,
+    limit = 100,
   } = params;
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
@@ -258,7 +261,7 @@ export async function searchPlacesByBounds(params: {
   const {
     north, south, east, west,
     categories = DEFAULT_CATEGORIES,
-    limit = 50,
+    limit = 100,
   } = params;
 
   const url = new URL(`${GEOAPIFY_BASE}/places`);
