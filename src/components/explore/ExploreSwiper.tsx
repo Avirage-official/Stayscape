@@ -17,7 +17,6 @@ interface ExploreSwiperProps {
   regions: RegionOption[];
   selectedRegionId: string | null;
   firstName: string | null;
-  onRegionChange: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
   isRefreshing?: boolean;
@@ -105,12 +104,6 @@ function deriveCategories(items: (DrillPlaceCard | DrillEventCard)[]): string[] 
   return out;
 }
 
-function fmtPrice(min: number | null, max: number | null, currency: string | null): string | null {
-  if (min == null && max == null) return null;
-  const sym = currency === 'SGD' ? 'S$' : currency === 'USD' ? '$' : (currency ?? '');
-  if (min != null && max != null && min !== max) return `${sym}${min}–${sym}${max}`;
-  return `From ${sym}${min ?? max}`;
-}
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-SG', {
@@ -123,7 +116,6 @@ export default function ExploreSwiper({
   regions,
   selectedRegionId,
   firstName,
-  onRegionChange,
   onPersonalise,
   isPersonalising,
   isRefreshing,

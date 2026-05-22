@@ -123,7 +123,7 @@ export default function ExploreWebPanel({
         {isAria && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
             <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.55)', margin: 0, lineHeight: 1.5 }}>
-              Tell Aria what you're looking for and she'll find it.
+              Tell Aria what you&apos;re looking for and she&apos;ll find it.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(250,248,245,0.05)', border: '1px solid rgba(193,127,58,0.3)', borderRadius: '12px', padding: '0 6px 0 14px', height: '44px' }}>
               <input

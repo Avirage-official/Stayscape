@@ -138,7 +138,6 @@ export default function ExplorePage() {
       regions={data.regions}
       selectedRegionId={selectedRegionId}
       firstName={data.firstName}
-      onRegionChange={handleRegionChange}
       onPersonalise={handlePersonalise}
       isPersonalising={isPersonalising}
       isRefreshing={isRefreshing}
