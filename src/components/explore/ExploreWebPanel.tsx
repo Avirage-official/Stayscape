@@ -12,7 +12,7 @@ interface ExploreWebPanelProps {
   selectedRegionId: string | null;
   activeIndex: number;
   onSectionChange: (index: number) => void;
-  onItemClick: (item: ExploreItem) => void;
+  onItemClick: (item: ExploreItem, contentType: ExploreSection['content_type']) => void;
   onRegionChange: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
@@ -40,7 +40,6 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('en-SG', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-/* Glass surface — used for each panel card */
 const GLASS: React.CSSProperties = {
   background: 'rgba(250,248,245,0.07)',
   backdropFilter: 'blur(24px)',
@@ -77,17 +76,17 @@ function ItemRow({
     metaText = (item as RegionOption).country_code ?? '';
   } else if (isProperty) {
     const p = item as ExplorePropertyCard;
-    const stars = p.star_rating ? '★'.repeat(p.star_rating) : null;
+    const stars = p.star_rating ? '\u2605'.repeat(p.star_rating) : null;
     const price  = p.price_from != null
       ? `From ${p.currency === 'SGD' ? 'S$' : (p.currency ?? '$')}${p.price_from}`
       : null;
-    metaText = [stars, price].filter(Boolean).join(' · ');
+    metaText = [stars, price].filter(Boolean).join(' \u00b7 ');
   } else {
     const p = item as DiscoveryPlaceCard;
     metaText = [
-      p.rating  ? `★ ${p.rating.toFixed(1)}` : null,
+      p.rating  ? `\u2605 ${p.rating.toFixed(1)}` : null,
       p.vibes?.[0] ?? null,
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join(' \u00b7 ');
   }
 
   return (
@@ -111,7 +110,6 @@ function ItemRow({
       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.13)'; }}
       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.06)'; }}
     >
-      {/* Thumbnail */}
       <div style={{
         width: '38px', height: '38px',
         borderRadius: '10px',
@@ -124,12 +122,11 @@ function ItemRow({
           <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
         ) : (
           <span style={{ color: 'rgba(250,248,245,0.4)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>
-            {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
+            {isRegion ? ((item as RegionOption).country_code ?? '\u2014') : '\u00b7'}
           </span>
         )}
       </div>
 
-      {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
@@ -160,7 +157,6 @@ function ItemRow({
         </div>
       </div>
 
-      {/* Chevron */}
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2} style={{ flexShrink: 0 }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
@@ -194,8 +190,7 @@ export default function ExploreWebPanel({
         scrollbarWidth: 'none',
       }}
     >
-
-      {/* Card 1 — Section switcher tabs (Engage/Insights style) */}
+      {/* Section switcher tabs */}
       <div style={{
         ...GLASS,
         padding: '6px',
@@ -223,19 +218,14 @@ export default function ExploreWebPanel({
                 gap: '3px',
                 boxShadow: isActive ? '0 2px 10px rgba(193,127,58,0.3)' : 'none',
               }}
-              onMouseEnter={e => {
-                if (!isActive) e.currentTarget.style.background = 'rgba(250,248,245,0.08)';
-              }}
-              onMouseLeave={e => {
-                if (!isActive) e.currentTarget.style.background = 'transparent';
-              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(250,248,245,0.08)'; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
             >
               <span style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontStyle: 'italic', fontSize: '16px', fontWeight: 600,
                 color: isActive ? '#FAF8F5' : 'rgba(250,248,245,0.4)',
-                lineHeight: 1,
-                transition: 'color 200ms ease',
+                lineHeight: 1, transition: 'color 200ms ease',
               }}>{NUMERALS[i]}</span>
               <span style={{
                 fontFamily: "'DM Sans', sans-serif",
@@ -249,7 +239,7 @@ export default function ExploreWebPanel({
         })}
       </div>
 
-      {/* Card 2 — Section headline */}
+      {/* Section headline */}
       <div style={{ ...GLASS, flexShrink: 0 }}>
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
@@ -269,7 +259,7 @@ export default function ExploreWebPanel({
         }}>{active?.subtitle}</p>
       </div>
 
-      {/* Card 3 — Stats bar + items */}
+      {/* Items list */}
       <div style={{
         ...GLASS,
         flex: 1,
@@ -278,7 +268,6 @@ export default function ExploreWebPanel({
         flexDirection: 'column',
         minHeight: 0,
       }}>
-        {/* Stats header — mirrors "Enriched contacts 270/500" */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -296,13 +285,11 @@ export default function ExploreWebPanel({
             <span style={{
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               fontSize: '22px', fontWeight: 600, fontStyle: 'italic',
-              color: '#FAF8F5',
-              lineHeight: 1,
+              color: '#FAF8F5', lineHeight: 1,
             }}>{active?.items.length ?? 0}</span>
             <span style={{
               fontFamily: "'DM Sans', sans-serif",
-              fontSize: '11px',
-              color: 'rgba(250,248,245,0.3)',
+              fontSize: '11px', color: 'rgba(250,248,245,0.3)',
             }}>places</span>
           </div>
         </div>
@@ -322,13 +309,13 @@ export default function ExploreWebPanel({
               key={item.id}
               item={item}
               contentType={active.content_type}
-              onClick={() => onItemClick(item)}
+              onClick={() => onItemClick(item, active.content_type)}
             />
           ))}
         </div>
       </div>
 
-      {/* Card 4 — Region selector (if multiple) */}
+      {/* Region selector */}
       {regions.length > 1 && (
         <div style={{ ...GLASS, flexShrink: 0 }}>
           <label style={{
@@ -355,26 +342,23 @@ export default function ExploreWebPanel({
           >
             {regions.map((r) => (
               <option key={r.id} value={r.id} style={{ background: '#1a1208', color: '#FAF8F5' }}>
-                {r.name}{r.country_code ? ` · ${r.country_code}` : ''}
+                {r.name}{r.country_code ? ` \u00b7 ${r.country_code}` : ''}
               </option>
             ))}
           </select>
         </div>
       )}
 
-      {/* Card 5 — Ask Aria input (mirrors "Invite your team" from reference) */}
+      {/* Ask Aria */}
       <div style={{ ...GLASS, flexShrink: 0 }}>
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '10px', fontWeight: 600,
           letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: 'rgba(250,248,245,0.4)',
-          margin: '0 0 10px',
+          color: 'rgba(250,248,245,0.4)', margin: '0 0 10px',
         }}>Ask Aria</p>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
+          display: 'flex', alignItems: 'center', gap: '8px',
           background: 'rgba(250,248,245,0.06)',
           border: '1px solid rgba(193,127,58,0.3)',
           borderRadius: '12px',
@@ -387,26 +371,17 @@ export default function ExploreWebPanel({
             onChange={e => setAriaQuery(e.target.value)}
             placeholder="Where should I eat tonight?"
             style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '13px',
-              color: '#FAF8F5',
-              caretColor: '#C17F3A',
+              flex: 1, background: 'none', border: 'none', outline: 'none',
+              fontFamily: "'DM Sans', sans-serif", fontSize: '13px',
+              color: '#FAF8F5', caretColor: '#C17F3A',
             }}
           />
           <button
             style={{
-              width: '32px', height: '32px',
-              borderRadius: '9px',
-              background: '#C17F3A',
-              border: 'none',
-              cursor: 'pointer',
+              width: '32px', height: '32px', borderRadius: '9px',
+              background: '#C17F3A', border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-              transition: 'background 160ms ease',
+              flexShrink: 0, transition: 'background 160ms ease',
               boxShadow: '0 2px 8px rgba(193,127,58,0.3)',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = '#D6A252'; }}
@@ -419,16 +394,14 @@ export default function ExploreWebPanel({
         </div>
       </div>
 
-      {/* Card 6 — Personalise */}
+      {/* Personalise */}
       <div style={{ ...GLASS, flexShrink: 0 }}>
         <button
           onClick={onPersonalise}
           disabled={isPersonalising}
           style={{
-            width: '100%', height: '44px',
-            borderRadius: '12px',
-            background: '#C17F3A',
-            color: '#FAF8F5',
+            width: '100%', height: '44px', borderRadius: '12px',
+            background: '#C17F3A', color: '#FAF8F5',
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '13px', fontWeight: 600, letterSpacing: '0.07em',
             border: 'none',
