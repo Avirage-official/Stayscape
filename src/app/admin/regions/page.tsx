@@ -110,6 +110,7 @@ export default function AdminRegionsPage() {
       if (region.latitude != null) body.latitude = region.latitude;
       if (region.longitude != null) body.longitude = region.longitude;
       if (region.radius_km != null) body.radius_meters = Math.round(region.radius_km * 1000);
+      if (region.countryCode) body.country_code = region.countryCode;
     }
 
     try {
