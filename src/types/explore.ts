@@ -14,7 +14,7 @@ import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 
-// ─── Unified item type ────────────────────────────────────────────────────────
+// ─── Unified item type (used at L0 section level) ─────────────────────────────
 
 export type ExploreItem =
   | DiscoveryPlaceCard
@@ -37,10 +37,14 @@ export type DrillContentType = 'places' | 'events' | 'properties' | 'regions';
 
 // ─── Drill data cache ─────────────────────────────────────────────────────────
 
-/** Cached result for a region+category combo so we don't re-fetch on back nav. */
+/**
+ * Cached result for a region+category combo so we don't re-fetch on back nav.
+ * items is always DrillPlaceCard | DrillEventCard — never RegionOption or
+ * ExplorePropertyCard, which only appear at L0 section level.
+ */
 export interface DrillData {
-  /** Places or events, depending on the section. */
-  items: ExploreItem[];
+  /** Places or events returned from the drill-in fetch. */
+  items: (DrillPlaceCard | DrillEventCard)[];
   /** Unique categories derived from items. */
   categories: string[];
   /** ISO timestamp of when this was fetched — used for staleness checks later. */
@@ -50,7 +54,7 @@ export interface DrillData {
 /** Cache key format: `${sectionId}:${regionId}:${category | 'all'}` */
 export type DrillCacheKey = string;
 
-// ─── Slim card shapes for L3 lists ───────────────────────────────────────────
+// ─── Slim card shapes for drill-in lists (L2–L3) ─────────────────────────────
 
 export interface DrillPlaceCard {
   id: string;

@@ -170,8 +170,8 @@ export default function ExploreSwiper({
     const cacheKey: DrillCacheKey = `${sectionId}:${region.id}:${category ?? 'all'}`;
     const cached = cacheRef.current.get(cacheKey);
     if (cached) {
-      const items = (cached.items as (DrillPlaceCard | DrillEventCard)[]);
-      setDrillItems(items);
+      // DrillData.items is (DrillPlaceCard | DrillEventCard)[] — no cast needed
+      setDrillItems(cached.items);
       setDrillCategories(cached.categories);
       return;
     }
@@ -264,11 +264,11 @@ export default function ExploreSwiper({
       const v = view as Extract<ExploreView, { level: 2 }>;
       transitionPanel(() => {
         setView({ level: 1, sectionId: v.sectionId });
-        // Re-derive from all-category cached data
+        // Restore from all-category cached data — no cast needed, type is correct
         const allKey: DrillCacheKey = `${v.sectionId}:${v.region.id}:all`;
         const cached = cacheRef.current.get(allKey);
         if (cached) {
-          setDrillItems(cached.items as (DrillPlaceCard | DrillEventCard)[]);
+          setDrillItems(cached.items);
           setDrillCategories(cached.categories);
         }
       });
@@ -323,7 +323,7 @@ export default function ExploreSwiper({
   // ─── Mobile drill panel content ───────────────────────────────────
 
   function renderMobileDrillContent() {
-    // “Yours” coming soon
+    // "Yours" coming soon
     if (active?.id === 'made_for_you') {
       return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '24px 16px' }}>
@@ -354,7 +354,6 @@ export default function ExploreSwiper({
             <button
               key={cat}
               onClick={() => {
-                const v = view as Extract<ExploreView, { level: 1 }>;
                 const region = regions.find(r => r.id === selectedRegionId) ?? regions[0];
                 if (region) drillToCategory(region, cat);
               }}
