@@ -15,14 +15,12 @@ const GEOAPIFY_BASE = 'https://api.geoapify.com/v2';
 
 /**
  * Curated list of Geoapify sub-categories to fetch.
- * Avoids broad parent buckets (e.g. 'commercial', 'catering') that
- * pull in junk like phone repair shops, fast food, generic chains.
- * Each entry maps to a Stayscape category in GEOAPIFY_TO_STAYSCAPE_CATEGORY below.
+ * Intentionally excludes 'catering.restaurant' and 'catering.cafe' —
+ * these pull in chains, fast food, and generic dining that don't suit
+ * a luxury travel app. Dining is covered only via specific heritage
+ * or attraction-tagged venues that pass through tourism/heritage buckets.
  */
 const DEFAULT_CATEGORIES = [
-  /* Dining */
-  'catering.restaurant',
-  'catering.cafe',
   /* Nightlife */
   'catering.bar',
   'catering.pub',
@@ -58,6 +56,57 @@ const DEFAULT_CATEGORIES = [
   /* Religion */
   'religion.place_of_worship',
 ];
+
+/* ── Chain / generic dining blocklist ───────────────────── */
+
+/**
+ * Case-insensitive blocklist of known chains, franchises, and generic
+ * brands that should never appear in Stayscape regardless of category.
+ * Checked as a substring match against the place name (lowercased).
+ */
+const CHAIN_BLOCKLIST = [
+  /* Fast food */
+  "mcdonald's", 'mcdonalds', 'kfc', 'burger king', 'subway', 'wendy\'s',
+  'wendys', 'taco bell', 'popeyes', 'five guys', 'shake shack', 'jollibee',
+  'carl\'s jr', 'carls jr', 'hardee\'s', 'hardees', 'jack in the box',
+  'domino\'s', 'dominos', 'pizza hut', 'little caesars', 'papa john\'s',
+  'papa johns',
+  /* Casual dining chains */
+  'swensen\'s', 'swensens', 'the manhattan fish market', 'fish & co',
+  'fish and co', 'sizzler', 'tony roma\'s', 'tony romas', 'applebee\'s',
+  'applebees', 'chili\'s', 'chilis', 'friday\'s', 'fridays', 'denny\'s',
+  'dennys', 'ihop', 'olive garden', 'red lobster', 'outback steakhouse',
+  'nando\'s', 'nandos',
+  /* Café chains */
+  'starbucks', 'costa coffee', 'coffee bean', 'gloria jean\'s', 'gloria jeans',
+  'old town white coffee', 'ya kun', 'toast box', 'toastbox', 'mr bean',
+  'gong cha', 'koi', 'liho', 'each a cup', 'tiger sugar', 'playmade',
+  'the alley', 'ten ren',
+  /* Sushi / Japanese chains */
+  'sushiro', 'sushi express', 'genki sushi', 'itacho sushi', 'sakae sushi',
+  'sushi tei', 'ichiban boshi',
+  /* Asian casual chains */
+  'yoshinoya', 'sukiya', 'mekong', 'imperial treasure', 'paradise dynasty',
+  'din tai fung',  // popular chain — add only if desired to filter
+  'ajisen', 'ramen nagi', 'ippudo', 'butcher boy', 'putien',
+  /* Western chains */
+  'ikura', 'nyonya memories',  // specific to current bad data
+  'bengawan solo', 'bengawan',
+  /* Convenience / grab & go */
+  '7-eleven', '7 eleven', 'cheers', 'fairprice', 'cold storage', 'giant',
+  'watsons', 'guardian',
+  /* Hotel chain restaurants (generic) */
+  'marriott', 'hilton', 'sheraton', 'hyatt', 'westin', 'novotel',
+  'courtyard by marriott',
+];
+
+/**
+ * Returns true if the place name matches a known chain / blocklisted brand.
+ */
+function isBlocklisted(name: string): boolean {
+  const lower = name.toLowerCase();
+  return CHAIN_BLOCKLIST.some((entry) => lower.includes(entry));
+}
 
 /* ── Category mapping ────────────────────────────────────── */
 
@@ -160,6 +209,7 @@ export interface GeoapifySearchParams {
 /**
  * Search places by radius around a point.
  * Returns normalized PlaceUpsertInput objects ready for Supabase.
+ * Blocklisted chains are silently dropped before returning.
  */
 export async function searchPlaces(
   params: GeoapifySearchParams,
@@ -188,7 +238,7 @@ export async function searchPlaces(
 
   const json = (await res.json()) as GeoapifyResponse;
   return json.features
-    .filter((f) => f.properties.name)
+    .filter((f) => f.properties.name && !isBlocklisted(f.properties.name))
     .map((f) => normalizeFeature(f));
 }
 
@@ -224,7 +274,7 @@ export async function searchPlacesByBounds(params: {
 
   const json = (await res.json()) as GeoapifyResponse;
   return json.features
-    .filter((f) => f.properties.name)
+    .filter((f) => f.properties.name && !isBlocklisted(f.properties.name))
     .map((f) => normalizeFeature(f));
 }
 
@@ -246,6 +296,7 @@ export async function getPlaceDetails(
   const json = (await res.json()) as { features: GeoapifyFeature[] };
   const feature = json.features?.[0];
   if (!feature?.properties?.name) return null;
+  if (isBlocklisted(feature.properties.name)) return null;
 
   return normalizeFeature(feature);
 }
