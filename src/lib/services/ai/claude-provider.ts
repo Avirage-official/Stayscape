@@ -56,7 +56,8 @@ interface ClaudePlaceEnrichment {
   best_time_to_go?: string | null;
   vibes?: string[];
   best_for?: string[];
-a
+  rating?: number | null;
+}
 
 /* ── Cached system prompts ──────────────────────────────────── */
 
