@@ -67,6 +67,7 @@ export default function AdminRegionsPage() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadMsg, setUploadMsg] = useState<Record<string, string>>({});
   const [actions, setActions] = useState<ActionsMap>({});
+  const [seedExpanded, setSeedExpanded] = useState<string | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export default function AdminRegionsPage() {
     }));
   }
 
-  async function handleAction(regionId: string, key: ActionKey, region: RegionCardData) {
+  async function handleAction(regionId: string, key: ActionKey, region: RegionCardData, radiusKm?: number) {
     const endpoints: Record<ActionKey, string> = {
       seed: '/api/admin/sync/places',
       enrich: '/api/admin/enrich/places',
@@ -101,6 +102,7 @@ export default function AdminRegionsPage() {
     };
 
     setAction(regionId, key, { state: 'loading', message: '' });
+    setSeedExpanded(null);
 
     const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY ?? '';
 
@@ -109,7 +111,8 @@ export default function AdminRegionsPage() {
     if (key === 'seed') {
       if (region.latitude != null) body.latitude = region.latitude;
       if (region.longitude != null) body.longitude = region.longitude;
-      if (region.radius_km != null) body.radius_meters = Math.round(region.radius_km * 1000);
+      const km = radiusKm ?? region.radius_km;
+      if (km != null) body.radius_meters = Math.round(km * 1000);
       if (region.countryCode) body.country_code = region.countryCode;
     }
 
@@ -277,49 +280,84 @@ export default function AdminRegionsPage() {
                 <p className="mb-4 text-sm text-white/60">Last sync: {formatDate(region.lastSyncAt)}</p>
 
                 {/* Action buttons */}
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      {
-                        key: 'seed' as ActionKey,
-                        label: 'Seed from Geoapify',
-                        loadingLabel: 'Seeding…',
-                        style: 'border-[#C9A84C]/40 bg-[#C9A84C]/15 text-[#C9A84C]',
-                      },
-                      {
-                        key: 'enrich' as ActionKey,
-                        label: 'Enrich with AI',
-                        loadingLabel: 'Enriching…',
-                        style: 'border-white/20 bg-white/[0.03] text-white/75',
-                      },
-                      {
-                        key: 'reverify' as ActionKey,
-                        label: 'Re-verify Places',
-                        loadingLabel: 'Verifying…',
-                        style: 'border-white/20 bg-white/[0.03] text-white/75',
-                      },
-                    ] as const
-                  ).map(({ key, label, loadingLabel, style }) => {
-                    const action = regionActions[key];
-                    const isLoading = action.state === 'loading';
-                    return (
-                      <div key={key} className="flex flex-col gap-1">
+                <div className="space-y-2">
+                  {/* Seed button — expands to radius picker */}
+                  <div className="flex flex-col gap-1">
+                    {seedExpanded === region.id ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-[0.12em] text-[#C9A84C]/70">Radius:</span>
+                        {[25, 50, 100].map((km) => (
+                          <button
+                            key={km}
+                            type="button"
+                            onClick={() => void handleAction(region.id, 'seed', region, km)}
+                            className="rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#C9A84C] hover:bg-[#C9A84C]/25 transition-colors"
+                          >
+                            {km} km
+                          </button>
+                        ))}
                         <button
                           type="button"
-                          disabled={isLoading}
-                          onClick={() => handleAction(region.id, key, region)}
-                          className={`rounded-lg border px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] disabled:opacity-40 ${style}`}
+                          onClick={() => setSeedExpanded(null)}
+                          className="rounded-lg border border-white/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-white/40 hover:text-white/60 transition-colors"
                         >
-                          {isLoading ? loadingLabel : label}
+                          Cancel
                         </button>
-                        {action.message && (
-                          <span className={`text-[11px] ${action.state === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
-                            {action.message}
-                          </span>
-                        )}
                       </div>
-                    );
-                  })}
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={regionActions.seed.state === 'loading'}
+                        onClick={() => setSeedExpanded(region.id)}
+                        className="self-start rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#C9A84C] disabled:opacity-40"
+                      >
+                        {regionActions.seed.state === 'loading' ? 'Seeding…' : 'Seed from Geoapify'}
+                      </button>
+                    )}
+                    {regionActions.seed.message && (
+                      <span className={`text-[11px] ${regionActions.seed.state === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {regionActions.seed.message}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Enrich + Re-verify */}
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        {
+                          key: 'enrich' as ActionKey,
+                          label: 'Enrich with AI',
+                          loadingLabel: 'Enriching…',
+                        },
+                        {
+                          key: 'reverify' as ActionKey,
+                          label: 'Re-verify Places',
+                          loadingLabel: 'Verifying…',
+                        },
+                      ] as const
+                    ).map(({ key, label, loadingLabel }) => {
+                      const action = regionActions[key];
+                      const isLoading = action.state === 'loading';
+                      return (
+                        <div key={key} className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            disabled={isLoading}
+                            onClick={() => void handleAction(region.id, key, region)}
+                            className="rounded-lg border border-white/20 bg-white/[0.03] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-white/75 disabled:opacity-40"
+                          >
+                            {isLoading ? loadingLabel : label}
+                          </button>
+                          {action.message && (
+                            <span className={`text-[11px] ${action.state === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+                              {action.message}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </article>
             );
