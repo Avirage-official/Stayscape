@@ -116,6 +116,7 @@ const GEOAPIFY_TO_STAYSCAPE_CATEGORY: Record<string, string> = {
   'catering.fast_food': 'dining',
   'catering.bar': 'nightlife',
   'catering.pub': 'nightlife',
+  'entertainment': 'fun_places',
   'entertainment.cinema': 'fun_places',
   'entertainment.theme_park': 'fun_places',
   'entertainment.activity_park': 'fun_places',
@@ -158,7 +159,7 @@ export function mapGeoapifyCategory(categories: string[]): string {
       return GEOAPIFY_TO_STAYSCAPE_CATEGORY[prefix];
     }
   }
-  return 'localspots';
+  return 'local_spots';
 }
 
 /* ── Geoapify response types (internal) ──────────────────── */

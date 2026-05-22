@@ -211,7 +211,10 @@ export default async function AdminPlacesPage({
             </button>
           </form>
 
-          <PlacesTableClient rows={data.rows} />
+          <PlacesTableClient
+            key={`${params.page ?? '1'}-${params.region ?? ''}-${params.category ?? ''}-${params.search ?? ''}`}
+            rows={data.rows}
+          />
 
           <div className="flex items-center justify-between text-sm text-white/65">
             <p>Showing {startItem}–{endItem} of {data.total}</p>
