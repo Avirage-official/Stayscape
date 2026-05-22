@@ -15,6 +15,7 @@ import type {
   DiscoveryPlaceCard,
   DiscoveryPlaceDetail,
 } from '@/types/database';
+import type { DrillPlaceCard } from '@/types/explore';
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -101,6 +102,61 @@ export async function getPlaceTags(
     .eq('place_id', placeId);
   if (error) throw new Error(`getPlaceTags failed: ${error.message}`);
   return (data ?? []) as PlaceTag[];
+}
+
+/* ── Drill-in: top places by region + optional category ─── */
+
+/**
+ * Fetch the top places for the explore drill-in (Nearby, L1–L3).
+ *
+ * Rules:
+ *   - Active places only (is_active = true)
+ *   - Rating threshold: rating >= 7.0
+ *   - Optional category filter (pass null to fetch all for category derivation)
+ *   - Ordered by rating DESC, is_featured DESC
+ *   - Capped at `limit` (default 6, matching the UX spec)
+ *
+ * The caller should call this once with category = null to derive the
+ * category list (L2), then again with a specific category for L3 items.
+ * Results are cached by ExploreSwiper so re-navigation doesn't re-fetch.
+ */
+export async function getPlacesByRegionAndCategory(
+  supabase: SupabaseClient,
+  regionId: string,
+  category: string | null,
+  limit = 6,
+): Promise<DrillPlaceCard[]> {
+  let query = supabase
+    .from('places')
+    .select(
+      'id, name, category, subcategory, image_url, rating, address, city, price_level, booking_url, editorial_summary',
+    )
+    .eq('is_active', true)
+    .eq('region_id', regionId)
+    .gte('rating', 7.0)
+    .order('is_featured', { ascending: false })
+    .order('rating', { ascending: false })
+    .limit(limit);
+
+  if (category) query = query.eq('category', category);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`getPlacesByRegionAndCategory failed: ${error.message}`);
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    category: row.category as string,
+    subcategory: (row.subcategory as string | null) ?? null,
+    image_url: (row.image_url as string | null) ?? null,
+    rating: (row.rating as number | null) ?? null,
+    vibes: null, // vibes come from place_tags; not fetched here for performance
+    address: (row.address as string | null) ?? null,
+    city: (row.city as string | null) ?? null,
+    price_level: (row.price_level as number | null) ?? null,
+    booking_url: (row.booking_url as string | null) ?? null,
+    editorial_summary: (row.editorial_summary as string | null) ?? null,
+  })) as DrillPlaceCard[];
 }
 
 /* ── Write operations (admin / sync) ─────────────────────── */
