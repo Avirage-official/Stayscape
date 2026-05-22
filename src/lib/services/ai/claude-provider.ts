@@ -292,6 +292,11 @@ function toNumberOrNull(value: unknown): number | null {
 
 const QUALITY_THRESHOLD = 4;
 
+const VALID_CATEGORIES = new Set([
+  'dining', 'nightlife', 'shopping', 'nature', 'historical',
+  'wellness', 'family', 'fun_places', 'top_places', 'local_spots',
+]);
+
 function parsePlaceResponse(raw: string): EnrichmentResult {
   const parsed = safeParseJSON(raw) as ClaudePlaceEnrichment | null;
   if (!parsed) {
