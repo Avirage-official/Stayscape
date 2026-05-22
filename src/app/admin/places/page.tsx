@@ -2,16 +2,20 @@ import Link from 'next/link';
 import DataTable from '@/components/admin/DataTable';
 import SectionHeader from '@/components/admin/SectionHeader';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import ReviewQueueClient from './ReviewQueueClient';
 
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 20;
+
+type Tab = 'all' | 'review';
 
 type PlacesSearchParams = {
   page?: string;
   region?: string;
   category?: string;
   search?: string;
+  tab?: Tab;
 };
 
 interface PlaceRow {
@@ -24,19 +28,21 @@ interface PlaceRow {
   hasBookingUrl: boolean;
 }
 
-function buildQueryString(params: PlacesSearchParams): string {
-  const entries = Object.entries(params).filter(([, value]) => value);
-  const searchParams = new URLSearchParams(entries as Array<[string, string]>);
-  return searchParams.toString();
+interface ReviewRow {
+  id: string;
+  name: string;
+  region: string;
+  category: string;
+  city: string;
+  flagged_at: string;
 }
 
-async function getPlacesData(rawParams: PlacesSearchParams): Promise<{
-  rows: PlaceRow[];
-  total: number;
-  page: number;
-  regions: Array<{ id: string; name: string }>;
-  categories: string[];
-}> {
+function buildQueryString(params: PlacesSearchParams): string {
+  const entries = Object.entries(params).filter(([, value]) => value);
+  return new URLSearchParams(entries as Array<[string, string]>).toString();
+}
+
+async function getPlacesData(rawParams: PlacesSearchParams) {
   const page = Math.max(Number(rawParams.page ?? '1') || 1, 1);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -46,9 +52,7 @@ async function getPlacesData(rawParams: PlacesSearchParams): Promise<{
 
     let query = supabase
       .from('places')
-      .select('id, name, category, city, editorial_summary, booking_url, regions:region_id(id, name)', {
-        count: 'exact',
-      })
+      .select('id, name, category, city, editorial_summary, booking_url, regions:region_id(id, name)', { count: 'exact' })
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
@@ -75,23 +79,38 @@ async function getPlacesData(rawParams: PlacesSearchParams): Promise<{
         city: (place.city as string) ?? '—',
         enriched: Boolean((place.editorial_summary as string | null)?.trim()),
         hasBookingUrl: Boolean((place.booking_url as string | null)?.trim()),
-      })),
+      })) as PlaceRow[],
       total: count ?? 0,
       page,
-      regions: (regions ?? []).map((region) => ({
-        id: region.id as string,
-        name: (region.name as string) ?? '—',
-      })),
+      regions: (regions ?? []).map((r) => ({ id: r.id as string, name: (r.name as string) ?? '—' })),
       categories: categoryValues,
     };
   } catch {
-    return {
-      rows: [],
-      total: 0,
-      page,
-      regions: [],
-      categories: [],
-    };
+    return { rows: [] as PlaceRow[], total: 0, page, regions: [], categories: [] };
+  }
+}
+
+async function getReviewQueue() {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+      .from('places')
+      .select('id, name, category, city, updated_at, regions:region_id(id, name)')
+      .eq('is_active', false)
+      .not('editorial_summary', 'is', null) // was enriched before being flagged
+      .order('updated_at', { ascending: false })
+      .limit(100);
+
+    return (data ?? []).map((p) => ({
+      id: p.id as string,
+      name: (p.name as string) ?? '—',
+      region: ((p.regions as { name?: string } | null)?.name) ?? '—',
+      category: (p.category as string) ?? '—',
+      city: (p.city as string) ?? '—',
+      flagged_at: (p.updated_at as string) ?? '',
+    })) as ReviewRow[];
+  } catch {
+    return [] as ReviewRow[];
   }
 }
 
@@ -101,7 +120,13 @@ export default async function AdminPlacesPage({
   searchParams: Promise<PlacesSearchParams>;
 }) {
   const params = await searchParams;
-  const data = await getPlacesData(params);
+  const tab: Tab = params.tab === 'review' ? 'review' : 'all';
+
+  const [data, reviewQueue] = await Promise.all([
+    getPlacesData(params),
+    getReviewQueue(),
+  ]);
+
   const totalPages = Math.max(Math.ceil(data.total / PAGE_SIZE), 1);
   const currentPage = Math.min(data.page, totalPages);
   const startItem = data.total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
@@ -111,105 +136,138 @@ export default async function AdminPlacesPage({
     <div className="space-y-5">
       <SectionHeader title="Places" />
 
-      <form className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-4" method="GET">
-        <select
-          name="region"
-          defaultValue={params.region ?? ''}
-          className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-white/10 pb-0">
+        <Link
+          href="/admin/places?tab=all"
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'all'
+              ? 'border-[#C9A84C] text-[#C9A84C]'
+              : 'border-transparent text-white/45 hover:text-white/70'
+          }`}
         >
-          <option value="">All regions</option>
-          {data.regions.map((region) => (
-            <option key={region.id} value={region.id}>
-              {region.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          name="category"
-          defaultValue={params.category ?? ''}
-          className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
+          All Places
+        </Link>
+        <Link
+          href="/admin/places?tab=review"
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'review'
+              ? 'border-[#C9A84C] text-[#C9A84C]'
+              : 'border-transparent text-white/45 hover:text-white/70'
+          }`}
         >
-          <option value="">All categories</option>
-          {data.categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          name="search"
-          placeholder="Search place name"
-          defaultValue={params.search ?? ''}
-          className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none"
-        />
-
-        <button
-          type="submit"
-          className="rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.14em] text-[#C9A84C]"
-        >
-          Apply Filters
-        </button>
-      </form>
-
-      <DataTable
-        columns={[
-          { key: 'name', header: 'Place' },
-          { key: 'region', header: 'Region' },
-          { key: 'category', header: 'Category' },
-          { key: 'city', header: 'City' },
-          {
-            key: 'enriched',
-            header: 'Enrichment',
-            render: (row) => {
-              const enriched = (row as PlaceRow).enriched;
-              return (
-                <span className="inline-flex items-center gap-2 text-xs">
-                  <span className={`h-2.5 w-2.5 rounded-full ${enriched ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                  {enriched ? 'Enriched' : 'Pending'}
-                </span>
-              );
-            },
-          },
-          {
-            key: 'hasBookingUrl',
-            header: 'Booking URL',
-            render: (row) => ((row as PlaceRow).hasBookingUrl ? 'Available' : 'Missing'),
-          },
-        ]}
-        rows={data.rows}
-        getRowKey={(row) => (row as PlaceRow).id}
-        emptyMessage="No places match the current filters."
-      />
-
-      <div className="flex items-center justify-between text-sm text-white/65">
-        <p>
-          Showing {startItem}-{endItem} of {data.total}
-        </p>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/admin/places?${buildQueryString({
-              ...params,
-              page: String(Math.max(currentPage - 1, 1)),
-            })}`}
-            className={`rounded-md border px-3 py-1.5 ${currentPage <= 1 ? 'pointer-events-none border-white/10 text-white/30' : 'border-white/20 text-white/80 hover:border-[#C9A84C]/40 hover:text-[#C9A84C]'}`}
-          >
-            Prev
-          </Link>
-          <span className="text-white/80">Page {currentPage} / {totalPages}</span>
-          <Link
-            href={`/admin/places?${buildQueryString({
-              ...params,
-              page: String(Math.min(currentPage + 1, totalPages)),
-            })}`}
-            className={`rounded-md border px-3 py-1.5 ${currentPage >= totalPages ? 'pointer-events-none border-white/10 text-white/30' : 'border-white/20 text-white/80 hover:border-[#C9A84C]/40 hover:text-[#C9A84C]'}`}
-          >
-            Next
-          </Link>
-        </div>
+          Review Queue
+          {reviewQueue.length > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-[10px] font-semibold text-amber-400">
+              {reviewQueue.length}
+            </span>
+          )}
+        </Link>
       </div>
+
+      {tab === 'review' ? (
+        <ReviewQueueClient rows={reviewQueue} />
+      ) : (
+        <>
+          {/* Filters */}
+          <form className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-4" method="GET">
+            <input type="hidden" name="tab" value="all" />
+            <select
+              name="region"
+              defaultValue={params.region ?? ''}
+              className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
+            >
+              <option value="">All regions</option>
+              {data.regions.map((region) => (
+                <option key={region.id} value={region.id}>{region.name}</option>
+              ))}
+            </select>
+
+            <select
+              name="category"
+              defaultValue={params.category ?? ''}
+              className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none"
+            >
+              <option value="">All categories</option>
+              {data.categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+
+            <input
+              type="text"
+              name="search"
+              placeholder="Search place name"
+              defaultValue={params.search ?? ''}
+              className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none"
+            />
+
+            <button
+              type="submit"
+              className="rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.14em] text-[#C9A84C]"
+            >
+              Apply Filters
+            </button>
+          </form>
+
+          <DataTable
+            columns={[
+              { key: 'name', header: 'Place' },
+              { key: 'region', header: 'Region' },
+              { key: 'category', header: 'Category' },
+              { key: 'city', header: 'City' },
+              {
+                key: 'enriched',
+                header: 'Enrichment',
+                render: (row) => {
+                  const enriched = (row as PlaceRow).enriched;
+                  return (
+                    <span className="inline-flex items-center gap-2 text-xs">
+                      <span className={`h-2.5 w-2.5 rounded-full ${enriched ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                      {enriched ? 'Enriched' : 'Pending'}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: 'hasBookingUrl',
+                header: 'Booking URL',
+                render: (row) => ((row as PlaceRow).hasBookingUrl ? 'Available' : 'Missing'),
+              },
+            ]}
+            rows={data.rows}
+            getRowKey={(row) => (row as PlaceRow).id}
+            emptyMessage="No places match the current filters."
+          />
+
+          <div className="flex items-center justify-between text-sm text-white/65">
+            <p>Showing {startItem}–{endItem} of {data.total}</p>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/admin/places?${buildQueryString({ ...params, page: String(Math.max(currentPage - 1, 1)) })}`}
+                className={`rounded-md border px-3 py-1.5 ${
+                  currentPage <= 1
+                    ? 'pointer-events-none border-white/10 text-white/30'
+                    : 'border-white/20 text-white/80 hover:border-[#C9A84C]/40 hover:text-[#C9A84C]'
+                }`}
+              >
+                Prev
+              </Link>
+              <span className="text-white/80">Page {currentPage} / {totalPages}</span>
+              <Link
+                href={`/admin/places?${buildQueryString({ ...params, page: String(Math.min(currentPage + 1, totalPages)) })}`}
+                className={`rounded-md border px-3 py-1.5 ${
+                  currentPage >= totalPages
+                    ? 'pointer-events-none border-white/10 text-white/30'
+                    : 'border-white/20 text-white/80 hover:border-[#C9A84C]/40 hover:text-[#C9A84C]'
+                }`}
+              >
+                Next
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
