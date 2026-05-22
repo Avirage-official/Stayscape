@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { verifyAdminSession } from '@/lib/auth/admin-session';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const authError = requireAdminSession(request);
+  const authError = verifyAdminSession(request);
   if (authError) return authError;
 
   const { id } = await params;
