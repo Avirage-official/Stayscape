@@ -42,19 +42,19 @@ function mobileItemMeta(item: ExploreItem, ct: ExploreSection['content_type']): 
     const date = e.start_date
       ? new Date(e.start_date).toLocaleDateString('en-SG', { month: 'short', day: 'numeric' })
       : null;
-    return [date, e.venue_name].filter(Boolean).join(' · ');
+    return [date, e.venue_name].filter(Boolean).join(' \u00b7 ');
   }
   if (ct === 'regions') return (item as RegionOption).country_code ?? '';
   if (ct === 'properties') {
     const p = item as ExplorePropertyCard;
-    const stars = p.star_rating ? '★'.repeat(p.star_rating) : null;
+    const stars = p.star_rating ? '\u2605'.repeat(p.star_rating) : null;
     const price = p.price_from != null ? `S$${p.price_from}` : null;
-    return [stars, price].filter(Boolean).join(' · ');
+    return [stars, price].filter(Boolean).join(' \u00b7 ');
   }
   const p = item as DiscoveryPlaceCard;
-  const rating = p.rating ? `★ ${p.rating.toFixed(1)}` : null;
+  const rating = p.rating ? `\u2605 ${p.rating.toFixed(1)}` : null;
   const vibe = p.vibes?.[0] ?? null;
-  return [rating, vibe].filter(Boolean).join(' · ');
+  return [rating, vibe].filter(Boolean).join(' \u00b7 ');
 }
 
 export default function ExploreSwiper({
@@ -69,6 +69,7 @@ export default function ExploreSwiper({
 }: ExploreSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<ExploreItem | null>(null);
+  const [selectedContentType, setSelectedContentType] = useState<ExploreSection['content_type'] | null>(null);
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
 
@@ -78,6 +79,16 @@ export default function ExploreSwiper({
     },
     [sections.length],
   );
+
+  function openItem(item: ExploreItem, ct: ExploreSection['content_type']) {
+    setSelectedItem(item);
+    setSelectedContentType(ct);
+  }
+
+  function closeItem() {
+    setSelectedItem(null);
+    setSelectedContentType(null);
+  }
 
   function handlePointerDown(e: React.PointerEvent) {
     pointerStartX.current = e.clientX;
@@ -113,7 +124,7 @@ export default function ExploreSwiper({
         background: '#0E0B08',
       }}
     >
-      {/* Full-bleed hero background — fades between sections */}
+      {/* Full-bleed hero background */}
       {active?.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -130,7 +141,6 @@ export default function ExploreSwiper({
           }}
         />
       )}
-      {/* Dark scrim over the hero */}
       <div
         aria-hidden="true"
         style={{
@@ -139,7 +149,6 @@ export default function ExploreSwiper({
         }}
       />
 
-      {/* All content sits above the scrim */}
       <div
         className="flex flex-col md:flex-row"
         style={{
@@ -148,7 +157,7 @@ export default function ExploreSwiper({
           display: 'flex',
         }}
       >
-        {/* ── Hero card — full height on desktop, fixed height on mobile ── */}
+        {/* Hero card */}
         <div
           className="flex-shrink-0 md:flex-1 h-[44dvh] md:h-full"
           style={{
@@ -170,7 +179,6 @@ export default function ExploreSwiper({
             onSectionChange={goTo}
           />
 
-          {/* Region-change overlay */}
           {isRefreshing && (
             <div
               aria-hidden="true"
@@ -192,7 +200,6 @@ export default function ExploreSwiper({
             </div>
           )}
 
-          {/* Greeting — top-left */}
           <p style={{
             position: 'absolute', top: '16px', left: '20px',
             zIndex: 20,
@@ -208,12 +215,11 @@ export default function ExploreSwiper({
           </p>
         </div>
 
-        {/* ── Mobile-only: section switcher + items ── */}
+        {/* Mobile: section switcher + items */}
         <div
           className="flex flex-col md:hidden"
           style={{ flex: 1, minHeight: 0, gap: '10px', overflow: 'hidden' }}
         >
-          {/* Section pills */}
           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
             {sections.map((s, i) => {
               const isActive = i === activeIndex;
@@ -256,11 +262,9 @@ export default function ExploreSwiper({
             })}
           </div>
 
-          {/* Items container — frosted glass */}
           <div
             style={{
-              flex: 1,
-              minHeight: 0,
+              flex: 1, minHeight: 0,
               background: 'rgba(250,248,245,0.07)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
@@ -272,7 +276,6 @@ export default function ExploreSwiper({
               overflow: 'hidden',
             }}
           >
-            {/* Stats header */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -313,12 +316,12 @@ export default function ExploreSwiper({
                 const name = 'name' in item ? item.name : '';
                 const imageUrl = 'image_url' in item ? (item as { image_url: string | null }).image_url : null;
                 const meta = mobileItemMeta(item, active.content_type);
-                const isRegion = active.content_type === 'regions';
+                const isRegionItem = active.content_type === 'regions';
 
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => openItem(item, active.content_type)}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -346,15 +349,10 @@ export default function ExploreSwiper({
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          loading="lazy"
-                        />
+                        <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                       ) : (
                         <span style={{ color: 'rgba(250,248,245,0.4)', fontSize: '11px' }}>
-                          {isRegion ? ((item as RegionOption).country_code ?? '—') : '·'}
+                          {isRegionItem ? ((item as RegionOption).country_code ?? '\u2014') : '\u00b7'}
                         </span>
                       )}
                     </div>
@@ -384,7 +382,6 @@ export default function ExploreSwiper({
               })}
             </div>
 
-            {/* Personalise — mobile */}
             <button
               onClick={onPersonalise}
               disabled={isPersonalising}
@@ -406,29 +403,29 @@ export default function ExploreSwiper({
                 boxShadow: '0 4px 12px rgba(193,127,58,0.25)',
               }}
             >
-              {isPersonalising ? 'Personalising…' : 'Personalise for me'}
+              {isPersonalising ? 'Personalising\u2026' : 'Personalise for me'}
             </button>
           </div>
         </div>
 
-        {/* ── Desktop web panel ── */}
+        {/* Desktop web panel */}
         <ExploreWebPanel
           sections={sections}
           regions={regions}
           selectedRegionId={selectedRegionId}
           activeIndex={activeIndex}
           onSectionChange={goTo}
-          onItemClick={(item) => setSelectedItem(item)}
+          onItemClick={(item, ct) => openItem(item, ct)}
           onRegionChange={onRegionChange}
           onPersonalise={onPersonalise}
           isPersonalising={isPersonalising}
         />
       </div>
 
-      {/* ── Detail sheet ── */}
       <ExploreDetailSheet
         item={selectedItem}
-        onClose={() => setSelectedItem(null)}
+        contentType={selectedContentType}
+        onClose={closeItem}
       />
 
       <style>{`
