@@ -23,7 +23,7 @@ export async function GET() {
     const [{ data: regions }, { data: places }, { data: syncRuns }] = await Promise.all([
       supabase
         .from('regions')
-        .select('id, name, country_code, is_active, image_path')
+        .select('id, name, country_code, is_active, image_path, latitude, longitude, radius_km')
         .order('name', { ascending: true }),
       supabase.from('places').select('region_id, editorial_summary').eq('is_active', true),
       supabase
@@ -67,6 +67,9 @@ export async function GET() {
         id: regionId,
         name: (region.name as string) ?? '—',
         countryCode: (region.country_code as string) ?? '—',
+        latitude: (region.latitude as number | null) ?? null,
+        longitude: (region.longitude as number | null) ?? null,
+        radius_km: (region.radius_km as number | null) ?? null,
         placesCount: placeMeta.total,
         enrichedCount: placeMeta.enriched,
         lastSyncAt: latestSync?.startedAt ?? null,

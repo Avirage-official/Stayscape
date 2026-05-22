@@ -7,6 +7,9 @@ interface RegionCardData {
   id: string;
   name: string;
   countryCode: string;
+  latitude: number | null;
+  longitude: number | null;
+  radius_km: number | null;
   placesCount: number;
   enrichedCount: number;
   lastSyncAt: string | null;
@@ -90,7 +93,7 @@ export default function AdminRegionsPage() {
     }));
   }
 
-  async function handleAction(regionId: string, key: ActionKey) {
+  async function handleAction(regionId: string, key: ActionKey, region: RegionCardData) {
     const endpoints: Record<ActionKey, string> = {
       seed: '/api/admin/sync/places',
       enrich: '/api/admin/enrich/places',
@@ -101,6 +104,14 @@ export default function AdminRegionsPage() {
 
     const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY ?? '';
 
+    // Seed requires lat/lng — include them if available
+    const body: Record<string, unknown> = { region_id: regionId };
+    if (key === 'seed') {
+      if (region.latitude != null) body.latitude = region.latitude;
+      if (region.longitude != null) body.longitude = region.longitude;
+      if (region.radius_km != null) body.radius_meters = Math.round(region.radius_km * 1000);
+    }
+
     try {
       const res = await fetch(endpoints[key], {
         method: 'POST',
@@ -108,7 +119,7 @@ export default function AdminRegionsPage() {
           'content-type': 'application/json',
           'x-admin-key': adminKey,
         },
-        body: JSON.stringify({ region_id: regionId }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Request failed');
@@ -116,16 +127,15 @@ export default function AdminRegionsPage() {
       const d = json.data ?? {};
       let msg = '';
       if (key === 'seed') {
-        msg = `Seeded ${d.upserted ?? d.total ?? 0} places`;
+        msg = `Seeded ${d.records_created ?? d.upserted ?? d.total ?? 0} new, ${d.records_updated ?? 0} updated`;
       } else if (key === 'enrich') {
-        msg = `Enriched ${d.enriched ?? 0}${ d.failed ? `, ${d.failed} failed` : ''}`;
+        msg = `Enriched ${d.enriched ?? 0}${d.failed ? `, ${d.failed} failed` : ''}`;
       } else {
-        msg = `Re-verified ${d.reverified ?? 0}${ d.flagged ? `, ${d.flagged} flagged` : ''}`;
+        msg = `Re-verified ${d.reverified ?? 0}${d.flagged ? `, ${d.flagged} flagged` : ''}`;
       }
 
       setAction(regionId, key, { state: 'done', message: msg });
 
-      // Refresh counts after a short delay
       setTimeout(() => {
         fetch('/api/admin/regions')
           .then((r) => r.json())
@@ -296,7 +306,7 @@ export default function AdminRegionsPage() {
                         <button
                           type="button"
                           disabled={isLoading}
-                          onClick={() => handleAction(region.id, key)}
+                          onClick={() => handleAction(region.id, key, region)}
                           className={`rounded-lg border px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] disabled:opacity-40 ${style}`}
                         >
                           {isLoading ? loadingLabel : label}
