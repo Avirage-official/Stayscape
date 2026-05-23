@@ -222,8 +222,9 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
   } = useDiscoverEvents();
   useCurations(stayId);
 
-  /* Initial load */
-  if (dataLoadedRef.current == null) {
+  /* Initial load — runs once on mount */
+  useEffect(() => {
+    if (dataLoadedRef.current) return;
     dataLoadedRef.current = true;
     refetchCategories();
     refetchInsights();
@@ -233,10 +234,13 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
       regionId: region?.id,
     });
     if (region?.id) refetchEvents(region.id);
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  /* Reload when region becomes available */
-  if (region?.id && regionLoadedRef.current !== region.id) {
+  /* Reload places + events when region becomes available or changes */
+  useEffect(() => {
+    if (!region?.id) return;
+    if (regionLoadedRef.current === region.id) return;
     regionLoadedRef.current = region.id;
     refetchPlaces('top-places', 'Top Places', {
       limit: PLACES_PAGE_SIZE,
@@ -244,7 +248,8 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
       regionId: region.id,
     });
     refetchEvents(region.id);
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [region?.id]);
 
   /* DB places with fallback */
   const places = useMemo(
