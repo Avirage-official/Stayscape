@@ -104,18 +104,11 @@ export default function ExploreWebPanel({
         {isYours && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', padding: '20px 8px', textAlign: 'center', flex: 1 }}>
             <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(250,248,245,0.7)', lineHeight: 1.4 }}>
-              Your personal curation is on its way.
+              Made for you
             </span>
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.35)', lineHeight: 1.65 }}>
-              Aria will start tailoring places once your profile and stays are in.
+              Personalised recommendations are coming soon. Aria will curate places based on your stays and preferences.
             </span>
-            <button
-              style={{ marginTop: '4px', background: 'none', border: '1px solid rgba(193,127,58,0.45)', borderRadius: '10px', padding: '9px 20px', color: '#C17F3A', fontFamily: "'DM Sans', sans-serif", fontSize: '12px', cursor: 'pointer', letterSpacing: '0.06em', transition: 'border-color 160ms ease, color 160ms ease' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#C17F3A'; e.currentTarget.style.color = '#FAF8F5'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(193,127,58,0.45)'; e.currentTarget.style.color = '#C17F3A'; }}
-            >
-              Complete your profile →
-            </button>
           </div>
         )}
 
