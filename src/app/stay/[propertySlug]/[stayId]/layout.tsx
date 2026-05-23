@@ -279,7 +279,7 @@ export default function StayLayout({ children }: { children: React.ReactNode }) 
   // Auth redirect
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace('/login');
+      router.replace('/guests');
     }
   }, [isLoading, user, router]);
 
