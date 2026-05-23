@@ -21,7 +21,7 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import { cormorant, dmSans } from '@/lib/fonts';
 
 import PlaceDetailDialog from '@/components/PlaceDetailDialog';
 import EventDetailDialog from '@/components/EventDetailDialog';
@@ -47,23 +47,19 @@ import SyncUpdateToast from '@/components/discover/SyncUpdateToast';
 import MapPlaceholder from '@/components/MapPlaceholder';
 import DiscoverCard from '@/components/discover/DiscoverCard';
 
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['300', '400', '600'],
-  display: 'swap',
-});
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  display: 'swap',
-});
-
 /* ─── Constants ─── */
 
 const PLACES_PAGE_SIZE = 10;
 const MAX_DISCOVER_PLACES = 20;
 const DISCOVER_VISITED_KEY_PREFIX = 'stayscape_discover_visited_';
+
+/** Safe localStorage helpers — silently no-op if storage is blocked. */
+function storageGet(key: string): string | null {
+  try { return window.localStorage.getItem(key); } catch { return null; }
+}
+function storageSet(key: string, value: string): void {
+  try { window.localStorage.setItem(key, value); } catch { /* blocked — ignore */ }
+}
 
 /* ─── Inline error component ─── */
 
@@ -364,7 +360,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
     [],
   );
 
-  /* Sync update toast */
+  /* Sync update toast — localStorage wrapped safely */
   useEffect(() => {
     if (!region?.id) return;
     const storageKey = `${DISCOVER_VISITED_KEY_PREFIX}${region.id}`;
@@ -379,7 +375,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
         if (!response.ok) return;
         const body = (await response.json()) as { last_synced_at?: string | null };
         const lastSyncedAt = body.last_synced_at;
-        const lastVisitRaw = window.localStorage.getItem(storageKey);
+        const lastVisitRaw = storageGet(storageKey);
         const lastVisitMs = lastVisitRaw ? Number(lastVisitRaw) : 0;
         if (lastSyncedAt && new Date(lastSyncedAt).getTime() > lastVisitMs) {
           setShowSyncUpdateToast(true);
@@ -387,7 +383,7 @@ export default function DiscoverPanel({ stayId, guestName: _guestName = '' }: Di
       } catch {
         // silent
       } finally {
-        window.localStorage.setItem(storageKey, String(currentVisitTimestamp));
+        storageSet(storageKey, String(currentVisitTimestamp));
       }
     };
     void fetchSyncStatus();
