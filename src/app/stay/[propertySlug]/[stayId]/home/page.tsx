@@ -614,17 +614,31 @@ export default function StayHomePage() {
           )}
         </div>
 
-        {/* RIGHT: weather + discover CTA */}
+        {/* RIGHT: Aria shortcut + discover CTA */}
         <div>
-          <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Weather Today</p>
-          <div className="ss-card-raised" style={{ padding: 22 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Your Concierge</p>
+          <div
+            className="ss-card-raised"
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/stay/${propertySlug}/${stayId}`)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/stay/${propertySlug}/${stayId}`); } }}
+            style={{
+              padding: 22,
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, rgba(201,168,117,0.1), rgba(201,168,117,0.03))',
+              transition: 'transform 0.15s ease',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(201,168,117,0.1)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <IconCloud />
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(201,168,117,0.15)', border: '1px solid rgba(201,168,117,0.25)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <IconAria />
               </div>
               <div>
-                <p className={cormorant.className} style={{ margin: 0, fontSize: 28, fontWeight: 400, lineHeight: 1, color: 'var(--text-primary)' }}>Coming soon</p>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{stay?.property?.city ?? 'Your destination'}</p>
+                <p className={cormorant.className} style={{ margin: 0, fontSize: 20, fontWeight: 400, lineHeight: 1.2, color: 'var(--text-primary)' }}>Ask Aria</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>Recommendations, questions, local tips — 24/7.</p>
               </div>
             </div>
           </div>
@@ -636,16 +650,16 @@ export default function StayHomePage() {
         </div>
       </div>
 
-      {/* Hotel Amenities */}
+      {/* Places Nearby */}
       {places.length > 0 && (
         <div style={{ marginTop: 36 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>Hotel Amenities For You</p>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>Places Nearby</p>
             <span role="button" tabIndex={0}
               onClick={() => router.push(`/stay/${propertySlug}/${stayId}/discover`)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/stay/${propertySlug}/${stayId}/discover`); } }}
               style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--gold)', cursor: 'pointer' }}
-            >See all activities →</span>
+            >Explore all →</span>
           </div>
           <div className="amenity-row">
             {places.slice(0, 4).map((p) => {
@@ -872,6 +886,7 @@ export default function StayHomePage() {
 function svgProps(size = 22) {
   return { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 }
+function IconAria()     { return <svg {...svgProps()}><path d="M21 12a8 8 0 01-12.6 6.5L3 20l1.5-5.4A8 8 0 1121 12z" /></svg>; }
 function IconBed()      { return <svg {...svgProps()}><path d="M3 18v-7a3 3 0 013-3h12a3 3 0 013 3v7" /><path d="M3 14h18" /><path d="M3 18h18" /></svg>; }
 function IconFork()      { return <svg {...svgProps()}><path d="M7 2v8a3 3 0 003 3v9" /><path d="M11 2v6" /><path d="M3 2v6a4 4 0 004 4" /><path d="M17 2v20M17 2c2 0 3 2 3 5v6h-3" /></svg>; }
 function IconWineGlass() { return <svg {...svgProps()}><path d="M8 2h8l-2 8a4 4 0 01-4 3 4 4 0 01-4-3L8 2z" /><path d="M12 13v7" /><path d="M9 20h6" /></svg>; }
