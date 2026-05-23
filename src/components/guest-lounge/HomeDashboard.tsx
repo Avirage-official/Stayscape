@@ -142,6 +142,7 @@ export default function HomeDashboard() {
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [mounted, setMounted] = useState(false);
   const [addStayOpen, setAddStayOpen] = useState(false);
+  const [selectedStayIdx, setSelectedStayIdx] = useState(0);
 
   // Mount animation trigger
   useEffect(() => {
@@ -162,30 +163,19 @@ export default function HomeDashboard() {
     }
   }, []);
 
-  // Initial dashboard fetch
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/customer/dashboard', { credentials: 'same-origin' })
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to load dashboard');
-        return (await res.json()) as DashboardData;
-      })
-      .then((json) => {
-        if (cancelled) return;
-        setData(json);
-        setLoadState('ready');
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLoadState('error');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadDashboard();
+  }, [loadDashboard]);
 
-  // Derived stay values
-  const stay = data?.currentStays?.[0] ?? data?.upcomingStays?.[0] ?? null;
+  // All stays (current + upcoming) — drives the selected-stay index
+  const allStays = useMemo(() => {
+    const current = data?.currentStays ?? [];
+    const upcoming = data?.upcomingStays ?? [];
+    return [...current, ...upcoming];
+  }, [data]);
+
+  // Derived stay values from the currently selected stay
+  const stay = allStays[selectedStayIdx] ?? null;
   const firstName = data?.profile?.full_name?.split(' ')?.[0] ?? 'Guest';
   const propertyName = stay?.property?.name ?? '';
   const propertyCity = stay?.property?.city ?? '';
@@ -204,15 +194,8 @@ export default function HomeDashboard() {
   const checkOutFormatted = checkOut ? formatDayMonth(checkOut) : null;
   const greeting = getGreeting();
 
-  // All stays (current + upcoming) for the "other stays" row
-  const allStays = useMemo(() => {
-    const current = data?.currentStays ?? [];
-    const upcoming = data?.upcomingStays ?? [];
-    return [...current, ...upcoming];
-  }, [data]);
-
-  const otherStays = allStays.slice(1);
-  const hasOtherStays = otherStays.length > 0;
+  const otherStays = allStays.filter((_, i) => i !== selectedStayIdx);
+  const hasOtherStays = allStays.length > 1;
 
   /* ─── Render ─── */
 
@@ -615,16 +598,22 @@ export default function HomeDashboard() {
                     >
                       Bookings &amp; Reservations
                     </p>
-                    <p
-                      style={{
-                        margin: '4px 0 0',
-                        fontSize: 12,
-                        color: 'rgba(253, 249, 242, 0.7)',
-                        fontWeight: 300,
-                      }}
-                    >
-                      No upcoming bookings.
-                    </p>
+                    {loadState === 'loading' ? (
+                      <Shimmer style={{ height: 14, width: 120, marginTop: 4 }} />
+                    ) : (
+                      <p
+                        style={{
+                          margin: '4px 0 0',
+                          fontSize: 12,
+                          color: 'rgba(253, 249, 242, 0.7)',
+                          fontWeight: 300,
+                        }}
+                      >
+                        {allStays.length === 0
+                          ? 'No upcoming bookings.'
+                          : `${allStays.length} ${allStays.length === 1 ? 'booking' : 'bookings'}`}
+                      </p>
+                    )}
                   </div>
                   <div style={{ color: 'rgba(253, 249, 242, 0.7)' }}>
                     <IconAirplane />
@@ -738,6 +727,7 @@ export default function HomeDashboard() {
                       className="hd-arrow-btn"
                       aria-label="Previous stay"
                       style={{ transform: 'scaleX(-1)' }}
+                      onClick={() => setSelectedStayIdx((i) => (i - 1 + allStays.length) % allStays.length)}
                     >
                       <IconArrow />
                     </button>
@@ -745,6 +735,7 @@ export default function HomeDashboard() {
                       type="button"
                       className="hd-arrow-btn"
                       aria-label="Next stay"
+                      onClick={() => setSelectedStayIdx((i) => (i + 1) % allStays.length)}
                     >
                       <IconArrow />
                     </button>

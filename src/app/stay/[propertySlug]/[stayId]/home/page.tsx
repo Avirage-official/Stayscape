@@ -86,6 +86,7 @@ interface Tile {
 }
 
 interface TileFields {
+  housekeepingNotes?: string;
   laundryTime?: string;
   laundryNotes?: string;
   restaurantNotes?: string;
@@ -318,8 +319,27 @@ export default function StayHomePage() {
   const stayId       = typeof params.stayId === 'string'       ? params.stayId       : Array.isArray(params.stayId)       ? params.stayId[0]       : '';
 
   const stay         = stayCtx?.stay ?? null;
-  const firstName    = (user?.email && user.email.split('@')[0].split('.')[0]) || 'Guest';
   const propertyName = stay?.property?.name ?? 'your hotel';
+
+  const [guestFirstName, setGuestFirstName] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getBearerToken().then(async (token) => {
+      if (!token || cancelled) return;
+      try {
+        const res = await fetch('/api/customer/dashboard', {
+          credentials: 'same-origin',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const body = (await res.json()) as { profile?: { full_name?: string | null } };
+        const name = body.profile?.full_name?.split(' ')[0] ?? null;
+        if (!cancelled && name) setGuestFirstName(name);
+      } catch { /* silent — falls back to 'Guest' */ }
+    });
+    return () => { cancelled = true; };
+  }, []);
+  const firstName = guestFirstName ?? 'Guest';
   const regionId     = stay?.property?.region_id ?? null;
 
   // ── Policies + timezone ──
@@ -413,7 +433,7 @@ export default function StayHomePage() {
 
   const buildDescription = (tile: Tile): string | undefined => {
     switch (tile.id) {
-      case 'housekeeping':
+      case 'housekeeping':    return fields.housekeepingNotes ? `Notes: ${fields.housekeepingNotes}`        : undefined;
       case 'room_service':    return fields.roomServiceNotes  ? `Notes: ${fields.roomServiceNotes}`         : undefined;
       case 'restaurants_bars':return fields.restaurantNotes   ? `Details: ${fields.restaurantNotes}`        : undefined;
       case 'laundry': {
@@ -717,7 +737,7 @@ export default function StayHomePage() {
                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 300 }}>Your room will be attended to shortly.</p>
                 <div>
                   <label style={labelStyle}>Notes (optional)</label>
-                  <textarea className="sh-textarea" rows={2} placeholder="e.g. extra towels, more hangers…" value={fields.roomServiceNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, roomServiceNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
+                  <textarea className="sh-textarea" rows={2} placeholder="e.g. extra towels, more hangers…" value={fields.housekeepingNotes ?? ''} onChange={(e) => setFields((f) => ({ ...f, housekeepingNotes: e.target.value }))} style={{ ...inputStyle, resize: 'none' }} />
                 </div>
               </div>
             )}
