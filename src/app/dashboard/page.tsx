@@ -28,7 +28,7 @@ export default function DashboardPage() {
   // Redirect unauthenticated visitors
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace('/login');
+      router.replace('/guests');
     }
   }, [authLoading, user, router]);
 
