@@ -49,13 +49,14 @@ export default function GuestsPage() {
   const [mounted, setMounted] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [authError, setAuthError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [signupDone, setSignupDone] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
   const [consentChecked, setConsentChecked] = useState(false)
 
   useEffect(() => {
@@ -158,10 +159,38 @@ export default function GuestsPage() {
     }
   }
 
-  function switchMode(next: 'signin' | 'signup') {
+  async function handleForgotPassword(e: FormEvent) {
+    e.preventDefault()
+    setAuthError(null)
+    if (!email.trim()) {
+      setAuthError('Please enter your email address')
+      return
+    }
+    setIsSubmitting(true)
+    const supabase = getSupabaseBrowser()
+    if (!supabase) {
+      setAuthError('Password reset is not available in this environment')
+      setIsSubmitting(false)
+      return
+    }
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}/guests`
+      : '/guests'
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+    if (error) {
+      setAuthError(error.message)
+      setIsSubmitting(false)
+      return
+    }
+    setForgotSent(true)
+    setIsSubmitting(false)
+  }
+
+  function switchMode(next: 'signin' | 'signup' | 'forgot') {
     setMode(next)
     setAuthError(null)
     setSignupDone(false)
+    setForgotSent(false)
     setPassword('')
     setConfirmPassword('')
     setConsentChecked(false)
@@ -399,7 +428,7 @@ export default function GuestsPage() {
             fontSize: '11px', fontWeight: 600,
             color: '#C17F3A', letterSpacing: '0.18em',
             textTransform: 'uppercase', margin: '0 0 4px',
-          }}>{mode === 'signin' ? 'Guest Sign In' : 'Create Account'}</p>
+          }}>{mode === 'signin' ? 'Guest Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}</p>
 
           <h3 style={{
             fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -407,9 +436,10 @@ export default function GuestsPage() {
             fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)',
             fontWeight: 500, color: '#2C1A08',
             lineHeight: 1.2, margin: '0 0 24px',
-          }}>{mode === 'signin' ? 'Welcome back.' : 'Create your account.'}</h3>
+          }}>{mode === 'signin' ? 'Welcome back.' : mode === 'signup' ? 'Create your account.' : 'Forgot your password?'}</h3>
 
-          {signupDone ? (
+          {/* ── Email confirmation panels ── */}
+          {(signupDone || forgotSent) ? (
             <div style={{
               padding: '20px',
               borderRadius: '12px',
@@ -427,8 +457,10 @@ export default function GuestsPage() {
                 fontSize: '13px', lineHeight: 1.6,
                 color: 'rgba(44,26,8,0.6)', margin: 0,
               }}>
-                We&apos;ve sent a confirmation link to <strong style={{ color: '#2C1A08' }}>{email}</strong>.
-                Click it to activate your account, then come back and sign in.
+                {signupDone
+                  ? <>We&apos;ve sent a confirmation link to <strong style={{ color: '#2C1A08' }}>{email}</strong>. Click it to activate your account, then come back and sign in.</>
+                  : <>We&apos;ve sent a password reset link to <strong style={{ color: '#2C1A08' }}>{email}</strong>. Click it to set a new password.</>
+                }
               </p>
               <button
                 type="button"
@@ -445,7 +477,74 @@ export default function GuestsPage() {
                 Back to sign in →
               </button>
             </div>
+
+          ) : mode === 'forgot' ? (
+            /* ── Forgot-password form ── */
+            <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', lineHeight: 1.6, color: 'rgba(44,26,8,0.55)', margin: 0 }}>
+                Enter your email and we&apos;ll send you a link to reset your password.
+              </p>
+              <div>
+                <label style={{
+                  display: 'block', fontSize: '10px', fontWeight: 600,
+                  letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: 'rgba(44,26,8,0.45)', marginBottom: '8px',
+                }}>Email</label>
+                <input
+                  type="email" autoComplete="email" required
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setAuthError(null) }}
+                  placeholder="your@email.com"
+                  className="guest-input"
+                  style={{
+                    width: '100%', height: '46px', padding: '0 16px',
+                    borderRadius: '8px', background: '#FFFFFF',
+                    border: '1px solid rgba(193,127,58,0.28)',
+                    color: '#2C1A08', fontSize: '14px',
+                    fontFamily: "'DM Sans', sans-serif",
+                    outline: 'none', boxSizing: 'border-box',
+                    transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+              {authError && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 12px', borderRadius: '8px',
+                  background: 'rgba(193,58,58,0.06)', border: '1px solid rgba(193,58,58,0.2)',
+                  color: '#C13A3A', fontSize: '12px',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                  </svg>
+                  {authError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%', height: '46px', borderRadius: '8px',
+                  background: '#C17F3A', color: '#FAF8F5',
+                  fontSize: '13px', fontWeight: 600, letterSpacing: '0.07em',
+                  border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  fontFamily: "'DM Sans', sans-serif",
+                  opacity: isSubmitting ? 0.55 : 1,
+                  transition: 'background 180ms ease, opacity 180ms ease',
+                  boxShadow: '0 4px 14px rgba(193,127,58,0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+                onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#D6A252' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A' }}
+              >
+                {isSubmitting ? 'Sending…' : 'Send reset link'}
+              </button>
+            </form>
+
           ) : (
+            /* ── Sign-in / Sign-up form ── */
             <form
               onSubmit={mode === 'signin' ? handleLogin : handleSignUp}
               style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
@@ -512,6 +611,23 @@ export default function GuestsPage() {
                   onFocus={e => { e.target.style.borderColor = '#C17F3A'; e.target.style.boxShadow = '0 0 0 3px rgba(193,127,58,0.15)' }}
                   onBlur={e => { e.target.style.borderColor = 'rgba(193,127,58,0.28)'; e.target.style.boxShadow = 'none' }}
                 />
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('forgot')}
+                    style={{
+                      marginTop: '6px', background: 'none', border: 'none', padding: 0,
+                      fontSize: '11px', color: 'rgba(44,26,8,0.35)',
+                      fontFamily: "'DM Sans', sans-serif",
+                      cursor: 'pointer', transition: 'color 180ms ease',
+                      display: 'block',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#C17F3A')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.35)')}
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
 
               {mode === 'signup' && (
