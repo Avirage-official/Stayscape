@@ -411,7 +411,7 @@ export default function HotelAdminDashboardPage() {
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_PILL[task.status] ?? STATUS_PILL.cancelled}`}>
                           {STATUS_LABEL[task.status] ?? task.status}
                         </span>
-2                      </td>
+                      </td>
                       <td className="px-5 py-3.5">
                         <span className="text-[11px] text-white/30">{timeAgo(task.createdat)}</span>
                       </td>
