@@ -751,23 +751,7 @@ export default function GuestsPage() {
                 Please agree to the Privacy Policy and Terms to continue.
               </p>
             )}
-            {mode === 'forgot' && !forgotSent && (
-              <button
-                type="button"
-                onClick={() => switchMode('signin')}
-                style={{
-                  background: 'none', border: 'none', padding: 0, textAlign: 'left',
-                  fontSize: '12px', color: 'rgba(44,26,8,0.3)',
-                  fontFamily: "'DM Sans', sans-serif",
-                  cursor: 'pointer', transition: 'color 180ms ease',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.6)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.3)')}
-              >
-                ← Back to sign in
-              </button>
-            )}
-            {!signupDone && !forgotSent && mode !== 'forgot' && (
+            {!signupDone && (
               <button
                 type="button"
                 onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}

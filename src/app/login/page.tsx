@@ -129,7 +129,7 @@ export default function LoginPage() {
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: '2rem', color: '#C17F3A',
               letterSpacing: '0.06em', fontWeight: 400, margin: '0 0 6px',
-            }}>StayScape</h1>
+            }}>Stayscape</h1>
             <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               Hotel Admin Portal
             </p>
