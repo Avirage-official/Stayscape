@@ -635,14 +635,6 @@ export default function GuestsPage() {
                 Please agree to the Privacy Policy and Terms to continue.
               </p>
             )}
-            <a
-              href="/dashboard"
-              style={{ fontSize: '12px', color: 'rgba(44,26,8,0.3)', fontFamily: "'DM Sans', sans-serif", textDecoration: 'none', transition: 'color 180ms ease' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.6)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(44,26,8,0.3)')}
-            >
-              Explore without signing in →
-            </a>
             {!signupDone && (
               <button
                 type="button"
