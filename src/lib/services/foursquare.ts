@@ -18,6 +18,7 @@ import type { PlaceUpsertInput } from '@/lib/supabase/places-repository';
 
 const FOURSQUARE_BASE = 'https://places-api.foursquare.com';
 const FOURSQUARE_API_VERSION = '2025-06-17';
+const FOURSQUARE_MAX_LIMIT = 50;
 
 export interface FoursquareSearchParams {
   latitude: number;
@@ -61,13 +62,13 @@ export async function searchPlaces(
     latitude,
     longitude,
     radius_meters = 5000,
-    limit = 100,
+    limit = FOURSQUARE_MAX_LIMIT,
   } = params;
 
   const url = new URL(`${FOURSQUARE_BASE}/places/search`);
   url.searchParams.set('ll', `${latitude},${longitude}`);
   url.searchParams.set('radius', String(radius_meters));
-  url.searchParams.set('limit', String(Math.min(limit, 100)));
+  url.searchParams.set('limit', String(Math.min(limit, FOURSQUARE_MAX_LIMIT)));
 
   const res = await fetch(url.toString(), {
     headers: buildHeaders(apiKey),
