@@ -1,7 +1,8 @@
 /**
  * POST /api/customer/profile
  *
- * Saves a user's travel profile (answers collected by ProfileOnboardingFlow).
+ * Saves a user's travel profile (answers collected by ProfileOnboardingFlow),
+ * and derives persona scores (Cartographer, Epicurean, etc.) into user_profiles.extra.
  *
  * Auth: Bearer token (Supabase session).
  * Body: { name?, age_band?, location_city?, location_country?, novelty?, vibe?,
@@ -17,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
+import { derivePersonaScores } from '@/lib/services/ai/derive-personas';
 
 export const dynamic = 'force-dynamic';
 
@@ -235,7 +237,8 @@ export async function POST(request: NextRequest) {
 
   const name = typeof body.name === 'string' ? body.name.trim() : null;
   const location_city = typeof body.location_city === 'string' ? body.location_city.trim() || null : null;
-  const location_country = typeof body.location_country === 'string' ? body.location_country.trim() || null : null;
+  const location_country =
+    typeof body.location_country === 'string' ? body.location_country.trim() || null : null;
   const now = new Date().toISOString();
 
   // ── Write 1: update users.firstname if name provided ─────────────────────
@@ -254,6 +257,22 @@ export async function POST(request: NextRequest) {
       );
     }
   }
+
+  // ── Derive persona scores from answers ────────────────────────────────────
+
+  // NOTE: trip_type + guestcount are not part of this payload; they will be
+  // wired in later from the most recent stay if needed. For now we pass null
+  // / 1 so derivePersonaScores still returns a stable vector.
+  const personaScores = derivePersonaScores({
+    novelty: (novelty_result.value as any) ?? null,
+    discovery: (discovery_result.value as any) ?? null,
+    food: (food_result.value as any) ?? null,
+    planning: (planning_result.value as any) ?? null,
+    spend: (spend_result.value as any) ?? null,
+    vibes,
+    trip_type: null,
+    guestcount: 1,
+  });
 
   // ── Write 2: upsert user_profiles ─────────────────────────────────────────
 
@@ -274,6 +293,7 @@ export async function POST(request: NextRequest) {
         dealbreakers,
         completed: true,
         completed_at: now,
+        extra: { persona_scores: personaScores },
       },
       { onConflict: 'user_id' },
     );
