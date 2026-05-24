@@ -21,12 +21,12 @@ import { getSupabaseAdmin } from '@/lib/supabase/client';
 export const dynamic = 'force-dynamic';
 
 const AGE_BANDS = new Set(['under_20', '20_25', '26_30', '31_40', '41_55', '56_plus']);
-const NOVELTY_VALUES = new Set(['adventurous', 'balanced', 'comfortable']);
+const NOVELTY_VALUES = new Set(['pioneer', 'explorer', 'homebody']);
 const VIBE_VALUES = new Set(['city', 'culture', 'nature', 'beach']);
-const DISCOVERY_VALUES = new Set(['icons', 'hidden', 'mix']);
-const FOOD_VALUES = new Set(['street', 'sit_down', 'easy', 'food_first']);
-const PLANNING_VALUES = new Set(['planner', 'loose', 'improviser']);
-const SPEND_VALUES = new Set(['simple', 'quality', 'all_out']);
+const DISCOVERY_VALUES = new Set(['word_of_mouth', 'deep_research', 'spontaneous', 'curated_lists']);
+const FOOD_VALUES = new Set(['local_markets', 'neighbourhood_gems', 'destination_dining', 'fuel_not_ritual']);
+const PLANNING_VALUES = new Set(['planner', 'loose_plan', 'first_day', 'full_improv']);
+const SPEND_VALUES = new Set(['value_first', 'comfort_floor', 'quality_always', 'no_limits']);
 const DEALBREAKER_VALUES = new Set(['rushed', 'crowds', 'bad_food', 'downtime', 'overspending', 'chaos']);
 
 function validateEnum(
