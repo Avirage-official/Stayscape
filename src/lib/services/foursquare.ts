@@ -46,6 +46,15 @@ interface FoursquareSearchResponse {
   results: FoursquarePlace[];
 }
 
+interface FoursquarePhoto {
+  id: string;
+  created_at?: string;
+  prefix: string;
+  suffix: string;
+  width?: number;
+  height?: number;
+}
+
 function buildHeaders(apiKey: string): Record<string, string> {
   return {
     Accept: 'application/json',
@@ -99,6 +108,40 @@ export async function getPlaceDetails(fsqPlaceId: string): Promise<PlaceUpsertIn
   if (!place.name || place.latitude == null || place.longitude == null) return null;
 
   return normalizePlace(place);
+}
+
+/**
+ * Fetch up to `limit` photo URLs for a place.
+ * Returns fully-qualified HTTPS URLs constructed from prefix/suffix.
+ */
+export async function getPlacePhotoUrls(
+  fsqPlaceId: string,
+  limit = 3,
+): Promise<string[]> {
+  if (limit <= 0) return [];
+
+  const apiKey = getFoursquareApiKey();
+  const url = new URL(`${FOURSQUARE_BASE}/places/${fsqPlaceId}/photos`);
+  url.searchParams.set('limit', String(Math.min(limit, 10)));
+
+  const res = await fetch(url.toString(), {
+    headers: buildHeaders(apiKey),
+  });
+
+  if (!res.ok) {
+    // Fail soft: just return no images rather than breaking admin flows
+    return [];
+  }
+
+  const photos = (await res.json()) as FoursquarePhoto[];
+  return (photos ?? [])
+    .slice(0, limit)
+    .map((p) => {
+      // Per Foursquare docs: URL = prefix + size + suffix
+      const size = p.width && p.height ? `${p.width}x${p.height}` : 'original';
+      return `${p.prefix}${size}${p.suffix}`;
+    })
+    .filter((url) => typeof url === 'string' && url.startsWith('http'));
 }
 
 // Maps Foursquare category names to Stayscape internal categories.
