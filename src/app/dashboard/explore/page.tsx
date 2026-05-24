@@ -142,6 +142,7 @@ export default function ExplorePage() {
         onPersonalise={handlePersonalise}
         isPersonalising={isPersonalising}
         isRefreshing={isRefreshing}
+        onRegionChange={handleRegionChange}
       />
     </div>
   );

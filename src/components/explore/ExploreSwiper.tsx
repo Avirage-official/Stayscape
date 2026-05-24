@@ -18,6 +18,7 @@ interface ExploreSwiperProps {
   onPersonalise: () => void;
   isPersonalising: boolean;
   isRefreshing?: boolean;
+  onRegionChange?: (regionId: string) => void;
 }
 
 // selectedItem can be a full ExploreItem (L0 sections) or a slim drill card (L1-L3)
@@ -86,6 +87,7 @@ export default function ExploreSwiper({
   onPersonalise,
   isPersonalising,
   isRefreshing,
+  onRegionChange,
 }: ExploreSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -96,6 +98,7 @@ export default function ExploreSwiper({
   const cacheRef = useRef<Map<DrillCacheKey, DrillData>>(new Map());
 
   const [panelPhase, setPanelPhase] = useState<AnimPhase>('idle');
+  const [showRegionSheet, setShowRegionSheet] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [nextHeroImageUrl, setNextHeroImageUrl] = useState<string | null>(null);
 
@@ -242,7 +245,7 @@ export default function ExploreSwiper({
   }, [activeIndex, sections, view.level]);
 
   function handlePointerDown(e: React.PointerEvent) {
-    if (view.level > 0) return;
+    if (view.level > 0 || showRegionSheet) return;
     pointerStartX.current = e.clientX;
     isDragging.current = false;
   }
@@ -263,6 +266,7 @@ export default function ExploreSwiper({
   const active = sections[activeIndex];
   const greeting = firstName ? `for ${firstName}` : 'for you';
   const displayHeroUrl = heroImageUrl ?? active?.image_url ?? null;
+  const showRegions = active?.id !== 'made_for_you' && active?.id !== 'arias_picks';
 
   const panelStyle: React.CSSProperties =
     panelPhase === 'exiting'
@@ -423,6 +427,87 @@ export default function ExploreSwiper({
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(14,13,11,0.55) 0%, rgba(14,13,11,0.82) 100%)' }} />
       </div>
 
+      {/* Mobile: full-screen card + region sheet */}
+      <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
+        {view.level === 0 ? (
+          <>
+            <ExploreCard
+              key={active.id}
+              section={active}
+              sections={sections}
+              activeIndex={activeIndex}
+              onSectionChange={goTo}
+            />
+            <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>
+              Explore {greeting}
+            </p>
+            {showRegions && (
+              <button
+                onClick={() => setShowRegionSheet(true)}
+                style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.52)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(250,248,245,0.14)', borderRadius: '20px', padding: '7px 11px 7px 9px', cursor: 'pointer' }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.85)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" /></svg>
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.75)' }}>
+                  {activeRegion?.name ?? 'Explore'}
+                </span>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.4)" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+            )}
+          </>
+        ) : (
+          renderLeftDrillCanvas()
+        )}
+        {isRefreshing && (
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 25, background: 'rgba(8,5,2,0.38)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#C17F3A', boxShadow: '0 0 16px rgba(193,127,58,0.7)', animation: 'ecPulse 1.1s ease-in-out infinite' }} />
+          </div>
+        )}
+      </div>
+
+      {/* Mobile: region picker sheet */}
+      {showRegionSheet && (
+        <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 50 }}>
+          <div onClick={() => setShowRegionSheet(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(18,14,10,0.97)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderTop: '1px solid rgba(250,248,245,0.1)', borderRadius: '20px 20px 0 0', maxHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+              <div style={{ width: '32px', height: '4px', background: 'rgba(250,248,245,0.18)', borderRadius: '2px' }} />
+            </div>
+            <div style={{ padding: '8px 24px 14px', borderBottom: '1px solid rgba(250,248,245,0.07)', flexShrink: 0 }}>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>
+                Where to next
+              </p>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px' }}>
+              {regions.map(region => {
+                const isSelected = activeRegion?.id === region.id;
+                return (
+                  <button
+                    key={region.id}
+                    onClick={() => { onRegionChange?.(region.id); drillToRegion(region); setShowRegionSheet(false); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box' } as React.CSSProperties}
+                  >
+                    <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {region.image_url
+                        ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                        : <span style={{ color: 'rgba(250,248,245,0.35)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>{region.country_code ?? '—'}</span>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#FAF8F5' : 'rgba(250,248,245,0.8)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{region.name}</p>
+                      {region.country_code && (
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: isSelected ? 'rgba(193,127,58,0.7)' : 'rgba(250,248,245,0.32)', margin: '2px 0 0' }}>{region.country_code}</p>
+                      )}
+                    </div>
+                    {isSelected
+                      ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Desktop: two-column layout — LEFT = hero/drill canvas, RIGHT = region selector */}
       <div className="hidden md:flex" style={{ position: 'absolute', inset: 0, zIndex: 10, padding: '12px', gap: '12px' }}>
         {/* LEFT: ExploreCard at L0, drill canvas at L1+ */}
@@ -457,6 +542,7 @@ export default function ExploreSwiper({
           activeRegion={activeRegion}
           onSectionChange={(i) => goTo(i)}
           onDrillRegion={drillToRegion}
+          onRegionChange={onRegionChange}
           onPersonalise={onPersonalise}
           isPersonalising={isPersonalising}
         />

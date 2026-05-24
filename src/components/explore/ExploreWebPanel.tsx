@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ExploreSection } from './ExploreCard';
 import type { RegionOption } from '@/app/dashboard/explore/page';
+import type { DiscoveryPlaceCard } from '@/types/database';
 
 export interface ExploreWebPanelProps {
   sections: ExploreSection[];
@@ -11,6 +12,7 @@ export interface ExploreWebPanelProps {
   activeRegion: RegionOption | null;
   onSectionChange: (index: number) => void;
   onDrillRegion: (region: RegionOption) => void;
+  onRegionChange?: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
 }
@@ -40,6 +42,7 @@ export default function ExploreWebPanel({
   activeRegion,
   onSectionChange,
   onDrillRegion,
+  onRegionChange,
   onPersonalise,
   isPersonalising,
 }: ExploreWebPanelProps) {
@@ -48,6 +51,7 @@ export default function ExploreWebPanel({
   const isYours = active?.id === 'made_for_you';
   const isAria  = active?.id === 'arias_picks';
   const showRegions = !isYours && !isAria;
+  const mfyItems = (sections.find(s => s.id === 'made_for_you')?.items ?? []) as DiscoveryPlaceCard[];
 
   return (
     <div
@@ -100,15 +104,40 @@ export default function ExploreWebPanel({
       {/* L1 content */}
       <div style={{ ...GLASS, padding: '14px 16px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-        {/* Yours: coming soon */}
+        {/* Yours: personalised place list */}
         {isYours && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', padding: '20px 8px', textAlign: 'center', flex: 1 }}>
-            <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '18px', color: 'rgba(250,248,245,0.7)', lineHeight: 1.4 }}>
-              Made for you
-            </span>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.35)', lineHeight: 1.65 }}>
-              Personalised recommendations are coming soon. Aria will curate places based on your stays and preferences.
-            </span>
+          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+            {mfyItems.length === 0 ? (
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '20px', margin: 0 }}>
+                Nothing to show yet.
+              </p>
+            ) : (
+              mfyItems.map(item => (
+                <div
+                  key={item.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', background: 'rgba(250,248,245,0.05)', border: '1px solid rgba(250,248,245,0.08)', borderRadius: '12px', boxSizing: 'border-box' } as React.CSSProperties}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {item.image_url
+                      ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                      : <span style={{ color: 'rgba(250,248,245,0.3)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>·</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 500, color: 'rgba(250,248,245,0.8)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.name}
+                    </p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.32)', margin: '2px 0 0' }}>
+                      {item.vibes?.[0] ?? item.category}
+                    </p>
+                  </div>
+                  {item.rating != null && (
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.7)', flexShrink: 0 }}>
+                      ★ {item.rating.toFixed(1)}
+                    </span>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -156,7 +185,7 @@ export default function ExploreWebPanel({
                 return (
                   <button
                     key={region.id}
-                    onClick={() => onDrillRegion(region)}
+                    onClick={() => { onDrillRegion(region); onRegionChange?.(region.id); }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '11px',
                       padding: '9px 10px', marginBottom: '5px', width: '100%',
