@@ -382,7 +382,8 @@ export type ExternalSource =
   | 'ticketmaster'
   | 'eventbrite'
   | 'manual'
-  | 'editorial';
+  | 'editorial'
+  | 'foursquare';
 
 /** Vibe / best-for labels used by the AI enrichment layer. */
 export const VIBE_LABELS = [
