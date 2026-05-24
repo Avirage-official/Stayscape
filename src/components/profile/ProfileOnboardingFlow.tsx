@@ -25,9 +25,9 @@ const AGE_REACTIONS: Record<string, string> = {
 };
 
 const NOVELTY_OPTIONS = [
-  { value: 'adventurous', label: 'Adventurous' },
-  { value: 'balanced',    label: 'Balanced' },
-  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'pioneer',  label: 'I go where others haven't' },
+  { value: 'explorer', label: 'I love discovering, with some comfort' },
+  { value: 'homebody', label: 'I find a neighbourhood and live in it' },
 ] as const;
 
 const VIBE_OPTIONS = [
@@ -38,28 +38,31 @@ const VIBE_OPTIONS = [
 ] as const;
 
 const DISCOVERY_OPTIONS = [
-  { value: 'icons',  label: 'The classics — the must-sees, the icons' },
-  { value: 'hidden', label: 'Hidden gems — off the tourist trail' },
-  { value: 'mix',    label: 'A bit of both, honestly' },
+  { value: 'word_of_mouth',   label: 'Locals or friends who've been — I need that personal tip' },
+  { value: 'deep_research',   label: 'I read everything before I go' },
+  { value: 'spontaneous',     label: 'I just wander and see what happens' },
+  { value: 'curated_lists',   label: 'I trust editors and best-of guides' },
 ] as const;
 
 const FOOD_OPTIONS = [
-  { value: 'street',     label: 'Street food & market stalls' },
-  { value: 'sit_down',   label: 'Proper sit-down restaurants' },
-  { value: 'easy',       label: 'Easy and unfussy — fuel, not ritual' },
-  { value: 'food_first', label: 'Food is the whole point of the trip' },
+  { value: 'local_markets',      label: 'Street food, hawkers, market stalls' },
+  { value: 'neighbourhood_gems', label: 'Unpretentious local restaurants' },
+  { value: 'destination_dining', label: 'The place everyone is talking about' },
+  { value: 'fuel_not_ritual',    label: 'Easy and unfussy — I eat to keep going' },
 ] as const;
 
 const PLANNING_OPTIONS = [
-  { value: 'planner',    label: 'Spreadsheet, itinerary, fully sorted' },
-  { value: 'loose',      label: 'A loose outline with room to wander' },
-  { value: 'improviser', label: "Wing it entirely — that's the fun" },
+  { value: 'planner',      label: 'Spreadsheet, itinerary, fully sorted' },
+  { value: 'loose_plan',   label: 'A few anchors, rest is open' },
+  { value: 'first_day',    label: 'I plan the first day, then improvise' },
+  { value: 'full_improv',  label: 'Wing it entirely — that's the fun' },
 ] as const;
 
 const SPEND_OPTIONS = [
-  { value: 'simple',  label: 'Simple and sensible — comfort without fuss' },
-  { value: 'quality', label: 'Quality over quantity, always' },
-  { value: 'all_out', label: 'No holding back — you only live once' },
+  { value: 'value_first',    label: 'Best value — I research before every spend' },
+  { value: 'comfort_floor',  label: 'Comfort baseline, splurge on what matters' },
+  { value: 'quality_always', label: 'Quality over quantity, always' },
+  { value: 'no_limits',      label: 'No holding back — you only live once' },
 ] as const;
 
 const DEALBREAKER_OPTIONS = [
@@ -103,21 +106,20 @@ const PANEL_IMAGE: Partial<Record<Step, string>> = {
 const ALL_IMAGES: string[] = [
   ...Object.values(PANEL_IMAGE) as string[],
   // public/onboarding/novelty/
-  '/onboarding/novelty/adventurous.jpg',
-  '/onboarding/novelty/balanced.jpg',
-  '/onboarding/novelty/comfortable.jpg',
+  '/onboarding/novelty/pioneer.jpg',
+  '/onboarding/novelty/explorer.jpg',
+  '/onboarding/novelty/homebody.jpg',
   // public/onboarding/vibe/
   '/onboarding/vibe/city.jpg',
   '/onboarding/vibe/culture.jpg',
   '/onboarding/vibe/nature.jpg',
   '/onboarding/vibe/beach.jpg',
-  '/onboarding/vibe/mixed.jpg',
 ];
 
 const NOVELTY_IMG: Record<string, string> = {
-  adventurous: '/onboarding/novelty/adventurous.jpg',
-  balanced:    '/onboarding/novelty/balanced.jpg',
-  comfortable: '/onboarding/novelty/comfortable.jpg',
+  pioneer:  '/onboarding/novelty/pioneer.jpg',
+  explorer: '/onboarding/novelty/explorer.jpg',
+  homebody: '/onboarding/novelty/homebody.jpg',
 };
 
 const VIBE_IMG: Record<string, string> = {
@@ -139,7 +141,7 @@ const CARD_COPY: Partial<Record<Step, CardCopy>> = {
   location_bridge: { label: 'NOTED',         text: 'Now — the questions that actually matter.' },
   q_novelty:       { label: 'TRAVEL STYLE',  text: 'The best trips are the ones that feel right for you.' },
   q_vibe:          { label: 'YOUR VIBE',     text: 'What pulls you back to a place, again and again.' },
-  q_discovery:     { label: 'EXPLORATION',   text: 'Icons or secrets — both have their own magic.' },
+  q_discovery:     { label: 'EXPLORATION',   text: 'How you find things reveals how you want to feel.' },
   q_food:          { label: 'FOOD & DRINK',  text: 'A great meal can be the whole point of a trip.' },
   q_planning:      { label: 'YOUR STYLE',    text: 'There is no wrong way to travel — only yours.' },
   q_spend:         { label: 'PHILOSOPHY',    text: 'How you spend says everything about what you value.' },
@@ -680,7 +682,6 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
     if (idx <= 0) return;
     const prev = ALL_STEPS[idx - 1];
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    // Clear the answer for whichever step we're returning to
     if (prev === 'age_band')    { setAgeBand(''); setAgeReaction(''); }
     if (prev === 'q_novelty')   setNovelty('');
     if (prev === 'q_discovery') setDiscovery('');
@@ -1041,7 +1042,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <p style={{ ...stepLabel, ...stagger(0) }}>03 / 07</p>
                     <h2 style={{ ...heading, fontSize: 'clamp(1.5rem,2.4vw,2rem)', ...stagger(1) }}>
-                      Somewhere new — the famous must-sees, or the things only locals know?
+                      Somewhere new — how do you find the places worth going to?
                     </h2>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1055,7 +1056,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                       </div>
                     ))}
                   </div>
-                  <div style={stagger(6)}>
+                  <div style={stagger(7)}>
                     <Btn variant="ghost" fullWidth={false} onClick={goBack}>Back</Btn>
                   </div>
                 </div>
@@ -1093,7 +1094,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <p style={{ ...stepLabel, ...stagger(0) }}>05 / 07</p>
                     <h2 style={{ ...heading, fontSize: 'clamp(1.5rem,2.4vw,2rem)', ...stagger(1) }}>
-                      Before a trip — spreadsheet, or wing it?
+                      Before a trip — how does it usually come together?
                     </h2>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1107,7 +1108,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                       </div>
                     ))}
                   </div>
-                  <div style={stagger(6)}>
+                  <div style={stagger(7)}>
                     <Btn variant="ghost" fullWidth={false} onClick={goBack}>Back</Btn>
                   </div>
                 </div>
@@ -1133,7 +1134,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                       </div>
                     ))}
                   </div>
-                  <div style={stagger(6)}>
+                  <div style={stagger(7)}>
                     <Btn variant="ghost" fullWidth={false} onClick={goBack}>Back</Btn>
                   </div>
                 </div>
