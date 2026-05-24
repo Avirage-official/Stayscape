@@ -112,7 +112,8 @@ export function derivePersonaScores(input: PersonaInput): PersonaScores {
   ['adventurous', 'outdoors', 'hiking', 'water_sports', 'day_trip'].forEach((v) => {
     if (hasVibe(vibes, v)) expeditionist += 0.05;
   });
-  if (planning === 'spontaneous' || planning === 'first_day' || planning === 'full_improv') {
+  // 'spontaneous' is a DiscoveryValue, not a PlanningValue — use first_day / full_improv here
+  if (planning === 'first_day' || planning === 'full_improv') {
     expeditionist += 0.1;
   }
   if (expeditionist > 1) expeditionist = 1;
@@ -161,7 +162,7 @@ export function derivePersonaScores(input: PersonaInput): PersonaScores {
     };
   }
 
-  const normalized: PersonaScores = {
+  return {
     cartographer: cartographer / maxScore,
     epicurean: epicurean / maxScore,
     archivist: archivist / maxScore,
@@ -171,6 +172,4 @@ export function derivePersonaScores(input: PersonaInput): PersonaScores {
     bon_vivant: bon_vivant / maxScore,
     gatherer: gatherer / maxScore,
   };
-
-  return normalized;
 }
