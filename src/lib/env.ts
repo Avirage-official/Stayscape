@@ -35,6 +35,11 @@ export function getGeoapifyApiKey(): string {
   return getServerEnv('GEOAPIFY_API_KEY');
 }
 
+/** Foursquare Places API key (backend only). */
+export function getFoursquareApiKey(): string {
+  return getServerEnv('FOURSQUARE_PLACES_API_KEY');
+}
+
 /** OpenAI API key for AI enrichment (backend only). */
 export function getOpenAIApiKey(): string {
   return getServerEnv('OPENAI_API_KEY');
