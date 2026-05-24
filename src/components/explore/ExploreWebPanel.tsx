@@ -9,6 +9,7 @@ export interface ExploreWebPanelProps {
   regions: RegionOption[];
   activeIndex: number;
   activeRegion: RegionOption | null;
+  selectedRegionId: string | null;
   onSectionChange: (index: number) => void;
   onDrillRegion: (region: RegionOption) => void;
   onRegionChange?: (regionId: string) => void;
@@ -39,6 +40,7 @@ export default function ExploreWebPanel({
   regions,
   activeIndex,
   activeRegion,
+  selectedRegionId,
   onSectionChange,
   onDrillRegion,
   onRegionChange,
@@ -46,16 +48,91 @@ export default function ExploreWebPanel({
   isPersonalising,
 }: ExploreWebPanelProps) {
   const [ariaQuery, setAriaQuery] = useState('');
+  const [cityOpen, setCityOpen] = useState(false);
+
   const active = sections[activeIndex];
-  const isYours = active?.id === 'made_for_you';
-  const isAria  = active?.id === 'arias_picks';
-  const showRegions = !isAria;
+  const isAria   = active?.id === 'arias_picks';
+  const isNearby = active?.id === 'in_your_world';
+
+  const currentCity = regions.find(r => r.id === selectedRegionId) ?? null;
 
   return (
     <div
       className="hidden md:flex flex-col"
       style={{ width: '300px', flexShrink: 0, gap: '10px', overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}
     >
+
+      {/* ── City selector — always visible, always at the top ── */}
+      <div style={{ ...GLASS, padding: 0, flexShrink: 0, overflow: 'hidden' }}>
+        <button
+          onClick={() => setCityOpen(v => !v)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.04)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.85)" strokeWidth={2} style={{ flexShrink: 0 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+          </svg>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.35)', margin: '0 0 2px' }}>
+              Exploring
+            </p>
+            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '17px', fontWeight: 500, color: currentCity ? '#FAF8F5' : 'rgba(250,248,245,0.32)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {currentCity?.name ?? 'Select a city'}
+            </p>
+          </div>
+          <svg
+            width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="rgba(250,248,245,0.35)" strokeWidth={2.5}
+            style={{ flexShrink: 0, transition: 'transform 200ms ease', transform: cityOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {cityOpen && (
+          <div style={{ borderTop: '1px solid rgba(250,248,245,0.08)', maxHeight: '230px', overflowY: 'auto', scrollbarWidth: 'none', padding: '8px 10px 10px' }}>
+            {regions.length === 0 ? (
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', padding: '12px 0', margin: 0 }}>
+                No cities available.
+              </p>
+            ) : regions.map(region => {
+              const isSel = region.id === selectedRegionId;
+              return (
+                <button
+                  key={region.id}
+                  onClick={() => { onRegionChange?.(region.id); setCityOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '9px',
+                    padding: '7px 8px', marginBottom: '3px', width: '100%',
+                    background: isSel ? 'rgba(193,127,58,0.14)' : 'transparent',
+                    border: `1px solid ${isSel ? 'rgba(193,127,58,0.5)' : 'transparent'}`,
+                    borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
+                    transition: 'background 140ms ease',
+                    boxSizing: 'border-box',
+                  } as React.CSSProperties}
+                  onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(250,248,245,0.07)'; }}
+                  onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <div style={{ width: '28px', height: '28px', borderRadius: '7px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {region.image_url
+                      ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                      : <span style={{ color: 'rgba(250,248,245,0.35)', fontSize: '10px', fontFamily: "'DM Sans', sans-serif" }}>{region.country_code ?? '—'}</span>}
+                  </div>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: isSel ? 600 : 400, color: isSel ? '#FAF8F5' : 'rgba(250,248,245,0.78)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                    {region.name}
+                  </p>
+                  {isSel && (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Section tabs */}
       <div style={{ ...GLASS, padding: '5px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '3px', flexShrink: 0 }}>
@@ -129,11 +206,11 @@ export default function ExploreWebPanel({
           </div>
         )}
 
-        {/* Nearby / Tonight: region list */}
-        {showRegions && (
+        {/* In your world: region drill list */}
+        {isNearby && (
           <>
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: '0 0 10px', flexShrink: 0 }}>
-              Where to next
+              Explore a destination
             </p>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
               {regions.length === 0 && (
@@ -146,7 +223,7 @@ export default function ExploreWebPanel({
                 return (
                   <button
                     key={region.id}
-                    onClick={() => { onDrillRegion(region); onRegionChange?.(region.id); }}
+                    onClick={() => onDrillRegion(region)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '11px',
                       padding: '9px 10px', marginBottom: '5px', width: '100%',
@@ -182,6 +259,15 @@ export default function ExploreWebPanel({
               })}
             </div>
           </>
+        )}
+
+        {/* Made for you / Tonight: gentle prompt */}
+        {!isAria && !isNearby && (
+          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.32)', margin: 0, lineHeight: 1.6 }}>
+            {currentCity
+              ? `Curated for ${currentCity.name}. Change your city above to explore somewhere new.`
+              : 'Select a city above to personalise your curation.'}
+          </p>
         )}
       </div>
 

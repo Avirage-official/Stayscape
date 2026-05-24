@@ -266,8 +266,6 @@ export default function ExploreSwiper({
   const active = sections[activeIndex];
   const greeting = firstName ? `for ${firstName}` : 'for you';
   const displayHeroUrl = heroImageUrl ?? active?.image_url ?? null;
-  const showRegions = active?.id !== 'made_for_you' && active?.id !== 'arias_picks';
-
   const panelStyle: React.CSSProperties =
     panelPhase === 'exiting'
       ? { opacity: 0, transition: 'opacity 160ms ease-in' }
@@ -441,18 +439,16 @@ export default function ExploreSwiper({
             <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>
               Explore {greeting}
             </p>
-            {showRegions && (
-              <button
-                onClick={() => setShowRegionSheet(true)}
-                style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.52)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(250,248,245,0.14)', borderRadius: '20px', padding: '7px 11px 7px 9px', cursor: 'pointer' }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.85)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" /></svg>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.75)' }}>
-                  {activeRegion?.name ?? 'Explore'}
-                </span>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.4)" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-            )}
+            <button
+              onClick={() => setShowRegionSheet(true)}
+              style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.52)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(250,248,245,0.14)', borderRadius: '20px', padding: '7px 11px 7px 9px', cursor: 'pointer' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.85)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" /></svg>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.75)' }}>
+                {regions.find(r => r.id === selectedRegionId)?.name ?? 'Select city'}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.4)" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
           </>
         ) : (
           renderLeftDrillCanvas()
@@ -474,16 +470,16 @@ export default function ExploreSwiper({
             </div>
             <div style={{ padding: '8px 24px 14px', borderBottom: '1px solid rgba(250,248,245,0.07)', flexShrink: 0 }}>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>
-                Where to next
+                Select your city
               </p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px' }}>
               {regions.map(region => {
-                const isSelected = activeRegion?.id === region.id;
+                const isSelected = region.id === selectedRegionId;
                 return (
                   <button
                     key={region.id}
-                    onClick={() => { onRegionChange?.(region.id); drillToRegion(region); setShowRegionSheet(false); }}
+                    onClick={() => { onRegionChange?.(region.id); setShowRegionSheet(false); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box' } as React.CSSProperties}
                   >
                     <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -540,6 +536,7 @@ export default function ExploreSwiper({
           regions={regions}
           activeIndex={activeIndex}
           activeRegion={activeRegion}
+          selectedRegionId={selectedRegionId}
           onSectionChange={(i) => goTo(i)}
           onDrillRegion={drillToRegion}
           onRegionChange={onRegionChange}
