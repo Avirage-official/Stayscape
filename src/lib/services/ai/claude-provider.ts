@@ -56,8 +56,19 @@ interface ClaudePlaceEnrichment {
   best_time_to_go?: string | null;
   vibes?: string[];
   best_for?: string[];
+  traveler_types?: string[];
   rating?: number | null;
 }
+
+const VALID_PLACE_CATEGORIES = new Set([
+  'dining', 'nightlife', 'shopping', 'nature', 'historical',
+  'wellness', 'family', 'fun_places', 'top_places', 'local_spots', 'events',
+]);
+
+const VALID_TRAVELER_TYPES = new Set([
+  'cartographer', 'epicurean', 'archivist', 'retreatist',
+  'cosmopolitan', 'expeditionist', 'bon_vivant', 'gatherer',
+]);
 
 /* ── Cached system prompts ──────────────────────────────────── */
 
@@ -155,8 +166,19 @@ Respond with a single JSON object only — no markdown fences, no explanation, n
   "best_time_to_go": "<specific and useful, e.g. 'Weekend mornings before 10am', 'Friday evenings' — required if score >= 4>",
   "vibes": [<3–6 single words or short phrases that capture the atmosphere — required if score >= 4>],
   "best_for": [<2–5 specific visitor types or occasions, e.g. 'date night', 'solo lunch', 'families with young kids' — required if score >= 4>],
+  "traveler_types": [<1–4 traveler personas this place genuinely suits — choose only from: cartographer, epicurean, archivist, retreatist, cosmopolitan, expeditionist, bon_vivant, gatherer — required if score >= 4>],
   "rating": <float 1.0–5.0 if you can estimate, or null if the place already has a rating or you have no knowledge>
-}`;
+}
+
+Traveler type guidance:
+- cartographer: off-the-beaten-path spots, local neighbourhood character, spontaneous discovery
+- epicurean: restaurants, food markets, hawker stalls, wine bars, anything food or drink led
+- archivist: museums, galleries, temples, heritage sites, anything with cultural or historical depth
+- retreatist: parks, spas, wellness studios, quiet beaches, anywhere to decompress
+- cosmopolitan: buzzy bars, rooftops, nightlife venues, trendy social spots
+- expeditionist: hiking trails, adventure sports, nature reserves, active outdoor experiences
+- bon_vivant: fine dining, cocktail bars, luxury hotels, high-end shopping, elevated experiences
+- gatherer: family attractions, zoos, theme parks, large group-friendly venues`;
 
 const EVENT_SYSTEM_PROMPT = `You are a city insider writing for Stayscape — a travel platform that recommends experiences worth clearing your schedule for. Your job is to write about events the way a knowledgeable local would describe them to a friend visiting for the week: honest, specific, and useful.
 
@@ -292,11 +314,6 @@ function toNumberOrNull(value: unknown): number | null {
 
 const QUALITY_THRESHOLD = 4;
 
-const VALID_CATEGORIES = new Set([
-  'dining', 'nightlife', 'shopping', 'nature', 'historical',
-  'wellness', 'family', 'fun_places', 'top_places', 'local_spots',
-]);
-
 function parsePlaceResponse(raw: string): EnrichmentResult {
   const parsed = safeParseJSON(raw) as ClaudePlaceEnrichment | null;
   if (!parsed) {
@@ -316,6 +333,9 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
 
   const vibes = toStringArray(parsed.vibes);
   const bestFor = toStringArray(parsed.best_for);
+  const travelerTypes = toStringArray(parsed.traveler_types).filter((t) =>
+    VALID_TRAVELER_TYPES.has(t),
+  );
 
   const tags: EnrichmentResult['tags'] = [];
   for (const vibe of vibes) {
@@ -324,6 +344,9 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
   for (const label of bestFor) {
     tags.push({ tag: label, tag_type: 'best_for' as TagType, confidence: 0.9 });
   }
+  for (const persona of travelerTypes) {
+    tags.push({ tag: persona, tag_type: 'traveler_type' as TagType, confidence: 0.85 });
+  }
 
   let ratingEstimate: number | null = null;
   const rawRating = toNumberOrNull(parsed.rating ?? null);
@@ -331,15 +354,11 @@ function parsePlaceResponse(raw: string): EnrichmentResult {
     ratingEstimate = Math.min(5.0, Math.max(1.0, Math.round(rawRating * 10) / 10));
   }
 
-  const VALID_CATEGORIES = new Set([
-    'dining', 'nightlife', 'shopping', 'nature', 'historical',
-    'wellness', 'family', 'fun_places', 'top_places', 'local_spots', 'events',
-  ]);
   const correctedCategory = toStringOrNull(parsed.category);
 
   return {
     editorial_summary: toStringOrNull(parsed.editorial_summary) ?? '',
-    category: correctedCategory && VALID_CATEGORIES.has(correctedCategory) ? correctedCategory : null,
+    category: correctedCategory && VALID_PLACE_CATEGORIES.has(correctedCategory) ? correctedCategory : null,
     recommended_duration: toStringOrNull(parsed.recommended_duration),
     best_time_to_go: toStringOrNull(parsed.best_time_to_go),
     vibes: vibes.length > 0 ? vibes : null,

@@ -7,7 +7,7 @@
  * `secondary` — show if primary results are sparse
  * `exclude`   — never surface for this trait combination
  *
- * Stayscape categories (from geoapify.ts):
+ * Stayscape categories (canonical PlaceCategory from types/database.ts):
  *   dining | nightlife | fun_places | family | historical |
  *   nature | wellness | top_places | shopping | local_spots
  */
