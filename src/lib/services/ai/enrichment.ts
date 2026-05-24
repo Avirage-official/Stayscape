@@ -26,7 +26,7 @@ import type {
   PlaceTag,
   EventTag,
 } from '@/types/database';
-import { getPlaceDetails } from '@/lib/services/geoapify';
+import { getPlaceDetails } from '@/lib/services/foursquare';
 import { ClaudeProvider } from './claude-provider';
 
 /* ── Types ───────────────────────────────────────────────────── */
@@ -108,9 +108,9 @@ export function setAIProvider(provider: AIEnrichmentProvider): void {
  * Enrich a place with AI-generated metadata.
  *
  * Pipeline:
- * 1. Fetch fresh structured data from Geoapify Place Details (website, phone)
+ * 1. Fetch fresh structured data from provider Place Details (website, phone)
  * 1b. Fetch a high-quality image via Google Places → Unsplash if none exists
- * 2. Update the place record with Geoapify + image data
+ * 2. Update the place record with provider + image data
  * 3. Call the AI provider — which returns a quality_score (1-10)
  * 4. If score < 5 → mark place as is_active=false (hidden from guests)
  * 5. Otherwise: write editorial_summary, vibes, rating estimate (if no real rating), etc. back to the place
@@ -120,32 +120,32 @@ export async function enrichPlace(
   supabase: SupabaseClient,
   place: InternalPlace,
 ): Promise<void> {
-  // Step 1 – Fetch Geoapify Place Details + better image
+  // Step 1 – Fetch provider Place Details + better image
   let enrichedPlace = place;
-  if (place.external_source === 'geoapify' && place.external_id) {
+  if (place.external_source === 'foursquare' && place.external_id) {
     try {
       const details = await getPlaceDetails(place.external_id);
       if (details) {
-        const geoapifyUpdates: Record<string, unknown> = {
+        const providerUpdates: Record<string, unknown> = {
           updated_at: new Date().toISOString(),
         };
         if (details.website && !place.website) {
-          geoapifyUpdates.website = details.website;
+          providerUpdates.website = details.website;
         }
         if (details.phone && !place.phone) {
-          geoapifyUpdates.phone = details.phone;
+          providerUpdates.phone = details.phone;
         }
 
-        if (Object.keys(geoapifyUpdates).length > 1) {
+        if (Object.keys(providerUpdates).length > 1) {
           await supabase
             .from('places')
-            .update(geoapifyUpdates)
+            .update(providerUpdates)
             .eq('id', place.id);
 
           enrichedPlace = {
             ...place,
-            website: (geoapifyUpdates.website as string | null) ?? place.website,
-            phone: (geoapifyUpdates.phone as string | null) ?? place.phone,
+            website: (providerUpdates.website as string | null) ?? place.website,
+            phone: (providerUpdates.phone as string | null) ?? place.phone,
           };
         }
       }
@@ -214,7 +214,7 @@ export async function enrichPlace(
     updated_at: new Date().toISOString(),
   };
 
-  // Apply Claude's category correction if it differs from the Geoapify-derived one
+  // Apply Claude's category correction if it differs from the provider-derived one
   if (result.category && result.category !== place.category) {
     placeUpdates.category = result.category;
     console.log(
