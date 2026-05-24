@@ -88,10 +88,51 @@ export async function getPlaceDetails(fsqId: string): Promise<PlaceUpsertInput |
   return normalizePlace(place);
 }
 
-function mapFoursquareCategory(_categories: { id: number; name: string }[] | undefined): string {
-  // v1: keep it simple — everything goes to local_spots until we design
-  // a proper mapping to Stayscape categories.
-  return 'local_spots';
+// Maps Foursquare top-level category ranges to Stayscape internal categories.
+// Foursquare v3 top-level ranges:
+//   10000 Arts & Entertainment | 13000 Dining & Drinking | 14000 Health & Medicine
+//   15000 Landmarks & Outdoors | 16000 Retail | 17000 Sports & Recreation
+function mapFoursquareCategory(categories: { id: number; name: string }[] | undefined): string {
+  if (!categories || categories.length === 0) return 'local_spots';
+
+  const { id, name } = categories[0];
+  const nameLower = name.toLowerCase();
+  const topLevel = Math.floor(id / 1000) * 1000;
+
+  switch (topLevel) {
+    case 10000: // Arts & Entertainment
+      if (/museum|histor|heritage|monument|memorial|gallery|art\b/.test(nameLower)) {
+        return 'historical';
+      }
+      return 'fun_places';
+
+    case 13000: // Dining & Drinking
+      if (/\bbar\b|pub|nightclub|lounge|club\b|brewery|winery|distiller/.test(nameLower)) {
+        return 'nightlife';
+      }
+      return 'dining';
+
+    case 14000: // Health & Medicine
+      if (/spa|yoga|wellness|fitness|gym|massage|pilates/.test(nameLower)) {
+        return 'wellness';
+      }
+      return 'local_spots';
+
+    case 15000: // Landmarks & Outdoors
+      if (/landmark|monument|histor|heritage|memorial|castle|ruin|temple|shrine/.test(nameLower)) {
+        return 'historical';
+      }
+      return 'nature';
+
+    case 16000: // Retail
+      return 'shopping';
+
+    case 17000: // Sports & Recreation
+      return 'fun_places';
+
+    default:
+      return 'local_spots';
+  }
 }
 
 function normalizePlace(place: FoursquarePlace): PlaceUpsertInput {

@@ -189,7 +189,7 @@ export interface PlaceTag {
   created_at: string;
 }
 
-export type TagType = 'vibe' | 'best_for' | 'cuisine' | 'amenity' | 'general';
+export type TagType = 'vibe' | 'best_for' | 'cuisine' | 'amenity' | 'general' | 'traveler_type';
 
 /* ═══════════════════════════════════════════════════════════════
    Event

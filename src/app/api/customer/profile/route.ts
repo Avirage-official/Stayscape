@@ -274,6 +274,17 @@ export async function POST(request: NextRequest) {
     guestcount: 1,
   });
 
+  // ── Fetch existing extra to merge into ────────────────────────────────────
+  // Merge rather than replace so other keys stored in `extra` are preserved.
+
+  const { data: existingProfile } = await supabase
+    .from('user_profiles')
+    .select('extra')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const existingExtra = (existingProfile?.extra as Record<string, unknown> | null) ?? {};
+
   // ── Write 2: upsert user_profiles ─────────────────────────────────────────
 
   const { error: profileError } = await supabase
@@ -293,7 +304,7 @@ export async function POST(request: NextRequest) {
         dealbreakers,
         completed: true,
         completed_at: now,
-        extra: { persona_scores: personaScores },
+        extra: { ...existingExtra, persona_scores: personaScores },
       },
       { onConflict: 'user_id' },
     );
