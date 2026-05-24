@@ -1,15 +1,23 @@
 /**
  * Foursquare Places Service — backend-only.
  *
- * Fetches places from the Foursquare Places API, normalizes them into
- * our internal schema, and returns PlaceUpsertInput objects ready for
- * Supabase. The Foursquare API key is never exposed to the client.
+ * Fetches places from the Foursquare Places API (new places-api.foursquare.com host),
+ * normalizes them into our internal schema, and returns PlaceUpsertInput objects
+ * ready for Supabase. The Foursquare API key is never exposed to the client.
+ *
+ * Migration notes (old api.foursquare.com/v3 → new places-api.foursquare.com):
+ *  - Host changed to places-api.foursquare.com (no /v3 path prefix)
+ *  - Auth changed from bare API key to Bearer <SERVICE_KEY>
+ *  - X-Places-Api-Version header required
+ *  - fsq_id renamed to fsq_place_id
+ *  - geocodes.main.lat/lng flattened to top-level latitude / longitude
  */
 
 import { getFoursquareApiKey } from '@/lib/env';
 import type { PlaceUpsertInput } from '@/lib/supabase/places-repository';
 
-const FOURSQUARE_BASE = 'https://api.foursquare.com/v3';
+const FOURSQUARE_BASE = 'https://places-api.foursquare.com';
+const FOURSQUARE_API_VERSION = '2025-06-17';
 
 export interface FoursquareSearchParams {
   latitude: number;
@@ -19,21 +27,30 @@ export interface FoursquareSearchParams {
 }
 
 interface FoursquarePlace {
-  fsq_id: string;
+  fsq_place_id: string;
   name: string;
-  geocodes?: { main?: { latitude: number; longitude: number } };
+  latitude?: number;
+  longitude?: number;
   location?: {
     formatted_address?: string;
     locality?: string;
     country?: string;
   };
-  categories?: { id: number; name: string }[];
+  categories?: { fsq_category_id: string; name: string }[];
   price?: number;
   rating?: number;
 }
 
 interface FoursquareSearchResponse {
   results: FoursquarePlace[];
+}
+
+function buildHeaders(apiKey: string): Record<string, string> {
+  return {
+    Accept: 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+    'X-Places-Api-Version': FOURSQUARE_API_VERSION,
+  };
 }
 
 export async function searchPlaces(
@@ -53,90 +70,73 @@ export async function searchPlaces(
   url.searchParams.set('limit', String(Math.min(limit, 100)));
 
   const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      Authorization: apiKey,
-    },
+    headers: buildHeaders(apiKey),
   });
 
   if (!res.ok) {
-    throw new Error(`Foursquare API error: ${res.status} ${res.statusText}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`Foursquare API error: ${res.status} ${res.statusText} — ${body}`);
   }
 
   const json = (await res.json()) as FoursquareSearchResponse;
   return (json.results ?? [])
-    .filter((p) => p.name && p.geocodes?.main)
+    .filter((p) => p.name && p.latitude != null && p.longitude != null)
     .map(normalizePlace);
 }
 
-export async function getPlaceDetails(fsqId: string): Promise<PlaceUpsertInput | null> {
+export async function getPlaceDetails(fsqPlaceId: string): Promise<PlaceUpsertInput | null> {
   const apiKey = getFoursquareApiKey();
-  const url = new URL(`${FOURSQUARE_BASE}/places/${fsqId}`);
+  const url = new URL(`${FOURSQUARE_BASE}/places/${fsqPlaceId}`);
 
   const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      Authorization: apiKey,
-    },
+    headers: buildHeaders(apiKey),
   });
 
   if (!res.ok) return null;
 
   const place = (await res.json()) as FoursquarePlace;
-  if (!place.name || !place.geocodes?.main) return null;
+  if (!place.name || place.latitude == null || place.longitude == null) return null;
 
   return normalizePlace(place);
 }
 
-// Maps Foursquare top-level category ranges to Stayscape internal categories.
-// Foursquare v3 top-level ranges:
-//   10000 Arts & Entertainment | 13000 Dining & Drinking | 14000 Health & Medicine
-//   15000 Landmarks & Outdoors | 16000 Retail | 17000 Sports & Recreation
-function mapFoursquareCategory(categories: { id: number; name: string }[] | undefined): string {
+// Maps Foursquare category names to Stayscape internal categories.
+// The new API uses BSON category IDs (strings) instead of integers,
+// so we map by name patterns instead of numeric ranges.
+function mapFoursquareCategory(categories: { fsq_category_id: string; name: string }[] | undefined): string {
   if (!categories || categories.length === 0) return 'local_spots';
 
-  const { id, name } = categories[0];
-  const nameLower = name.toLowerCase();
-  const topLevel = Math.floor(id / 1000) * 1000;
+  const nameLower = categories[0].name.toLowerCase();
 
-  switch (topLevel) {
-    case 10000: // Arts & Entertainment
-      if (/museum|histor|heritage|monument|memorial|gallery|art\b/.test(nameLower)) {
-        return 'historical';
-      }
-      return 'fun_places';
-
-    case 13000: // Dining & Drinking
-      if (/\bbar\b|pub|nightclub|lounge|club\b|brewery|winery|distiller/.test(nameLower)) {
-        return 'nightlife';
-      }
-      return 'dining';
-
-    case 14000: // Health & Medicine
-      if (/spa|yoga|wellness|fitness|gym|massage|pilates/.test(nameLower)) {
-        return 'wellness';
-      }
-      return 'local_spots';
-
-    case 15000: // Landmarks & Outdoors
-      if (/landmark|monument|histor|heritage|memorial|castle|ruin|temple|shrine/.test(nameLower)) {
-        return 'historical';
-      }
-      return 'nature';
-
-    case 16000: // Retail
-      return 'shopping';
-
-    case 17000: // Sports & Recreation
-      return 'fun_places';
-
-    default:
-      return 'local_spots';
+  if (/museum|histor|heritage|monument|memorial|gallery|\bart\b|temple|shrine|castle|ruin/.test(nameLower)) {
+    return 'historical';
   }
+  if (/\bbar\b|pub|nightclub|lounge|\bclub\b|brewery|winery|distiller/.test(nameLower)) {
+    return 'nightlife';
+  }
+  if (/restaurant|cafe|caf\u00e9|dining|bistro|eatery|food/.test(nameLower)) {
+    return 'dining';
+  }
+  if (/spa|yoga|wellness|fitness|gym|massage|pilates|beauty/.test(nameLower)) {
+    return 'wellness';
+  }
+  if (/park|garden|nature|forest|beach|mountain|lake|river|waterfall|outdoor/.test(nameLower)) {
+    return 'nature';
+  }
+  if (/shop|mall|market|retail|store|boutique/.test(nameLower)) {
+    return 'shopping';
+  }
+  if (/landmark|attraction|sight|tour/.test(nameLower)) {
+    return 'top_places';
+  }
+  if (/theater|theatre|cinema|entertainment|amusement|theme park|escape|bowling/.test(nameLower)) {
+    return 'fun_places';
+  }
+
+  return 'local_spots';
 }
 
 function normalizePlace(place: FoursquarePlace): PlaceUpsertInput {
-  const coords = place.geocodes?.main;
   const loc = place.location ?? {};
 
   return {
@@ -147,8 +147,8 @@ function normalizePlace(place: FoursquarePlace): PlaceUpsertInput {
       .replace(/(^-|-$)/g, ''),
     category: mapFoursquareCategory(place.categories),
     description: '',
-    latitude: coords?.latitude ?? 0,
-    longitude: coords?.longitude ?? 0,
+    latitude: place.latitude ?? 0,
+    longitude: place.longitude ?? 0,
     address: loc.formatted_address ?? '',
     address_line2: null,
     city: loc.locality ?? '',
@@ -157,6 +157,6 @@ function normalizePlace(place: FoursquarePlace): PlaceUpsertInput {
     website: null,
     image_url: null,
     external_source: 'foursquare',
-    external_id: place.fsq_id,
+    external_id: place.fsq_place_id,
   };
 }
