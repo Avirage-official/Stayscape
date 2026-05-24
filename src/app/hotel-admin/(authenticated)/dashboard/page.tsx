@@ -160,9 +160,25 @@ export default function HotelAdminDashboardPage() {
   }
 
   useEffect(() => {
+    function startInterval() {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => void fetchStats(), 60_000);
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        void fetchStats();
+        startInterval();
+      } else {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      }
+    }
     void fetchStats();
-    intervalRef.current = setInterval(() => void fetchStats(), 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    startInterval();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const s = stats;
