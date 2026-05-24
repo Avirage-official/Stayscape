@@ -3,7 +3,7 @@
  *
  * Coordinates the full sync pipeline:
  * 1. Create a sync_run record
- * 2. Fetch places from Geoapify
+ * 2. Fetch places from Foursquare
  * 3. Upsert into Supabase
  * 4. Queue AI enrichment for new records
  * 5. Complete the sync_run
@@ -22,7 +22,7 @@ import {
   completeSyncRun,
   failSyncRun,
 } from '@/lib/supabase';
-import { searchPlaces, type GeoapifySearchParams } from '@/lib/services/geoapify';
+import { searchPlaces, type FoursquareSearchParams } from '@/lib/services/foursquare';
 import { enrichNewPlaces } from '@/lib/services/ai/enrichment';
 
 const DEFAULT_SYNC_RADIUS_METERS = 5000;
@@ -55,19 +55,17 @@ export async function syncPlaces(
   // 1. Create sync_run
   const syncRun = await createSyncRun(supabase, {
     sync_type: 'places',
-    provider: 'geoapify',
+    provider: 'foursquare',
     region_id: options.region_id,
   });
 
   try {
-    // 2. Fetch from Geoapify
-    const searchParams: GeoapifySearchParams = {
+    // 2. Fetch from Foursquare
+    const searchParams: FoursquareSearchParams = {
       latitude: options.latitude,
       longitude: options.longitude,
       radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
-      categories: options.categories,
       limit: options.limit ?? 100,
-      countryCode: options.country_code,
     };
 
     const rawPlaces = await searchPlaces(searchParams);
