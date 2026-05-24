@@ -27,6 +27,8 @@ type SelectedItem = {
   contentType: ExploreSection['content_type'];
 };
 
+const AUTO_DRILL_SECTIONS = new Set(['made_for_you', 'happening_now', 'arias_picks']);
+
 function sectionShortLabel(id: string) {
   if (id === 'made_for_you') return 'Yours';
   if (id === 'in_your_world') return 'Nearby';
@@ -110,16 +112,7 @@ export default function ExploreSwiper({
   const isDragging = useRef(false);
   const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const goTo = useCallback(
-    (index: number) => {
-      setView({ level: 0 });
-      setDrillItems([]);
-      setDrillCategories([]);
-      setActiveIndex(Math.max(0, Math.min(sections.length - 1, index)));
-    },
-    [sections.length],
-  );
+  const lastDrilledCityRef = useRef<string | null>(null);
 
   const fetchDrillData = useCallback(async (
     sectionId: string,
@@ -177,6 +170,56 @@ export default function ExploreSwiper({
       if (panelT2Ref.current) clearTimeout(panelT2Ref.current);
     };
   }, []);
+
+  const goTo = useCallback(
+    (index: number) => {
+      const safeIndex = Math.max(0, Math.min(sections.length - 1, index));
+      const targetSection = sections[safeIndex];
+
+      setDrillItems([]);
+      setDrillCategories([]);
+      setActiveIndex(safeIndex);
+
+      if (AUTO_DRILL_SECTIONS.has(targetSection?.id) && selectedRegionId) {
+        const region = regions.find(r => r.id === selectedRegionId);
+        if (region) {
+          lastDrilledCityRef.current = selectedRegionId;
+          setActiveRegion(region);
+          transitionPanel(() => {
+            setView({ level: 1, sectionId: targetSection.id });
+            void fetchDrillData(targetSection.id, region, null);
+          });
+          return;
+        }
+      }
+
+      setView({ level: 0 });
+      setActiveRegion(null);
+    },
+    [sections, selectedRegionId, regions, transitionPanel, fetchDrillData],
+  );
+
+  // Auto-drill into the selected city when on Yours / Tonight / Aria sections.
+  // Fires on initial load and whenever the selected city changes.
+  useEffect(() => {
+    if (!selectedRegionId || !sections.length) return;
+    if (lastDrilledCityRef.current === selectedRegionId) return;
+
+    const active = sections[activeIndex];
+    if (!active || !AUTO_DRILL_SECTIONS.has(active.id)) return;
+
+    const region = regions.find(r => r.id === selectedRegionId);
+    if (!region) return;
+
+    lastDrilledCityRef.current = selectedRegionId;
+    cacheRef.current.clear();
+    setDrillItems([]);
+    setDrillCategories([]);
+    setActiveRegion(region);
+    setView({ level: 1, sectionId: active.id });
+    void fetchDrillData(active.id, region, null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRegionId, sections]);
 
   const drillToRegion = useCallback((region: RegionOption) => {
     const active = sections[activeIndex];

@@ -124,8 +124,12 @@ export async function getPlacesByRegionAndCategory(
   supabase: SupabaseClient,
   regionId: string,
   category: string | null,
-  limit = 6,
+  limit = 20,
 ): Promise<DrillPlaceCard[]> {
+  // When fetching all categories (category = null), use a high limit so every
+  // category present in the region surfaces for the L1 grid.
+  const effectiveLimit = category === null ? 100 : limit;
+
   let query = supabase
     .from('places')
     .select(
@@ -133,10 +137,9 @@ export async function getPlacesByRegionAndCategory(
     )
     .eq('is_active', true)
     .eq('region_id', regionId)
-    .gte('rating', 7.0)
     .order('is_featured', { ascending: false })
-    .order('rating', { ascending: false })
-    .limit(limit);
+    .order('rating', { ascending: false, nullsFirst: false })
+    .limit(effectiveLimit);
 
   if (category) query = query.eq('category', category);
 
