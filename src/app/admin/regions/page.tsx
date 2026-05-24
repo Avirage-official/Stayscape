@@ -311,7 +311,7 @@ export default function AdminRegionsPage() {
                         onClick={() => setSeedExpanded(region.id)}
                         className="self-start rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#C9A84C] disabled:opacity-40"
                       >
-                        {regionActions.seed.state === 'loading' ? 'Seeding…' : 'Seed from Geoapify'}
+                        {regionActions.seed.state === 'loading' ? 'Seeding…' : 'Seed from Foursquare'}
                       </button>
                     )}
                     {regionActions.seed.message && (
