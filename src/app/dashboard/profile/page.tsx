@@ -218,7 +218,7 @@ export default function ProfilePage() {
   if (isLoading) return <GuestArrivalSkeleton />;
 
   if (!user) {
-    router.replace('/login');
+    router.replace('/guests');
     return null;
   }
 

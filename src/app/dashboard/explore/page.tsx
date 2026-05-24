@@ -47,7 +47,7 @@ export default function ExplorePage() {
   // Redirect unauthenticated visitors
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace('/login');
+      router.replace('/guests');
     }
   }, [authLoading, user, router]);
 
@@ -133,14 +133,16 @@ export default function ExplorePage() {
   }
 
   return (
-    <ExploreSwiper
-      sections={data.sections}
-      regions={data.regions}
-      selectedRegionId={selectedRegionId}
-      firstName={data.firstName}
-      onPersonalise={handlePersonalise}
-      isPersonalising={isPersonalising}
-      isRefreshing={isRefreshing}
-    />
+    <div style={{ height: 'calc(100dvh - 72px)', overflow: 'hidden' }}>
+      <ExploreSwiper
+        sections={data.sections}
+        regions={data.regions}
+        selectedRegionId={selectedRegionId}
+        firstName={data.firstName}
+        onPersonalise={handlePersonalise}
+        isPersonalising={isPersonalising}
+        isRefreshing={isRefreshing}
+      />
+    </div>
   );
 }

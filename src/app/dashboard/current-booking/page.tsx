@@ -338,7 +338,7 @@ export default function CurrentBookingPage() {
   }
 
   if (!user) {
-    router.replace('/login');
+    router.replace('/guests');
     return null;
   }
 
