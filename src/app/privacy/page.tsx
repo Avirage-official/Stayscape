@@ -160,7 +160,7 @@ export default function PrivacyPolicyPage() {
               ['Supabase', 'Database, authentication, and file storage'],
               ['Anthropic', 'AI concierge (Aria) responses'],
               ['Mapbox', 'Maps and location display'],
-              ['Geoapify', 'Place search and geocoding'],
+              ['Foursquare', 'Place search and details'],
               ['Vercel', 'Application hosting'],
               ['Stripe', 'Payments (where applicable)'],
               ['Your hotel', 'Stay details and service requests for your booking'],
