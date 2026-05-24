@@ -25,7 +25,7 @@ const AGE_REACTIONS: Record<string, string> = {
 };
 
 const NOVELTY_OPTIONS = [
-  { value: 'pioneer',  label: 'I go where others haven't' },
+  { value: 'pioneer',  label: "I go where others haven't" },
   { value: 'explorer', label: 'I love discovering, with some comfort' },
   { value: 'homebody', label: 'I find a neighbourhood and live in it' },
 ] as const;
@@ -38,7 +38,7 @@ const VIBE_OPTIONS = [
 ] as const;
 
 const DISCOVERY_OPTIONS = [
-  { value: 'word_of_mouth',   label: 'Locals or friends who've been — I need that personal tip' },
+  { value: 'word_of_mouth',   label: "Locals or friends who've been — I need that personal tip" },
   { value: 'deep_research',   label: 'I read everything before I go' },
   { value: 'spontaneous',     label: 'I just wander and see what happens' },
   { value: 'curated_lists',   label: 'I trust editors and best-of guides' },
@@ -55,7 +55,7 @@ const PLANNING_OPTIONS = [
   { value: 'planner',      label: 'Spreadsheet, itinerary, fully sorted' },
   { value: 'loose_plan',   label: 'A few anchors, rest is open' },
   { value: 'first_day',    label: 'I plan the first day, then improvise' },
-  { value: 'full_improv',  label: 'Wing it entirely — that's the fun' },
+  { value: 'full_improv',  label: 'Wing it entirely — that\'s the fun' },
 ] as const;
 
 const SPEND_OPTIONS = [
