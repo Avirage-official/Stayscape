@@ -1,7 +1,8 @@
 /**
  * POST /api/admin/sync/places
  *
- * Admin endpoint to trigger a places sync from Geoapify.
+ * Admin endpoint to trigger a places sync from the configured place provider
+ * (currently Foursquare Places API).
  * Requires a region_id, latitude, and longitude.
  */
 
