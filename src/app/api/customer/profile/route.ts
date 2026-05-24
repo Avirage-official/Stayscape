@@ -18,7 +18,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
-import { derivePersonaScores } from '@/lib/services/ai/derive-personas';
+import {
+  derivePersonaScores,
+  type NoveltyValue,
+  type DiscoveryValue,
+  type FoodValue,
+  type PlanningValue,
+  type SpendValue,
+} from '@/lib/services/ai/derive-personas';
 
 export const dynamic = 'force-dynamic';
 
@@ -264,11 +271,11 @@ export async function POST(request: NextRequest) {
   // wired in later from the most recent stay if needed. For now we pass null
   // / 1 so derivePersonaScores still returns a stable vector.
   const personaScores = derivePersonaScores({
-    novelty: (novelty_result.value as any) ?? null,
-    discovery: (discovery_result.value as any) ?? null,
-    food: (food_result.value as any) ?? null,
-    planning: (planning_result.value as any) ?? null,
-    spend: (spend_result.value as any) ?? null,
+    novelty: (novelty_result.value as NoveltyValue) ?? null,
+    discovery: (discovery_result.value as DiscoveryValue) ?? null,
+    food: (food_result.value as FoodValue) ?? null,
+    planning: (planning_result.value as PlanningValue) ?? null,
+    spend: (spend_result.value as SpendValue) ?? null,
     vibes,
     trip_type: null,
     guestcount: 1,
