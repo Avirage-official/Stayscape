@@ -17,7 +17,7 @@ interface RegionCardData {
   imagePath: string | null;
 }
 
-type ActionKey = 'seed' | 'enrich' | 'reverify';
+type ActionKey = 'seed' | 'enrich' | 'reverify' | 'images';
 type ActionState = 'idle' | 'loading' | 'done' | 'error';
 
 interface RegionAction {
@@ -58,7 +58,7 @@ function defaultAction(): RegionAction {
 }
 
 function defaultActions(): Record<ActionKey, RegionAction> {
-  return { seed: defaultAction(), enrich: defaultAction(), reverify: defaultAction() };
+  return { seed: defaultAction(), enrich: defaultAction(), reverify: defaultAction(), images: defaultAction() };
 }
 
 export default function AdminRegionsPage() {
@@ -99,14 +99,14 @@ export default function AdminRegionsPage() {
       seed: '/api/admin/sync/places',
       enrich: '/api/admin/enrich/places',
       reverify: '/api/admin/places/reverify',
+      images: '/api/admin/places/fetch-images',
     };
 
     setAction(regionId, key, { state: 'loading', message: '' });
-    setSeedExpanded(null);
+    if (key === 'seed') setSeedExpanded(null);
 
     const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY ?? '';
 
-    // Seed requires lat/lng — include them if available
     const body: Record<string, unknown> = { region_id: regionId };
     if (key === 'seed') {
       if (region.latitude != null) body.latitude = region.latitude;
@@ -134,18 +134,22 @@ export default function AdminRegionsPage() {
         msg = `Seeded ${d.records_created ?? d.upserted ?? d.total ?? 0} new, ${d.records_updated ?? 0} updated`;
       } else if (key === 'enrich') {
         msg = `Enriched ${d.enriched ?? 0}${d.failed ? `, ${d.failed} failed` : ''}`;
-      } else {
+      } else if (key === 'reverify') {
         msg = `Re-verified ${d.reverified ?? 0}${d.flagged ? `, ${d.flagged} flagged` : ''}`;
+      } else if (key === 'images') {
+        msg = `Updated images for ${d.updated ?? 0} places${d.skipped ? `, ${d.skipped} skipped` : ''}${d.failed ? `, ${d.failed} failed` : ''}`;
       }
 
       setAction(regionId, key, { state: 'done', message: msg });
 
-      setTimeout(() => {
-        fetch('/api/admin/regions')
-          .then((r) => r.json())
-          .then((data) => setRegions(data.regions ?? []))
-          .catch(() => null);
-      }, 1500);
+      if (key === 'seed' || key === 'enrich' || key === 'reverify') {
+        setTimeout(() => {
+          fetch('/api/admin/regions')
+            .then((r) => r.json())
+            .then((data) => setRegions(data.regions ?? []))
+            .catch(() => null);
+        }, 1500);
+      }
     } catch (err) {
       setAction(regionId, key, { state: 'error', message: (err as Error).message });
     }
@@ -321,7 +325,7 @@ export default function AdminRegionsPage() {
                     )}
                   </div>
 
-                  {/* Enrich + Re-verify */}
+                  {/* Enrich + Re-verify + Fetch Images */}
                   <div className="flex flex-wrap gap-2">
                     {(
                       [
@@ -334,6 +338,11 @@ export default function AdminRegionsPage() {
                           key: 'reverify' as ActionKey,
                           label: 'Re-verify Places',
                           loadingLabel: 'Verifying…',
+                        },
+                        {
+                          key: 'images' as ActionKey,
+                          label: 'Fetch Foursquare Images',
+                          loadingLabel: 'Fetching images…',
                         },
                       ] as const
                     ).map(({ key, label, loadingLabel }) => {
