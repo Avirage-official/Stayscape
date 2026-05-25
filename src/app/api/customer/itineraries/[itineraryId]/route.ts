@@ -62,7 +62,7 @@ export async function GET(
     const { data: itinerary, error: itinError } = await sb
       .from('itineraries')
       .select(`
-        id, stayid, userid, title, status, startdate, enddate, createdat, updatedat,
+        id, stayid, userid, title, status, createdat, updatedat,
         stays ( checkindate, checkoutdate, properties ( name ) )
       `)
       .eq('id', itineraryId)

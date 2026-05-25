@@ -102,15 +102,27 @@ export async function POST(request: NextRequest) {
 
   try {
     const sb = getSupabaseAdmin();
+    // Insert without date columns so it works even before migration is applied
     const { data, error } = await sb
       .from('itineraries')
-      .insert({ userid: user.id, stayid: null, title: title ?? null, startdate, enddate })
+      .insert({ userid: user.id, stayid: null, title: title ?? null })
       .select('id')
       .single();
 
     if (error || !data) {
       console.error('[POST /api/customer/itineraries]', error?.message);
       return NextResponse.json({ error: 'Failed to create itinerary' }, { status: 500, headers: rateLimit.headers });
+    }
+
+    // Best-effort: store date range (silently skipped if migration not yet applied)
+    if (startdate || enddate) {
+      const { error: dateErr } = await sb
+        .from('itineraries')
+        .update({ startdate, enddate })
+        .eq('id', data.id);
+      if (dateErr) {
+        console.warn('[POST /api/customer/itineraries] date columns not yet migrated:', dateErr.message);
+      }
     }
 
     return NextResponse.json({ id: data.id }, { status: 201, headers: rateLimit.headers });
