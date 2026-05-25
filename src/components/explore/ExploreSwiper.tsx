@@ -129,6 +129,7 @@ export default function ExploreSwiper({
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionOption | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [nudgeRegion, setNudgeRegion] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   // L0 swipe state — only used on the section hero, never on drill levels
@@ -226,6 +227,16 @@ export default function ExploreSwiper({
     setCarouselIndex(0);
     transitionPanel(() => { setView({ level: 2, sectionId: active.id, region, category }); fetchDrillData(active.id, region, category); });
   }, [sections, activeIndex, transitionPanel, fetchDrillData]);
+
+  const handleExplore = useCallback(() => {
+    if (selectedRegionId) {
+      const region = regions.find(r => r.id === selectedRegionId);
+      if (region) drillToRegion(region);
+    } else {
+      setNudgeRegion(true);
+      setTimeout(() => setNudgeRegion(false), 2000);
+    }
+  }, [selectedRegionId, regions, drillToRegion]);
 
   const drillToItem = useCallback((item: DrillPlaceCard | DrillEventCard, sectionId: string) => {
     const contentType = sectionId === 'happening_now' ? 'events' : 'places';
@@ -621,11 +632,11 @@ export default function ExploreSwiper({
       >
         {view.level === 0 ? (
           <>
-            <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} />
+            <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
             <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>Explore {greeting}</p>
             <button
               onClick={() => setShowRegionSheet(true)}
-              style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.52)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(250,248,245,0.14)', borderRadius: '20px', padding: '7px 11px 7px 9px', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.52)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: `1px solid ${nudgeRegion ? 'rgba(193,127,58,0.7)' : 'rgba(250,248,245,0.14)'}`, borderRadius: '20px', padding: '7px 11px 7px 9px', cursor: 'pointer', animation: nudgeRegion ? 'hsNudge 0.45s ease-in-out 4' : 'none' }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.85)" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
@@ -635,6 +646,11 @@ export default function ExploreSwiper({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
+            {nudgeRegion && (
+              <p style={{ position: 'absolute', top: 48, right: 16, zIndex: 21, margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.9)', background: 'rgba(14,11,8,0.75)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(193,127,58,0.3)', pointerEvents: 'none', animation: 'hsFadeIn 150ms ease' }}>
+                Please select a city
+              </p>
+            )}
           </>
         ) : renderLeftDrillCanvas()}
 
@@ -690,7 +706,7 @@ export default function ExploreSwiper({
         <div style={{ flex: 1, position: 'relative', borderRadius: '20px', overflow: 'hidden' }}>
           {view.level === 0 ? (
             <>
-              <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} />
+              <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
               <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>Explore {greeting}</p>
             </>
           ) : renderLeftDrillCanvas()}
@@ -713,6 +729,8 @@ export default function ExploreSwiper({
           onRegionChange={onRegionChange}
           onPersonalise={onPersonalise}
           isPersonalising={isPersonalising}
+          nudgeCity={nudgeRegion}
+          onItemClick={(item, contentType) => setSelectedItem({ item, contentType })}
         />
       </div>
 
@@ -730,6 +748,8 @@ export default function ExploreSwiper({
         @keyframes ecPulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.6); opacity:0.5; } }
         @keyframes hsItemIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes hsCatIn { from { opacity:0; transform:translateY(10px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes hsNudge { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px rgba(193,127,58,0.55), 0 4px 16px rgba(193,127,58,0.25); } }
+        @keyframes hsFadeIn { from { opacity:0; } to { opacity:1; } }
         div::-webkit-scrollbar { display:none; }
       `}</style>
     </div>
