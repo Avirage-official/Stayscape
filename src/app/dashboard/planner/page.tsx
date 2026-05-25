@@ -161,9 +161,8 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   const active = places[activeIndex] ?? null;
   const activePlace = active?.places ?? null;
 
-  // ── FIX: destroy and re-init map whenever the places array identity changes ──
+  // Destroy and re-init map whenever saved places array changes
   useEffect(() => {
-    // Cleanup previous instance first
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
@@ -176,7 +175,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
     if (!valid.length) return;
 
     import('mapbox-gl').then((mapboxgl) => {
-      // Guard: component may have unmounted or places changed again
       if (!mapRef.current) return;
       const mb = mapboxgl.default;
       mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
@@ -209,7 +207,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       mapInstanceRef.current = null;
       markersRef.current = [];
     };
-  // Re-run whenever the places array itself changes (not just length)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedPlaces]);
 
@@ -456,12 +453,13 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
     const token = await getBearerToken();
     if (!token) { setSaving(false); setError('Session expired'); return; }
     try {
-      const body: Record<string, string|number> = {
+      // Always send notes — empty string clears it, which is valid
+      const body: Record<string, string | number> = {
         scheduleddate: date,
         starttime: time,
         durationhours: parseFloat(duration) || 1,
+        notes: notes.trim(),
       };
-      if (notes.trim()) body.notes = notes.trim();
 
       const res = await fetch(`/api/customer/itineraries/${itineraryId}/items/${item.id}`, {
         method: 'PATCH',
@@ -584,9 +582,11 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
     async function load() {
       const token = await getBearerToken(); if (!token) { setLoading(false); return; }
       try {
-        const res = await fetch(`/api/customer/itineraries/${itin.id}/items`, { headers:{ Authorization:`Bearer ${token}` } });
+        // FIX: use the itinerary route which returns { itinerary, items }
+        // /items sub-route only has POST, not GET
+        const res = await fetch(`/api/customer/itineraries/${itin.id}`, { headers:{ Authorization:`Bearer ${token}` } });
         if (!res.ok) throw new Error();
-        const json = await res.json() as { items: DbItineraryItemEnriched[] };
+        const json = await res.json() as { itinerary: DbItineraryListed; items: DbItineraryItemEnriched[] };
         setItems(json.items);
       } catch { setItems([]); }
       finally { setLoading(false); }
