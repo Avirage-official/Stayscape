@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ExploreSection } from './ExploreCard';
+import type { ExploreSection, ExploreItem } from './ExploreCard';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 
 export interface ExploreWebPanelProps {
@@ -15,6 +15,8 @@ export interface ExploreWebPanelProps {
   onRegionChange?: (regionId: string) => void;
   onPersonalise: () => void;
   isPersonalising: boolean;
+  onItemClick?: (item: ExploreItem, contentType: ExploreSection['content_type']) => void;
+  nudgeCity?: boolean;
 }
 
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
@@ -35,6 +37,12 @@ const GLASS: React.CSSProperties = {
   borderRadius: '18px',
 };
 
+function itemSubtitle(item: ExploreItem): string | null {
+  if ('category' in item) return String((item as { category: unknown }).category ?? '');
+  if ('city' in item) return (item as { city: string | null }).city ?? null;
+  return null;
+}
+
 export default function ExploreWebPanel({
   sections,
   regions,
@@ -46,6 +54,8 @@ export default function ExploreWebPanel({
   onRegionChange,
   onPersonalise,
   isPersonalising,
+  onItemClick,
+  nudgeCity,
 }: ExploreWebPanelProps) {
   const [ariaQuery, setAriaQuery] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
@@ -53,6 +63,7 @@ export default function ExploreWebPanel({
   const active = sections[activeIndex];
   const isAria   = active?.id === 'arias_picks';
   const isNearby = active?.id === 'in_your_world';
+  const isYours  = active?.id === 'made_for_you';
 
   const currentCity = regions.find(r => r.id === selectedRegionId) ?? null;
 
@@ -63,7 +74,7 @@ export default function ExploreWebPanel({
     >
 
       {/* ── City selector — always visible, always at the top ── */}
-      <div style={{ ...GLASS, padding: 0, flexShrink: 0, overflow: 'hidden' }}>
+      <div style={{ ...GLASS, padding: 0, flexShrink: 0, overflow: 'hidden', animation: nudgeCity ? 'wcNudge 0.45s ease-in-out 4' : 'none' }}>
         <button
           onClick={() => setCityOpen(v => !v)}
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
@@ -179,9 +190,22 @@ export default function ExploreWebPanel({
       {/* L1 content */}
       <div style={{ ...GLASS, padding: '14px 16px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-        {/* Aria: concierge input */}
+        {/* Aria: featured pick + concierge input */}
         {isAria && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+            {active?.items[0] && (
+              <button
+                onClick={() => onItemClick?.(active.items[0], active.content_type)}
+                style={{ display: 'flex', flexDirection: 'column', gap: '3px', padding: '11px 13px', background: 'rgba(250,248,245,0.06)', border: '1px solid rgba(250,248,245,0.1)', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 160ms ease', boxSizing: 'border-box' } as React.CSSProperties}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.12)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.06)'; }}
+              >
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 500, color: '#FAF8F5', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{active.items[0].name}</p>
+                {itemSubtitle(active.items[0]) && (
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.75)', margin: 0, textTransform: 'capitalize' }}>{itemSubtitle(active.items[0])}</p>
+                )}
+              </button>
+            )}
             <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.55)', margin: 0, lineHeight: 1.5 }}>
               Tell Aria what you&apos;re looking for and she&apos;ll find it.
             </p>
@@ -261,8 +285,29 @@ export default function ExploreWebPanel({
           </>
         )}
 
-        {/* Made for you / Tonight: gentle prompt */}
-        {!isAria && !isNearby && (
+        {/* Made for you: featured pick */}
+        {isYours && (
+          active?.items[0] ? (
+            <button
+              onClick={() => onItemClick?.(active.items[0], active.content_type)}
+              style={{ display: 'flex', flexDirection: 'column', gap: '3px', padding: '11px 13px', background: 'rgba(250,248,245,0.06)', border: '1px solid rgba(250,248,245,0.1)', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 160ms ease', boxSizing: 'border-box' } as React.CSSProperties}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.12)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.06)'; }}
+            >
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 500, color: '#FAF8F5', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{active.items[0].name}</p>
+              {itemSubtitle(active.items[0]) && (
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.75)', margin: 0, textTransform: 'capitalize' }}>{itemSubtitle(active.items[0])}</p>
+              )}
+            </button>
+          ) : (
+            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.32)', margin: 0, lineHeight: 1.6 }}>
+              {currentCity ? `Curated for ${currentCity.name}.` : 'Select a city to personalise your curation.'}
+            </p>
+          )
+        )}
+
+        {/* Tonight / other sections: gentle prompt */}
+        {!isAria && !isNearby && !isYours && (
           <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.32)', margin: 0, lineHeight: 1.6 }}>
             {currentCity
               ? `Curated for ${currentCity.name}. Change your city above to explore somewhere new.`
@@ -284,6 +329,16 @@ export default function ExploreWebPanel({
         </button>
       </div>
 
+      {nudgeCity && (
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.85)', margin: 0, textAlign: 'center', animation: 'wcFadeIn 200ms ease' }}>
+          Please select a city first
+        </p>
+      )}
+
+      <style>{`
+        @keyframes wcNudge { 0%,100% { box-shadow: 0 0 0 0 rgba(193,127,58,0); } 50% { box-shadow: 0 0 0 3px rgba(193,127,58,0.55); } }
+        @keyframes wcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      `}</style>
     </div>
   );
 }

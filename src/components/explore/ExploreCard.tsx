@@ -27,6 +27,7 @@ interface ExploreCardProps {
   sections?: ExploreSection[];
   activeIndex?: number;
   onSectionChange?: (i: number) => void;
+  onExplore?: () => void;
 }
 
 const SECTION_LOCAL_IMAGE: Record<string, string> = {
@@ -54,7 +55,7 @@ function pad(n: number) {
   return String(n + 1).padStart(2, '0');
 }
 
-export default function ExploreCard({ section, sections, activeIndex = 0, onSectionChange }: ExploreCardProps) {
+export default function ExploreCard({ section, sections, activeIndex = 0, onSectionChange, onExplore }: ExploreCardProps) {
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const [prevIndex, setPrevIndex] = useState(activeIndex);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
@@ -257,6 +258,7 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
 
         {/* Explore CTA — like the Foxico "Explore →" pill */}
         <button
+          onClick={onExplore}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '10px',
             background: 'rgba(193,127,58,0.18)',
