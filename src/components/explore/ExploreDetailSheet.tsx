@@ -7,6 +7,7 @@ import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repo
 import type { RegionOption } from '@/app/dashboard/explore/page';
 import type { DrillPlaceCard, DrillEventCard } from '@/types/explore';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import ItineraryPickerSheet, { type PickerPlace } from './ItineraryPickerSheet';
 
 async function getBearerToken(): Promise<string | null> {
   const sb = getSupabaseBrowser();
@@ -70,7 +71,7 @@ export default function ExploreDetailSheet({
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [addingItinerary, setAddingItinerary] = useState(false);
+  const [pickerPlace, setPickerPlace] = useState<PickerPlace | null>(null);
 
   useEffect(() => {
     if (item) {
@@ -177,58 +178,14 @@ export default function ExploreDetailSheet({
     }
   }
 
-  async function handleItinerary() {
-    if (!item || added || addingItinerary) return;
-    const itemId = (item as { id?: string }).id ?? null;
-    setAddingItinerary(true);
-    try {
-      const token = await getBearerToken();
-      if (!token) return;
-
-      // 1. Find or create a standalone itinerary
-      const listRes = await fetch('/api/customer/itineraries', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!listRes.ok) return;
-      const { itineraries } = await listRes.json() as { itineraries: Array<{ id: string; stayid: string | null }> };
-      const standalone = itineraries.find(it => !it.stayid);
-
-      let itineraryId: string;
-      if (standalone) {
-        itineraryId = standalone.id;
-      } else {
-        const createRes = await fetch('/api/customer/itineraries', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-        if (!createRes.ok) return;
-        const { id } = await createRes.json() as { id: string };
-        itineraryId = id;
-      }
-
-      // 2. Insert the item
-      const addRes = await fetch(`/api/customer/itineraries/${itineraryId}/items`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          place_id: itemId,
-          name: item.name ?? '',
-          category: (item as DrillPlaceCard).category ?? null,
-          image: (item as DrillPlaceCard).image_url ?? null,
-          scheduleddate: new Date().toISOString().split('T')[0],
-          starttime: '10:00',
-          durationhours: 1,
-        }),
-      });
-
-      if (addRes.ok) {
-        setAdded(true);
-        setTimeout(() => setAdded(false), 1800);
-      }
-    } catch { /* silently fail */ } finally {
-      setAddingItinerary(false);
-    }
+  function openItineraryPicker() {
+    if (!item || !isPlace || !place?.id || added) return;
+    setPickerPlace({
+      id: place.id,
+      name: item.name ?? 'Unknown place',
+      category: (item as DrillPlaceCard).category ?? null,
+      image_url: (item as DrillPlaceCard).image_url ?? null,
+    });
   }
 
   function handleClose() {
@@ -249,6 +206,7 @@ export default function ExploreDetailSheet({
   };
 
   return (
+    <>
     <div style={overlayStyle} role="dialog" aria-modal="true" aria-label={itemName}>
 
       {/* ─────────────────────────────────────────────────────
@@ -522,21 +480,21 @@ export default function ExploreDetailSheet({
             </a>
           ) : (
             <button
-              onClick={() => void handleItinerary()}
-              disabled={addingItinerary}
+              onClick={openItineraryPicker}
+              disabled={!isPlace}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 background: added ? 'rgba(250,248,245,0.12)' : accentFg,
                 border: added ? `1px solid ${accentFg}60` : 'none',
                 borderRadius: '40px',
                 padding: '12px 24px',
-                cursor: addingItinerary ? 'default' : 'pointer',
+                cursor: isPlace ? 'pointer' : 'default',
                 boxShadow: added ? 'none' : `0 6px 24px ${accentFg}44`,
                 transition: 'background 200ms ease, box-shadow 200ms ease, transform 140ms ease',
                 transform: 'translateX(0)',
-                opacity: addingItinerary ? 0.6 : 1,
+                opacity: isPlace ? 1 : 0.5,
               }}
-              onMouseEnter={e => { if (!added && !addingItinerary) e.currentTarget.style.transform = 'translateX(4px)'; }}
+              onMouseEnter={e => { if (!added && isPlace) e.currentTarget.style.transform = 'translateX(4px)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; }}
             >
               {added
@@ -580,5 +538,18 @@ export default function ExploreDetailSheet({
 
       <style>{`div::-webkit-scrollbar{display:none;}`}</style>
     </div>
+    {pickerPlace && (
+      <ItineraryPickerSheet
+        place={pickerPlace}
+        getBearerToken={getBearerToken}
+        onClose={() => setPickerPlace(null)}
+        onAdded={() => {
+          setPickerPlace(null);
+          setAdded(true);
+          setTimeout(() => setAdded(false), 1800);
+        }}
+      />
+    )}
+    </>
   );
 }
