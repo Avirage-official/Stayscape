@@ -6,6 +6,19 @@ import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 import type { DrillPlaceCard, DrillEventCard } from '@/types/explore';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
+import {
+  createStandaloneItinerary,
+  insertItineraryItem,
+  listUserItineraries,
+} from '@/lib/supabase/itinerary-repository';
+
+async function getBearerToken(): Promise<string | null> {
+  const sb = getSupabaseBrowser();
+  if (!sb) return null;
+  const { data: { session } } = await sb.auth.getSession();
+  return session?.access_token ?? null;
+}
 
 interface ExploreDetailSheetProps {
   item: ExploreItem | DrillPlaceCard | DrillEventCard | null;
@@ -61,6 +74,8 @@ export default function ExploreDetailSheet({
   const [added, setAdded] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addingItinerary, setAddingItinerary] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -85,6 +100,27 @@ export default function ExploreDetailSheet({
     document.body.style.overflow = item ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [item]);
+
+  useEffect(() => {
+    if (!item || contentType !== 'places') return;
+    const placeId = (item as DrillPlaceCard).id;
+    if (!placeId) return;
+    let cancelled = false;
+    void (async () => {
+      const token = await getBearerToken();
+      if (!token || cancelled) return;
+      try {
+        const res = await fetch('/api/customer/saved-places', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const json = await res.json() as { saved_places: Array<{ place_id: string }> };
+        if (cancelled) return;
+        setSaved(json.saved_places.some(sp => sp.place_id === placeId));
+      } catch { /* silently fail */ }
+    })();
+    return () => { cancelled = true; };
+  }, [item, contentType]);
 
   if (!mounted || !item) return null;
 
@@ -121,13 +157,65 @@ export default function ExploreDetailSheet({
   const address  = place?.address ?? event?.address ?? null;
   const venueName = event?.venue_name ?? null;
 
-  function handleSave() { setSaved(s => !s); }
+  async function handleSave() {
+    if (!isPlace || !place?.id || saving) return;
+    const token = await getBearerToken();
+    if (!token) return;
+    setSaving(true);
+    try {
+      if (saved) {
+        const res = await fetch(`/api/customer/saved-places/${encodeURIComponent(place.id)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) setSaved(false);
+      } else {
+        const res = await fetch('/api/customer/saved-places', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ place_id: place.id }),
+        });
+        if (res.ok) setSaved(true);
+      }
+    } catch { /* silently fail */ } finally {
+      setSaving(false);
+    }
+  }
 
-  function handleItinerary() {
-    if (!item || added) return;
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
-    onAddToItinerary?.(item);
+  async function handleItinerary() {
+    if (!item || added || addingItinerary) return;
+    const itemId = (item as { id?: string }).id;
+    if (!itemId) return;
+    setAddingItinerary(true);
+    try {
+      const sb = getSupabaseBrowser();
+      if (!sb) return;
+      const { data: { session } } = await sb.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) return;
+      const itineraries = await listUserItineraries(userId);
+      const standalone = itineraries?.find(it => !it.stayid) ?? null;
+      const itineraryId = standalone
+        ? standalone.id
+        : await createStandaloneItinerary(userId);
+      if (!itineraryId) return;
+      const result = await insertItineraryItem(itineraryId, {
+        place_id: itemId,
+        titleoverride: null,
+        scheduleddate: new Date().toISOString().split('T')[0],
+        starttime: '10:00',
+        durationhours: 1,
+        name: item.name ?? null,
+        category: (item as DrillPlaceCard).category ?? null,
+        image: (item as DrillPlaceCard).image_url ?? null,
+      });
+      if (result) {
+        setAdded(true);
+        setTimeout(() => setAdded(false), 1800);
+      }
+    } catch { /* silently fail */ } finally {
+      setAddingItinerary(false);
+    }
   }
 
   function handleClose() {
@@ -222,15 +310,17 @@ export default function ExploreDetailSheet({
            FROSTED BOOKMARK — top right (below close)
       ───────────────────────────────────────────────────── */}
       <button
-        onClick={handleSave}
+        onClick={() => void handleSave()}
         aria-label={saved ? 'Unsave' : 'Save'}
+        disabled={saving || !isPlace}
         style={{
           position: 'absolute', top: '68px', right: '20px', zIndex: 70,
           width: '38px', height: '38px', borderRadius: '50%',
           background: saved ? `${accentFg}30` : 'rgba(8,6,4,0.55)',
           backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
           border: `1px solid ${saved ? accentFg + '70' : 'rgba(250,248,245,0.18)'}`,
-          cursor: 'pointer',
+          cursor: (saving || !isPlace) ? 'default' : 'pointer',
+          opacity: (saving || !isPlace) ? 0.5 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'background 200ms ease, border-color 200ms ease, transform 160ms ease',
         }}
@@ -419,19 +509,21 @@ export default function ExploreDetailSheet({
             </a>
           ) : (
             <button
-              onClick={handleItinerary}
+              onClick={() => void handleItinerary()}
+              disabled={addingItinerary}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 background: added ? 'rgba(250,248,245,0.12)' : accentFg,
                 border: added ? `1px solid ${accentFg}60` : 'none',
                 borderRadius: '40px',
                 padding: '12px 24px',
-                cursor: 'pointer',
+                cursor: addingItinerary ? 'default' : 'pointer',
                 boxShadow: added ? 'none' : `0 6px 24px ${accentFg}44`,
                 transition: 'background 200ms ease, box-shadow 200ms ease, transform 140ms ease',
                 transform: 'translateX(0)',
+                opacity: addingItinerary ? 0.6 : 1,
               }}
-              onMouseEnter={e => { if (!added) e.currentTarget.style.transform = 'translateX(4px)'; }}
+              onMouseEnter={e => { if (!added && !addingItinerary) e.currentTarget.style.transform = 'translateX(4px)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; }}
             >
               {added
