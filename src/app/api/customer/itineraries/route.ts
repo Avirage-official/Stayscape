@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: rateLimit.headers });
   }
 
-  let body: { title?: string } = {};
+  let body: { title?: string; startdate?: string; enddate?: string } = {};
   try {
     body = await request.json();
   } catch {
@@ -96,11 +96,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'title must be 100 characters or fewer' }, { status: 400, headers: rateLimit.headers });
   }
 
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  const startdate = typeof body.startdate === 'string' && dateRe.test(body.startdate) ? body.startdate : null;
+  const enddate   = typeof body.enddate   === 'string' && dateRe.test(body.enddate)   ? body.enddate   : null;
+
   try {
     const sb = getSupabaseAdmin();
     const { data, error } = await sb
       .from('itineraries')
-      .insert({ userid: user.id, stayid: null, title: title ?? null })
+      .insert({ userid: user.id, stayid: null, title: title ?? null, startdate, enddate })
       .select('id')
       .single();
 

@@ -150,6 +150,7 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   const [unsaving, setUnsaving] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [pickerPlace, setPickerPlace] = useState<{ id: string; name: string; category?: string | null; image_url?: string | null } | null>(null);
+  const [expandPlace, setExpandPlace] = useState<DbSavedPlaceEnriched | null>(null);
 
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -329,16 +330,32 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
         {places.map((item, i) => {
           const p = item.places; const isActive = i === activeIndex;
           return (
-            <button key={item.id} onClick={() => setActiveIndex(i)}
-              style={{ flexShrink:0,width:100,height:72,borderRadius:10,overflow:'hidden',position:'relative',border:isActive?`2px solid ${GOLD}`:'2px solid transparent',cursor:'pointer',background:'#1a1614',transition:'border-color 200ms ease,transform 200ms ease',transform:isActive?'scale(1.04)':'scale(1)',scrollSnapAlign:'start',padding:0 }}
+            <div key={item.id}
+              style={{ flexShrink:0,width:100,height:72,borderRadius:10,overflow:'hidden',position:'relative',border:isActive?`2px solid ${GOLD}`:'2px solid transparent',background:'#1a1614',transition:'border-color 200ms ease,transform 200ms ease',transform:isActive?'scale(1.04)':'scale(1)',scrollSnapAlign:'start' }}
             >
               {p?.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.image_url} alt={p.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover' }} />
               ) : (<div style={{ position:'absolute',inset:0,background:'#2a2018' }} />)}
               <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,0.75) 0%,transparent 55%)' }} />
-              <p style={{ position:'absolute',bottom:5,left:6,right:6,fontSize:9,fontWeight:600,color:'rgba(255,255,255,0.85)',letterSpacing:'0.03em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif",margin:0 }}>{p?.name??'—'}</p>
-            </button>
+              <p style={{ position:'absolute',bottom:5,left:6,right:30,fontSize:9,fontWeight:600,color:'rgba(255,255,255,0.85)',letterSpacing:'0.03em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif",margin:0 }}>{p?.name??'—'}</p>
+              {/* Pin icon — fly map to this place */}
+              <button
+                onClick={() => setActiveIndex(i)}
+                aria-label="Locate on map"
+                style={{ position:'absolute',bottom:4,right:22,width:16,height:16,borderRadius:'50%',background:'rgba(0,0,0,0.5)',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',padding:0 }}
+              >
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+              </button>
+              {/* Expand icon — open place detail sheet */}
+              <button
+                onClick={() => setExpandPlace(item)}
+                aria-label="View details"
+                style={{ position:'absolute',bottom:4,right:4,width:16,height:16,borderRadius:'50%',background:'rgba(0,0,0,0.5)',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',padding:0 }}
+              >
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              </button>
+            </div>
           );
         })}
       </div>
@@ -350,6 +367,21 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           getBearerToken={getBearerToken}
           onClose={() => setPickerPlace(null)}
           onAdded={() => setPickerPlace(null)}
+        />
+      )}
+
+      {/* Expand / Place Detail Sheet */}
+      {expandPlace && (
+        <SavedPlaceSheet
+          item={expandPlace}
+          onClose={() => setExpandPlace(null)}
+          onUnsave={async () => { await onUnsave(expandPlace.place_id); setExpandPlace(null); }}
+          onAddToItinerary={() => {
+            const p = expandPlace.places;
+            if (!p) return;
+            setExpandPlace(null);
+            setPickerPlace({ id: expandPlace.place_id, name: p.name, category: p.category ?? null, image_url: p.image_url ?? null });
+          }}
         />
       )}
 
@@ -401,8 +433,8 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete }: It
       {itineraries.map((itin) => {
         const isStayLinked = !!itin.stayid;
         const propertyName = itin.stays?.properties?.name;
-        const checkin = itin.stays?.checkindate;
-        const checkout = itin.stays?.checkoutdate;
+        const checkin = itin.stays?.checkindate ?? itin.startdate;
+        const checkout = itin.stays?.checkoutdate ?? itin.enddate;
         const title = itin.title ?? (propertyName ?? 'Untitled itinerary');
         return (
           <button key={itin.id} onClick={() => setSelected(itin)}
@@ -655,8 +687,8 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
   }
 
   const propertyName = itin.stays?.properties?.name;
-  const checkin = itin.stays?.checkindate;
-  const checkout = itin.stays?.checkoutdate;
+  const checkin = itin.stays?.checkindate ?? itin.startdate;
+  const checkout = itin.stays?.checkoutdate ?? itin.enddate;
   const title = itin.title ?? propertyName ?? 'Untitled itinerary';
   const isStayLinked = !!itin.stayid;
 
@@ -793,6 +825,131 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
       )}
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.45}}`}</style>
+    </div>
+  );
+}
+
+/* ══ SAVED PLACE DETAIL SHEET ══ */
+
+interface SavedPlaceSheetProps {
+  item: DbSavedPlaceEnriched;
+  onClose: () => void;
+  onUnsave: () => Promise<void>;
+  onAddToItinerary: () => void;
+}
+
+function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPlaceSheetProps) {
+  const [visible, setVisible] = useState(false);
+  const [unsaving, setUnsaving] = useState(false);
+  const p = item.places;
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function close() { setVisible(false); setTimeout(onClose, 260); }
+
+  async function handleUnsave() {
+    setUnsaving(true);
+    await onUnsave();
+    setUnsaving(false);
+  }
+
+  function priceDots(level: number | null | undefined) {
+    if (!level) return null;
+    return '$'.repeat(Math.min(level, 4));
+  }
+
+  return (
+    <div style={{ position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'flex-end' }} onClick={close}>
+      <div style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.72)',opacity:visible?1:0,transition:'opacity 260ms ease' }} />
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ position:'relative',width:'100%',background:'#181412',borderRadius:'20px 20px 0 0',border:`1px solid ${BORDER}`,borderBottom:'none',maxHeight:'85dvh',overflowY:'auto',transform:visible?'translateY(0)':'translateY(100%)',transition:visible?'transform 300ms cubic-bezier(0.16,1,0.3,1)':'transform 240ms ease-in',willChange:'transform' }}
+      >
+        {/* Handle */}
+        <div style={{ display:'flex',justifyContent:'center',paddingTop:12,paddingBottom:0 }}>
+          <div style={{ width:36,height:4,borderRadius:999,background:'rgba(255,255,255,0.12)' }} />
+        </div>
+
+        {/* Hero image */}
+        {p?.image_url && (
+          <div style={{ position:'relative',height:180,margin:'12px 16px 0',borderRadius:14,overflow:'hidden',background:'#1a1614' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.image_url} alt={p.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover' }} />
+            <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top,rgba(10,8,6,0.8) 0%,transparent 60%)' }} />
+            {p.category && (
+              <span style={{ position:'absolute',top:10,left:12,fontSize:9,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:GOLD,background:'rgba(10,8,6,0.65)',backdropFilter:'blur(8px)',padding:'3px 8px',borderRadius:20,fontFamily:"'DM Sans',sans-serif" }}>{p.category}</span>
+            )}
+          </div>
+        )}
+
+        {/* Info */}
+        <div style={{ padding:'14px 20px 0' }}>
+          <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:8 }}>
+            <div style={{ flex:1,minWidth:0 }}>
+              <h3 style={{ margin:'0 0 4px',fontSize:18,fontWeight:700,color:TEXT,fontFamily:"'DM Sans',sans-serif",lineHeight:1.2 }}>{p?.name??'Unnamed place'}</h3>
+              <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
+                {p?.city && <span style={{ fontSize:12,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.city}</span>}
+                {p?.rating != null && (
+                  <span style={{ display:'flex',alignItems:'center',gap:3,fontSize:12,color:GOLD,fontFamily:"'DM Sans',sans-serif" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    {p.rating.toFixed(1)}
+                  </span>
+                )}
+                {p?.price_level != null && <span style={{ fontSize:12,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{priceDots(p.price_level)}</span>}
+              </div>
+            </div>
+          </div>
+
+          {p?.editorial_summary && (
+            <p style={{ fontSize:13,color:'rgba(250,248,245,0.55)',lineHeight:1.6,margin:'0 0 12px',fontFamily:"'DM Sans',sans-serif" }}>{p.editorial_summary}</p>
+          )}
+          {p?.address && (
+            <div style={{ display:'flex',alignItems:'flex-start',gap:7,marginBottom:16 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" style={{ flexShrink:0,marginTop:2 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
+              </svg>
+              <span style={{ fontSize:12,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif",lineHeight:1.5 }}>{p.address}</span>
+            </div>
+          )}
+
+          {/* CTAs */}
+          <div style={{ display:'flex',gap:10,paddingBottom:32 }}>
+            <button
+              onClick={onAddToItinerary}
+              style={{ flex:2,height:46,borderRadius:12,background:GOLD,border:'none',color:'#0A0806',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',justifyContent:'center',gap:7,transition:'opacity 160ms ease' }}
+              onMouseEnter={e=>{ e.currentTarget.style.opacity='0.88'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.opacity='1'; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add to Itinerary
+            </button>
+            <button
+              onClick={handleUnsave}
+              disabled={unsaving}
+              style={{ flex:1,height:46,borderRadius:12,background:'rgba(193,58,58,0.12)',border:'1px solid rgba(193,58,58,0.25)',color:unsaving?'rgba(255,255,255,0.3)':'rgba(220,80,80,0.85)',fontSize:13,fontWeight:600,cursor:unsaving?'not-allowed':'pointer',fontFamily:"'DM Sans',sans-serif",transition:'background 160ms ease' }}
+              onMouseEnter={e=>{ if(!unsaving) e.currentTarget.style.background='rgba(193,58,58,0.22)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.background='rgba(193,58,58,0.12)'; }}
+            >
+              {unsaving ? 'Removing…' : 'Remove'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -25,7 +25,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { applyRateLimit } from '@/lib/rate-limit';
-import { getItineraryById, insertItineraryItem } from '@/lib/supabase/itinerary-repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,10 +52,17 @@ export async function POST(
   }
 
   const { itineraryId } = await params;
+  const sb = getSupabaseAdmin();
 
-  // Verify ownership
-  const itinerary = await getItineraryById(itineraryId, user.id);
-  if (!itinerary) {
+  // Verify ownership using admin client (bypasses RLS)
+  const { data: itinerary, error: itinError } = await sb
+    .from('itineraries')
+    .select('id')
+    .eq('id', itineraryId)
+    .eq('userid', user.id)
+    .maybeSingle();
+
+  if (itinError || !itinerary) {
     return NextResponse.json({ error: 'Itinerary not found' }, { status: 404, headers: rateLimit.headers });
   }
 
@@ -88,28 +94,32 @@ export async function POST(
   }
 
   try {
-    const id = await insertItineraryItem(itineraryId, {
-      place_id,
-      scheduleddate,
-      starttime: starttime ?? '09:00',
-      durationhours: durationhours ?? 1,
-      titleoverride: titleoverride ?? null,
-      name: name ?? null,
-      category: category ?? null,
-      image: image ?? null,
-    });
+    const { data: newItem, error: insertError } = await sb
+      .from('itineraryitems')
+      .insert({
+        itineraryid: itineraryId,
+        place_id,
+        scheduleddate,
+        starttime: starttime ?? '09:00',
+        durationhours: durationhours ?? 1,
+        titleoverride: titleoverride ?? null,
+        name: name ?? null,
+        category: category ?? null,
+        image: image ?? null,
+      })
+      .select('id')
+      .single();
 
-    if (!id) {
+    if (insertError || !newItem) {
+      console.error('[POST .../items] insert failed:', insertError?.message);
       return NextResponse.json({ error: 'Failed to add item' }, { status: 500, headers: rateLimit.headers });
     }
 
-    // If notes provided, update after insert (insertItineraryItem does not accept notes)
     if (notes) {
-      const { getSupabaseAdmin: admin } = await import('@/lib/supabase/client');
-      await admin().from('itineraryitems').update({ notes }).eq('id', id);
+      await sb.from('itineraryitems').update({ notes }).eq('id', newItem.id);
     }
 
-    return NextResponse.json({ id }, { status: 201, headers: rateLimit.headers });
+    return NextResponse.json({ id: newItem.id }, { status: 201, headers: rateLimit.headers });
   } catch (err: unknown) {
     console.error('[POST /api/customer/itineraries/[itineraryId]/items]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: rateLimit.headers });
