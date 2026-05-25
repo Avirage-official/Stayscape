@@ -608,7 +608,17 @@ export default function ExploreSwiper({
       </div>
 
       {/* ── Mobile ── */}
-      <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
+      <div
+        className="block md:hidden"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 10,
+          // push content up so it clears the bottom nav bar on mobile
+          paddingBottom: 80,
+          boxSizing: 'border-box',
+        }}
+      >
         {view.level === 0 ? (
           <>
             <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} />
