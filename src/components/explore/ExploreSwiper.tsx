@@ -53,7 +53,6 @@ function categoryLabel(raw: string): string {
   return map[raw.toLowerCase()] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-// Vivid street-pop accent colours per category
 const CAT_COLOR: Record<string, string> = {
   dining:     '#FF6B35',
   nightlife:  '#7B2FFF',
@@ -69,7 +68,6 @@ const CAT_COLOR: Record<string, string> = {
 };
 const FALLBACK_COLOR = '#888880';
 
-// Short vibe tags — punchy, human, fun
 const CAT_VIBE: Record<string, string> = {
   dining:     'Eat well',
   nightlife:  'Stay out late',
@@ -84,13 +82,11 @@ const CAT_VIBE: Record<string, string> = {
   top_places: 'The good list',
 };
 
-// Handles the leading-space typo on wellness.jpg
 function catImagePath(cat: string): string {
   if (cat === 'wellness') return '/explore/categories/ wellness.jpg';
   return `/explore/categories/${cat}.jpg`;
 }
 
-// Text on the colour block — dark bg = light text, bright bg = dark text
 function accentTextColor(cat: string): string {
   const lightText = new Set(['nightlife', 'top_places', 'wellness', 'fun_places', 'events', 'family']);
   return lightText.has(cat) ? '#FFFFFF' : '#0A0806';
@@ -333,9 +329,9 @@ export default function ExploreSwiper({
       : {};
 
   // ─── L1: 4-col compact split cards ──────────────────────────────────────────
-  // Top ~44% = vivid pop colour + bold label
-  // Bottom ~56% = photo, object-cover top
-  // White pill badges float over the join — street-meets-modern, slick & vibrant
+  // Top 44% = vivid colour block + bold uppercase label (bottom-left)
+  // Bottom 56% = editorial photo
+  // Pills pinned to TOP-RIGHT corner — never block the title
   function renderL1CategoryGrid() {
     if (drillLoading) {
       return (
@@ -397,7 +393,7 @@ export default function ExploreSwiper({
                 e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.28)';
               }}
             >
-              {/* ── Top colour block ── */}
+              {/* ── Top colour block: title bottom-left ── */}
               <div style={{
                 flex: '0 0 44%',
                 padding: '10px 10px 8px',
@@ -439,7 +435,7 @@ export default function ExploreSwiper({
                   }}
                   loading="lazy"
                 />
-                {/* Accent-to-transparent top bleed */}
+                {/* Accent bleed */}
                 <div style={{
                   position: 'absolute',
                   top: 0, left: 0, right: 0,
@@ -449,23 +445,23 @@ export default function ExploreSwiper({
                 }} />
               </div>
 
-              {/* ── White pill badge — floats at the colour/image join ── */}
-              {vibe && (
-                <div style={{
-                  position: 'absolute',
-                  // sits right at the split between colour and image
-                  top: 'calc(44% - 11px)',
-                  left: '8px',
-                  zIndex: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}>
+              {/* ── Pills: TOP-RIGHT corner, never overlap title ── */}
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                zIndex: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: '4px',
+              }}>
+                {vibe && (
                   <span style={{
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '9px',
                     fontWeight: 700,
-                    letterSpacing: '0.04em',
+                    letterSpacing: '0.03em',
                     color: '#0A0806',
                     background: '#FFFFFF',
                     borderRadius: '20px',
@@ -474,22 +470,22 @@ export default function ExploreSwiper({
                     boxShadow: '0 1px 6px rgba(0,0,0,0.22)',
                     whiteSpace: 'nowrap',
                   }}>{vibe}</span>
-                  {count != null && (
-                    <span style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: '9px',
-                      fontWeight: 700,
-                      color: '#0A0806',
-                      background: '#FFFFFF',
-                      borderRadius: '20px',
-                      padding: '4px 7px',
-                      lineHeight: 1.3,
-                      boxShadow: '0 1px 6px rgba(0,0,0,0.22)',
-                      opacity: 0.75,
-                    }}>{count}</span>
-                  )}
-                </div>
-              )}
+                )}
+                {count != null && (
+                  <span style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: '#0A0806',
+                    background: '#FFFFFF',
+                    borderRadius: '20px',
+                    padding: '4px 7px',
+                    lineHeight: 1.3,
+                    boxShadow: '0 1px 6px rgba(0,0,0,0.22)',
+                    opacity: 0.75,
+                  }}>{count}</span>
+                )}
+              </div>
             </button>
           );
         })}
