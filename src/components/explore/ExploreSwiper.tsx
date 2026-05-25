@@ -28,14 +28,6 @@ type SelectedItem = {
 
 const AUTO_DRILL_SECTIONS = new Set(['made_for_you', 'happening_now', 'arias_picks']);
 
-function sectionShortLabel(id: string) {
-  if (id === 'made_for_you') return 'Yours';
-  if (id === 'in_your_world') return 'Nearby';
-  if (id === 'happening_now') return 'Tonight';
-  if (id === 'arias_picks') return 'Aria';
-  return id;
-}
-
 function categoryLabel(raw: string): string {
   const map: Record<string, string> = {
     dining: 'Dining', nightlife: 'Nightlife', shopping: 'Shopping',
@@ -102,14 +94,10 @@ function priceDots(level: number | null): string | null {
 function fmtEventPrice(min: number | null, max: number | null, currency: string | null): string | null {
   if (min == null && max == null) return null;
   const sym = currency === 'SGD' ? 'S$' : currency === 'USD' ? '$' : (currency ?? '$');
-  if (min != null && max != null && min !== max) return `${sym}${min}–${sym}${max}`;
+  if (min != null && max != null && min !== max) return `${sym}${min}\u2013${sym}${max}`;
   if (min != null) return `from ${sym}${min}`;
   if (max != null) return `up to ${sym}${max}`;
   return null;
-}
-
-function pad(n: number) {
-  return String(n + 1).padStart(2, '0');
 }
 
 export default function ExploreSwiper({
@@ -123,9 +111,6 @@ export default function ExploreSwiper({
   const [drillLoading, setDrillLoading] = useState(false);
   const cacheRef = useRef<Map<DrillCacheKey, DrillData>>(new Map());
   const [panelPhase, setPanelPhase] = useState<AnimPhase>('idle');
-  const [showRegionSheet, setShowRegionSheet] = useState(false);
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
-  const [nextHeroImageUrl, setNextHeroImageUrl] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionOption | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -134,7 +119,6 @@ export default function ExploreSwiper({
   const webPanelRef = useRef<ExploreWebPanelHandle | null>(null);
 
   const pointerStartX = useRef<number | null>(null);
-  const isDragging = useRef(false);
   const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
@@ -198,7 +182,7 @@ export default function ExploreSwiper({
     setView({ level: 0 }); setActiveRegion(null);
   }, [sections, selectedRegionId, regions, transitionPanel, fetchDrillData]);
 
-  // When Explore button is clicked: drill in if city set, else nudge city selector
+  // When Explore button clicked: nudge city if not set, else drill in
   const handleExploreClick = useCallback(() => {
     if (!selectedRegionId) {
       webPanelRef.current?.triggerCityNudge();
@@ -222,7 +206,6 @@ export default function ExploreSwiper({
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     pointerStartX.current = e.clientX;
-    isDragging.current = false;
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -234,7 +217,7 @@ export default function ExploreSwiper({
     else goTo(activeIndex - 1);
   }, [activeIndex, goTo]);
 
-  // Sync region changes: if a new region is selected and we're on an auto-drill section, re-drill
+  // Sync region changes: if a new region is selected on an auto-drill section, re-drill
   useEffect(() => {
     if (!selectedRegionId) return;
     const section = sections[activeIndex];
@@ -251,8 +234,10 @@ export default function ExploreSwiper({
     });
   }, [selectedRegionId, activeIndex, sections, regions, transitionPanel, fetchDrillData]);
 
-  const filteredDrillItems = view.level >= 2 && view.category
-    ? drillItems.filter(i => i.category === view.category)
+  // Safe category access — view.level 2/3 both have .category per ExploreView type
+  type ViewL2 = Extract<ExploreView, { level: 2 }>;
+  const filteredDrillItems = view.level >= 2
+    ? drillItems.filter(i => i.category === (view as ViewL2).category)
     : drillItems;
 
   const panelOpacity = panelPhase === 'exiting' ? 0 : 1;
@@ -260,7 +245,7 @@ export default function ExploreSwiper({
 
   return (
     <div
-      style={{ display: 'flex', width: '100%', height: '100%', gap: '0', position: 'relative', overflow: 'hidden' }}
+      style={{ display: 'flex', width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
     >
@@ -325,10 +310,14 @@ export default function ExploreSwiper({
                 {drillCategories.map(cat => (
                   <button
                     key={cat}
-                    onClick={() => transitionPanel(() => {
-                      setView({ level: 2, sectionId: view.sectionId!, category: cat });
-                      setCarouselIndex(0);
-                    })}
+                    onClick={() => {
+                      if (view.level === 1 && activeRegion) {
+                        transitionPanel(() => {
+                          setView({ level: 2, sectionId: view.sectionId, region: activeRegion, category: cat });
+                          setCarouselIndex(0);
+                        });
+                      }
+                    }}
                     style={{
                       position: 'relative', borderRadius: '14px', overflow: 'hidden',
                       border: 'none', cursor: 'pointer', padding: 0,
@@ -363,14 +352,17 @@ export default function ExploreSwiper({
             {/* L2: carousel */}
             {!drillLoading && view.level === 2 && (
               <>
-                {/* Category back + label */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
                   <button
-                    onClick={() => transitionPanel(() => setView({ level: 1, sectionId: view.sectionId! }))}
+                    onClick={() => {
+                      if (view.level === 2) {
+                        transitionPanel(() => setView({ level: 1, sectionId: view.sectionId }));
+                      }
+                    }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(250,248,245,0.45)', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'DM Sans', sans-serif", fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                    {categoryLabel(view.category!)}
+                    {categoryLabel(view.category)}
                   </button>
                   <div style={{ flex: 1, height: '1px', background: 'rgba(250,248,245,0.08)' }} />
                   <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.28)' }}>{filteredDrillItems.length} places</span>
@@ -382,7 +374,6 @@ export default function ExploreSwiper({
 
                 {filteredDrillItems.length > 0 && (
                   <div style={{ position: 'relative' }}>
-                    {/* Carousel track */}
                     <div
                       ref={carouselRef}
                       style={{ display: 'flex', gap: '14px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '4px', scrollSnapType: 'x mandatory' }}
@@ -407,14 +398,14 @@ export default function ExploreSwiper({
                         >
                           <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', background: 'rgba(250,248,245,0.06)' }}>
                             {item.image_url
-                              ? <img src={item.image_url} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                              ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                               : <div style={{ width: '100%', height: '100%', background: CAT_GRADIENT[item.category] ?? FALLBACK_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <div style={{ width: '28px', height: '2px', background: CAT_COLOR[item.category] ?? FALLBACK_COLOR, borderRadius: '2px' }} />
                                 </div>}
                           </div>
                           <div style={{ padding: '12px 12px 14px' }}>
-                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F5', margin: '0 0 4px', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</p>
-                            {item.location_name && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: '0 0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.location_name}</p>}
+                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F5', margin: '0 0 4px', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.name}</p>
+                            {'city' in item && item.city && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: '0 0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.city}</p>}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                               {'price_level' in item && priceDots(item.price_level) && (
                                 <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: '#C17F3A', fontWeight: 600 }}>{priceDots(item.price_level)}</span>
@@ -425,8 +416,8 @@ export default function ExploreSwiper({
                                   {item.rating.toFixed(1)}
                                 </span>
                               )}
-                              {'start_datetime' in item && item.start_datetime && (
-                                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', color: 'rgba(250,248,245,0.42)', letterSpacing: '0.03em' }}>{fmtDate(item.start_datetime)}</span>
+                              {'start_date' in item && item.start_date && (
+                                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', color: 'rgba(250,248,245,0.42)', letterSpacing: '0.03em' }}>{fmtDate(item.start_date)}</span>
                               )}
                               {'price_min' in item && fmtEventPrice(item.price_min, item.price_max, item.currency) && (
                                 <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: '#C17F3A', fontWeight: 600 }}>{fmtEventPrice(item.price_min, item.price_max, item.currency)}</span>
@@ -437,7 +428,6 @@ export default function ExploreSwiper({
                       ))}
                     </div>
 
-                    {/* Carousel dots */}
                     {filteredDrillItems.length > 1 && (
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '12px' }}>
                         {filteredDrillItems.map((_, i) => (
