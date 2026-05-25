@@ -311,7 +311,11 @@ const ExploreWebPanel = forwardRef<ExploreWebPanelHandle, ExploreWebPanelProps>(
                 Curated for {currentCity.name}. Change your city above to explore somewhere new.
               </p>
             ) : (
-              previewItems.map((item) => (
+              previewItems.map((item) => {
+                const subtitle = 'venue_name' in item ? (item as { venue_name: string | null }).venue_name
+                  : 'city' in item ? (item as { city: string | null }).city
+                  : null;
+                return (
                 <button
                   key={item.id}
                   onClick={() => onItemClick?.(item, active.content_type)}
@@ -340,7 +344,7 @@ const ExploreWebPanel = forwardRef<ExploreWebPanelHandle, ExploreWebPanelProps>(
                 >
                   <div style={{ width: '44px', height: '44px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)' }}>
                     {item.image_url
-                      ? <img src={item.image_url} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                      ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" /> // eslint-disable-line @next/next/no-img-element
                       : <div style={{ width: '100%', height: '100%', background: 'rgba(193,127,58,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.6)" strokeWidth={1.5}>
                             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
@@ -349,11 +353,11 @@ const ExploreWebPanel = forwardRef<ExploreWebPanelHandle, ExploreWebPanelProps>(
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 600, color: '#FAF8F5', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.title}
+                      {item.name}
                     </p>
-                    {item.location_name && (
+                    {subtitle && (
                       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.location_name}
+                        {subtitle}
                       </p>
                     )}
                   </div>
@@ -361,7 +365,8 @@ const ExploreWebPanel = forwardRef<ExploreWebPanelHandle, ExploreWebPanelProps>(
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
-              ))
+                );
+              })
             )}
           </div>
         )}
