@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
+import ItineraryPickerSheet from '@/components/explore/ItineraryPickerSheet';
 import type { DbSavedPlaceEnriched } from '@/lib/supabase/saved-places-repository';
 import type { DbItineraryListed, DbItineraryItemEnriched } from '@/lib/supabase/itinerary-repository';
 
@@ -148,6 +149,8 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   const [activeIndex, setActiveIndex] = useState(0);
   const [unsaving, setUnsaving] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [pickerPlace, setPickerPlace] = useState<{ id: string; name: string; category?: string | null; image_url?: string | null } | null>(null);
+
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
@@ -158,54 +161,86 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   const active = places[activeIndex] ?? null;
   const activePlace = active?.places ?? null;
 
+  // ── FIX: destroy and re-init map whenever the places array identity changes ──
   useEffect(() => {
-    if (!places.length || !mapRef.current || mapInstanceRef.current) return;
+    // Cleanup previous instance first
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+      markersRef.current = [];
+      setMapLoaded(false);
+    }
+
+    if (!places.length || !mapRef.current) return;
     const valid = places.filter(p => p.places?.latitude && p.places?.longitude);
     if (!valid.length) return;
+
     import('mapbox-gl').then((mapboxgl) => {
+      // Guard: component may have unmounted or places changed again
+      if (!mapRef.current) return;
       const mb = mapboxgl.default;
       mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
       const bounds = new mb.LngLatBounds();
       valid.forEach(p => bounds.extend([p.places!.longitude, p.places!.latitude]));
-      const map = new mb.Map({ container:mapRef.current!, style:'mapbox://styles/mapbox/dark-v11', bounds, fitBoundsOptions:{ padding:48, maxZoom:14 }, attributionControl:false, logoPosition:'bottom-right' });
+      const map = new mb.Map({
+        container: mapRef.current!,
+        style: 'mapbox://styles/mapbox/dark-v11',
+        bounds,
+        fitBoundsOptions: { padding: 48, maxZoom: 14 },
+        attributionControl: false,
+        logoPosition: 'bottom-right',
+      });
       map.on('load', () => {
         setMapLoaded(true);
         valid.forEach((p, i) => {
           const el = document.createElement('div');
           el.style.cssText = `width:28px;height:28px;background:${i===0?GOLD:'rgba(255,255,255,0.15)'};border:2px solid ${i===0?GOLD:'rgba(255,255,255,0.35)'};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${i===0?BG:'rgba(255,255,255,0.7)'};font-size:11px;font-weight:700;cursor:pointer;transition:transform 200ms ease;font-family:'DM Sans',sans-serif;`;
-          el.textContent = String(i+1);
+          el.textContent = String(i + 1);
           el.addEventListener('click', () => setActiveIndex(i));
-          const marker = new mb.Marker({ element:el }).setLngLat([p.places!.longitude, p.places!.latitude]).addTo(map);
+          const marker = new mb.Marker({ element: el }).setLngLat([p.places!.longitude, p.places!.latitude]).addTo(map);
           markersRef.current.push(marker);
         });
       });
       mapInstanceRef.current = map;
     }).catch(console.error);
-    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null; markersRef.current = []; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [places.length]);
 
+    return () => {
+      mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
+      markersRef.current = [];
+    };
+  // Re-run whenever the places array itself changes (not just length)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPlaces]);
+
+  // Update marker styles when active index changes
   useEffect(() => {
     markersRef.current.forEach((marker, i) => {
       const el = marker.getElement() as HTMLDivElement;
       const a = i === activeIndex;
-      el.style.background = a?GOLD:'rgba(255,255,255,0.15)';
-      el.style.borderColor = a?GOLD:'rgba(255,255,255,0.35)';
-      el.style.color = a?BG:'rgba(255,255,255,0.7)';
-      el.style.transform = a?'scale(1.25)':'scale(1)';
-      el.style.zIndex = a?'10':'1';
+      el.style.background = a ? GOLD : 'rgba(255,255,255,0.15)';
+      el.style.borderColor = a ? GOLD : 'rgba(255,255,255,0.35)';
+      el.style.color = a ? BG : 'rgba(255,255,255,0.7)';
+      el.style.transform = a ? 'scale(1.25)' : 'scale(1)';
+      el.style.zIndex = a ? '10' : '1';
     });
     if (mapInstanceRef.current && places[activeIndex]?.places?.latitude) {
       const p = places[activeIndex].places!;
-      mapInstanceRef.current.flyTo({ center:[p.longitude,p.latitude], zoom:13, duration:800, essential:true });
+      mapInstanceRef.current.flyTo({ center: [p.longitude, p.latitude], zoom: 13, duration: 800, essential: true });
     }
   }, [activeIndex, places]);
+
+  // Keep activeIndex in bounds after unsave
+  useEffect(() => {
+    if (places.length > 0 && activeIndex >= places.length) {
+      setActiveIndex(places.length - 1);
+    }
+  }, [places.length, activeIndex]);
 
   async function handleUnsave() {
     if (!active || unsaving) return;
     setUnsaving(true);
     await onUnsave(active.place_id);
-    setActiveIndex(prev => Math.max(0, prev-1));
     setUnsaving(false);
   }
 
@@ -234,22 +269,48 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   }
   return (
     <div style={{ height:'100%',display:'flex',flexDirection:'column',overflow:'hidden' }}>
-      <div style={{ position:'relative',flexShrink:0,height:'42%',minHeight:220,overflow:'hidden',background:'#1a1614' }}>
+      {/* Hero image */}
+      <div style={{ position:'relative',flexShrink:0,height:'40%',minHeight:200,overflow:'hidden',background:'#1a1614' }}>
         {activePlace?.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={activePlace.image_url} src={activePlace.image_url} alt={activePlace.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',transition:'opacity 400ms ease' }} />
         ) : (<div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,#1a1614,#2a2018)' }} />)}
         <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top,rgba(10,8,6,0.92) 0%,rgba(10,8,6,0.45) 50%,rgba(10,8,6,0.15) 100%)' }} />
+
+        {/* Top bar: counter + action buttons */}
         <div style={{ position:'absolute',top:16,left:16,right:16,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <span style={{ fontSize:11,fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.5)',fontFamily:"'DM Sans',sans-serif" }}>{activeIndex+1} / {places.length}</span>
-          <button onClick={handleUnsave} disabled={unsaving} aria-label="Remove from saved"
-            style={{ width:32,height:32,borderRadius:'50%',background:'rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.18)',color:unsaving?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.7)',cursor:unsaving?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',transition:'background 180ms ease,color 180ms ease' }}
-            onMouseEnter={e=>{ if(!unsaving) e.currentTarget.style.background='rgba(193,58,58,0.5)'; }}
-            onMouseLeave={e=>{ e.currentTarget.style.background='rgba(0,0,0,0.4)'; }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div style={{ display:'flex',gap:8 }}>
+            {/* Add to itinerary */}
+            <button
+              onClick={() => {
+                if (!active?.places) return;
+                setPickerPlace({
+                  id: active.place_id,
+                  name: active.places.name ?? 'Unnamed place',
+                  category: active.places.category ?? null,
+                  image_url: active.places.image_url ?? null,
+                });
+              }}
+              aria-label="Add to itinerary"
+              style={{ width:32,height:32,borderRadius:'50%',background:'rgba(0,0,0,0.4)',border:`1px solid ${GOLD}55`,color:GOLD,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',transition:'background 180ms ease' }}
+              onMouseEnter={e=>{ e.currentTarget.style.background=GOLD_DIM; }}
+              onMouseLeave={e=>{ e.currentTarget.style.background='rgba(0,0,0,0.4)'; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            {/* Unsave */}
+            <button onClick={handleUnsave} disabled={unsaving} aria-label="Remove from saved"
+              style={{ width:32,height:32,borderRadius:'50%',background:'rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.18)',color:unsaving?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.7)',cursor:unsaving?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',transition:'background 180ms ease,color 180ms ease' }}
+              onMouseEnter={e=>{ if(!unsaving) e.currentTarget.style.background='rgba(193,58,58,0.5)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.background='rgba(0,0,0,0.4)'; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         </div>
+
+        {/* Place info */}
         <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'0 16px 16px' }}>
           {activePlace?.category && <p style={{ fontSize:10,fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:GOLD,marginBottom:4,fontFamily:"'DM Sans',sans-serif" }}>{activePlace.category}</p>}
           <h2 style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontStyle:'italic',fontSize:'clamp(1.6rem,5vw,2.4rem)',fontWeight:500,color:TEXT,lineHeight:1.1,margin:'0 0 6px' }}>{activePlace?.name??'Unnamed place'}</h2>
@@ -259,10 +320,14 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           </div>
         </div>
       </div>
-      <div style={{ flexShrink:0,height:'28%',minHeight:140,position:'relative',background:'#111' }}>
+
+      {/* Map */}
+      <div style={{ flexShrink:0,height:'26%',minHeight:130,position:'relative',background:'#111' }}>
         <div ref={mapRef} style={{ position:'absolute',inset:0 }} />
         {!mapLoaded && (<div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#111' }}><div style={{ width:20,height:20,border:`2px solid rgba(200,150,90,0.25)`,borderTopColor:GOLD,borderRadius:'50%',animation:'spin 700ms linear infinite' }} /></div>)}
       </div>
+
+      {/* Thumbnail filmstrip */}
       <div style={{ flex:1,minHeight:0,overflowY:'hidden',overflowX:'auto',display:'flex',alignItems:'center',gap:10,padding:'0 16px',scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch',scrollbarWidth:'none' }}>
         {places.map((item, i) => {
           const p = item.places; const isActive = i === activeIndex;
@@ -280,6 +345,17 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           );
         })}
       </div>
+
+      {/* Itinerary Picker Sheet */}
+      {pickerPlace && (
+        <ItineraryPickerSheet
+          place={pickerPlace}
+          getBearerToken={getBearerToken}
+          onClose={() => setPickerPlace(null)}
+          onAdded={() => setPickerPlace(null)}
+        />
+      )}
+
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}div[style*='overflow-x: auto']::-webkit-scrollbar{display:none}`}</style>
     </div>
   );
@@ -354,11 +430,7 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete }: It
   );
 }
 
-/* ══ EDIT ITEM SHEET ══
-   Opens when tapping a timeline stop.
-   Fields: scheduleddate, starttime, durationhours, notes
-   Calls PATCH /api/customer/itineraries/[itineraryId]/items/[itemId]
-*/
+/* ══ EDIT ITEM SHEET ══ */
 
 interface EditItemSheetProps {
   item: DbItineraryItemEnriched;
@@ -431,18 +503,13 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
       <div onClick={e => e.stopPropagation()}
         style={{ width:'100%',background:'#181412',borderRadius:'18px 18px 0 0',padding:'0 20px 32px',border:`1px solid ${BORDER}`,maxHeight:'90%',overflowY:'auto' }}
       >
-        {/* Handle */}
         <div style={{ display:'flex',justifyContent:'center',paddingTop:12,paddingBottom:16 }}>
           <div style={{ width:36,height:4,borderRadius:999,background:'rgba(255,255,255,0.12)' }} />
         </div>
-
-        {/* Place name header */}
         <div style={{ marginBottom:20 }}>
           {category && <p style={{ fontSize:10,fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:GOLD,margin:'0 0 3px',fontFamily:"'DM Sans',sans-serif" }}>{category}</p>}
           <h4 style={{ margin:0,fontSize:16,fontWeight:600,color:TEXT,fontFamily:"'DM Sans',sans-serif" }}>{name}</h4>
         </div>
-
-        {/* Date */}
         <div style={{ marginBottom:14 }}>
           <label style={{ display:'block',fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:TEXT_MUTED,marginBottom:6,fontFamily:"'DM Sans',sans-serif",textTransform:'uppercase' }}>Date</label>
           <input type="date" value={date} onChange={e=>setDate(e.target.value)}
@@ -451,8 +518,6 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
             onBlur={e=>{ e.target.style.borderColor=BORDER_2; }}
           />
         </div>
-
-        {/* Time + Duration row */}
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
           <div>
             <label style={{ display:'block',fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:TEXT_MUTED,marginBottom:6,fontFamily:"'DM Sans',sans-serif",textTransform:'uppercase' }}>Start Time</label>
@@ -471,8 +536,6 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
             />
           </div>
         </div>
-
-        {/* Notes */}
         <div style={{ marginBottom:20 }}>
           <label style={{ display:'block',fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:TEXT_MUTED,marginBottom:6,fontFamily:"'DM Sans',sans-serif",textTransform:'uppercase' }}>Notes</label>
           <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Reservation number, what to order, who to ask for…"
@@ -481,15 +544,10 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
             onBlur={e=>{ e.target.style.borderColor=BORDER_2; }}
           />
         </div>
-
-        {/* Error */}
         {error && <p style={{ color:'rgba(220,80,80,0.9)',fontSize:12,marginBottom:12,fontFamily:"'DM Sans',sans-serif" }}>{error}</p>}
-
-        {/* Actions */}
         <div style={{ display:'flex',gap:10 }}>
           <button onClick={onClose}
-            style={{ flex:1,height:46,borderRadius:10,background:SURFACE,border:`1px solid ${BORDER}`,color:TEXT_MUTED,fontSize:14,fontWeight:500,cursor:'pointer',fontFamily:"'DM Sans',sans-serif" }}
-          >Cancel</button>
+            style={{ flex:1,height:46,borderRadius:10,background:SURFACE,border:`1px solid ${BORDER}`,color:TEXT_MUTED,fontSize:14,fontWeight:500,cursor:'pointer',fontFamily:"'DM Sans',sans-serif" }}>Cancel</button>
           <button onClick={handleSave} disabled={saving}
             style={{ flex:2,height:46,borderRadius:10,background:saving?GOLD_DIM:GOLD,border:'none',color:saving?GOLD:BG,fontSize:14,fontWeight:700,cursor:saving?'not-allowed':'pointer',fontFamily:"'DM Sans',sans-serif",transition:'background 180ms ease,color 180ms ease' }}
           >{saving?'Saving…':'Save changes'}</button>
@@ -604,8 +662,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
 
   return (
     <div style={{ height:'100%',display:'flex',flexDirection:'column',overflow:'hidden',position:'relative' }}>
-
-      {/* Header */}
       <div style={{ flexShrink:0,padding:'12px 16px',borderBottom:`1px solid ${BORDER}`,display:'flex',alignItems:'center',gap:12 }}>
         <button onClick={onBack} aria-label="Back"
           style={{ width:34,height:34,borderRadius:10,background:SURFACE,border:`1px solid ${BORDER}`,color:TEXT_MUTED,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,transition:'color 180ms ease,border-color 180ms ease' }}
@@ -630,13 +686,11 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         )}
       </div>
 
-      {/* Map */}
       <div style={{ flexShrink:0,height:'32%',minHeight:150,position:'relative',background:'#0e0c0a' }}>
         <div ref={mapRef} style={{ position:'absolute',inset:0 }} />
         {!mapReady && (<div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#0e0c0a' }}><div style={{ width:20,height:20,border:`2px solid rgba(200,150,90,0.25)`,borderTopColor:GOLD,borderRadius:'50%',animation:'spin 700ms linear infinite' }} /></div>)}
       </div>
 
-      {/* Day pills */}
       {days.length > 1 && (
         <div style={{ flexShrink:0,display:'flex',gap:8,padding:'10px 16px',overflowX:'auto',scrollbarWidth:'none',borderBottom:`1px solid ${BORDER}` }}>
           {days.map((day, idx) => {
@@ -650,7 +704,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         </div>
       )}
 
-      {/* Timeline */}
       <div style={{ flex:1,minHeight:0,overflowY:'auto',padding:'16px 16px 24px',scrollbarWidth:'thin',scrollbarColor:`${BORDER} transparent` }}>
         {loading && (
           <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
@@ -681,9 +734,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
                 const isLast = idx === visibleItems.length - 1;
                 return (
                   <div key={item.id} style={{ display:'flex',gap:12,alignItems:'flex-start',paddingBottom:isLast?0:20,position:'relative' }}>
-                    {/* Node */}
                     <div style={{ flexShrink:0,width:26,height:26,borderRadius:'50%',background:BG,border:`1.5px solid ${GOLD}`,display:'flex',alignItems:'center',justifyContent:'center',color:GOLD,fontSize:10,fontWeight:700,fontFamily:"'DM Sans',sans-serif",zIndex:1,marginTop:2 }}>{idx+1}</div>
-                    {/* Card — tap to edit */}
                     <button onClick={() => setEditingItem(item)}
                       style={{ flex:1,borderRadius:12,background:SURFACE,border:`1px solid ${BORDER}`,overflow:'hidden',display:'flex',gap:0,cursor:'pointer',width:'100%',textAlign:'left',transition:'background 180ms ease,border-color 180ms ease' }}
                       onMouseEnter={e=>{ e.currentTarget.style.background=SURFACE_2; e.currentTarget.style.borderColor=BORDER_2; }}
@@ -716,7 +767,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         )}
       </div>
 
-      {/* Edit item sheet */}
       {editingItem && (
         <EditItemSheet
           item={editingItem}
@@ -729,7 +779,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         />
       )}
 
-      {/* Delete confirm sheet */}
       {showDeleteConfirm && (
         <div style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'flex-end',zIndex:100 }} onClick={() => setShowDeleteConfirm(false)}>
           <div onClick={e => e.stopPropagation()} style={{ width:'100%',background:'#181412',borderRadius:'18px 18px 0 0',padding:'24px 20px 32px',border:`1px solid ${BORDER}` }}>
