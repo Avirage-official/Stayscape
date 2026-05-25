@@ -634,9 +634,10 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
   const visibleItems = items?.filter(i => !activeDay || i.scheduleddate === activeDay) ?? [];
 
   useEffect(() => {
-    if (!items?.length || !mapRef.current || mapInstanceRef.current) return;
+    if (loading) return;
+    if (!items?.length || !mapRef.current || mapInstanceRef.current) { setMapReady(true); return; }
     const geo = items.filter(i => i.places?.latitude && i.places?.longitude);
-    if (!geo.length) return;
+    if (!geo.length) { setMapReady(true); return; }
     import('mapbox-gl').then((mapboxgl) => {
       const mb = mapboxgl.default;
       mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
