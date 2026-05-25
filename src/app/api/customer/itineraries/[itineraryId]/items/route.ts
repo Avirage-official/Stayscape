@@ -1,30 +1,31 @@
 /**
  * POST /api/customer/itineraries/[itineraryId]/items
  *
- * Add an item to a standalone itinerary owned by the authenticated user.
- * Uses the service-role key so RLS/FK issues cannot block the write.
+ * Add a place to a standalone or stay-linked itinerary.
+ * Ownership is enforced — users can only modify their own itineraries.
+ * Accepts a Supabase JWT via Authorization: Bearer <token>.
  *
- * Body: {
- *   place_id:      string | null
- *   name:          string
- *   category?:     string | null
- *   image?:        string | null
- *   scheduleddate: string        -- 'YYYY-MM-DD'
- *   starttime:     string        -- 'HH:mm'
- *   durationhours: number
- * }
+ * POST Body:
+ *   {
+ *     place_id: string          // UUID of the place (required)
+ *     scheduleddate: string     // 'YYYY-MM-DD' (required)
+ *     starttime?: string        // 'HH:mm' (optional, defaults to '09:00')
+ *     durationhours?: number    // optional, defaults to 1
+ *     titleoverride?: string    // optional display name override
+ *     notes?: string            // optional notes
+ *   }
  *
- * Returns:
- *   201 { id: string }
- *   400 { error: string }
+ * POST Returns:
+ *   201 { id: string }           — new item id
+ *   400 { error: string }        — validation error
  *   401 { error: 'Unauthorized' }
- *   403 { error: 'Not your itinerary' }
- *   500 { error: string }
+ *   404 { error: 'Itinerary not found' }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { getItineraryById, insertItineraryItem } from '@/lib/supabase/itinerary-repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,75 +54,62 @@ export async function POST(
 
   const { itineraryId } = await params;
 
-  const sb = getSupabaseAdmin();
-
   // Verify ownership
-  const { data: itin, error: itinErr } = await sb
-    .from('itineraries')
-    .select('id, userid')
-    .eq('id', itineraryId)
-    .maybeSingle();
-
-  if (itinErr || !itin) {
+  const itinerary = await getItineraryById(itineraryId, user.id);
+  if (!itinerary) {
     return NextResponse.json({ error: 'Itinerary not found' }, { status: 404, headers: rateLimit.headers });
-  }
-  if (itin.userid !== user.id) {
-    return NextResponse.json({ error: 'Not your itinerary' }, { status: 403, headers: rateLimit.headers });
   }
 
   let body: {
-    place_id?: string | null;
-    name?: string;
-    category?: string | null;
-    image?: string | null;
+    place_id?: string;
     scheduleddate?: string;
     starttime?: string;
     durationhours?: number;
+    titleoverride?: string;
+    notes?: string;
+    name?: string;
+    category?: string;
+    image?: string;
   };
+
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400, headers: rateLimit.headers });
   }
 
-  const { place_id = null, name, category = null, image = null, scheduleddate, starttime, durationhours } = body;
+  const { place_id, scheduleddate, starttime, durationhours, titleoverride, notes, name, category, image } = body;
 
-  if (!name || typeof name !== 'string') {
-    return NextResponse.json({ error: 'name is required' }, { status: 400, headers: rateLimit.headers });
+  if (!place_id || typeof place_id !== 'string') {
+    return NextResponse.json({ error: 'place_id is required' }, { status: 400, headers: rateLimit.headers });
   }
-  if (!scheduleddate || typeof scheduleddate !== 'string') {
-    return NextResponse.json({ error: 'scheduleddate is required' }, { status: 400, headers: rateLimit.headers });
-  }
-  if (!starttime || typeof starttime !== 'string') {
-    return NextResponse.json({ error: 'starttime is required' }, { status: 400, headers: rateLimit.headers });
-  }
-  if (typeof durationhours !== 'number') {
-    return NextResponse.json({ error: 'durationhours is required' }, { status: 400, headers: rateLimit.headers });
+  if (!scheduleddate || !/^\d{4}-\d{2}-\d{2}$/.test(scheduleddate)) {
+    return NextResponse.json({ error: 'scheduleddate is required and must be YYYY-MM-DD' }, { status: 400, headers: rateLimit.headers });
   }
 
   try {
-    const { data, error } = await sb
-      .from('itineraryitems')
-      .insert({
-        itineraryid: itineraryId,
-        place_id: place_id ?? null,
-        titleoverride: null,
-        scheduleddate,
-        starttime,
-        durationhours,
-        name,
-        category,
-        image,
-      })
-      .select('id')
-      .single();
+    const id = await insertItineraryItem(itineraryId, {
+      place_id,
+      scheduleddate,
+      starttime: starttime ?? '09:00',
+      durationhours: durationhours ?? 1,
+      titleoverride: titleoverride ?? null,
+      name: name ?? null,
+      category: category ?? null,
+      image: image ?? null,
+    });
 
-    if (error || !data) {
-      console.error('[POST /api/customer/itineraries/[itineraryId]/items]', error?.message);
+    if (!id) {
       return NextResponse.json({ error: 'Failed to add item' }, { status: 500, headers: rateLimit.headers });
     }
 
-    return NextResponse.json({ id: data.id }, { status: 201, headers: rateLimit.headers });
+    // If notes provided, update after insert (insertItineraryItem does not accept notes)
+    if (notes) {
+      const { getSupabaseAdmin: admin } = await import('@/lib/supabase/client');
+      await admin().from('itineraryitems').update({ notes }).eq('id', id);
+    }
+
+    return NextResponse.json({ id }, { status: 201, headers: rateLimit.headers });
   } catch (err: unknown) {
     console.error('[POST /api/customer/itineraries/[itineraryId]/items]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: rateLimit.headers });
