@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { DiscoveryPlaceCard, DiscoveryEventCard } from '@/types/database';
 import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repository';
 import type { RegionOption } from '@/app/dashboard/explore/page';
@@ -55,16 +55,13 @@ function pad(n: number) {
 }
 
 export default function ExploreCard({ section, sections, activeIndex = 0, onSectionChange }: ExploreCardProps) {
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const [prevIndex, setPrevIndex] = useState(activeIndex);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
 
   const total = sections?.length ?? 1;
   const heroSrc = section.image_url ?? SECTION_LOCAL_IMAGE[section.id] ?? null;
-
-  useEffect(() => {
-    setImgLoaded(false);
-  }, [heroSrc]);
+  const imgLoaded = loadedSrc === heroSrc;
 
   function goNext() {
     if (!sections || activeIndex >= sections.length - 1) return;
@@ -100,7 +97,7 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
           src={heroSrc}
           alt=""
           aria-hidden="true"
-          onLoad={() => setImgLoaded(true)}
+          onLoad={() => setLoadedSrc(heroSrc)}
           style={{
             position: 'absolute', inset: 0,
             width: '100%', height: '100%',

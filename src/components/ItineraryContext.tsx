@@ -60,8 +60,8 @@ export function ItineraryProvider({
   const [items, setItems] = useState<ItineraryItem[]>([]);
 
   const loadFromDb = useCallback(() => {
-    if (!user) return;
-    fetchItineraryItems(user.id, stayId ?? undefined)
+    if (!user || !stayId) return;
+    fetchItineraryItems(user.id, stayId)
       .then((dbItems) => {
         if (dbItems && dbItems.length > 0) {
           const mapped: ItineraryItem[] = dbItems.map((row) => ({
@@ -104,9 +104,9 @@ export function ItineraryProvider({
       // Optimistically add
       setItems((prev) => [...prev, newItem]);
 
-      if (!user) return;
+      if (!user || !stayId) return;
 
-      getOrCreateItinerary(user.id, stayId ?? undefined)
+      getOrCreateItinerary(user.id, stayId)
         .then((itineraryId) => {
           if (!itineraryId) return;
           return insertItineraryItem(itineraryId, {
