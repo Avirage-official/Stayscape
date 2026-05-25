@@ -39,6 +39,7 @@ export default function ExplorePage() {
 
   const [data, setData] = useState<ExploreResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPersonalising, setIsPersonalising] = useState(false);
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
@@ -79,6 +80,13 @@ export default function ExplorePage() {
     if (!user) return;
     void fetchExplore();
   }, [user, fetchExplore]);
+
+  async function handleRegionChange(regionId: string) {
+    setSelectedRegionId(regionId);
+    setIsRefreshing(true);
+    await fetchExplore(regionId);
+    setIsRefreshing(false);
+  }
 
   async function handlePersonalise() {
     setIsPersonalising(true);
@@ -133,6 +141,8 @@ export default function ExplorePage() {
         firstName={data.firstName}
         onPersonalise={handlePersonalise}
         isPersonalising={isPersonalising}
+        isRefreshing={isRefreshing}
+        onRegionChange={handleRegionChange}
       />
     </div>
   );
