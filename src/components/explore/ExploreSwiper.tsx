@@ -53,23 +53,23 @@ function categoryLabel(raw: string): string {
   return map[raw.toLowerCase()] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-// Vivid per-category accent colour for the top colour block
+// Vivid street-pop accent colours per category
 const CAT_COLOR: Record<string, string> = {
-  dining:     '#E8793A',
-  nightlife:  '#7B5EA7',
-  shopping:   '#E8C53A',
-  nature:     '#4CAF6F',
-  historical: '#C4945A',
-  wellness:   '#5ABFCF',
-  family:     '#E87060',
-  events:     '#D44F80',
-  local_spots:'#D4B84A',
-  fun_places: '#E06090',
-  top_places: '#5A90D4',
+  dining:     '#FF6B35',
+  nightlife:  '#7B2FFF',
+  shopping:   '#FFD600',
+  nature:     '#00C853',
+  historical: '#FF8F00',
+  wellness:   '#00BCD4',
+  family:     '#FF4081',
+  events:     '#E91E8C',
+  local_spots:'#FFAB00',
+  fun_places: '#F50057',
+  top_places: '#2979FF',
 };
 const FALLBACK_COLOR = '#888880';
 
-// Short vibe tag — human, fun, never AI-speak
+// Short vibe tags — punchy, human, fun
 const CAT_VIBE: Record<string, string> = {
   dining:     'Eat well',
   nightlife:  'Stay out late',
@@ -90,10 +90,10 @@ function catImagePath(cat: string): string {
   return `/explore/categories/${cat}.jpg`;
 }
 
-// Text colour that reads on each accent bg
+// Text on the colour block — dark bg = light text, bright bg = dark text
 function accentTextColor(cat: string): string {
-  const dark = new Set(['nightlife', 'top_places', 'wellness']);
-  return dark.has(cat) ? 'rgba(255,255,255,0.95)' : 'rgba(10,8,6,0.92)';
+  const lightText = new Set(['nightlife', 'top_places', 'wellness', 'fun_places', 'events', 'family']);
+  return lightText.has(cat) ? '#FFFFFF' : '#0A0806';
 }
 
 function deriveCategories(items: (DrillPlaceCard | DrillEventCard)[]): string[] {
@@ -332,16 +332,16 @@ export default function ExploreSwiper({
       ? { opacity: 1, animation: 'hsPanelIn 440ms 60ms cubic-bezier(0.25,0,0,1) both' }
       : {};
 
-  // ─── L1: Split-card category grid ────────────────────────────────────────
-  // Top 42% = vivid accent colour + bold label + vibe pill + count pill
-  // Bottom 58% = editorial photo, object-cover from top
-  // Inspired by reference: colour block vs image tension, pill tags, big type
+  // ─── L1: 4-col compact split cards ──────────────────────────────────────────
+  // Top ~44% = vivid pop colour + bold label
+  // Bottom ~56% = photo, object-cover top
+  // White pill badges float over the join — street-meets-modern, slick & vibrant
   function renderL1CategoryGrid() {
     if (drillLoading) {
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '16px' }}>
-          {[0,1,2,3,4,5].map(i => (
-            <div key={i} style={{ aspectRatio: '3 / 4', borderRadius: '16px', background: 'rgba(250,248,245,0.06)', animation: `hsSkeleton 1.4s ${i * 0.08}s ease-in-out infinite` }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', padding: '12px' }}>
+          {[0,1,2,3,4,5,6,7].map(i => (
+            <div key={i} style={{ aspectRatio: '3 / 4', borderRadius: '12px', background: 'rgba(250,248,245,0.06)', animation: `hsSkeleton 1.4s ${i * 0.07}s ease-in-out infinite` }} />
           ))}
         </div>
       );
@@ -358,7 +358,7 @@ export default function ExploreSwiper({
       countMap[item.category] = (countMap[item.category] ?? 0) + 1;
     }
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '16px 16px 28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', padding: '12px 12px 24px' }}>
         {drillCategories.map((cat, idx) => {
           const accentBg = CAT_COLOR[cat.toLowerCase()] ?? FALLBACK_COLOR;
           const textCol = accentTextColor(cat.toLowerCase());
@@ -366,7 +366,7 @@ export default function ExploreSwiper({
           const vibe = CAT_VIBE[cat.toLowerCase()] ?? '';
           const count = countMap[cat];
           const imgSrc = catImagePath(cat.toLowerCase());
-          const delay = `${idx * 35}ms`;
+          const delay = `${idx * 25}ms`;
 
           return (
             <button
@@ -374,9 +374,8 @@ export default function ExploreSwiper({
               onClick={() => { if (activeRegion) drillToCategory(activeRegion, cat); }}
               style={{
                 aspectRatio: '3 / 4',
-                background: accentBg,
                 border: 'none',
-                borderRadius: '16px',
+                borderRadius: '12px',
                 cursor: 'pointer',
                 padding: 0,
                 display: 'flex',
@@ -384,76 +383,48 @@ export default function ExploreSwiper({
                 overflow: 'hidden',
                 position: 'relative',
                 boxSizing: 'border-box',
-                animation: `hsCatIn 400ms ${delay} cubic-bezier(0.25,0,0,1) both`,
-                transition: 'transform 220ms cubic-bezier(0.25,0,0,1), box-shadow 220ms ease',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.22)',
+                background: accentBg,
+                animation: `hsCatIn 380ms ${delay} cubic-bezier(0.25,0,0,1) both`,
+                transition: 'transform 200ms cubic-bezier(0.25,0,0,1), box-shadow 200ms ease',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.28)',
               } as React.CSSProperties}
               onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-3px) scale(1.015)';
-                e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.36)';
+                e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 10px 32px rgba(0,0,0,0.42)';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.22)';
+                e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.28)';
               }}
             >
               {/* ── Top colour block ── */}
               <div style={{
-                flex: '0 0 42%',
-                padding: '14px 14px 10px',
+                flex: '0 0 44%',
+                padding: '10px 10px 8px',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 background: accentBg,
+                position: 'relative',
               }}>
-                {/* Pills row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                  {vibe && (
-                    <span style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      letterSpacing: '0.03em',
-                      color: textCol,
-                      background: 'rgba(0,0,0,0.12)',
-                      borderRadius: '20px',
-                      padding: '3px 9px',
-                      lineHeight: 1.4,
-                    }}>{vibe}</span>
-                  )}
-                  {count != null && (
-                    <span style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: '10px',
-                      fontWeight: 500,
-                      color: textCol,
-                      opacity: 0.65,
-                      background: 'rgba(0,0,0,0.10)',
-                      borderRadius: '20px',
-                      padding: '3px 8px',
-                      lineHeight: 1.4,
-                    }}>{count}</span>
-                  )}
-                </div>
-
-                {/* Category name */}
                 <p style={{
                   fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 'clamp(17px, 3vw, 22px)',
-                  fontWeight: 700,
+                  fontSize: 'clamp(11px, 2.2vw, 14px)',
+                  fontWeight: 800,
                   color: textCol,
                   margin: 0,
-                  lineHeight: 1.05,
-                  letterSpacing: '-0.02em',
+                  lineHeight: 1.0,
+                  letterSpacing: '-0.03em',
+                  textTransform: 'uppercase',
                 }}>{label}</p>
               </div>
 
               {/* ── Bottom image block ── */}
               <div style={{
-                flex: '0 0 58%',
+                flex: '0 0 56%',
                 position: 'relative',
                 overflow: 'hidden',
-                background: 'rgba(0,0,0,0.18)',
+                background: 'rgba(0,0,0,0.2)',
               }}>
                 <img
                   src={imgSrc}
@@ -464,19 +435,61 @@ export default function ExploreSwiper({
                     objectFit: 'cover',
                     objectPosition: 'center top',
                     display: 'block',
-                    transition: 'transform 400ms cubic-bezier(0.25,0,0,1)',
+                    transition: 'transform 380ms cubic-bezier(0.25,0,0,1)',
                   }}
                   loading="lazy"
                 />
-                {/* Thin gradient blends colour block into image */}
+                {/* Accent-to-transparent top bleed */}
                 <div style={{
                   position: 'absolute',
                   top: 0, left: 0, right: 0,
-                  height: '28px',
+                  height: '22px',
                   background: `linear-gradient(to bottom, ${accentBg} 0%, transparent 100%)`,
                   pointerEvents: 'none',
                 }} />
               </div>
+
+              {/* ── White pill badge — floats at the colour/image join ── */}
+              {vibe && (
+                <div style={{
+                  position: 'absolute',
+                  // sits right at the split between colour and image
+                  top: 'calc(44% - 11px)',
+                  left: '8px',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}>
+                  <span style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    color: '#0A0806',
+                    background: '#FFFFFF',
+                    borderRadius: '20px',
+                    padding: '4px 8px',
+                    lineHeight: 1.3,
+                    boxShadow: '0 1px 6px rgba(0,0,0,0.22)',
+                    whiteSpace: 'nowrap',
+                  }}>{vibe}</span>
+                  {count != null && (
+                    <span style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      color: '#0A0806',
+                      background: '#FFFFFF',
+                      borderRadius: '20px',
+                      padding: '4px 7px',
+                      lineHeight: 1.3,
+                      boxShadow: '0 1px 6px rgba(0,0,0,0.22)',
+                      opacity: 0.75,
+                    }}>{count}</span>
+                  )}
+                </div>
+              )}
             </button>
           );
         })}
@@ -522,16 +535,9 @@ export default function ExploreSwiper({
 
     return (
       <div style={{ paddingBottom: '32px' }}>
-        {/* ── Featured card ── */}
         <button
           onClick={() => drillToItem(featured, active?.id ?? '')}
-          style={{
-            display: 'block', width: '100%', border: 'none', padding: 0,
-            cursor: 'pointer', position: 'relative', overflow: 'hidden',
-            height: '200px', background: 'rgba(250,248,245,0.06)',
-            marginBottom: '1px',
-            animation: 'hsItemIn 420ms 0ms cubic-bezier(0.25,0,0,1) both',
-          } as React.CSSProperties}
+          style={{ display: 'block', width: '100%', border: 'none', padding: 0, cursor: 'pointer', position: 'relative', overflow: 'hidden', height: '200px', background: 'rgba(250,248,245,0.06)', marginBottom: '1px', animation: 'hsItemIn 420ms 0ms cubic-bezier(0.25,0,0,1) both' } as React.CSSProperties}
           onMouseEnter={e => { const img = e.currentTarget.querySelector('.l2-feat-img') as HTMLElement | null; if (img) img.style.transform = 'scale(1.03)'; }}
           onMouseLeave={e => { const img = e.currentTarget.querySelector('.l2-feat-img') as HTMLElement | null; if (img) img.style.transform = 'scale(1)'; }}
         >
@@ -603,7 +609,6 @@ export default function ExploreSwiper({
 
     return (
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(14,11,8,0.90)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...panelStyle }}>
-        {/* Header */}
         <div style={{ padding: '24px 28px 18px', flexShrink: 0, borderBottom: '1px solid rgba(250,248,245,0.07)' }}>
           <button
             onClick={navigateBack}
@@ -642,7 +647,6 @@ export default function ExploreSwiper({
           )}
         </div>
 
-        {/* Scrollable content */}
         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {view.level === 1 && renderL1CategoryGrid()}
           {view.level === 2 && renderL2ItemList()}
@@ -658,7 +662,6 @@ export default function ExploreSwiper({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      {/* Hero background */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
         {displayHeroUrl && (
           <img src={displayHeroUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.38, transition: 'opacity 680ms ease' }} />
@@ -786,7 +789,7 @@ export default function ExploreSwiper({
         @keyframes hsSkeleton { 0%, 100% { opacity: 0.06; } 50% { opacity: 0.14; } }
         @keyframes ecPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
         @keyframes hsItemIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes hsCatIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes hsCatIn { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
       `}</style>
     </div>
   );
