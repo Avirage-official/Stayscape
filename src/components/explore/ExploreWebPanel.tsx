@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import type { ExploreSection, ExploreItem } from './ExploreCard';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 
@@ -17,6 +17,10 @@ export interface ExploreWebPanelProps {
   isPersonalising: boolean;
   /** Called when an item card is clicked so the parent can open ExploreDetailSheet */
   onItemClick?: (item: ExploreItem, contentType: ExploreSection['content_type']) => void;
+}
+
+export interface ExploreWebPanelHandle {
+  triggerCityNudge: () => void;
 }
 
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
@@ -37,22 +41,24 @@ const GLASS: React.CSSProperties = {
   borderRadius: '18px',
 };
 
-export default function ExploreWebPanel({
-  sections,
-  regions,
-  activeIndex,
-  activeRegion,
-  selectedRegionId,
-  onSectionChange,
-  onDrillRegion,
-  onRegionChange,
-  onPersonalise,
-  isPersonalising,
-  onItemClick,
-}: ExploreWebPanelProps) {
+const ExploreWebPanel = forwardRef<ExploreWebPanelHandle, ExploreWebPanelProps>(function ExploreWebPanel(
+  {
+    sections,
+    regions,
+    activeIndex,
+    activeRegion,
+    selectedRegionId,
+    onSectionChange,
+    onDrillRegion,
+    onRegionChange,
+    onPersonalise,
+    isPersonalising,
+    onItemClick,
+  },
+  ref,
+) {
   const [ariaQuery, setAriaQuery] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
-  // nudge state: pulses the city selector when user tries to explore without a region
   const [nudge, setNudge] = useState(false);
   const [nudgeMsg, setNudgeMsg] = useState(false);
 
@@ -63,7 +69,6 @@ export default function ExploreWebPanel({
 
   const currentCity = regions.find(r => r.id === selectedRegionId) ?? null;
 
-  // items for the active section (up to 4 preview cards)
   const previewItems: ExploreItem[] = (active?.items ?? []).slice(0, 4);
 
   const triggerNudge = useCallback(() => {
@@ -73,6 +78,10 @@ export default function ExploreWebPanel({
     setTimeout(() => setNudge(false), 1200);
     setTimeout(() => setNudgeMsg(false), 4000);
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    triggerCityNudge: triggerNudge,
+  }), [triggerNudge]);
 
   return (
     <div
@@ -87,7 +96,6 @@ export default function ExploreWebPanel({
           padding: 0,
           flexShrink: 0,
           overflow: 'hidden',
-          // nudge pulse animation
           outline: nudge ? '2px solid rgba(193,127,58,0.85)' : '2px solid transparent',
           transition: 'outline 180ms ease, box-shadow 180ms ease',
           boxShadow: nudge ? '0 0 0 4px rgba(193,127,58,0.18)' : 'none',
@@ -114,7 +122,6 @@ export default function ExploreWebPanel({
           </svg>
         </button>
 
-        {/* nudge tooltip */}
         {nudgeMsg && (
           <div style={{ padding: '0 14px 12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#C17F3A" strokeWidth={2} style={{ flexShrink: 0 }}>
@@ -280,7 +287,6 @@ export default function ExploreWebPanel({
         {showItems && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
             {!currentCity ? (
-              // No city selected — gentle nudge
               <button
                 onClick={triggerNudge}
                 style={{
@@ -332,7 +338,6 @@ export default function ExploreWebPanel({
                     e.currentTarget.style.borderColor = 'rgba(250,248,245,0.08)';
                   }}
                 >
-                  {/* thumbnail */}
                   <div style={{ width: '44px', height: '44px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)' }}>
                     {item.image_url
                       ? <img src={item.image_url} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -342,7 +347,6 @@ export default function ExploreWebPanel({
                           </svg>
                         </div>}
                   </div>
-                  {/* text */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 600, color: '#FAF8F5', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.title}
@@ -353,7 +357,6 @@ export default function ExploreWebPanel({
                       </p>
                     )}
                   </div>
-                  {/* chevron */}
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2} style={{ flexShrink: 0 }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
@@ -386,4 +389,6 @@ export default function ExploreWebPanel({
       `}</style>
     </div>
   );
-}
+});
+
+export default ExploreWebPanel;
