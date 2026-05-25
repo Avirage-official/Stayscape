@@ -227,8 +227,8 @@ export default function ExploreSwiper({
     const region = regions.find(r => r.id === selectedRegionId);
     if (!region) return;
     lastDrilledCityRef.current = selectedRegionId;
-    setActiveRegion(region);
     transitionPanel(() => {
+      setActiveRegion(region);
       setView({ level: 1, sectionId: section.id });
       void fetchDrillData(section.id, region, null);
     });
