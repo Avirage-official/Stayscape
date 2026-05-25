@@ -62,8 +62,6 @@ function categoryLabel(raw: string): string {
   return map[raw.toLowerCase()] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-// Editorial colour palette — one distinct hue per category key.
-// Each entry: [background, text colour, faint numeral colour]
 const CAT_PALETTE: Record<string, [string, string, string]> = {
   dining:     ['#1C1108', '#E8C98A', 'rgba(232,201,138,0.12)'],
   nightlife:  ['#110B1F', '#B8A0E0', 'rgba(184,160,224,0.12)'],
@@ -120,7 +118,6 @@ export default function ExploreSwiper({
   onRegionChange,
 }: ExploreSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-
   const [view, setView] = useState<ExploreView>({ level: 0 });
   const [drillItems, setDrillItems] = useState<(DrillPlaceCard | DrillEventCard)[]>([]);
   const [drillCategories, setDrillCategories] = useState<string[]>([]);
@@ -131,7 +128,6 @@ export default function ExploreSwiper({
   const [showRegionSheet, setShowRegionSheet] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [nextHeroImageUrl, setNextHeroImageUrl] = useState<string | null>(null);
-
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionOption | null>(null);
 
@@ -153,24 +149,19 @@ export default function ExploreSwiper({
       setDrillCategories(cached.categories);
       return;
     }
-
     setDrillLoading(true);
     try {
       const supabase = getSupabaseBrowser();
       if (!supabase) throw new Error('Supabase unavailable');
-
       let items: (DrillPlaceCard | DrillEventCard)[] = [];
-
       if (sectionId === 'happening_now') {
         items = await getEventsByRegionAndCategory(supabase, region.id, category);
       } else {
         items = await getPlacesByRegionAndCategory(supabase, region.id, category);
       }
-
       const categories = deriveCategories(items);
       const data: DrillData = { items, categories, fetchedAt: new Date().toISOString() };
       cacheRef.current.set(cacheKey, data);
-
       setDrillItems(items);
       setDrillCategories(categories);
     } catch (err) {
@@ -202,11 +193,9 @@ export default function ExploreSwiper({
     (index: number) => {
       const safeIndex = Math.max(0, Math.min(sections.length - 1, index));
       const targetSection = sections[safeIndex];
-
       setDrillItems([]);
       setDrillCategories([]);
       setActiveIndex(safeIndex);
-
       if (AUTO_DRILL_SECTIONS.has(targetSection?.id) && selectedRegionId) {
         const region = regions.find(r => r.id === selectedRegionId);
         if (region) {
@@ -219,7 +208,6 @@ export default function ExploreSwiper({
           return;
         }
       }
-
       setView({ level: 0 });
       setActiveRegion(null);
     },
@@ -229,13 +217,10 @@ export default function ExploreSwiper({
   useEffect(() => {
     if (!selectedRegionId || !sections.length) return;
     if (lastDrilledCityRef.current === selectedRegionId) return;
-
     const active = sections[activeIndex];
     if (!active || !AUTO_DRILL_SECTIONS.has(active.id)) return;
-
     const region = regions.find(r => r.id === selectedRegionId);
     if (!region) return;
-
     lastDrilledCityRef.current = selectedRegionId;
     cacheRef.current.clear();
     setDrillItems([]);
@@ -340,142 +325,55 @@ export default function ExploreSwiper({
       ? { opacity: 1, animation: 'hsPanelIn 440ms 60ms cubic-bezier(0.25,0,0,1) both' }
       : {};
 
+  // ─── L1: 3x3 editorial square category grid ───────────────────────────────
   function renderL1CategoryGrid() {
     if (drillLoading) {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3px', padding: '3px' }}>
           {[0,1,2,3,4,5,6,7,8].map(i => (
-            <div
-              key={i}
-              style={{
-                aspectRatio: '1 / 1',
-                borderRadius: '4px',
-                background: 'rgba(250,248,245,0.05)',
-                animation: `hsSkeleton 1.4s ${i * 0.08}s ease-in-out infinite`,
-              }}
-            />
+            <div key={i} style={{ aspectRatio: '1 / 1', borderRadius: '4px', background: 'rgba(250,248,245,0.05)', animation: `hsSkeleton 1.4s ${i * 0.08}s ease-in-out infinite` }} />
           ))}
         </div>
       );
     }
-
     if (drillCategories.length === 0) {
       return (
-        <p style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontStyle: 'italic', fontSize: '17px',
-          color: 'rgba(250,248,245,0.22)',
-          textAlign: 'center', paddingTop: '44px', margin: 0,
-        }}>
+        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '44px', margin: 0 }}>
           Nothing to explore here yet.
         </p>
       );
     }
-
-    // Count items per category for the badge
     const countMap: Record<string, number> = {};
     for (const item of drillItems) {
       countMap[item.category] = (countMap[item.category] ?? 0) + 1;
     }
-
     return (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '3px',
-        padding: '3px',
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3px', padding: '3px' }}>
         {drillCategories.map((cat, idx) => {
           const [bg, fg, numeralColor] = CAT_PALETTE[cat.toLowerCase()] ?? FALLBACK_PALETTE;
           const label = categoryLabel(cat);
           const numeral = ROMAN[idx] ?? String(idx + 1);
           const count = countMap[cat];
-
           return (
             <button
               key={cat}
               onClick={() => { if (activeRegion) drillToCategory(activeRegion, cat); }}
-              className="l1-cat-tile"
-              data-cat={cat}
-              style={{
-                aspectRatio: '1 / 1',
-                background: bg,
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                padding: '14px 13px 13px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                position: 'relative',
-                overflow: 'hidden',
-                boxSizing: 'border-box',
-                transition: 'filter 200ms ease',
-              } as React.CSSProperties}
+              style={{ aspectRatio: '1 / 1', background: bg, border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '14px 13px 13px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', overflow: 'hidden', boxSizing: 'border-box', transition: 'filter 200ms ease' } as React.CSSProperties}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.35)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1)'; }}
             >
-              {/* Watermark numeral */}
-              <span
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '6px',
-                  fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontStyle: 'italic',
-                  fontSize: 'clamp(52px, 8vw, 72px)',
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  color: numeralColor,
-                  pointerEvents: 'none',
-                  userSelect: 'none',
-                  letterSpacing: '-0.04em',
-                  transition: 'color 200ms ease',
-                }}
-              >
+              <span aria-hidden="true" style={{ position: 'absolute', top: '-4px', right: '6px', fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: 'clamp(52px, 8vw, 72px)', fontWeight: 700, lineHeight: 1, color: numeralColor, pointerEvents: 'none', userSelect: 'none', letterSpacing: '-0.04em' }}>
                 {numeral}
               </span>
-
-              {/* Top-left: small index numeral badge */}
-              <span style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontStyle: 'italic',
-                fontSize: '11px',
-                color: fg,
-                opacity: 0.55,
-                lineHeight: 1,
-                letterSpacing: '0.06em',
-                zIndex: 1,
-              }}>
+              <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '11px', color: fg, opacity: 0.55, lineHeight: 1, letterSpacing: '0.06em', zIndex: 1 }}>
                 {numeral}
               </span>
-
-              {/* Bottom: category name + count */}
               <div style={{ zIndex: 1, width: '100%' }}>
-                <p style={{
-                  fontFamily: "'Cormorant Garamond', Georgia, serif",
-                  fontStyle: 'italic',
-                  fontSize: 'clamp(16px, 2.8vw, 22px)',
-                  fontWeight: 600,
-                  color: fg,
-                  margin: 0,
-                  lineHeight: 1.05,
-                  letterSpacing: '-0.01em',
-                }}>
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: 'clamp(16px, 2.8vw, 22px)', fontWeight: 600, color: fg, margin: 0, lineHeight: 1.05, letterSpacing: '-0.01em' }}>
                   {label}
                 </p>
                 {count != null && (
-                  <p style={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: '10px',
-                    color: fg,
-                    opacity: 0.4,
-                    margin: '4px 0 0',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                  }}>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', color: fg, opacity: 0.4, margin: '4px 0 0', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     {count} {count === 1 ? 'place' : 'places'}
                   </p>
                 )}
@@ -487,11 +385,186 @@ export default function ExploreSwiper({
     );
   }
 
+  // ─── L2: Featured hero + editorial strip list ─────────────────────────────
+  function renderL2ItemList() {
+    const v2 = view as Extract<ExploreView, { level: 2 }>;
+    const isEvent = active?.id === 'happening_now';
+    const [,accentFg] = CAT_PALETTE[v2.category?.toLowerCase()] ?? FALLBACK_PALETTE;
+
+    if (drillLoading) {
+      return (
+        <div style={{ padding: '0 0 28px' }}>
+          {/* Featured skeleton */}
+          <div style={{ height: '200px', background: 'rgba(250,248,245,0.05)', animation: 'hsSkeleton 1.4s ease-in-out infinite', marginBottom: '1px' }} />
+          {/* Strip skeletons */}
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ height: '72px', background: 'rgba(250,248,245,0.04)', borderBottom: '1px solid rgba(250,248,245,0.06)', animation: `hsSkeleton 1.4s ${0.1 + i * 0.08}s ease-in-out infinite` }} />
+          ))}
+        </div>
+      );
+    }
+
+    if (drillItems.length === 0) {
+      return (
+        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '44px', margin: 0 }}>
+          Nothing on just yet.
+        </p>
+      );
+    }
+
+    const [featured, ...rest] = drillItems;
+
+    function buildMeta(item: DrillPlaceCard | DrillEventCard): string | null {
+      if (isEvent) {
+        const ev = item as DrillEventCard;
+        return [fmtDate(ev.start_date), ev.venue_name].filter(Boolean).join(' · ');
+      }
+      const pl = item as DrillPlaceCard;
+      return pl.rating ? `★ ${pl.rating.toFixed(1)}` : null;
+    }
+
+    return (
+      <div style={{ paddingBottom: '32px' }}>
+
+        {/* ── Featured card ─────────────────────────────────────────────── */}
+        <button
+          onClick={() => drillToItem(featured, active?.id ?? '')}
+          style={{
+            display: 'block', width: '100%', border: 'none', padding: 0,
+            cursor: 'pointer', position: 'relative', overflow: 'hidden',
+            height: '200px', background: 'rgba(250,248,245,0.06)',
+            marginBottom: '1px',
+            animation: 'hsItemIn 420ms 0ms cubic-bezier(0.25,0,0,1) both',
+          } as React.CSSProperties}
+          onMouseEnter={e => { const img = e.currentTarget.querySelector('.l2-feat-img') as HTMLElement | null; if (img) img.style.transform = 'scale(1.03)'; }}
+          onMouseLeave={e => { const img = e.currentTarget.querySelector('.l2-feat-img') as HTMLElement | null; if (img) img.style.transform = 'scale(1)'; }}
+        >
+          {/* Image */}
+          {featured.image_url ? (
+            <img
+              src={featured.image_url}
+              alt={featured.name}
+              className="l2-feat-img"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 500ms cubic-bezier(0.25,0,0,1)' }}
+              loading="eager"
+            />
+          ) : (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(250,248,245,0.04)' }} />
+          )}
+
+          {/* Gradient overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,8,6,0.92) 0%, rgba(10,8,6,0.38) 55%, transparent 100%)' }} />
+
+          {/* Featured label — top left */}
+          <div style={{ position: 'absolute', top: '14px', left: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '9px', fontWeight: 700,
+              letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: accentFg,
+              background: 'rgba(10,8,6,0.55)',
+              backdropFilter: 'blur(8px)',
+              padding: '3px 8px',
+              borderRadius: '2px',
+            }}>Featured</span>
+          </div>
+
+          {/* Text — bottom left */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 18px 18px' }}>
+            {buildMeta(featured) && (
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: accentFg, opacity: 0.85, margin: '0 0 5px', letterSpacing: '0.04em' }}>
+                {buildMeta(featured)}
+              </p>
+            )}
+            <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '26px', fontWeight: 600, color: '#FAF8F5', margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
+              {featured.name}
+            </h3>
+          </div>
+        </button>
+
+        {/* ── Item count rule ────────────────────────────────────────────── */}
+        {rest.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 20px 10px' }}>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(250,248,245,0.07)' }} />
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.28)', whiteSpace: 'nowrap' }}>
+              {rest.length} more
+            </span>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(250,248,245,0.07)' }} />
+          </div>
+        )}
+
+        {/* ── Compact strip list ─────────────────────────────────────────── */}
+        <div>
+          {rest.map((item, idx) => {
+            const meta = buildMeta(item);
+            const hasImage = !!item.image_url;
+            const delay = `${(idx + 1) * 30}ms`;
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => drillToItem(item, active?.id ?? '')}
+                style={{
+                  display: 'flex', alignItems: 'center',
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '0', border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(250,248,245,0.06)',
+                  transition: 'background 160ms ease',
+                  animation: `hsItemIn 380ms ${delay} cubic-bezier(0.25,0,0,1) both`,
+                } as React.CSSProperties}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.06)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                {/* Square thumbnail */}
+                <div style={{ width: '72px', height: '72px', flexShrink: 0, overflow: 'hidden', background: 'rgba(250,248,245,0.06)', borderRadius: '0' }}>
+                  {hasImage
+                    ? <img src={item.image_url!} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                    : (
+                      // No-image: amber left-bar text tile
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: `2px solid ${accentFg}`, background: 'rgba(250,248,245,0.03)' }}>
+                        <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(250,248,245,0.2)', textAlign: 'center', padding: '0 6px', lineHeight: 1.2 }}>
+                          {item.name.split(' ').slice(0, 2).join(' ')}
+                        </span>
+                      </div>
+                    )}
+                </div>
+
+                {/* Text */}
+                <div style={{ flex: 1, minWidth: 0, padding: '0 14px 0 16px', textAlign: 'left' }}>
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '14px', fontWeight: 500,
+                    color: 'rgba(250,248,245,0.88)',
+                    margin: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    transition: 'color 160ms ease',
+                  }}>{item.name}</p>
+                  {meta && (
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: '3px 0 0', letterSpacing: '0.02em' }}>
+                      {meta}
+                    </p>
+                  )}
+                </div>
+
+                {/* Index numeral — right edge */}
+                <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(250,248,245,0.14)', paddingRight: '18px', flexShrink: 0, letterSpacing: '0.04em' }}>
+                  {String(idx + 2).padStart(2, '0')}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Left drill canvas shell ───────────────────────────────────────────────
   function renderLeftDrillCanvas() {
     const v2 = view.level === 2 ? (view as Extract<ExploreView, { level: 2 }>) : null;
     const regionName = activeRegion?.name ?? '';
     const catLabel = v2 ? categoryLabel(v2.category) : '';
-    const isEvent = active?.id === 'happening_now';
 
     return (
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(14,11,8,0.90)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...panelStyle }}>
@@ -537,50 +610,7 @@ export default function ExploreSwiper({
         {/* Scrollable content */}
         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {view.level === 1 && renderL1CategoryGrid()}
-
-          {view.level === 2 && (
-            drillLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '20px 28px 28px' }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{ height: '84px', borderRadius: '16px', background: 'rgba(250,248,245,0.06)', animation: `hsSkeleton 1.4s ${i * 0.15}s ease-in-out infinite` }} />
-                ))}
-              </div>
-            ) : drillItems.length === 0 ? (
-              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '44px', margin: 0 }}>
-                Nothing on just yet.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '20px 28px 28px' }}>
-                {drillItems.map(item => {
-                  const ev = item as DrillEventCard;
-                  const pl = item as DrillPlaceCard;
-                  const meta = isEvent
-                    ? [fmtDate(ev.start_date), ev.venue_name].filter(Boolean).join(' · ')
-                    : pl.rating ? `★ ${pl.rating.toFixed(1)}` : null;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => drillToItem(item, active?.id ?? '')}
-                      style={{ display: 'flex', gap: '14px', padding: '12px 14px', background: 'rgba(250,248,245,0.05)', border: '1px solid rgba(250,248,245,0.1)', borderRadius: '16px', cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box', transition: 'background 160ms ease, border-color 160ms ease', alignItems: 'center' } as React.CSSProperties}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.1)'; e.currentTarget.style.borderColor = 'rgba(193,127,58,0.38)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.05)'; e.currentTarget.style.borderColor = 'rgba(250,248,245,0.1)'; }}
-                    >
-                      <div style={{ width: '60px', height: '60px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)' }}>
-                        {item.image_url
-                          ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: 'rgba(250,248,245,0.3)', fontSize: '11px' }}>·</span></div>}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', fontWeight: 500, color: '#FAF8F5', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
-                        {meta && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.45)', margin: '4px 0 0' }}>{meta}</p>}
-                      </div>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                  );
-                })}
-              </div>
-            )
-          )}
+          {view.level === 2 && renderL2ItemList()}
         </div>
       </div>
     );
@@ -596,33 +626,19 @@ export default function ExploreSwiper({
       {/* Hero background */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
         {displayHeroUrl && (
-          <img
-            src={displayHeroUrl}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.38, transition: 'opacity 680ms ease' }}
-          />
+          <img src={displayHeroUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.38, transition: 'opacity 680ms ease' }} />
         )}
         {nextHeroImageUrl && (
-          <img
-            src={nextHeroImageUrl}
-            alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 680ms ease' }}
-          />
+          <img src={nextHeroImageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 680ms ease' }} />
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(14,13,11,0.55) 0%, rgba(14,13,11,0.82) 100%)' }} />
       </div>
 
-      {/* Mobile: full-screen card + region sheet */}
+      {/* Mobile */}
       <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
         {view.level === 0 ? (
           <>
-            <ExploreCard
-              key={active.id}
-              section={active}
-              sections={sections}
-              activeIndex={activeIndex}
-              onSectionChange={goTo}
-            />
+            <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} />
             <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>
               Explore {greeting}
             </p>
@@ -647,7 +663,7 @@ export default function ExploreSwiper({
         )}
       </div>
 
-      {/* Mobile: region picker sheet */}
+      {/* Mobile region sheet */}
       {showRegionSheet && (
         <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 50 }}>
           <div onClick={() => setShowRegionSheet(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
@@ -656,9 +672,7 @@ export default function ExploreSwiper({
               <div style={{ width: '32px', height: '4px', background: 'rgba(250,248,245,0.18)', borderRadius: '2px' }} />
             </div>
             <div style={{ padding: '8px 24px 14px', borderBottom: '1px solid rgba(250,248,245,0.07)', flexShrink: 0 }}>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>
-                Select your city
-              </p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>Select your city</p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px' }}>
               {regions.map(region => {
@@ -691,18 +705,12 @@ export default function ExploreSwiper({
         </div>
       )}
 
-      {/* Desktop: two-column layout */}
+      {/* Desktop */}
       <div className="hidden md:flex" style={{ position: 'absolute', inset: 0, zIndex: 10, padding: '12px', gap: '12px' }}>
         <div style={{ flex: 1, position: 'relative', borderRadius: '20px', overflow: 'hidden' }}>
           {view.level === 0 ? (
             <>
-              <ExploreCard
-                key={active.id}
-                section={active}
-                sections={sections}
-                activeIndex={activeIndex}
-                onSectionChange={goTo}
-              />
+              <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} />
               <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>
                 Explore {greeting}
               </p>
@@ -739,9 +747,10 @@ export default function ExploreSwiper({
       )}
 
       <style>{`
-        @keyframes hsPanelIn   { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes hsSkeleton  { 0%, 100% { opacity: 0.06; } 50% { opacity: 0.14; } }
-        @keyframes ecPulse     { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
+        @keyframes hsPanelIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes hsSkeleton { 0%, 100% { opacity: 0.06; } 50% { opacity: 0.14; } }
+        @keyframes ecPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
+        @keyframes hsItemIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
