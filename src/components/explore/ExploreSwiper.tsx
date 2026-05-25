@@ -21,7 +21,6 @@ interface ExploreSwiperProps {
   onRegionChange?: (regionId: string) => void;
 }
 
-// selectedItem can be a full ExploreItem (L0 sections) or a slim drill card (L1-L3)
 type SelectedItem = {
   item: ExploreItem | DrillPlaceCard | DrillEventCard;
   contentType: ExploreSection['content_type'];
@@ -62,6 +61,35 @@ function categoryLabel(raw: string): string {
   };
   return map[raw.toLowerCase()] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
 }
+
+// Editorial colour palette — one distinct hue per category key.
+// Each entry: [background, text colour, faint numeral colour]
+const CAT_PALETTE: Record<string, [string, string, string]> = {
+  dining:     ['#1C1108', '#E8C98A', 'rgba(232,201,138,0.12)'],
+  nightlife:  ['#110B1F', '#B8A0E0', 'rgba(184,160,224,0.12)'],
+  shopping:   ['#0E1A14', '#8ECFB0', 'rgba(142,207,176,0.12)'],
+  nature:     ['#0B1A0D', '#92C97A', 'rgba(146,201,122,0.12)'],
+  historical: ['#1A1208', '#D4A96A', 'rgba(212,169,106,0.12)'],
+  wellness:   ['#0F1820', '#7EC8D8', 'rgba(126,200,216,0.12)'],
+  family:     ['#1A100E', '#E8A080', 'rgba(232,160,128,0.12)'],
+  events:     ['#1A0D10', '#E07898', 'rgba(224,120,152,0.12)'],
+  music:      ['#120E1A', '#C0A8E8', 'rgba(192,168,232,0.12)'],
+  arts:       ['#1A0E08', '#E8B870', 'rgba(232,184,112,0.12)'],
+  sports:     ['#0A1418', '#70C0D8', 'rgba(112,192,216,0.12)'],
+  food:       ['#1A1008', '#E8A850', 'rgba(232,168,80,0.12)'],
+  culture:    ['#140A18', '#C890D8', 'rgba(200,144,216,0.12)'],
+  outdoor:    ['#0A180C', '#78D090', 'rgba(120,208,144,0.12)'],
+  local_spots:['#181408', '#D8C070', 'rgba(216,192,112,0.12)'],
+  localspots: ['#181408', '#D8C070', 'rgba(216,192,112,0.12)'],
+  top_places: ['#0E1018', '#90A8D8', 'rgba(144,168,216,0.12)'],
+  topplaces:  ['#0E1018', '#90A8D8', 'rgba(144,168,216,0.12)'],
+  fun_places: ['#1A0E14', '#E890B8', 'rgba(232,144,184,0.12)'],
+  general:    ['#141414', '#C0C0C0', 'rgba(192,192,192,0.12)'],
+};
+
+const FALLBACK_PALETTE: [string, string, string] = ['#111010', '#C8C0B8', 'rgba(200,192,184,0.12)'];
+
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX'] as const;
 
 function deriveCategories(items: (DrillPlaceCard | DrillEventCard)[]): string[] {
   const seen = new Set<string>();
@@ -104,7 +132,6 @@ export default function ExploreSwiper({
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [nextHeroImageUrl, setNextHeroImageUrl] = useState<string | null>(null);
 
-  // SelectedItem accepts both full ExploreItem (L0) and slim drill cards (L1-L3)
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionOption | null>(null);
 
@@ -199,8 +226,6 @@ export default function ExploreSwiper({
     [sections, selectedRegionId, regions, transitionPanel, fetchDrillData],
   );
 
-  // Auto-drill into the selected city when on Yours / Tonight / Aria sections.
-  // Fires on initial load and whenever the selected city changes.
   useEffect(() => {
     if (!selectedRegionId || !sections.length) return;
     if (lastDrilledCityRef.current === selectedRegionId) return;
@@ -243,7 +268,6 @@ export default function ExploreSwiper({
     });
   }, [sections, activeIndex, transitionPanel, fetchDrillData]);
 
-  // No cast needed — SelectedItem accepts DrillPlaceCard | DrillEventCard directly
   const drillToItem = useCallback((item: DrillPlaceCard | DrillEventCard, sectionId: string) => {
     const contentType = sectionId === 'happening_now' ? 'events' : 'places';
     setSelectedItem({ item, contentType });
@@ -316,6 +340,153 @@ export default function ExploreSwiper({
       ? { opacity: 1, animation: 'hsPanelIn 440ms 60ms cubic-bezier(0.25,0,0,1) both' }
       : {};
 
+  function renderL1CategoryGrid() {
+    if (drillLoading) {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3px', padding: '3px' }}>
+          {[0,1,2,3,4,5,6,7,8].map(i => (
+            <div
+              key={i}
+              style={{
+                aspectRatio: '1 / 1',
+                borderRadius: '4px',
+                background: 'rgba(250,248,245,0.05)',
+                animation: `hsSkeleton 1.4s ${i * 0.08}s ease-in-out infinite`,
+              }}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (drillCategories.length === 0) {
+      return (
+        <p style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontStyle: 'italic', fontSize: '17px',
+          color: 'rgba(250,248,245,0.22)',
+          textAlign: 'center', paddingTop: '44px', margin: 0,
+        }}>
+          Nothing to explore here yet.
+        </p>
+      );
+    }
+
+    // Count items per category for the badge
+    const countMap: Record<string, number> = {};
+    for (const item of drillItems) {
+      countMap[item.category] = (countMap[item.category] ?? 0) + 1;
+    }
+
+    return (
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '3px',
+        padding: '3px',
+      }}>
+        {drillCategories.map((cat, idx) => {
+          const [bg, fg, numeralColor] = CAT_PALETTE[cat.toLowerCase()] ?? FALLBACK_PALETTE;
+          const label = categoryLabel(cat);
+          const numeral = ROMAN[idx] ?? String(idx + 1);
+          const count = countMap[cat];
+
+          return (
+            <button
+              key={cat}
+              onClick={() => { if (activeRegion) drillToCategory(activeRegion, cat); }}
+              className="l1-cat-tile"
+              data-cat={cat}
+              style={{
+                aspectRatio: '1 / 1',
+                background: bg,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                padding: '14px 13px 13px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                position: 'relative',
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+                transition: 'filter 200ms ease',
+              } as React.CSSProperties}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.35)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1)'; }}
+            >
+              {/* Watermark numeral */}
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '6px',
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(52px, 8vw, 72px)',
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  color: numeralColor,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  letterSpacing: '-0.04em',
+                  transition: 'color 200ms ease',
+                }}
+              >
+                {numeral}
+              </span>
+
+              {/* Top-left: small index numeral badge */}
+              <span style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic',
+                fontSize: '11px',
+                color: fg,
+                opacity: 0.55,
+                lineHeight: 1,
+                letterSpacing: '0.06em',
+                zIndex: 1,
+              }}>
+                {numeral}
+              </span>
+
+              {/* Bottom: category name + count */}
+              <div style={{ zIndex: 1, width: '100%' }}>
+                <p style={{
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(16px, 2.8vw, 22px)',
+                  fontWeight: 600,
+                  color: fg,
+                  margin: 0,
+                  lineHeight: 1.05,
+                  letterSpacing: '-0.01em',
+                }}>
+                  {label}
+                </p>
+                {count != null && (
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '10px',
+                    color: fg,
+                    opacity: 0.4,
+                    margin: '4px 0 0',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}>
+                    {count} {count === 1 ? 'place' : 'places'}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderLeftDrillCanvas() {
     const v2 = view.level === 2 ? (view as Extract<ExploreView, { level: 2 }>) : null;
     const regionName = activeRegion?.name ?? '';
@@ -364,39 +535,12 @@ export default function ExploreSwiper({
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '20px 28px 28px' }}>
-          {view.level === 1 && (
-            drillLoading ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {[0, 1, 2, 3].map(i => (
-                  <div key={i} style={{ height: '100px', borderRadius: '16px', background: 'rgba(250,248,245,0.06)', animation: `hsSkeleton 1.4s ${i * 0.15}s ease-in-out infinite` }} />
-                ))}
-              </div>
-            ) : drillCategories.length === 0 ? (
-              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '44px', margin: 0 }}>
-                Nothing to explore here yet.
-              </p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {drillCategories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => { if (activeRegion) drillToCategory(activeRegion, cat); }}
-                    style={{ background: 'rgba(250,248,245,0.05)', border: '1px solid rgba(250,248,245,0.1)', borderRadius: '16px', padding: '20px 18px', cursor: 'pointer', textAlign: 'left', minHeight: '100px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'background 200ms ease, border-color 200ms ease', boxSizing: 'border-box' } as React.CSSProperties}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.12)'; e.currentTarget.style.borderColor = 'rgba(193,127,58,0.45)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.05)'; e.currentTarget.style.borderColor = 'rgba(250,248,245,0.1)'; }}
-                  >
-                    <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '21px', fontWeight: 500, color: '#FAF8F5', lineHeight: 1.15 }}>{categoryLabel(cat)}</span>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.25)" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                ))}
-              </div>
-            )
-          )}
+        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+          {view.level === 1 && renderL1CategoryGrid()}
 
           {view.level === 2 && (
             drillLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '20px 28px 28px' }}>
                 {[0, 1, 2].map(i => (
                   <div key={i} style={{ height: '84px', borderRadius: '16px', background: 'rgba(250,248,245,0.06)', animation: `hsSkeleton 1.4s ${i * 0.15}s ease-in-out infinite` }} />
                 ))}
@@ -406,7 +550,7 @@ export default function ExploreSwiper({
                 Nothing on just yet.
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '20px 28px 28px' }}>
                 {drillItems.map(item => {
                   const ev = item as DrillEventCard;
                   const pl = item as DrillPlaceCard;
@@ -547,9 +691,8 @@ export default function ExploreSwiper({
         </div>
       )}
 
-      {/* Desktop: two-column layout — LEFT = hero/drill canvas, RIGHT = region selector */}
+      {/* Desktop: two-column layout */}
       <div className="hidden md:flex" style={{ position: 'absolute', inset: 0, zIndex: 10, padding: '12px', gap: '12px' }}>
-        {/* LEFT: ExploreCard at L0, drill canvas at L1+ */}
         <div style={{ flex: 1, position: 'relative', borderRadius: '20px', overflow: 'hidden' }}>
           {view.level === 0 ? (
             <>
@@ -573,7 +716,6 @@ export default function ExploreSwiper({
             </div>
           )}
         </div>
-        {/* RIGHT: region selector */}
         <ExploreWebPanel
           sections={sections}
           regions={regions}
@@ -588,7 +730,6 @@ export default function ExploreSwiper({
         />
       </div>
 
-      {/* Detail sheet */}
       {selectedItem && (
         <ExploreDetailSheet
           item={selectedItem.item}
