@@ -6,6 +6,9 @@
  * Returns both stay-linked and standalone itineraries in the GET response.
  * Accepts a Supabase JWT via Authorization: Bearer <token>.
  *
+ * Both handlers use getSupabaseAdmin() directly so they work correctly
+ * from a server-side context (no browser session / cookie available).
+ *
  * GET Returns:
  *   200 { itineraries: DbItineraryListed[] }
  *   401 { error: 'Unauthorized' }
@@ -20,10 +23,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { applyRateLimit } from '@/lib/rate-limit';
-import {
-  listUserItineraries,
-  createStandaloneItinerary,
-} from '@/lib/supabase/itinerary-repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,11 +48,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const itineraries = await listUserItineraries(user.id);
-    if (itineraries === null) {
+    const sb = getSupabaseAdmin();
+    const { data, error } = await sb
+      .from('itineraries')
+      .select(`
+        id, stayid, userid, title, status, createdat, updatedat,
+        stays ( checkindate, checkoutdate, properties ( name ) )
+      `)
+      .eq('userid', user.id)
+      .order('updatedat', { ascending: false });
+
+    if (error) {
+      console.error('[GET /api/customer/itineraries]', error.message);
       return NextResponse.json({ error: 'Failed to fetch itineraries' }, { status: 500, headers: rateLimit.headers });
     }
-    return NextResponse.json({ itineraries }, { headers: rateLimit.headers });
+
+    return NextResponse.json({ itineraries: data ?? [] }, { headers: rateLimit.headers });
   } catch (err: unknown) {
     console.error('[GET /api/customer/itineraries]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: rateLimit.headers });
@@ -87,11 +97,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const id = await createStandaloneItinerary(user.id, title);
-    if (!id) {
+    const sb = getSupabaseAdmin();
+    const { data, error } = await sb
+      .from('itineraries')
+      .insert({ userid: user.id, stayid: null, title: title ?? null })
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('[POST /api/customer/itineraries]', error?.message);
       return NextResponse.json({ error: 'Failed to create itinerary' }, { status: 500, headers: rateLimit.headers });
     }
-    return NextResponse.json({ id }, { status: 201, headers: rateLimit.headers });
+
+    return NextResponse.json({ id: data.id }, { status: 201, headers: rateLimit.headers });
   } catch (err: unknown) {
     console.error('[POST /api/customer/itineraries]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: rateLimit.headers });
