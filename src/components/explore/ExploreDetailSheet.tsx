@@ -7,11 +7,6 @@ import type { ExplorePropertyCard } from '@/lib/supabase/explore-properties-repo
 import type { RegionOption } from '@/app/dashboard/explore/page';
 import type { DrillPlaceCard, DrillEventCard } from '@/types/explore';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
-import {
-  createStandaloneItinerary,
-  insertItineraryItem,
-  listUserItineraries,
-} from '@/lib/supabase/itinerary-repository';
 
 async function getBearerToken(): Promise<string | null> {
   const sb = getSupabaseBrowser();
@@ -184,32 +179,50 @@ export default function ExploreDetailSheet({
 
   async function handleItinerary() {
     if (!item || added || addingItinerary) return;
-    const itemId = (item as { id?: string }).id;
-    if (!itemId) return;
+    const itemId = (item as { id?: string }).id ?? null;
     setAddingItinerary(true);
     try {
-      const sb = getSupabaseBrowser();
-      if (!sb) return;
-      const { data: { session } } = await sb.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) return;
-      const itineraries = await listUserItineraries(userId);
-      const standalone = itineraries?.find(it => !it.stayid) ?? null;
-      const itineraryId = standalone
-        ? standalone.id
-        : await createStandaloneItinerary(userId);
-      if (!itineraryId) return;
-      const result = await insertItineraryItem(itineraryId, {
-        place_id: itemId,
-        titleoverride: null,
-        scheduleddate: new Date().toISOString().split('T')[0],
-        starttime: '10:00',
-        durationhours: 1,
-        name: item.name ?? null,
-        category: (item as DrillPlaceCard).category ?? null,
-        image: (item as DrillPlaceCard).image_url ?? null,
+      const token = await getBearerToken();
+      if (!token) return;
+
+      // 1. Find or create a standalone itinerary
+      const listRes = await fetch('/api/customer/itineraries', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (result) {
+      if (!listRes.ok) return;
+      const { itineraries } = await listRes.json() as { itineraries: Array<{ id: string; stayid: string | null }> };
+      const standalone = itineraries.find(it => !it.stayid);
+
+      let itineraryId: string;
+      if (standalone) {
+        itineraryId = standalone.id;
+      } else {
+        const createRes = await fetch('/api/customer/itineraries', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (!createRes.ok) return;
+        const { id } = await createRes.json() as { id: string };
+        itineraryId = id;
+      }
+
+      // 2. Insert the item
+      const addRes = await fetch(`/api/customer/itineraries/${itineraryId}/items`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          place_id: itemId,
+          name: item.name ?? '',
+          category: (item as DrillPlaceCard).category ?? null,
+          image: (item as DrillPlaceCard).image_url ?? null,
+          scheduleddate: new Date().toISOString().split('T')[0],
+          starttime: '10:00',
+          durationhours: 1,
+        }),
+      });
+
+      if (addRes.ok) {
         setAdded(true);
         setTimeout(() => setAdded(false), 1800);
       }
