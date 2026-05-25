@@ -131,6 +131,7 @@ export default function ExploreSwiper({
   const [carouselIndex, setCarouselIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  // L0 swipe state — only used on the section hero, never on drill levels
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
   const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -253,15 +254,19 @@ export default function ExploreSwiper({
     if (view.level === 0) setHeroImageUrl(sections[activeIndex]?.image_url ?? null);
   }, [activeIndex, sections, view.level]);
 
+  // ─── L0 swipe handlers — ONLY fire when at root section level ──────────────
   function handlePointerDown(e: React.PointerEvent) {
+    // only handle L0 swipe; when inside drill or region sheet, bail immediately
     if (view.level > 0 || showRegionSheet) return;
-    pointerStartX.current = e.clientX; isDragging.current = false;
+    pointerStartX.current = e.clientX;
+    isDragging.current = false;
   }
   function handlePointerMove(e: React.PointerEvent) {
-    if (pointerStartX.current !== null && Math.abs(e.clientX - pointerStartX.current) > 6) isDragging.current = true;
+    if (view.level > 0 || pointerStartX.current === null) return;
+    if (Math.abs(e.clientX - pointerStartX.current) > 6) isDragging.current = true;
   }
   function handlePointerUp(e: React.PointerEvent) {
-    if (pointerStartX.current === null) return;
+    if (view.level > 0 || pointerStartX.current === null) return;
     const delta = e.clientX - pointerStartX.current;
     pointerStartX.current = null;
     if (!isDragging.current) return;
@@ -277,7 +282,7 @@ export default function ExploreSwiper({
     : panelPhase === 'entering' ? { opacity: 1, animation: 'hsPanelIn 440ms 60ms cubic-bezier(0.25,0,0,1) both' }
     : {};
 
-  // ─── L1: Spotlight category grid (tall cards, image-first) ──────────────────
+  // ─── L1: Spotlight category grid ────────────────────────────────────────────
   function renderL1CategoryGrid() {
     if (drillLoading) {
       return (
@@ -295,7 +300,6 @@ export default function ExploreSwiper({
     const countMap: Record<string, number> = {};
     for (const item of drillItems) countMap[item.category] = (countMap[item.category] ?? 0) + 1;
 
-    // first card is wide (spans 2 cols), rest are normal
     return (
       <div style={{ padding: '16px 16px 32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
@@ -306,7 +310,7 @@ export default function ExploreSwiper({
             const vibe = CAT_VIBE[cat.toLowerCase()] ?? '';
             const count = countMap[cat] ?? 0;
             const imgSrc = catImagePath(cat.toLowerCase());
-            const isFeature = idx === 0; // first card spans 2 cols
+            const isFeature = idx === 0;
 
             return (
               <button
@@ -325,6 +329,8 @@ export default function ExploreSwiper({
                   animation: `hsCatIn 400ms ${idx * 35}ms cubic-bezier(0.16,1,0.3,1) both`,
                   transition: 'transform 220ms cubic-bezier(0.25,0,0,1), box-shadow 220ms ease',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.45)',
+                  // IMPORTANT: let browser handle vertical scroll on this element
+                  touchAction: 'manipulation',
                 } as React.CSSProperties}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'scale(1.025)';
@@ -335,94 +341,26 @@ export default function ExploreSwiper({
                   e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.45)';
                 }}
               >
-                {/* full-bleed image */}
                 <img
                   src={imgSrc}
                   alt={label}
-                  style={{
-                    position: 'absolute', inset: 0,
-                    width: '100%', height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'center',
-                  }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
                   loading={idx < 3 ? 'eager' : 'lazy'}
                 />
-
-                {/* gradient veil — heavier at bottom */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(to top, rgba(6,4,2,0.88) 0%, rgba(6,4,2,0.2) 50%, transparent 100%)',
-                  pointerEvents: 'none',
-                }} />
-
-                {/* top-left: accent dot + vibe */}
-                <div style={{
-                  position: 'absolute', top: '12px', left: '12px',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                }}>
-                  <div style={{
-                    width: '8px', height: '8px', borderRadius: '50%',
-                    background: accentColor,
-                    boxShadow: `0 0 8px ${accentColor}`,
-                    flexShrink: 0,
-                  }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,4,2,0.88) 0%, rgba(6,4,2,0.2) 50%, transparent 100%)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentColor, boxShadow: `0 0 8px ${accentColor}`, flexShrink: 0 }} />
                   {vibe && (
-                    <span style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: '9px', fontWeight: 700,
-                      color: '#FAF8F5',
-                      background: 'rgba(0,0,0,0.38)',
-                      backdropFilter: 'blur(8px)',
-                      borderRadius: '20px',
-                      padding: '3px 8px',
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                    }}>{vibe}</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FAF8F5', background: 'rgba(0,0,0,0.38)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '3px 8px', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{vibe}</span>
                   )}
                 </div>
-
-                {/* top-right: count badge */}
                 <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-                  <span style={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: '10px', fontWeight: 700,
-                    color: '#0A0806',
-                    background: accentColor,
-                    borderRadius: '20px',
-                    padding: '3px 9px',
-                    lineHeight: 1.4,
-                  }}>{count}</span>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 700, color: '#0A0806', background: accentColor, borderRadius: '20px', padding: '3px 9px', lineHeight: 1.4 }}>{count}</span>
                 </div>
-
-                {/* bottom-left: name + arrow */}
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0,
-                  padding: isFeature ? '20px 20px' : '14px 14px',
-                  display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-                }}>
-                  <h3 style={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: isFeature ? 'clamp(1.4rem, 3vw, 2rem)' : 'clamp(1rem, 2.5vw, 1.4rem)',
-                    fontWeight: 800,
-                    color: '#FAF8F5',
-                    margin: 0,
-                    lineHeight: 1.0,
-                    letterSpacing: '-0.03em',
-                    textTransform: 'uppercase',
-                  }}>{label}</h3>
-                  <div style={{
-                    width: isFeature ? '32px' : '26px',
-                    height: isFeature ? '32px' : '26px',
-                    borderRadius: '50%',
-                    background: 'rgba(250,248,245,0.15)',
-                    backdropFilter: 'blur(12px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FAF8F5" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: isFeature ? '20px 20px' : '14px 14px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: isFeature ? 'clamp(1.4rem, 3vw, 2rem)' : 'clamp(1rem, 2.5vw, 1.4rem)', fontWeight: 800, color: '#FAF8F5', margin: 0, lineHeight: 1.0, letterSpacing: '-0.03em', textTransform: 'uppercase' }}>{label}</h3>
+                  <div style={{ width: isFeature ? '32px' : '26px', height: isFeature ? '32px' : '26px', borderRadius: '50%', background: 'rgba(250,248,245,0.15)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FAF8F5" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
               </button>
@@ -445,13 +383,7 @@ export default function ExploreSwiper({
       return (
         <div style={{ padding: '16px', display: 'flex', gap: '10px', overflow: 'hidden' }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{
-              flex: i === 1 ? '0 0 72%' : '0 0 18%',
-              height: '380px',
-              borderRadius: '20px',
-              background: 'rgba(250,248,245,0.05)',
-              animation: `hsSkeleton 1.4s ${i * 0.1}s ease-in-out infinite`,
-            }} />
+            <div key={i} style={{ flex: i === 1 ? '0 0 72%' : '0 0 18%', height: '380px', borderRadius: '20px', background: 'rgba(250,248,245,0.05)', animation: `hsSkeleton 1.4s ${i * 0.1}s ease-in-out infinite` }} />
           ))}
         </div>
       );
@@ -473,13 +405,7 @@ export default function ExploreSwiper({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
-
-        {/* counter top-right */}
-        <div style={{
-          display: 'flex', justifyContent: 'flex-end',
-          alignItems: 'center', gap: '8px',
-          padding: '0 20px 12px',
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '0 20px 12px' }}>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 700, color: '#FAF8F5', letterSpacing: '0.04em' }}>{pad(carouselIndex)}</span>
           <div style={{ position: 'relative', width: '36px', height: '1px', background: 'rgba(250,248,245,0.18)' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, height: '1px', background: accentFg, width: `${((carouselIndex + 1) / Math.min(total, 6)) * 100}%`, transition: 'width 340ms cubic-bezier(0.25,0,0,1)' }} />
@@ -487,7 +413,7 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(Math.min(total, 6) - 1)}</span>
         </div>
 
-        {/* spotlight carousel */}
+        {/* carousel — touch-action pan-x so browser handles horizontal swipe natively */}
         <div
           ref={carouselRef}
           onScroll={() => {
@@ -500,13 +426,16 @@ export default function ExploreSwiper({
             display: 'flex',
             alignItems: 'center',
             overflowX: 'auto',
+            overflowY: 'hidden',
             scrollSnapType: 'x mandatory',
             scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch',
+            // KEY FIX: tell the browser this strip scrolls horizontally
+            touchAction: 'pan-x',
             gap: '10px',
-            padding: '0 14% 0',   // side padding so active card is centred
+            padding: '0 14% 0',
             scrollbarWidth: 'none',
-          }}
+          } as React.CSSProperties}
         >
           {drillItems.slice(0, 6).map((item, idx) => {
             const isActive = idx === carouselIndex;
@@ -522,7 +451,6 @@ export default function ExploreSwiper({
                 key={item.id}
                 onClick={() => drillToItem(item, active?.id ?? '')}
                 style={{
-                  // active = wide spotlight, side cards = slim peek
                   flex: `0 0 ${isActive ? '72%' : '18%'}`,
                   height: isActive ? '380px' : '320px',
                   scrollSnapAlign: 'center',
@@ -536,133 +464,48 @@ export default function ExploreSwiper({
                   opacity: isActive ? 1 : 0.45,
                   transition: 'flex 400ms cubic-bezier(0.16,1,0.3,1), height 400ms cubic-bezier(0.16,1,0.3,1), opacity 400ms ease',
                   boxShadow: isActive ? '0 16px 48px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.3)',
+                  // let scroll happen on the parent, not steal it
+                  touchAction: 'manipulation',
                 } as React.CSSProperties}
               >
-                {/* image */}
                 {hasImage && (
-                  <img
-                    src={item.image_url!}
-                    alt={item.name}
-                    style={{
-                      position: 'absolute', inset: 0,
-                      width: '100%', height: '100%',
-                      objectFit: 'cover',
-                      objectPosition: 'center top',
-                      transform: isActive ? 'scale(1)' : 'scale(1.06)',
-                      transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)',
-                    }}
-                    loading={idx === 0 ? 'eager' : 'lazy'}
-                  />
+                  <img src={item.image_url!} alt={item.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', transform: isActive ? 'scale(1)' : 'scale(1.06)', transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)' }} loading={idx === 0 ? 'eager' : 'lazy'} />
                 )}
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,4,2,0.92) 0%, rgba(6,4,2,0.3) 45%, transparent 100%)', pointerEvents: 'none' }} />
 
-                {/* gradient veil */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(to top, rgba(6,4,2,0.92) 0%, rgba(6,4,2,0.3) 45%, transparent 100%)',
-                  pointerEvents: 'none',
-                }} />
-
-                {/* top-left: accent dot + vibe/date tag — only on active */}
                 {isActive && (
-                  <div style={{
-                    position: 'absolute', top: '14px', left: '14px',
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                  }}>
-                    <div style={{
-                      width: '8px', height: '8px', borderRadius: '50%',
-                      background: accentFg,
-                      boxShadow: `0 0 10px ${accentFg}`,
-                      flexShrink: 0,
-                    }} />
+                  <div style={{ position: 'absolute', top: '14px', left: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentFg, boxShadow: `0 0 10px ${accentFg}`, flexShrink: 0 }} />
                     {(vibeTag ?? metaLine) && (
-                      <span style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: '9px', fontWeight: 700,
-                        color: '#FAF8F5',
-                        background: 'rgba(0,0,0,0.42)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '20px',
-                        padding: '3px 9px',
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                        whiteSpace: 'nowrap',
-                      }}>{vibeTag ?? metaLine}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FAF8F5', background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(10px)', borderRadius: '20px', padding: '3px 9px', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{vibeTag ?? metaLine}</span>
                     )}
                   </div>
                 )}
 
-                {/* bottom info — only on active card */}
                 {isActive && (
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    padding: '18px 18px 20px',
-                  }}>
-                    {/* name | price on one line — exactly like the trekking reference */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '18px 18px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '8px' }}>
-                      <h3 style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
-                        fontWeight: 800,
-                        color: '#FAF8F5',
-                        margin: 0,
-                        lineHeight: 1.05,
-                        letterSpacing: '-0.03em',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        flex: 1,
-                        minWidth: 0,
-                      }}>{item.name}</h3>
-
+                      <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)', fontWeight: 800, color: '#FAF8F5', margin: 0, lineHeight: 1.05, letterSpacing: '-0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{item.name}</h3>
                       {price && (
                         <>
-                          {/* vertical separator — exactly from reference */}
                           <div style={{ width: '1px', height: '14px', background: 'rgba(250,248,245,0.35)', flexShrink: 0 }} />
-                          <span style={{
-                            fontFamily: "'DM Sans', sans-serif",
-                            fontSize: '13px', fontWeight: 700,
-                            color: accentFg,
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}>{price}</span>
+                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 700, color: accentFg, whiteSpace: 'nowrap', flexShrink: 0 }}>{price}</span>
                         </>
                       )}
                     </div>
-
-                    {/* second line: rating + date/address with accent icon */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {!isEvent && pl.rating && (
-                        <span style={{
-                          fontFamily: "'DM Sans', sans-serif",
-                          fontSize: '10px', fontWeight: 700,
-                          color: '#0A0806',
-                          background: accentFg,
-                          borderRadius: '5px',
-                          padding: '2px 6px',
-                          lineHeight: 1.5,
-                          flexShrink: 0,
-                        }}>★ {pl.rating.toFixed(1)}</span>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '5px', padding: '2px 6px', lineHeight: 1.5, flexShrink: 0 }}>★ {pl.rating.toFixed(1)}</span>
                       )}
                       {isEvent && ev.is_featured && (
-                        <span style={{
-                          fontFamily: "'DM Sans', sans-serif",
-                          fontSize: '9px', fontWeight: 700,
-                          letterSpacing: '0.12em', textTransform: 'uppercase',
-                          color: accentFg,
-                        }}>Featured</span>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: accentFg }}>Featured</span>
                       )}
-                      {/* accent clock/pin icon + meta */}
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={accentFg} strokeWidth={2} style={{ flexShrink: 0 }}>
                         {isEvent
                           ? <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>
                           : <><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" /><circle cx="12" cy="9" r="2.5" /></>}
                       </svg>
-                      <span style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: '11px', fontWeight: 500,
-                        color: accentFg,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 500, color: accentFg, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {isEvent ? fmtDate(ev.start_date) : (pl.address ?? pl.vibes?.[1] ?? '')}
                       </span>
                     </div>
@@ -673,17 +516,10 @@ export default function ExploreSwiper({
           })}
         </div>
 
-        {/* dot indicators */}
         {drillItems.length > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', paddingTop: '16px' }}>
             {drillItems.slice(0, 6).map((_, i) => (
-              <div key={i} style={{
-                width: i === carouselIndex ? '18px' : '5px',
-                height: '5px',
-                borderRadius: '3px',
-                background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.2)',
-                transition: 'width 260ms cubic-bezier(0.25,0,0,1), background 260ms ease',
-              }} />
+              <div key={i} style={{ width: i === carouselIndex ? '18px' : '5px', height: '5px', borderRadius: '3px', background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.2)', transition: 'width 260ms cubic-bezier(0.25,0,0,1), background 260ms ease' }} />
             ))}
           </div>
         )}
@@ -691,7 +527,7 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── Left drill canvas shell ─────────────────────────────────────────────────
+  // ─── Drill canvas shell ──────────────────────────────────────────────────────
   function renderLeftDrillCanvas() {
     const v2 = view.level === 2 ? (view as Extract<ExploreView, { level: 2 }>) : null;
     const regionName = activeRegion?.name ?? '';
@@ -706,8 +542,10 @@ export default function ExploreSwiper({
         borderRadius: '20px',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
+        // KEY FIX: let the drill canvas pass all touch events to children
+        touchAction: 'auto',
         ...panelStyle,
-      }}>
+      } as React.CSSProperties}>
         {/* header */}
         <div style={{ padding: '24px 24px 16px', flexShrink: 0, borderBottom: '1px solid rgba(250,248,245,0.07)' }}>
           <button
@@ -729,39 +567,20 @@ export default function ExploreSwiper({
               {activeRegion?.country_code && (
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.85)', margin: '0 0 6px', letterSpacing: '0.16em', textTransform: 'uppercase' }}>{activeRegion.country_code}</p>
               )}
-              {/* Region name big, like BALI / THAILAND */}
-              <h2 style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 'clamp(2rem, 4vw, 3rem)',
-                fontWeight: 800,
-                color: '#FAF8F5',
-                margin: 0,
-                lineHeight: 0.95,
-                letterSpacing: '-0.04em',
-                textTransform: 'uppercase',
-              }}>{regionName}</h2>
+              <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, color: '#FAF8F5', margin: 0, lineHeight: 0.95, letterSpacing: '-0.04em', textTransform: 'uppercase' }}>{regionName}</h2>
             </>
           )}
 
           {view.level === 2 && v2 && (
             <>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: catAccent ?? 'rgba(193,127,58,0.85)', margin: '0 0 6px', letterSpacing: '0.16em', textTransform: 'uppercase', opacity: 0.9 }}>{regionName}</p>
-              <h2 style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)',
-                fontWeight: 800,
-                color: '#FAF8F5',
-                margin: 0,
-                lineHeight: 0.95,
-                letterSpacing: '-0.04em',
-                textTransform: 'uppercase',
-              }}>{catLabel}</h2>
+              <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)', fontWeight: 800, color: '#FAF8F5', margin: 0, lineHeight: 0.95, letterSpacing: '-0.04em', textTransform: 'uppercase' }}>{catLabel}</h2>
             </>
           )}
         </div>
 
-        {/* scrollable content */}
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+        {/* scrollable content — touch-action auto = browser handles scroll */}
+        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y' } as React.CSSProperties}>
           {view.level === 1 && renderL1CategoryGrid()}
           {view.level === 2 && renderL2ItemList()}
         </div>
@@ -771,7 +590,12 @@ export default function ExploreSwiper({
 
   return (
     <div
-      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#0A0806' }}
+      style={{
+        position: 'relative', width: '100%', height: '100%',
+        overflow: 'hidden', background: '#0A0806',
+        // only intercept pointer when L0 is active; drill + region sheet handle their own touch
+        touchAction: view.level === 0 && !showRegionSheet ? 'none' : 'auto',
+      } as React.CSSProperties}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -813,7 +637,7 @@ export default function ExploreSwiper({
 
       {/* ── Mobile region sheet ── */}
       {showRegionSheet && (
-        <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 50 }}>
+        <div className="block md:hidden" style={{ position: 'absolute', inset: 0, zIndex: 50, touchAction: 'auto' } as React.CSSProperties}>
           <div onClick={() => setShowRegionSheet(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(18,14,10,0.97)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderTop: '1px solid rgba(250,248,245,0.1)', borderRadius: '20px 20px 0 0', maxHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
@@ -822,14 +646,14 @@ export default function ExploreSwiper({
             <div style={{ padding: '8px 24px 14px', borderBottom: '1px solid rgba(250,248,245,0.07)', flexShrink: 0 }}>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>Select your city</p>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px', touchAction: 'pan-y' } as React.CSSProperties}>
               {regions.map(region => {
                 const isSelected = region.id === selectedRegionId;
                 return (
                   <button
                     key={region.id}
                     onClick={() => { onRegionChange?.(region.id); setShowRegionSheet(false); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box' } as React.CSSProperties}
+                    style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box', touchAction: 'manipulation' } as React.CSSProperties}
                   >
                     <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {region.image_url
