@@ -54,6 +54,22 @@ const CAT_COLOR: Record<string, string> = {
 };
 const FALLBACK_COLOR = '#888880';
 
+// Vivid diagonal gradient per category — used when image_url is null
+const CAT_GRADIENT: Record<string, string> = {
+  dining:     'linear-gradient(135deg, #FF6B35 0%, #C23B00 100%)',
+  nightlife:  'linear-gradient(135deg, #7B2FFF 0%, #1A0040 100%)',
+  shopping:   'linear-gradient(135deg, #FFD600 0%, #FF8F00 100%)',
+  nature:     'linear-gradient(135deg, #00C853 0%, #003D1A 100%)',
+  historical: 'linear-gradient(135deg, #FF8F00 0%, #3D2000 100%)',
+  wellness:   'linear-gradient(135deg, #00BCD4 0%, #003D45 100%)',
+  family:     'linear-gradient(135deg, #FF4081 0%, #7B0030 100%)',
+  events:     'linear-gradient(135deg, #E91E8C 0%, #4A0028 100%)',
+  local_spots:'linear-gradient(135deg, #FFAB00 0%, #5A3800 100%)',
+  fun_places: 'linear-gradient(135deg, #F50057 0%, #500020 100%)',
+  top_places: 'linear-gradient(135deg, #2979FF 0%, #002070 100%)',
+};
+const FALLBACK_GRADIENT = 'linear-gradient(135deg, #444 0%, #111 100%)';
+
 const CAT_VIBE: Record<string, string> = {
   dining: 'Eat well', nightlife: 'Stay out late', shopping: 'Treat yourself',
   nature: 'Get outside', historical: 'Old souls', wellness: 'Slow down',
@@ -84,13 +100,11 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-SG', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-// price_level 1-4 → $ signs
 function priceDots(level: number | null): string | null {
   if (!level) return null;
   return '$'.repeat(Math.min(level, 4));
 }
 
-// event price range
 function fmtEventPrice(min: number | null, max: number | null, currency: string | null): string | null {
   if (min == null && max == null) return null;
   const sym = currency === 'SGD' ? 'S$' : currency === 'USD' ? '$' : (currency ?? '$');
@@ -142,8 +156,7 @@ export default function ExploreSwiper({
       const categories = deriveCategories(items);
       const data: DrillData = { items, categories, fetchedAt: new Date().toISOString() };
       cacheRef.current.set(cacheKey, data);
-      setDrillItems(items);
-      setDrillCategories(categories);
+      setDrillItems(items); setDrillCategories(categories);
     } catch (err) {
       console.error('[ExploreSwiper] drill fetch failed', err);
     } finally {
@@ -156,8 +169,7 @@ export default function ExploreSwiper({
     if (panelT2Ref.current) clearTimeout(panelT2Ref.current);
     setPanelPhase('exiting');
     panelT1Ref.current = setTimeout(() => {
-      fn();
-      setPanelPhase('entering');
+      fn(); setPanelPhase('entering');
       panelT2Ref.current = setTimeout(() => setPanelPhase('idle'), 500);
     }, 160);
   }, []);
@@ -243,13 +255,12 @@ export default function ExploreSwiper({
     if (view.level === 0) setHeroImageUrl(sections[activeIndex]?.image_url ?? null);
   }, [activeIndex, sections, view.level]);
 
-  // track carousel scroll position for dot indicator
   const handleCarouselScroll = useCallback(() => {
     const el = carouselRef.current;
-    if (!el) return;
-    const cardW = el.scrollWidth / Math.max(drillItems.length, 1);
+    if (!el || drillItems.length === 0) return;
+    const cardW = el.scrollWidth / drillItems.slice(0, 5).length;
     setCarouselIndex(Math.round(el.scrollLeft / cardW));
-  }, [drillItems.length]);
+  }, [drillItems]);
 
   function handlePointerDown(e: React.PointerEvent) {
     if (view.level > 0 || showRegionSheet) return;
@@ -275,7 +286,7 @@ export default function ExploreSwiper({
     : panelPhase === 'entering' ? { opacity: 1, animation: 'hsPanelIn 440ms 60ms cubic-bezier(0.25,0,0,1) both' }
     : {};
 
-  // ─── L1: 4-col category grid ───────────────────────────────────────────────
+  // ─── L1: 4-col category grid ────────────────────────────────────────────────
   function renderL1CategoryGrid() {
     if (drillLoading) {
       return (
@@ -308,15 +319,15 @@ export default function ExploreSwiper({
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)'; e.currentTarget.style.boxShadow = '0 10px 32px rgba(0,0,0,0.42)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.28)'; }}
             >
-              <div style={{ flex: '0 0 44%', padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: accentBg, position: 'relative' }}>
+              <div style={{ flex: '0 0 44%', padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: accentBg }}>
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(11px, 2.2vw, 14px)', fontWeight: 800, color: textCol, margin: 0, lineHeight: 1.0, letterSpacing: '-0.03em', textTransform: 'uppercase' }}>{label}</p>
               </div>
               <div style={{ flex: '0 0 56%', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.2)' }}>
-                <img src={imgSrc} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block', transition: 'transform 380ms cubic-bezier(0.25,0,0,1)' }} loading="lazy" />
+                <img src={imgSrc} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }} loading="lazy" />
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '22px', background: `linear-gradient(to bottom, ${accentBg} 0%, transparent 100%)`, pointerEvents: 'none' }} />
               </div>
               <div style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                {vibe && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '0.03em', color: '#0A0806', background: '#FFFFFF', borderRadius: '20px', padding: '4px 8px', lineHeight: 1.3, boxShadow: '0 1px 6px rgba(0,0,0,0.22)', whiteSpace: 'nowrap' }}>{vibe}</span>}
+                {vibe && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#0A0806', background: '#FFFFFF', borderRadius: '20px', padding: '4px 8px', lineHeight: 1.3, boxShadow: '0 1px 6px rgba(0,0,0,0.22)', whiteSpace: 'nowrap' }}>{vibe}</span>}
                 {count != null && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#0A0806', background: '#FFFFFF', borderRadius: '20px', padding: '4px 7px', lineHeight: 1.3, boxShadow: '0 1px 6px rgba(0,0,0,0.22)', opacity: 0.75 }}>{count}</span>}
               </div>
             </button>
@@ -326,23 +337,21 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Snap carousel + compact list ─────────────────────────────────────
-  // Top ~45% = horizontal snap carousel (native CSS, no lib)
-  // Bottom ~55% = scrollable compact rows with rating, price, summary
+  // ─── L2: Snap carousel (compact) + tight list ───────────────────────────────
   function renderL2ItemList() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
-    const accentFg = CAT_COLOR[v2.category?.toLowerCase()] ?? FALLBACK_COLOR;
+    const catKey = v2.category?.toLowerCase();
+    const accentFg = CAT_COLOR[catKey] ?? FALLBACK_COLOR;
+    const catGradient = CAT_GRADIENT[catKey] ?? FALLBACK_GRADIENT;
 
     if (drillLoading) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div style={{ flex: '0 0 45%', display: 'flex', gap: '8px', padding: '12px', overflow: 'hidden' }}>
-            {[0,1,2].map(i => <div key={i} style={{ flex: '0 0 78%', borderRadius: '16px', background: 'rgba(250,248,245,0.05)', animation: `hsSkeleton 1.4s ${i * 0.1}s ease-in-out infinite` }} />)}
+        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', overflow: 'hidden' }}>
+            {[0,1,2].map(i => <div key={i} style={{ flex: '0 0 60%', height: '160px', borderRadius: '14px', background: 'rgba(250,248,245,0.05)', animation: `hsSkeleton 1.4s ${i * 0.1}s ease-in-out infinite` }} />)}
           </div>
-          <div style={{ flex: 1, padding: '0 12px' }}>
-            {[0,1,2,3].map(i => <div key={i} style={{ height: '68px', borderRadius: '10px', marginBottom: '6px', background: 'rgba(250,248,245,0.04)', animation: `hsSkeleton 1.4s ${0.2 + i * 0.08}s ease-in-out infinite` }} />)}
-          </div>
+          {[0,1,2,3].map(i => <div key={i} style={{ height: '60px', borderRadius: '10px', background: 'rgba(250,248,245,0.04)', animation: `hsSkeleton 1.4s ${0.2 + i * 0.08}s ease-in-out infinite` }} />)}
         </div>
       );
     }
@@ -351,9 +360,7 @@ export default function ExploreSwiper({
       return <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '17px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '44px', margin: 0 }}>Nothing on just yet.</p>;
     }
 
-    // carousel items = top 5 (or all if fewer)
     const carouselItems = drillItems.slice(0, Math.min(5, drillItems.length));
-    const listItems = drillItems;
 
     function buildPrice(item: DrillPlaceCard | DrillEventCard): string | null {
       if (isEvent) {
@@ -364,10 +371,11 @@ export default function ExploreSwiper({
     }
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      // Outer wrapper: natural height, no forced 100% fill
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── Snap carousel ── */}
-        <div style={{ flex: '0 0 auto', paddingBottom: '0' }}>
+        {/* ── Carousel ── */}
+        <div style={{ flexShrink: 0 }}>
           <div
             ref={carouselRef}
             onScroll={handleCarouselScroll}
@@ -377,8 +385,8 @@ export default function ExploreSwiper({
               scrollSnapType: 'x mandatory',
               scrollBehavior: 'smooth',
               WebkitOverflowScrolling: 'touch',
-              gap: '10px',
-              padding: '12px 16px 10px',
+              gap: '8px',
+              padding: '10px 16px 8px',
               scrollbarWidth: 'none',
             }}
           >
@@ -388,57 +396,65 @@ export default function ExploreSwiper({
               const ev = item as DrillEventCard;
               const vibeTag = !isEvent && pl.vibes?.[0] ? pl.vibes[0] : null;
               const metaLine = isEvent ? fmtDate(ev.start_date) : null;
+              const hasImage = !!item.image_url;
+
               return (
                 <button
                   key={item.id}
                   onClick={() => drillToItem(item, active?.id ?? '')}
                   style={{
-                    flex: '0 0 72%',
-                    height: '200px',
+                    flex: '0 0 60%',         // ← narrower: peek of next card
+                    height: '160px',          // ← shorter than before
                     scrollSnapAlign: 'start',
-                    borderRadius: '16px',
+                    borderRadius: '14px',
                     overflow: 'hidden',
                     position: 'relative',
                     border: 'none',
                     cursor: 'pointer',
-                    background: 'rgba(250,248,245,0.06)',
+                    // accent gradient fallback when no image
+                    background: hasImage ? 'rgba(250,248,245,0.06)' : catGradient,
                     flexShrink: 0,
-                    animation: `hsCatIn 380ms ${idx * 40}ms cubic-bezier(0.25,0,0,1) both`,
-                    transition: 'transform 220ms cubic-bezier(0.25,0,0,1)',
+                    animation: `hsCatIn 360ms ${idx * 40}ms cubic-bezier(0.25,0,0,1) both`,
+                    transition: 'transform 200ms cubic-bezier(0.25,0,0,1)',
                   } as React.CSSProperties}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.015)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                 >
-                  {item.image_url
-                    ? <img src={item.image_url} alt={item.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} loading={idx === 0 ? 'eager' : 'lazy'} />
-                    : <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${accentFg}33 0%, rgba(14,11,8,0.6) 100%)` }} />
-                  }
-                  {/* gradient overlay */}
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,8,6,0.88) 0%, rgba(10,8,6,0.18) 55%, transparent 100%)' }} />
+                  {hasImage && (
+                    <img src={item.image_url!} alt={item.name}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                    />
+                  )}
 
-                  {/* top-left: accent dot + category tag */}
-                  <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentFg, boxShadow: `0 0 8px ${accentFg}` }} />
-                    {vibeTag && (
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FFFFFF', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '3px 8px', letterSpacing: '0.04em' }}>{vibeTag}</span>
-                    )}
-                    {metaLine && (
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FFFFFF', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '3px 8px', letterSpacing: '0.04em' }}>{metaLine}</span>
+                  {/* Gradient overlay — lighter on gradient-bg cards so name pops */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: hasImage
+                      ? 'linear-gradient(to top, rgba(10,8,6,0.88) 0%, rgba(10,8,6,0.15) 55%, transparent 100%)'
+                      : 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)',
+                  }} />
+
+                  {/* top-left: accent dot + tag */}
+                  <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: hasImage ? accentFg : '#FFFFFF', boxShadow: `0 0 7px ${accentFg}`, flexShrink: 0 }} />
+                    {(vibeTag ?? metaLine) && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FFFFFF', background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '2px 7px', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{vibeTag ?? metaLine}</span>
                     )}
                   </div>
 
                   {/* bottom info */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 14px 14px' }}>
-                    <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '15px', fontWeight: 700, color: '#FAF8F5', margin: '0 0 6px', lineHeight: 1.15, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 12px 12px' }}>
+                    <h3 style={{ fontFamily: hasImage ? "'DM Sans', sans-serif" : "'Cormorant Garamond', Georgia, serif", fontStyle: hasImage ? 'normal' : 'italic', fontSize: hasImage ? '14px' : '18px', fontWeight: hasImage ? 700 : 600, color: '#FAF8F5', margin: '0 0 5px', lineHeight: 1.15, letterSpacing: hasImage ? '-0.02em' : '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {!isEvent && (item as DrillPlaceCard).rating && (
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '6px', padding: '2px 7px', lineHeight: 1.4 }}>★ {(item as DrillPlaceCard).rating!.toFixed(1)}</span>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '5px', padding: '1px 6px', lineHeight: 1.5 }}>★ {(item as DrillPlaceCard).rating!.toFixed(1)}</span>
                       )}
                       {isEvent && (item as DrillEventCard).is_featured && (
                         <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: accentFg }}>Featured</span>
                       )}
                       {price && (
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 600, color: 'rgba(250,248,245,0.65)', letterSpacing: '0.02em' }}>{price}</span>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, color: hasImage ? 'rgba(250,248,245,0.65)' : 'rgba(255,255,255,0.75)', letterSpacing: '0.02em' }}>{price}</span>
                       )}
                     </div>
                   </div>
@@ -447,37 +463,31 @@ export default function ExploreSwiper({
             })}
           </div>
 
-          {/* scroll dot indicator */}
+          {/* pill dot indicator */}
           {carouselItems.length > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', paddingBottom: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', paddingBottom: '8px' }}>
               {carouselItems.map((_, i) => (
-                <div key={i} style={{
-                  width: i === carouselIndex ? '16px' : '5px',
-                  height: '5px',
-                  borderRadius: '3px',
-                  background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.22)',
-                  transition: 'width 240ms cubic-bezier(0.25,0,0,1), background 240ms ease',
-                }} />
+                <div key={i} style={{ width: i === carouselIndex ? '14px' : '5px', height: '5px', borderRadius: '3px', background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.2)', transition: 'width 240ms cubic-bezier(0.25,0,0,1), background 240ms ease' }} />
               ))}
             </div>
           )}
         </div>
 
         {/* ── Compact list ── */}
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '0 12px 24px' }}>
+        <div style={{ padding: '0 12px 24px' }}>
           {/* divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0 10px' }}>
             <div style={{ flex: 1, height: '1px', background: 'rgba(250,248,245,0.07)' }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.25)', whiteSpace: 'nowrap' }}>All {listItems.length}</span>
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.25)', whiteSpace: 'nowrap' }}>All {drillItems.length}</span>
             <div style={{ flex: 1, height: '1px', background: 'rgba(250,248,245,0.07)' }} />
           </div>
 
-          {listItems.map((item, idx) => {
+          {drillItems.map((item, idx) => {
             const price = buildPrice(item);
             const pl = item as DrillPlaceCard;
             const ev = item as DrillEventCard;
             const summary = item.editorial_summary;
-            const delay = `${idx * 22}ms`;
+            const hasThumb = !!item.image_url;
 
             return (
               <button
@@ -488,61 +498,58 @@ export default function ExploreSwiper({
                   alignItems: 'stretch',
                   width: '100%',
                   boxSizing: 'border-box',
-                  marginBottom: '6px',
+                  marginBottom: '5px',
                   border: 'none',
                   borderRadius: '10px',
                   background: 'rgba(250,248,245,0.04)',
                   cursor: 'pointer',
                   overflow: 'hidden',
                   transition: 'background 160ms ease, transform 160ms ease',
-                  animation: `hsItemIn 360ms ${delay} cubic-bezier(0.25,0,0,1) both`,
-                  // left accent stripe
+                  animation: `hsItemIn 340ms ${idx * 20}ms cubic-bezier(0.25,0,0,1) both`,
                   borderLeft: `3px solid ${accentFg}`,
                 } as React.CSSProperties}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.08)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(250,248,245,0.04)'; e.currentTarget.style.transform = 'translateX(0)'; }}
               >
-                {/* Thumbnail */}
-                <div style={{ width: '64px', flexShrink: 0, position: 'relative', overflow: 'hidden', background: 'rgba(250,248,245,0.06)' }}>
-                  {item.image_url
-                    ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(250,248,245,0.2)' }}>{item.name.charAt(0)}</span></div>
+                {/* Thumbnail — 52px, accent gradient if no image */}
+                <div style={{ width: '52px', flexShrink: 0, position: 'relative', overflow: 'hidden', background: hasThumb ? 'rgba(250,248,245,0.06)' : catGradient }}>
+                  {hasThumb
+                    ? <img src={item.image_url!} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                    : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{item.name.charAt(0)}</span>
+                      </div>
                   }
                 </div>
 
                 {/* Info */}
-                <div style={{ flex: 1, minWidth: 0, padding: '9px 12px 9px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px' }}>
-                  {/* row 1: name */}
+                <div style={{ flex: 1, minWidth: 0, padding: '8px 10px 8px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px' }}>
                   <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 600, color: 'rgba(250,248,245,0.92)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{item.name}</p>
 
-                  {/* row 2: summary */}
-                  {summary && (
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontStyle: 'italic', color: 'rgba(250,248,245,0.38)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</p>
-                  )}
-                  {!summary && isEvent && (
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: 0 }}>{fmtDate(ev.start_date)}{ev.venue_name ? ` · ${ev.venue_name}` : ''}</p>
-                  )}
-                  {!summary && !isEvent && pl.address && (
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.38)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pl.address}</p>
-                  )}
+                  {summary
+                    ? <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontStyle: 'italic', color: 'rgba(250,248,245,0.36)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</p>
+                    : isEvent
+                    ? <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.36)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtDate(ev.start_date)}{ev.venue_name ? ` · ${ev.venue_name}` : ''}</p>
+                    : pl.address
+                    ? <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.36)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pl.address}</p>
+                    : null
+                  }
 
-                  {/* row 3: rating + price chips */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
                     {!isEvent && pl.rating && (
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '5px', padding: '1px 6px', lineHeight: 1.5 }}>★ {pl.rating.toFixed(1)}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '4px', padding: '1px 5px', lineHeight: 1.5 }}>★ {pl.rating.toFixed(1)}</span>
                     )}
                     {price && (
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, color: 'rgba(250,248,245,0.55)', background: 'rgba(250,248,245,0.08)', borderRadius: '5px', padding: '1px 6px', lineHeight: 1.5 }}>{price}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, color: 'rgba(250,248,245,0.5)', background: 'rgba(250,248,245,0.07)', borderRadius: '4px', padding: '1px 5px', lineHeight: 1.5 }}>{price}</span>
                     )}
-                    {!isEvent && pl.vibes && pl.vibes.length > 0 && (
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 500, color: accentFg, opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90px' }}>{pl.vibes[0]}</span>
+                    {!isEvent && pl.vibes?.[0] && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 500, color: accentFg, opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80px' }}>{pl.vibes[0]}</span>
                     )}
                   </div>
                 </div>
 
                 {/* chevron */}
-                <div style={{ display: 'flex', alignItems: 'center', paddingRight: '12px', flexShrink: 0 }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                <div style={{ display: 'flex', alignItems: 'center', paddingRight: '10px', flexShrink: 0 }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.18)" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 </div>
               </button>
             );
@@ -552,7 +559,7 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── Left drill canvas shell ───────────────────────────────────────────────
+  // ─── Left drill canvas shell ─────────────────────────────────────────────────
   function renderLeftDrillCanvas() {
     const v2 = view.level === 2 ? (view as Extract<ExploreView, { level: 2 }>) : null;
     const regionName = activeRegion?.name ?? '';
@@ -563,7 +570,8 @@ export default function ExploreSwiper({
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(14,11,8,0.90)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...panelStyle }}>
         {/* header */}
         <div style={{ padding: '24px 28px 18px', flexShrink: 0, borderBottom: '1px solid rgba(250,248,245,0.07)' }}>
-          <button onClick={navigateBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 14px', color: 'rgba(250,248,245,0.4)' }}
+          <button onClick={navigateBack}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 14px', color: 'rgba(250,248,245,0.4)' }}
             onMouseEnter={e => { e.currentTarget.style.color = 'rgba(250,248,245,0.75)'; }}
             onMouseLeave={e => { e.currentTarget.style.color = 'rgba(250,248,245,0.4)'; }}
           >
@@ -585,9 +593,10 @@ export default function ExploreSwiper({
             </>
           )}
         </div>
-        {/* content — L2 manages its own internal scroll split */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {view.level === 1 && <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>{renderL1CategoryGrid()}</div>}
+
+        {/* scrollable content — L2 no longer forces height: 100% */}
+        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+          {view.level === 1 && renderL1CategoryGrid()}
           {view.level === 2 && renderL2ItemList()}
         </div>
       </div>
@@ -598,7 +607,6 @@ export default function ExploreSwiper({
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#0E0D0B' }}
       onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
     >
-      {/* hero bg */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
         {displayHeroUrl && <img src={displayHeroUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.38, transition: 'opacity 680ms ease' }} />}
         {nextHeroImageUrl && <img src={nextHeroImageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 680ms ease' }} />}
@@ -690,7 +698,7 @@ export default function ExploreSwiper({
         @keyframes ecPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
         @keyframes hsItemIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes hsCatIn { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        div[style*="scrollbarWidth: none"]::-webkit-scrollbar { display: none; }
+        div::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
