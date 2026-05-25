@@ -44,27 +44,15 @@ const tabs = [
     ),
   },
   {
-    label: 'Trips',
-    href: '/dashboard/trips',
-    match: (p: string) => p.startsWith('/dashboard/trips'),
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <rect x="2" y="7" width="20" height="14" rx="2" />
-        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-        <line x1="12" y1="12" x2="12" y2="16" />
-        <line x1="10" y1="14" x2="14" y2="14" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Wishlist',
-    href: '/dashboard/wishlist',
-    match: (p: string) => p.startsWith('/dashboard/wishlist'),
+    label: 'Planner',
+    href: '/dashboard/planner',
+    match: (p: string) => p.startsWith('/dashboard/planner'),
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+        <line x1="9" y1="10" x2="15" y2="10" />
+        <line x1="9" y1="14" x2="13" y2="14" />
       </svg>
     ),
   },
