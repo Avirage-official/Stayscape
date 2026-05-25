@@ -133,7 +133,7 @@ export async function getPlacesByRegionAndCategory(
   let query = supabase
     .from('places')
     .select(
-      'id, name, category, subcategory, image_url, rating, address, city, price_level, booking_url, editorial_summary',
+      'id, name, category, subcategory, image_url, image_urls, rating, address, city, price_level, booking_url, editorial_summary',
     )
     .eq('is_active', true)
     .eq('region_id', regionId)
@@ -151,7 +151,7 @@ export async function getPlacesByRegionAndCategory(
     name: row.name as string,
     category: row.category as string,
     subcategory: (row.subcategory as string | null) ?? null,
-    image_url: (row.image_url as string | null) ?? null,
+    image_url: (row.image_url as string | null) ?? ((row.image_urls as string[] | null)?.[0] ?? null),
     rating: (row.rating as number | null) ?? null,
     vibes: null, // vibes come from place_tags; not fetched here for performance
     address: (row.address as string | null) ?? null,
@@ -304,7 +304,7 @@ export function toDiscoveryCard(
     editorial_summary: place.editorial_summary,
     rating: place.rating,
     distance: null, // computed by the API layer relative to hotel
-    image_url: place.image_url,
+    image_url: place.image_url ?? (place.image_urls?.[0] ?? null),
     gradient: gradientForCategory(place.category),
     booking_url: place.booking_url,
     price_level: place.price_level,

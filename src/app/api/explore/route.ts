@@ -4,13 +4,14 @@
  * Returns 4 personalised sections for the Explore dashboard page.
  *
  * Sections:
- *   1. Made for you  — places in user’s current / selected region
- *   2. In your world — other regions to explore (destination cards)
+ *   1. Made for you  — places scored by vibe overlap
+ *   2. In your world — other regions to explore
  *   3. Happening now — upcoming events in the region
- *   4. Aria’s picks  — explore_properties (manually seeded hotel cards)
+ *   4. Aria's picks  — persona-tag algorithm (traveler_type tags × user scores)
+ *                      falls back to featured places when no scores exist yet
  *
  * Query params:
- *   ?region_id=<uuid>   Override region (from dropdown)
+ *   ?region_id=<uuid>   Override active region (city selector)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,20 +19,16 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import {
   queryPlaces,
-  getPlaceTags,
   toDiscoveryCard,
 } from '@/lib/supabase/places-repository';
 import {
   queryEvents,
-  getEventTags,
   toDiscoveryEventCard,
 } from '@/lib/supabase/events-repository';
-import {
-  queryExploreProperties,
-  getExplorePropertyTags,
-  toDiscoveryPropertyCard,
-} from '@/lib/supabase/explore-properties-repository';
 import { applyRateLimit } from '@/lib/rate-limit';
+import type { PlaceTag, EventTag } from '@/types/database';
+
+export const dynamic = 'force-dynamic';
 
 function regionImageUrl(imagePath: string | null): string | null {
   if (!imagePath) return null;
@@ -40,6 +37,37 @@ function regionImageUrl(imagePath: string | null): string | null {
   if (!base) return null;
   const clean = imagePath.replace(/^region-images\//, '');
   return `${base}/storage/v1/object/public/region-images/${clean}`;
+}
+
+/** Extract top N persona names from a scores object (score must exceed threshold). */
+function topPersonas(
+  scores: Record<string, number> | null | undefined,
+  n = 3,
+  threshold = 0.25,
+): string[] {
+  if (!scores) return [];
+  return Object.entries(scores)
+    .filter(([, v]) => v >= threshold)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, n)
+    .map(([k]) => k);
+}
+
+/** Build a place_id → PlaceTag[] map from a flat tag list. */
+function indexTagsByPlace(rows: PlaceTag[]): Record<string, PlaceTag[]> {
+  return rows.reduce<Record<string, PlaceTag[]>>((acc, tag) => {
+    (acc[tag.place_id] ??= []).push(tag);
+    return acc;
+  }, {});
+}
+
+/** Build an event_id → EventTag[] map from a flat tag list. */
+function indexTagsByEvent(rows: EventTag[]): Record<string, EventTag[]> {
+  return rows.reduce<Record<string, EventTag[]>>((acc, tag) => {
+    const key = (tag as EventTag & { event_id: string }).event_id;
+    (acc[key] ??= []).push(tag);
+    return acc;
+  }, {});
 }
 
 export async function GET(request: NextRequest) {
@@ -62,10 +90,11 @@ export async function GET(request: NextRequest) {
   const regionOverride = searchParams.get('region_id') ?? null;
 
   try {
-    const [profileResult, staysResult, regionsResult, userRow, prefsResult] = await Promise.all([
+    // Parallel: profile, most-recent stay region, region list, user name
+    const [profileResult, staysResult, regionsResult, userRow] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('vibe, spend, food')
+        .select('vibe, spend, food, extra')
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
@@ -86,58 +115,58 @@ export async function GET(request: NextRequest) {
         .select('firstname')
         .eq('id', user.id)
         .maybeSingle(),
-      // Wire in guest_preferences for richer personalisation
-      supabase
-        .from('guest_preferences')
-        .select('preferred_categories, preferred_vibes, preferred_price_levels')
-        .eq('user_id', user.id)
-        .maybeSingle(),
     ]);
 
     const profileVibes: string[] = profileResult.data?.vibe ?? [];
-    const guestVibes: string[] = prefsResult.data?.preferred_vibes ?? [];
-    const preferredCategories: string[] = prefsResult.data?.preferred_categories ?? [];
-    const preferredPriceLevels: number[] = prefsResult.data?.preferred_price_levels ?? [];
-    // Merge vibes from both sources, deduplicated
-    const userVibes = Array.from(new Set([...profileVibes, ...guestVibes]));
-
     const stayRegionId: string | null = staysResult.data?.region_id ?? null;
     const regionId: string | null = regionOverride ?? stayRegionId;
     const regions = regionsResult.data ?? [];
     const firstName = userRow.data?.firstname ?? null;
 
-    // 1. Made for you — places
+    // Persona scores from user_profiles.extra (set during onboarding)
+    const personaScores = (
+      (profileResult.data?.extra as Record<string, unknown> | null)
+        ?.persona_scores as Record<string, number> | undefined
+    );
+    const userPersonas = topPersonas(personaScores);
+
+    // ── 1. Made for you — places ─────────────────────────────────────────────
     const rawPlaces = await queryPlaces(supabase, {
       region_id: regionId ?? undefined,
       featured_only: !regionId,
-      limit: 12, // fetch more so vibe + category filtering has room to work
+      limit: 12,
     });
-    const placeCards = await Promise.all(
-      rawPlaces.map(async (p) => {
-        const tags = await getPlaceTags(supabase, p.id);
-        return toDiscoveryCard(p, tags);
-      }),
-    );
 
-    // Score by vibe overlap + category preference + price level match
+    // Batch all place tags in one query instead of N individual lookups
+    const placeTagMap: Record<string, PlaceTag[]> =
+      rawPlaces.length > 0
+        ? indexTagsByPlace(
+            (
+              (await supabase
+                .from('place_tags')
+                .select('*')
+                .in('place_id', rawPlaces.map(p => p.id))
+              ).data ?? []
+            ) as PlaceTag[],
+          )
+        : {};
+
+    const placeCards = rawPlaces.map(p => toDiscoveryCard(p, placeTagMap[p.id] ?? []));
+
+    // Score by vibe overlap with user's profile vibes
     const scoredPlaces = placeCards
-      .map((c) => {
-        let score = c.vibes.filter((v) => userVibes.includes(v)).length * 2;
-        if (preferredCategories.length && preferredCategories.includes(c.category)) score += 3;
-        if (preferredPriceLevels.length && c.price_level != null && preferredPriceLevels.includes(c.price_level)) score += 1;
-        return { card: c, score };
-      })
+      .map(c => ({ card: c, score: c.vibes.filter(v => profileVibes.includes(v)).length * 2 }))
       .sort((a, b) => b.score - a.score)
-      .map((s) => s.card)
+      .map(s => s.card)
       .slice(0, 6);
 
     const heroPlace = scoredPlaces[0] ?? null;
 
-    // 2. In your world — regions
+    // ── 2. In your world — regions ───────────────────────────────────────────
     const otherRegions = regions
-      .filter((r) => r.id !== stayRegionId)
+      .filter(r => r.id !== stayRegionId)
       .slice(0, 6)
-      .map((r) => ({
+      .map(r => ({
         id: r.id,
         name: r.name,
         slug: r.slug,
@@ -147,48 +176,76 @@ export async function GET(request: NextRequest) {
         gradient: 'from-stone-900/80 via-stone-950/60 to-black/80',
       }));
 
-    // 3. Happening now — events
+    // ── 3. Happening now — events ────────────────────────────────────────────
     const rawEvents = await queryEvents(supabase, {
       region_id: regionId ?? undefined,
       featured_only: true,
       date_from: new Date().toISOString(),
       limit: 6,
     });
-    const eventCards = await Promise.all(
-      rawEvents.map(async (e) => {
-        const tags = await getEventTags(supabase, e.id);
-        return toDiscoveryEventCard(e, tags);
-      }),
+
+    // Batch all event tags in one query
+    const eventTagMap: Record<string, EventTag[]> =
+      rawEvents.length > 0
+        ? indexTagsByEvent(
+            (
+              (await supabase
+                .from('event_tags')
+                .select('*')
+                .in('event_id', rawEvents.map(e => e.id))
+              ).data ?? []
+            ) as EventTag[],
+          )
+        : {};
+
+    const eventCards = rawEvents.map(e =>
+      toDiscoveryEventCard(e, eventTagMap[e.id] ?? []),
     );
 
-    // 4. Aria’s picks — properties
-    const rawProperties = await queryExploreProperties(supabase, {
-      region_id: regionId ?? undefined,
-      featured_only: !regionId,
-      limit: 12,
-    });
-    const propertyCards = await Promise.all(
-      rawProperties.map(async (p) => {
-        const tags = await getExplorePropertyTags(supabase, p.id);
-        return toDiscoveryPropertyCard(p, tags);
-      }),
-    );
-    const scoredProperties = propertyCards
-      .map((c) => ({
-        card: c,
-        score: c.vibes.filter((v) => userVibes.includes(v)).length,
-      }))
-      .sort((a, b) => b.score - a.score)
-      .map((s) => s.card)
-      .slice(0, 6);
+    // ── 4. Aria's picks — persona-tag algorithm ──────────────────────────────
+    // If the user has persona scores: filter places by traveler_type tags that
+    // match their top personas. Fallback: featured places in the region.
+    let ariaCards = placeCards.filter(c => c.is_featured).slice(0, 6);
+    if (ariaCards.length === 0) ariaCards = scoredPlaces.slice(0, 6);
 
+    if (userPersonas.length > 0 && regionId) {
+      const { data: personaTagRows } = await supabase
+        .from('place_tags')
+        .select('place_id')
+        .eq('tag_type', 'traveler_type')
+        .in('tag', userPersonas);
+
+      const matchedIds = new Set((personaTagRows ?? []).map(t => t.place_id as string));
+
+      if (matchedIds.size > 0) {
+        // Fetch a wider pool so persona filtering has room to work
+        const personaPool = await queryPlaces(supabase, {
+          region_id: regionId,
+          limit: 50,
+        });
+        const filtered = personaPool.filter(p => matchedIds.has(p.id)).slice(0, 6);
+
+        if (filtered.length > 0) {
+          const { data: ariaTagRows } = await supabase
+            .from('place_tags')
+            .select('*')
+            .in('place_id', filtered.map(p => p.id));
+          const ariaTagMap = indexTagsByPlace((ariaTagRows ?? []) as PlaceTag[]);
+          ariaCards = filtered.map(p => toDiscoveryCard(p, ariaTagMap[p.id] ?? []));
+        }
+      }
+    }
+
+    const ariaHero = ariaCards[0] ?? null;
+
+    // ── Sections ─────────────────────────────────────────────────────────────
     const sections = [
       {
         id: 'made_for_you',
         label: 'MADE FOR YOU',
         title: heroPlace?.name ?? "Places you'll love",
         subtitle: heroPlace
-          ? (heroPlace.vibes.slice(0, 2).join(' \u00b7 ') || heroPlace.category)
+          ? (heroPlace.vibes.slice(0, 2).join(' · ') || heroPlace.category)
           : 'Based on your travel style',
         image_url: heroPlace?.image_url ?? null,
         gradient: heroPlace?.gradient ?? 'from-stone-900/80 via-stone-950/60 to-black/80',
@@ -218,12 +275,14 @@ export async function GET(request: NextRequest) {
       {
         id: 'arias_picks',
         label: "ARIA'S PICKS",
-        title: 'Places worth staying at',
-        subtitle: 'Curated stays across our network',
-        image_url: scoredProperties[0]?.image_url ?? null,
+        title: ariaHero?.name ?? 'Places picked for you',
+        subtitle: userPersonas.length > 0
+          ? `Matched to your ${userPersonas[0]} style`
+          : 'Top picks in the area',
+        image_url: ariaHero?.image_url ?? null,
         gradient: 'from-teal-900/80 via-teal-950/60 to-black/80',
-        content_type: 'properties' as const,
-        items: scoredProperties,
+        content_type: 'places' as const,
+        items: ariaCards,
       },
     ];
 
