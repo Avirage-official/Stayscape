@@ -42,6 +42,10 @@ export interface DbItinerary {
   userid: string;
   title: string | null;
   status: ItineraryStatus;
+  /** Trip start date for standalone itineraries (null for stay-linked — use stays.checkindate). */
+  startdate: string | null;
+  /** Trip end date for standalone itineraries (null for stay-linked — use stays.checkoutdate). */
+  enddate: string | null;
   createdat: string;
   updatedat: string;
 }

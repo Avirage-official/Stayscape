@@ -1,30 +1,5 @@
 'use client';
 
-/**
- * ItineraryPickerSheet
- *
- * A shared bottom-sheet used by both ExploreDetailSheet and the Saved tab
- * in planner/page.tsx. Handles three steps in sequence:
- *
- *  Step 1 — "Select Itinerary"
- *    List standalone (non-stay-linked) itineraries.
- *    If empty, show "Create new itinerary" CTA.
- *    Button to create a new one always visible at the bottom.
- *
- *  Step 2 — "Create Itinerary" (if user clicks create)
- *    Single name input → POST /api/customer/itineraries → returns to step 1.
- *
- *  Step 3 — "Pick a Date"
- *    After itinerary selected, ask which date to schedule this place.
- *    Defaults to today. POST /api/customer/itineraries/:id/items → done.
- *
- * Props:
- *   place      — the place to add { id, name, category, image_url }
- *   onClose    — called when sheet is dismissed (× or backdrop)
- *   onAdded    — called after item successfully added to itinerary
- *   getBearerToken — async fn that returns the JWT string
- */
-
 import { useEffect, useRef, useState } from 'react';
 
 const GOLD = '#C8965A';
@@ -49,6 +24,8 @@ interface SlimItinerary {
   id: string;
   title: string | null;
   stayid: string | null;
+  startdate: string | null;
+  enddate: string | null;
 }
 
 interface ItineraryPickerSheetProps {
@@ -60,6 +37,10 @@ interface ItineraryPickerSheetProps {
 
 type Step = 'select' | 'create' | 'date';
 
+function formatDateDisplay(iso: string) {
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function ItineraryPickerSheet({
   place,
   onClose,
@@ -69,27 +50,28 @@ export default function ItineraryPickerSheet({
   const [step, setStep] = useState<Step>('select');
   const [visible, setVisible] = useState(false);
 
-  // Step 1 state
+  // Step 1
   const [itineraries, setItineraries] = useState<SlimItinerary[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
 
-  // Step 2 state
+  // Step 2 — create
   const [newTitle, setNewTitle] = useState('');
+  const [newStartDate, setNewStartDate] = useState('');
+  const [newEndDate, setNewEndDate] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Step 3 state
+  // Step 3 — date for this place
   const [selectedItinId, setSelectedItinId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedItin, setSelectedItin] = useState<SlimItinerary | null>(null);
+  const [selectedDate, setSelectedDate] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
-  // Mount animation
   useEffect(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
-    return () => { document.body.style.overflow = ''; };
   }, []);
 
   useEffect(() => {
@@ -97,7 +79,6 @@ export default function ItineraryPickerSheet({
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Keyboard dismiss
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose(); }
     document.addEventListener('keydown', onKey);
@@ -105,14 +86,10 @@ export default function ItineraryPickerSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Focus title input when step becomes 'create'
   useEffect(() => {
-    if (step === 'create') {
-      setTimeout(() => titleInputRef.current?.focus(), 80);
-    }
+    if (step === 'create') setTimeout(() => titleInputRef.current?.focus(), 80);
   }, [step]);
 
-  // Fetch itineraries on mount
   useEffect(() => {
     async function load() {
       setListLoading(true); setListError(null);
@@ -124,7 +101,6 @@ export default function ItineraryPickerSheet({
         });
         if (!res.ok) throw new Error();
         const json = await res.json() as { itineraries: SlimItinerary[] };
-        // Only show standalone (non-stay-linked) itineraries
         setItineraries(json.itineraries.filter(i => !i.stayid));
       } catch {
         setListError('Could not load itineraries.');
@@ -140,9 +116,21 @@ export default function ItineraryPickerSheet({
     setTimeout(onClose, 260);
   }
 
+  function pickItinerary(itin: SlimItinerary) {
+    setSelectedItinId(itin.id);
+    setSelectedItin(itin);
+    // Default date to start date if set, otherwise today
+    setSelectedDate(itin.startdate ?? new Date().toISOString().split('T')[0]);
+    setStep('date');
+  }
+
   async function handleCreate() {
     const title = newTitle.trim();
     if (!title) { setCreateError('Please enter a name.'); return; }
+    if (!newStartDate) { setCreateError('Please choose a start date.'); return; }
+    if (!newEndDate) { setCreateError('Please choose an end date.'); return; }
+    if (newEndDate < newStartDate) { setCreateError('End date must be after start date.'); return; }
+
     setCreating(true); setCreateError(null);
     const token = await getBearerToken();
     if (!token) { setCreating(false); setCreateError('Session expired.'); return; }
@@ -150,18 +138,17 @@ export default function ItineraryPickerSheet({
       const res = await fetch('/api/customer/itineraries', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, startdate: newStartDate, enddate: newEndDate }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(j.error ?? 'Failed to create');
       }
       const { id } = await res.json() as { id: string };
-      // Add to local list and jump straight to date pick
-      setItineraries(prev => [{ id, title, stayid: null }, ...prev]);
+      const newItin: SlimItinerary = { id, title, stayid: null, startdate: newStartDate, enddate: newEndDate };
+      setItineraries(prev => [newItin, ...prev]);
       setNewTitle('');
-      setSelectedItinId(id);
-      setStep('date');
+      pickItinerary(newItin);
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
@@ -202,55 +189,26 @@ export default function ItineraryPickerSheet({
   }
 
   const sheetStyle: React.CSSProperties = {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 200,
-    display: 'flex',
-    alignItems: 'flex-end',
+    position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end',
   };
-
   const panelStyle: React.CSSProperties = {
-    width: '100%',
-    background: BG,
-    borderRadius: '20px 20px 0 0',
-    border: `1px solid ${BORDER}`,
-    borderBottom: 'none',
-    padding: '0 20px 36px',
-    maxHeight: '82dvh',
-    overflowY: 'auto',
+    width: '100%', background: BG, borderRadius: '20px 20px 0 0',
+    border: `1px solid ${BORDER}`, borderBottom: 'none',
+    padding: '0 20px 36px', maxHeight: '88dvh', overflowY: 'auto',
     transform: visible ? 'translateY(0)' : 'translateY(100%)',
-    transition: visible
-      ? 'transform 300ms cubic-bezier(0.16,1,0.3,1)'
-      : 'transform 240ms ease-in',
+    transition: visible ? 'transform 300ms cubic-bezier(0.16,1,0.3,1)' : 'transform 240ms ease-in',
     willChange: 'transform',
   };
-
   const inputStyle: React.CSSProperties = {
-    width: '100%',
-    height: 46,
-    borderRadius: 10,
-    background: SURFACE,
-    border: `1px solid ${BORDER_2}`,
-    color: TEXT,
-    fontSize: 14,
-    padding: '0 12px',
-    fontFamily: "'DM Sans', sans-serif",
-    outline: 'none',
-    colorScheme: 'dark',
-    transition: 'border-color 180ms ease',
+    width: '100%', height: 46, borderRadius: 10, background: SURFACE,
+    border: `1px solid ${BORDER_2}`, color: TEXT, fontSize: 14,
+    padding: '0 12px', fontFamily: "'DM Sans', sans-serif",
+    outline: 'none', colorScheme: 'dark', transition: 'border-color 180ms ease',
   };
 
   return (
     <div style={sheetStyle} onClick={handleClose} role="dialog" aria-modal="true">
-      {/* Backdrop */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'rgba(0,0,0,0.72)',
-        opacity: visible ? 1 : 0,
-        transition: 'opacity 260ms ease',
-      }} />
-
-      {/* Panel */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', opacity: visible ? 1 : 0, transition: 'opacity 260ms ease' }} />
       <div style={panelStyle} onClick={e => e.stopPropagation()}>
 
         {/* Handle */}
@@ -261,7 +219,6 @@ export default function ItineraryPickerSheet({
         {/* ── STEP 1: SELECT ITINERARY ── */}
         {step === 'select' && (
           <>
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0 16px' }}>
               <div>
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: GOLD, fontFamily: "'DM Sans', sans-serif" }}>Add to Itinerary</p>
@@ -272,22 +229,16 @@ export default function ItineraryPickerSheet({
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
             </div>
-
             <div style={{ height: 1, background: BORDER, marginBottom: 16 }} />
 
-            {/* List */}
             {listLoading && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-                {[1, 2].map(i => (
-                  <div key={i} style={{ height: 56, borderRadius: 12, background: SURFACE, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                ))}
+                {[1, 2].map(i => <div key={i} style={{ height: 56, borderRadius: 12, background: SURFACE, animation: 'pulse 1.5s ease-in-out infinite' }} />)}
               </div>
             )}
-
             {!listLoading && listError && (
               <p style={{ color: 'rgba(220,80,80,0.85)', fontSize: 13, marginBottom: 16, fontFamily: "'DM Sans', sans-serif" }}>{listError}</p>
             )}
-
             {!listLoading && !listError && itineraries.length === 0 && (
               <div style={{ textAlign: 'center', padding: '20px 0 24px' }}>
                 <div style={{ width: 48, height: 48, borderRadius: 14, background: GOLD_DIM, border: `1px solid rgba(200,150,90,0.2)`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
@@ -299,19 +250,24 @@ export default function ItineraryPickerSheet({
                 <p style={{ color: TEXT_FAINT, fontSize: 12, lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>Create one to start planning your trip.</p>
               </div>
             )}
-
             {!listLoading && !listError && itineraries.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                 {itineraries.map(itin => (
-                  <button key={itin.id}
-                    onClick={() => { setSelectedItinId(itin.id); setStep('date'); }}
+                  <button key={itin.id} onClick={() => pickItinerary(itin)}
                     style={{ width: '100%', textAlign: 'left', borderRadius: 12, padding: '13px 14px', background: SURFACE, border: `1px solid ${BORDER}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, transition: 'background 180ms ease, border-color 180ms ease' }}
                     onMouseEnter={e => { e.currentTarget.style.background = SURFACE_2; e.currentTarget.style.borderColor = BORDER_2; }}
                     onMouseLeave={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = BORDER; }}
                   >
-                    <span style={{ fontSize: 13, fontWeight: 500, color: TEXT, fontFamily: "'DM Sans', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {itin.title ?? 'Untitled itinerary'}
-                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: TEXT, fontFamily: "'DM Sans', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {itin.title ?? 'Untitled itinerary'}
+                      </p>
+                      {itin.startdate && itin.enddate && (
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: TEXT_MUTED, fontFamily: "'DM Sans', sans-serif" }}>
+                          {formatDateDisplay(itin.startdate)} – {formatDateDisplay(itin.enddate)}
+                        </p>
+                      )}
+                    </div>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                       <path d="M9 18l6-6-6-6" />
                     </svg>
@@ -320,16 +276,13 @@ export default function ItineraryPickerSheet({
               </div>
             )}
 
-            {/* Create new — always visible */}
             {!listLoading && (
               <button onClick={() => setStep('create')}
                 style={{ width: '100%', height: 46, borderRadius: 12, background: 'transparent', border: `1px dashed rgba(200,150,90,0.35)`, color: GOLD, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, transition: 'background 180ms ease, border-color 180ms ease' }}
                 onMouseEnter={e => { e.currentTarget.style.background = GOLD_DIM; e.currentTarget.style.borderColor = 'rgba(200,150,90,0.6)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(200,150,90,0.35)'; }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                 New itinerary
               </button>
             )}
@@ -346,11 +299,10 @@ export default function ItineraryPickerSheet({
               </button>
               <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: TEXT, fontFamily: "'DM Sans', sans-serif" }}>New Itinerary</h3>
             </div>
-
             <div style={{ height: 1, background: BORDER, marginBottom: 20 }} />
 
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
-              Itinerary name
+              Trip name
             </label>
             <input
               ref={titleInputRef}
@@ -365,6 +317,39 @@ export default function ItineraryPickerSheet({
               onBlur={e => { e.target.style.borderColor = BORDER_2; }}
             />
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  Start date
+                </label>
+                <input
+                  type="date"
+                  value={newStartDate}
+                  onChange={e => {
+                    setNewStartDate(e.target.value);
+                    if (newEndDate && e.target.value > newEndDate) setNewEndDate('');
+                  }}
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = GOLD; }}
+                  onBlur={e => { e.target.style.borderColor = BORDER_2; }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  End date
+                </label>
+                <input
+                  type="date"
+                  value={newEndDate}
+                  min={newStartDate || undefined}
+                  onChange={e => setNewEndDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = GOLD; }}
+                  onBlur={e => { e.target.style.borderColor = BORDER_2; }}
+                />
+              </div>
+            </div>
+
             {createError && (
               <p style={{ color: 'rgba(220,80,80,0.85)', fontSize: 12, margin: '8px 0 0', fontFamily: "'DM Sans', sans-serif" }}>{createError}</p>
             )}
@@ -374,8 +359,8 @@ export default function ItineraryPickerSheet({
                 style={{ flex: 1, height: 46, borderRadius: 10, background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                 Cancel
               </button>
-              <button onClick={() => void handleCreate()} disabled={creating || !newTitle.trim()}
-                style={{ flex: 2, height: 46, borderRadius: 10, background: creating || !newTitle.trim() ? GOLD_DIM : GOLD, border: 'none', color: creating || !newTitle.trim() ? GOLD : '#0A0806', fontSize: 13, fontWeight: 700, cursor: creating || !newTitle.trim() ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'background 180ms ease, color 180ms ease' }}>
+              <button onClick={() => void handleCreate()} disabled={creating || !newTitle.trim() || !newStartDate || !newEndDate}
+                style={{ flex: 2, height: 46, borderRadius: 10, background: (creating || !newTitle.trim() || !newStartDate || !newEndDate) ? GOLD_DIM : GOLD, border: 'none', color: (creating || !newTitle.trim() || !newStartDate || !newEndDate) ? GOLD : '#0A0806', fontSize: 13, fontWeight: 700, cursor: (creating || !newTitle.trim() || !newStartDate || !newEndDate) ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'background 180ms ease, color 180ms ease' }}>
                 {creating ? 'Creating…' : 'Create'}
               </button>
             </div>
@@ -395,8 +380,19 @@ export default function ItineraryPickerSheet({
                 <h3 style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 600, color: TEXT, fontFamily: "'DM Sans', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place.name}</h3>
               </div>
             </div>
-
             <div style={{ height: 1, background: BORDER, marginBottom: 20 }} />
+
+            {/* Trip date range badge */}
+            {selectedItin?.startdate && selectedItin.enddate && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 12px', borderRadius: 10, background: GOLD_DIM, border: `1px solid rgba(200,150,90,0.2)` }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span style={{ fontSize: 12, color: GOLD, fontFamily: "'DM Sans', sans-serif" }}>
+                  {formatDateDisplay(selectedItin.startdate)} – {formatDateDisplay(selectedItin.enddate)}
+                </span>
+              </div>
+            )}
 
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
               Date
@@ -404,6 +400,8 @@ export default function ItineraryPickerSheet({
             <input
               type="date"
               value={selectedDate}
+              min={selectedItin?.startdate ?? undefined}
+              max={selectedItin?.enddate ?? undefined}
               onChange={e => setSelectedDate(e.target.value)}
               style={inputStyle}
               onFocus={e => { e.target.style.borderColor = GOLD; }}
@@ -416,14 +414,12 @@ export default function ItineraryPickerSheet({
 
             <button onClick={() => void handleAddItem()} disabled={adding || !selectedDate}
               style={{ width: '100%', height: 48, borderRadius: 12, background: adding || !selectedDate ? GOLD_DIM : GOLD, border: 'none', color: adding || !selectedDate ? GOLD : '#0A0806', fontSize: 14, fontWeight: 700, cursor: adding || !selectedDate ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 180ms ease, color 180ms ease' }}>
-              {adding
-                ? 'Adding…'
-                : (
-                  <>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-                    Add to Itinerary
-                  </>
-                )}
+              {adding ? 'Adding…' : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  Add to Itinerary
+                </>
+              )}
             </button>
           </>
         )}

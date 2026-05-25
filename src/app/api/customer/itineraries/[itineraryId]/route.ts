@@ -5,6 +5,7 @@
  *
  * Single itinerary operations. Ownership is enforced — users can only
  * access their own itineraries. Accepts a Supabase JWT via Authorization: Bearer <token>.
+ * All DB access uses getSupabaseAdmin() so it works server-side (bypasses RLS).
  *
  * GET Returns:
  *   200 { itinerary: DbItineraryListed, items: DbItineraryItemEnriched[] }
@@ -28,12 +29,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { applyRateLimit } from '@/lib/rate-limit';
-import {
-  getItineraryById,
-  updateItineraryTitle,
-  deleteStandaloneItinerary,
-  fetchItineraryItemsByItineraryId,
-} from '@/lib/supabase/itinerary-repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +36,6 @@ async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token) return null;
-
   const { data: { user }, error } = await getSupabaseAdmin().auth.getUser(token);
   if (error || !user) return null;
   return user;
@@ -62,14 +56,32 @@ export async function GET(
   }
 
   const { itineraryId } = await params;
+  const sb = getSupabaseAdmin();
 
   try {
-    const itinerary = await getItineraryById(itineraryId, user.id);
-    if (!itinerary) {
+    const { data: itinerary, error: itinError } = await sb
+      .from('itineraries')
+      .select(`
+        id, stayid, userid, title, status, startdate, enddate, createdat, updatedat,
+        stays ( checkindate, checkoutdate, properties ( name ) )
+      `)
+      .eq('id', itineraryId)
+      .eq('userid', user.id)
+      .maybeSingle();
+
+    if (itinError || !itinerary) {
       return NextResponse.json({ error: 'Itinerary not found' }, { status: 404, headers: rateLimit.headers });
     }
 
-    const items = await fetchItineraryItemsByItineraryId(itinerary.id);
+    const { data: items } = await sb
+      .from('itineraryitems')
+      .select(`
+        *,
+        places ( id, name, category, latitude, longitude, image_url )
+      `)
+      .eq('itineraryid', itineraryId)
+      .order('scheduleddate', { ascending: true })
+      .order('starttime', { ascending: true });
 
     return NextResponse.json({ itinerary, items: items ?? [] }, { headers: rateLimit.headers });
   } catch (err: unknown) {
@@ -93,6 +105,7 @@ export async function PATCH(
   }
 
   const { itineraryId } = await params;
+  const sb = getSupabaseAdmin();
 
   let body: { title?: string };
   try {
@@ -110,15 +123,26 @@ export async function PATCH(
   }
 
   try {
-    const existing = await getItineraryById(itineraryId, user.id);
+    const { data: existing } = await sb
+      .from('itineraries')
+      .select('id')
+      .eq('id', itineraryId)
+      .eq('userid', user.id)
+      .maybeSingle();
+
     if (!existing) {
       return NextResponse.json({ error: 'Itinerary not found' }, { status: 404, headers: rateLimit.headers });
     }
 
-    const ok = await updateItineraryTitle(itineraryId, user.id, title);
-    if (!ok) {
+    const { error: updateError } = await sb
+      .from('itineraries')
+      .update({ title, updatedat: new Date().toISOString() })
+      .eq('id', itineraryId);
+
+    if (updateError) {
       return NextResponse.json({ error: 'Failed to update itinerary' }, { status: 500, headers: rateLimit.headers });
     }
+
     return NextResponse.json({ success: true }, { headers: rateLimit.headers });
   } catch (err: unknown) {
     console.error('[PATCH /api/customer/itineraries/[itineraryId]]', err);
@@ -141,17 +165,27 @@ export async function DELETE(
   }
 
   const { itineraryId } = await params;
+  const sb = getSupabaseAdmin();
 
   try {
-    const result = await deleteStandaloneItinerary(itineraryId, user.id);
+    const { data: itin } = await sb
+      .from('itineraries')
+      .select('id, stayid')
+      .eq('id', itineraryId)
+      .eq('userid', user.id)
+      .maybeSingle();
 
-    if (result === 'not_found') {
+    if (!itin) {
       return NextResponse.json({ error: 'Itinerary not found' }, { status: 404, headers: rateLimit.headers });
     }
-    if (result === 'stay_linked') {
+    if (itin.stayid !== null) {
       return NextResponse.json({ error: 'Cannot delete a stay-linked itinerary' }, { status: 403, headers: rateLimit.headers });
     }
-    if (result === 'error') {
+
+    await sb.from('itineraryitems').delete().eq('itineraryid', itineraryId);
+
+    const { error: delError } = await sb.from('itineraries').delete().eq('id', itineraryId);
+    if (delError) {
       return NextResponse.json({ error: 'Failed to delete itinerary' }, { status: 500, headers: rateLimit.headers });
     }
 
