@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await sb
       .from('itineraries')
       .select(`
-        id, stayid, userid, title, status, createdat, updatedat,
+        id, stayid, userid, title, status, startdate, enddate, createdat, updatedat,
         stays ( checkindate, checkoutdate, properties ( name ) )
       `)
       .eq('userid', user.id)
