@@ -10,7 +10,7 @@
  * from a server-side context (no browser session / cookie available).
  *
  * GET Returns:
- *   200 { itineraries: DbItineraryListed[] }
+ *   200 { itineraries: DbItineraryListed[] }  — each row includes cover_image (first item image or null)
  *   401 { error: 'Unauthorized' }
  *
  * POST Body: { title?: string }
@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const sb = getSupabaseAdmin();
+
+    // Fetch itineraries with stay context
     const { data, error } = await sb
       .from('itineraries')
       .select(`
@@ -63,7 +65,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch itineraries' }, { status: 500, headers: rateLimit.headers });
     }
 
-    return NextResponse.json({ itineraries: data ?? [] }, { headers: rateLimit.headers });
+    const itineraries = data ?? [];
+
+    // For each itinerary, fetch the first item's image (cover image)
+    // Done in parallel — one query per itinerary, ordered by createdat ASC
+    const coverImages = await Promise.all(
+      itineraries.map(async (itin) => {
+        const { data: items } = await sb
+          .from('itineraryitems')
+          .select('image, places ( image_url )')
+          .eq('itineraryid', itin.id)
+          .order('createdat', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!items) return null;
+        // Prefer the cached image column; fall back to joined place image_url
+        const img = (items as { image?: string | null; places?: { image_url?: string | null } | null });
+        return img.image ?? img.places?.image_url ?? null;
+      })
+    );
+
+    const enriched = itineraries.map((itin, i) => ({
+      ...itin,
+      cover_image: coverImages[i] ?? null,
+    }));
+
+    return NextResponse.json({ itineraries: enriched }, { headers: rateLimit.headers });
   } catch (err: unknown) {
     console.error('[GET /api/customer/itineraries]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: rateLimit.headers });
@@ -102,7 +130,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const sb = getSupabaseAdmin();
-    // Insert without date columns so it works even before migration is applied
     const { data, error } = await sb
       .from('itineraries')
       .insert({ userid: user.id, stayid: null, title: title ?? null })
@@ -114,7 +141,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create itinerary' }, { status: 500, headers: rateLimit.headers });
     }
 
-    // Best-effort: store date range (silently skipped if migration not yet applied)
     if (startdate || enddate) {
       const { error: dateErr } = await sb
         .from('itineraries')
