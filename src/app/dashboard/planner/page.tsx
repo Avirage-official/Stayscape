@@ -135,7 +135,7 @@ export default function PlannerPage() {
       className="md:h-dvh md:ml-[52px]"
     >
       {/* ── Mobile 4-tab bar ── */}
-      <div className="md:hidden" style={{ flexShrink:0,display:'flex',borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
+      <div className="flex md:hidden" style={{ flexShrink:0,borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
         {MOBILE_TABS.map(({ id, label, icon }) => {
           const isActive = mobileTab === id;
           return (
