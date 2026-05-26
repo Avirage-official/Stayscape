@@ -134,7 +134,23 @@ export default function PlannerPage() {
       style={{ height: 'calc(100dvh - 64px)', display: 'flex', flexDirection: 'column', background: BG, overflow: 'hidden' }}
       className="md:h-dvh md:ml-[52px]"
     >
-      {/* ── Tab Bar ── */}
+      {/* ── Mobile 4-tab bar ── */}
+      <div className="md:hidden" style={{ flexShrink:0,display:'flex',borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
+        {MOBILE_TABS.map(({ id, label, icon }) => {
+          const isActive = mobileTab === id;
+          return (
+            <button key={id} onClick={() => handleMobileTabSwitch(id)}
+              style={{ flex:1,height:52,background:'transparent',border:'none',borderBottom:isActive?`2px solid ${GOLD}`:'2px solid transparent',color:isActive?GOLD:TEXT_MUTED,cursor:'pointer',transition:'color 200ms ease,border-color 200ms ease',fontFamily:"'DM Sans',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,padding:'4px 2px' }}
+            >
+              {icon}
+              <span style={{ fontSize:9,fontWeight:isActive?600:400,letterSpacing:'0.04em' }}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Desktop tab bar ── */}
+      <div className="hidden md:block" style={{ flexShrink: 0 }}>
       <div style={{
         flexShrink: 0,
         display: 'flex',
@@ -162,7 +178,7 @@ export default function PlannerPage() {
             return (
               <button
                 key={tab}
-                onClick={() => handleTabSwitch(tab)}
+                onClick={() => handleDesktopTabSwitch(tab)}
                 style={{
                   height: 30,
                   padding: '0 18px',
@@ -211,30 +227,65 @@ export default function PlannerPage() {
           {activeTab === 'saved' ? `${(savedPlaces ?? []).length} place${(savedPlaces ?? []).length !== 1 ? 's' : ''}` : ''}
         </span>
       </div>
+      </div>{/* end desktop tab bar wrapper */}
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {activeTab === 'saved' && (
-          <SavedTab
-            savedPlaces={savedPlaces}
-            isLoading={savedLoading}
-            error={savedError}
-            onRetry={() => void fetchSavedPlaces()}
-            onUnsave={async (placeId) => {
-              const token = await getBearerToken(); if (!token) return;
-              await fetch(`/api/customer/saved-places/${placeId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-              setSavedPlaces(prev => prev?.filter(p => p.place_id !== placeId) ?? null);
-            }}
-          />
-        )}
-        {activeTab === 'itineraries' && (
-          <ItinerariesTab
-            itineraries={itineraries}
-            isLoading={itinLoading}
-            error={itinError}
-            onRetry={() => void fetchItineraries()}
-            onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
-          />
-        )}
+        {/* Desktop content */}
+        <div className="hidden md:block h-full">
+          {activeTab === 'saved' && (
+            <SavedTab
+              savedPlaces={savedPlaces}
+              isLoading={savedLoading}
+              error={savedError}
+              onRetry={() => void fetchSavedPlaces()}
+              onUnsave={unsaveFn}
+            />
+          )}
+          {activeTab === 'itineraries' && (
+            <ItinerariesTab
+              itineraries={itineraries}
+              isLoading={itinLoading}
+              error={itinError}
+              onRetry={() => void fetchItineraries()}
+              onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
+            />
+          )}
+        </div>
+
+        {/* Mobile content */}
+        <div className="md:hidden h-full">
+          {mobileTab === 'saved' && (
+            <SavedMobileTab
+              savedPlaces={savedPlaces} isLoading={savedLoading} error={savedError}
+              onRetry={() => void fetchSavedPlaces()}
+              onUnsave={unsaveFn}
+              activeIndex={savedActiveIndex}
+              setActiveIndex={setSavedActiveIndex}
+              onLocate={() => handleMobileTabSwitch('saved-map')}
+            />
+          )}
+          {mobileTab === 'saved-map' && (
+            <SavedMapMobileTab
+              savedPlaces={savedPlaces}
+              activeIndex={savedActiveIndex}
+              onMarkerTap={(i) => { setSavedActiveIndex(i); handleMobileTabSwitch('saved'); }}
+            />
+          )}
+          {mobileTab === 'itineraries' && (
+            <ItinerariesTab
+              itineraries={itineraries} isLoading={itinLoading} error={itinError}
+              onRetry={() => void fetchItineraries()}
+              onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
+              onItinerarySelect={(itin) => setSelectedItinForMap(itin)}
+            />
+          )}
+          {mobileTab === 'itin-map' && (
+            <ItinMapMobileTab
+              itinerary={selectedItinForMap}
+              onGoToItineraries={() => handleMobileTabSwitch('itineraries')}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
