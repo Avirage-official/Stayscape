@@ -34,7 +34,6 @@ function formatTime(t: string | null) {
 const GOLD = '#C8965A';
 const GOLD_DIM = 'rgba(200,150,90,0.18)';
 const BG = '#0A0806';
-// Right panel warm tone — deep warm sand, map style will match
 const RIGHT_BG = '#1C1610';
 const SURFACE = 'rgba(255,255,255,0.04)';
 const SURFACE_2 = 'rgba(255,255,255,0.07)';
@@ -250,7 +249,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
 
   function selectIndex(i: number) {
     if (i === activeIndex) {
-      // already active — just fly to it
       flyToIndex(i);
       return;
     }
@@ -284,7 +282,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       valid.forEach(p => bounds.extend([p.places!.longitude, p.places!.latitude]));
       const map = new mb.Map({
         container: mapRef.current!,
-        // warm dark style to match RIGHT_BG
         style: 'mapbox://styles/mapbox/dark-v11',
         bounds,
         fitBoundsOptions: { padding: 48, maxZoom: 14 },
@@ -293,8 +290,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       });
       map.on('load', () => {
         setMapLoaded(true);
-
-        // dashed route line
         const coords = valid.map(p => [p.places!.longitude, p.places!.latitude] as [number, number]);
         map.addSource('route', {
           type: 'geojson',
@@ -307,7 +302,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: { 'line-color': GOLD, 'line-width': 1.5, 'line-dasharray': [2, 3], 'line-opacity': 0.55 },
         });
-
         valid.forEach((p, i) => {
           const isAct = i === 0;
           const el = document.createElement('div');
@@ -341,7 +335,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedPlaces]);
 
-  // Sync markers + fly when activeIndex changes
   useEffect(() => {
     markersRef.current.forEach((marker, i) => {
       const el = marker.getElement() as HTMLDivElement;
@@ -402,81 +395,53 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
 
         {/* ── LEFT: Hero image panel ── */}
         <div style={{ position: 'relative', width: '48%', flexShrink: 0, overflow: 'hidden', background: '#14100d' }}>
-
-          {/* Outgoing image */}
           {heroAnimating && places[prevIndex]?.places?.image_url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={places[prevIndex].places!.image_url!}
-              alt=""
+            <img src={places[prevIndex].places!.image_url!} alt=""
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 380ms ease' }}
             />
           )}
-
-          {/* Active image */}
           {activePlace?.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={activePlace.image_url}
-              src={activePlace.image_url}
-              alt={activePlace.name ?? ''}
-              style={{
-                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-                opacity: heroAnimating ? 0 : 1,
-                transition: 'opacity 380ms ease',
-              }}
+            <img key={activePlace.image_url} src={activePlace.image_url} alt={activePlace.name ?? ''}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: heroAnimating ? 0 : 1, transition: 'opacity 380ms ease' }}
             />
           ) : (
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#1a1614,#2a2018)' }} />
           )}
-
-          {/* Gradient overlay */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,4,3,0.94) 0%, rgba(5,4,3,0.35) 50%, rgba(5,4,3,0.06) 100%)' }} />
-          {/* Right edge fade — hero bleeds into right panel */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, rgba(28,22,16,0.85) 100%)' }} />
 
-          {/* Top-left: VIEW GALLERY — click opens place detail */}
-          <div
-            style={{ position: 'absolute', top: 18, left: 18, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-            onClick={() => setExpandPlace(active)}
-          >
+          <div style={{ position: 'absolute', top: 18, left: 18, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setExpandPlace(active)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', fontFamily: "'DM Sans',sans-serif" }}>View Gallery</span>
           </div>
 
-          {/* Top-right: counter */}
           <div style={{ position: 'absolute', top: 18, right: 18 }}>
             <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.1em' }}>
               {activeIndex + 1} / {places.length}
             </span>
           </div>
 
-          {/* Bottom info */}
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 22px 28px' }}>
-            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', margin: '0 0 8px', fontFamily: "'DM Sans',sans-serif" }}>
-              Welcome to
-            </p>
-            <h2
-              style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontWeight: 800,
-                fontSize: 'clamp(1.8rem, 5.5vw, 3rem)',
-                color: '#FFFFFF',
-                lineHeight: 0.95,
-                margin: '0 0 14px',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                opacity: heroAnimating ? 0 : 1,
-                transform: heroAnimating ? 'translateY(8px)' : 'translateY(0)',
-                transition: 'opacity 320ms ease, transform 320ms ease',
-              }}
-            >
+            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', margin: '0 0 8px', fontFamily: "'DM Sans',sans-serif" }}>Welcome to</p>
+            <h2 style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontWeight: 800,
+              fontSize: 'clamp(1.8rem, 5.5vw, 3rem)',
+              color: '#FFFFFF',
+              lineHeight: 0.95,
+              margin: '0 0 14px',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              opacity: heroAnimating ? 0 : 1,
+              transform: heroAnimating ? 'translateY(8px)' : 'translateY(0)',
+              transition: 'opacity 320ms ease, transform 320ms ease',
+            }}>
               {activePlace?.name ?? 'Unnamed place'}
             </h2>
-
-            {/* Star rating */}
             {activePlace?.rating && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 16 }}>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -486,8 +451,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                 ))}
               </div>
             )}
-
-            {/* Meta row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 14 }}>
               <div style={{ flex: 1 }}>
                 <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: "'DM Sans',sans-serif" }}>Location</p>
@@ -503,22 +466,9 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   </p>
                 </div>
               )}
-
-              {/* Action buttons */}
               <div style={{ display: 'flex', gap: 8, marginLeft: 14 }}>
-                {/* Locate on map — flies map to current place */}
-                <button
-                  onClick={() => flyToIndex(activeIndex)}
-                  aria-label="Locate on map"
-                  style={{
-                    width: 34, height: 34, borderRadius: 4,
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    color: 'rgba(255,255,255,0.55)',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'border-color 180ms ease, color 180ms ease, background 180ms ease',
-                  }}
+                <button onClick={() => flyToIndex(activeIndex)} aria-label="Locate on map"
+                  style={{ width: 34, height: 34, borderRadius: 4, background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 180ms ease, color 180ms ease, background 180ms ease' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; e.currentTarget.style.background = GOLD_DIM; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.background = 'transparent'; }}
                 >
@@ -528,50 +478,21 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" strokeOpacity="0.3" />
                   </svg>
                 </button>
-                {/* Add to itinerary */}
                 <button
                   onClick={() => {
                     if (!active?.places) return;
-                    setPickerPlace({
-                      id: active.place_id,
-                      name: active.places.name ?? 'Unnamed place',
-                      category: active.places.category ?? null,
-                      image_url: active.places.image_url ?? null,
-                    });
+                    setPickerPlace({ id: active.place_id, name: active.places.name ?? 'Unnamed place', category: active.places.category ?? null, image_url: active.places.image_url ?? null });
                   }}
                   aria-label="Add to itinerary"
-                  style={{
-                    height: 34, padding: '0 14px', borderRadius: 4,
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.35)',
-                    color: 'rgba(255,255,255,0.8)',
-                    fontSize: 9, fontWeight: 700,
-                    letterSpacing: '0.14em', textTransform: 'uppercase',
-                    cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    transition: 'border-color 180ms ease, color 180ms ease, background 180ms ease',
-                    whiteSpace: 'nowrap',
-                  }}
+                  style={{ height: 34, padding: '0 14px', borderRadius: 4, background: 'transparent', border: '1px solid rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 5, transition: 'border-color 180ms ease, color 180ms ease, background 180ms ease', whiteSpace: 'nowrap' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; e.currentTarget.style.background = GOLD_DIM; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; e.currentTarget.style.background = 'transparent'; }}
                 >
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                   Add
                 </button>
-                {/* Unsave */}
-                <button
-                  onClick={handleUnsave}
-                  disabled={unsaving}
-                  aria-label="Remove from saved"
-                  style={{
-                    width: 34, height: 34, borderRadius: 4,
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: unsaving ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)',
-                    cursor: unsaving ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'border-color 180ms ease, color 180ms ease',
-                  }}
+                <button onClick={handleUnsave} disabled={unsaving} aria-label="Remove from saved"
+                  style={{ width: 34, height: 34, borderRadius: 4, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: unsaving ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)', cursor: unsaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 180ms ease, color 180ms ease' }}
                   onMouseEnter={e => { if (!unsaving) { e.currentTarget.style.borderColor = 'rgba(200,60,60,0.6)'; e.currentTarget.style.color = 'rgba(200,80,80,0.9)'; } }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; }}
                 >
@@ -582,15 +503,13 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           </div>
         </div>
 
-        {/* ── RIGHT: Map + filmstrip — unified warm dark bg ── */}
+        {/* ── RIGHT: Map + filmstrip ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: RIGHT_BG }}>
 
-          {/* Map — fills majority, dark-v11 blends with RIGHT_BG */}
+          {/* Map */}
           <div style={{ flex: 1, minHeight: 0, position: 'relative', background: RIGHT_BG }}>
             <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
-            {/* Subtle top vignette so map blends into bg */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 32, background: `linear-gradient(to bottom, ${RIGHT_BG} 0%, transparent 100%)`, pointerEvents: 'none', zIndex: 2 }} />
-            {/* Subtle bottom vignette */}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: `linear-gradient(to top, ${RIGHT_BG} 0%, transparent 100%)`, pointerEvents: 'none', zIndex: 2 }} />
             {!mapLoaded && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: RIGHT_BG }}>
@@ -599,25 +518,24 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
             )}
           </div>
 
-          {/* Filmstrip label */}
-          <div style={{ flexShrink: 0, padding: '8px 14px 4px', background: RIGHT_BG }}>
-            <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(200,150,90,0.4)', fontFamily: "'DM Sans',sans-serif" }}>
-              Saved Places
-            </p>
+          {/* ── Filmstrip ── */}
+          {/* label */}
+          <div style={{ flexShrink: 0, padding: '10px 16px 6px', background: RIGHT_BG }}>
+            <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(200,150,90,0.4)', fontFamily: "'DM Sans',sans-serif" }}>Saved Places</p>
           </div>
 
-          {/* Filmstrip */}
+          {/* scroll track — taller to match reference */}
           <div
             ref={filmstripRef}
             style={{
               flexShrink: 0,
-              height: 110,
+              height: 172,
               overflowY: 'hidden',
               overflowX: 'auto',
               display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '0 14px 12px',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: '0 16px 16px',
               scrollSnapType: 'x mandatory',
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
@@ -630,51 +548,105 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
               return (
                 <div
                   key={item.id}
+                  onClick={() => selectIndex(i)}
                   style={{
                     flexShrink: 0,
-                    width: 120,
-                    height: 84,
-                    borderRadius: 8,
+                    width: 148,
+                    height: 150,
+                    borderRadius: 10,
                     overflow: 'hidden',
                     position: 'relative',
-                    border: isActive ? `1.5px solid ${GOLD}` : '1.5px solid rgba(200,150,90,0.15)',
-                    background: '#2a201a',
-                    transition: 'border-color 240ms ease, box-shadow 240ms ease',
-                    boxShadow: isActive ? `0 4px 20px rgba(200,150,90,0.22)` : 'none',
-                    scrollSnapAlign: 'start',
                     cursor: 'pointer',
+                    scrollSnapAlign: 'start',
+                    /* active: gold ring + outer glow matching the reference */
+                    border: isActive ? `2px solid ${GOLD}` : '2px solid rgba(200,150,90,0.12)',
+                    boxShadow: isActive
+                      ? `0 0 0 3px rgba(200,150,90,0.18), 0 6px 24px rgba(200,150,90,0.22)`
+                      : '0 2px 10px rgba(0,0,0,0.35)',
+                    background: '#241c14',
+                    transition: 'border-color 240ms ease, box-shadow 240ms ease',
                   }}
-                  onClick={() => selectIndex(i)}
                 >
+                  {/* background image */}
                   {p?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={p.image_url}
                       alt={p.name ?? ''}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 300ms ease', transform: isActive ? 'scale(1.04)' : 'scale(1)' }}
+                      style={{
+                        position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                        transition: 'transform 320ms ease',
+                        transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                      }}
                     />
                   ) : (
-                    <div style={{ position: 'absolute', inset: 0, background: '#2a2018' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#241c14,#3a2a1a)' }} />
                   )}
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 55%)' }} />
 
-                  {/* Number badge */}
+                  {/* gradient scrim — stronger at bottom for text legibility */}
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.18) 50%, transparent 100%)' }} />
+
+                  {/* top-left: numbered badge */}
                   <div style={{
-                    position: 'absolute', top: 6, left: 6,
-                    width: 20, height: 20, borderRadius: '50%',
-                    background: isActive ? GOLD : 'rgba(10,8,6,0.7)',
-                    border: `1px solid ${isActive ? GOLD : 'rgba(200,150,90,0.35)'}`,
+                    position: 'absolute', top: 8, left: 8,
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: isActive ? GOLD : 'rgba(10,8,6,0.72)',
+                    border: `1.5px solid ${isActive ? GOLD : 'rgba(200,150,90,0.4)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, fontWeight: 700, color: isActive ? '#0A0806' : 'rgba(200,150,90,0.9)',
+                    fontSize: 10, fontWeight: 700,
+                    color: isActive ? '#0A0806' : 'rgba(200,150,90,0.95)',
                     fontFamily: "'DM Sans',sans-serif",
-                    transition: 'background 240ms ease',
+                    transition: 'background 240ms ease, color 240ms ease',
+                    zIndex: 2,
                   }}>
                     {i + 1}
                   </div>
 
-                  <p style={{ position: 'absolute', bottom: 6, left: 8, right: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", margin: 0 }}>
-                    {p?.name ?? '—'}
-                  </p>
+                  {/* bottom text block — place name + category pill */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 10px 10px' }}>
+                    {p?.category && (
+                      <p style={{
+                        margin: '0 0 3px',
+                        fontSize: 8,
+                        fontWeight: 700,
+                        letterSpacing: '0.16em',
+                        textTransform: 'uppercase',
+                        color: isActive ? GOLD : 'rgba(200,150,90,0.7)',
+                        fontFamily: "'DM Sans',sans-serif",
+                        transition: 'color 240ms ease',
+                      }}>
+                        {p.category}
+                      </p>
+                    )}
+                    <p style={{
+                      margin: 0,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(255,255,255,0.95)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontFamily: "'DM Sans',sans-serif",
+                      lineHeight: 1.2,
+                    }}>
+                      {p?.name ?? '—'}
+                    </p>
+                    {p?.city && (
+                      <p style={{
+                        margin: '2px 0 0',
+                        fontSize: 9,
+                        color: 'rgba(255,255,255,0.45)',
+                        fontFamily: "'DM Sans',sans-serif",
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {p.city}
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -682,17 +654,10 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
         </div>
       </div>
 
-      {/* Itinerary Picker Sheet */}
       {pickerPlace && (
-        <ItineraryPickerSheet
-          place={pickerPlace}
-          getBearerToken={getBearerToken}
-          onClose={() => setPickerPlace(null)}
-          onAdded={() => setPickerPlace(null)}
-        />
+        <ItineraryPickerSheet place={pickerPlace} getBearerToken={getBearerToken} onClose={() => setPickerPlace(null)} onAdded={() => setPickerPlace(null)} />
       )}
 
-      {/* Expand / Place Detail Sheet */}
       {expandPlace && (
         <SavedPlaceSheet
           item={expandPlace}
@@ -707,9 +672,7 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
         />
       )}
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg) } }
-      `}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   );
 }
@@ -834,18 +797,9 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%',
-    height: 44,
-    borderRadius: 10,
-    background: SURFACE,
-    border: `1px solid ${BORDER_2}`,
-    color: TEXT,
-    fontSize: 14,
-    padding: '0 12px',
-    fontFamily: "'DM Sans',sans-serif",
-    outline: 'none',
-    transition: 'border-color 180ms ease',
-    colorScheme: 'dark',
+    width: '100%', height: 44, borderRadius: 10, background: SURFACE, border: `1px solid ${BORDER_2}`,
+    color: TEXT, fontSize: 14, padding: '0 12px', fontFamily: "'DM Sans',sans-serif",
+    outline: 'none', transition: 'border-color 180ms ease', colorScheme: 'dark',
   };
 
   return (
@@ -946,11 +900,11 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         const coords = geo.map(i => [i.places!.longitude, i.places!.latitude] as [number, number]);
         map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } });
         map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': GOLD, 'line-width': 2, 'line-dasharray': [2, 3], 'line-opacity': 0.6 } });
-        geo.forEach((item, idx) => {
+        geo.forEach((itm, idx) => {
           const el = document.createElement('div');
           el.style.cssText = `width:26px;height:26px;background:rgba(200,150,90,0.15);border:1.5px solid ${GOLD};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${GOLD};font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;`;
           el.textContent = String(idx + 1);
-          new mb.Marker({ element: el }).setLngLat([item.places!.longitude, item.places!.latitude]).addTo(map);
+          new mb.Marker({ element: el }).setLngLat([itm.places!.longitude, itm.places!.latitude]).addTo(map);
         });
       });
       mapInstanceRef.current = map;
@@ -1054,18 +1008,18 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
           <div style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', left: 12, top: 13, bottom: 13, width: 1, background: `linear-gradient(to bottom,${GOLD}44,${GOLD}22,transparent)` }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {visibleItems.map((item, idx) => {
-                const place = item.places;
-                const name = item.titleoverride ?? item.name ?? place?.name ?? 'Unnamed stop';
-                const category = item.category ?? place?.category;
-                const image = item.image ?? place?.image_url;
-                const time = formatTime(item.starttime);
-                const dur = item.durationhours ? `${item.durationhours}h` : null;
+              {visibleItems.map((itm, idx) => {
+                const place = itm.places;
+                const name = itm.titleoverride ?? itm.name ?? place?.name ?? 'Unnamed stop';
+                const category = itm.category ?? place?.category;
+                const image = itm.image ?? place?.image_url;
+                const time = formatTime(itm.starttime);
+                const dur = itm.durationhours ? `${itm.durationhours}h` : null;
                 const isLast = idx === visibleItems.length - 1;
                 return (
-                  <div key={item.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: isLast ? 0 : 20, position: 'relative' }}>
+                  <div key={itm.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: isLast ? 0 : 20, position: 'relative' }}>
                     <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: BG, border: `1.5px solid ${GOLD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GOLD, fontSize: 10, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", zIndex: 1, marginTop: 2 }}>{idx + 1}</div>
-                    <button onClick={() => setEditingItem(item)}
+                    <button onClick={() => setEditingItem(itm)}
                       style={{ flex: 1, borderRadius: 12, background: SURFACE, border: `1px solid ${BORDER}`, overflow: 'hidden', display: 'flex', gap: 0, cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'background 180ms ease,border-color 180ms ease' }}
                       onMouseEnter={e => { e.currentTarget.style.background = SURFACE_2; e.currentTarget.style.borderColor = BORDER_2; }}
                       onMouseLeave={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = BORDER; }}
@@ -1086,7 +1040,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
                         </div>
                         <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>{name}</p>
                         {category && <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>{category}</p>}
-                        {item.notes && <p style={{ margin: '5px 0 0', fontSize: 11, color: TEXT_FAINT, lineHeight: 1.5, fontFamily: "'DM Sans',sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.notes}</p>}
+                        {itm.notes && <p style={{ margin: '5px 0 0', fontSize: 11, color: TEXT_FAINT, lineHeight: 1.5, fontFamily: "'DM Sans',sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{itm.notes}</p>}
                       </div>
                     </button>
                   </div>
@@ -1181,7 +1135,6 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 0 }}>
           <div style={{ width: 36, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.12)' }} />
         </div>
-
         {p?.image_url && (
           <div style={{ position: 'relative', height: 180, margin: '12px 16px 0', borderRadius: 14, overflow: 'hidden', background: '#1a1614' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1192,7 +1145,6 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
             )}
           </div>
         )}
-
         <div style={{ padding: '14px 20px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1209,7 +1161,6 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
               </div>
             </div>
           </div>
-
           {p?.editorial_summary && (
             <p style={{ fontSize: 13, color: 'rgba(250,248,245,0.55)', lineHeight: 1.6, margin: '0 0 12px', fontFamily: "'DM Sans',sans-serif" }}>{p.editorial_summary}</p>
           )}
@@ -1221,10 +1172,8 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
               <span style={{ fontSize: 12, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif", lineHeight: 1.5 }}>{p.address}</span>
             </div>
           )}
-
           <div style={{ display: 'flex', gap: 10, paddingBottom: 32 }}>
-            <button
-              onClick={onAddToItinerary}
+            <button onClick={onAddToItinerary}
               style={{ flex: 2, height: 46, borderRadius: 12, background: GOLD, border: 'none', color: '#0A0806', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, transition: 'opacity 160ms ease' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
@@ -1232,9 +1181,7 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
               Add to Itinerary
             </button>
-            <button
-              onClick={handleUnsave}
-              disabled={unsaving}
+            <button onClick={handleUnsave} disabled={unsaving}
               style={{ flex: 1, height: 46, borderRadius: 12, background: 'rgba(193,58,58,0.12)', border: '1px solid rgba(193,58,58,0.25)', color: unsaving ? 'rgba(255,255,255,0.3)' : 'rgba(220,80,80,0.85)', fontSize: 13, fontWeight: 600, cursor: unsaving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'background 160ms ease' }}
               onMouseEnter={e => { if (!unsaving) e.currentTarget.style.background = 'rgba(193,58,58,0.22)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(193,58,58,0.12)'; }}
