@@ -34,6 +34,8 @@ function formatTime(t: string | null) {
 const GOLD = '#C8965A';
 const GOLD_DIM = 'rgba(200,150,90,0.18)';
 const BG = '#0A0806';
+// Right panel warm tone — deep warm sand, map style will match
+const RIGHT_BG = '#1C1610';
 const SURFACE = 'rgba(255,255,255,0.04)';
 const SURFACE_2 = 'rgba(255,255,255,0.07)';
 const BORDER = 'rgba(255,255,255,0.08)';
@@ -117,7 +119,6 @@ export default function PlannerPage() {
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
       }}>
-        {/* Left: wordmark / title */}
         <span style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
           fontSize: 15,
@@ -127,7 +128,6 @@ export default function PlannerPage() {
           color: GOLD,
         }}>Planner</span>
 
-        {/* Centre: tab pills */}
         <div style={{ display: 'flex', gap: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3, border: `1px solid ${BORDER}` }}>
           {(['saved', 'itineraries'] as Tab[]).map((tab) => {
             const isActive = activeTab === tab;
@@ -172,7 +172,6 @@ export default function PlannerPage() {
           })}
         </div>
 
-        {/* Right: place count */}
         <span style={{
           fontSize: 11,
           color: TEXT_FAINT,
@@ -243,8 +242,18 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   const active = places[activeIndex] ?? null;
   const activePlace = active?.places ?? null;
 
+  function flyToIndex(i: number) {
+    if (!mapInstanceRef.current || !places[i]?.places?.latitude) return;
+    const p = places[i].places!;
+    mapInstanceRef.current.flyTo({ center: [p.longitude, p.latitude], zoom: 13, duration: 800, essential: true });
+  }
+
   function selectIndex(i: number) {
-    if (i === activeIndex) return;
+    if (i === activeIndex) {
+      // already active — just fly to it
+      flyToIndex(i);
+      return;
+    }
     setPrevIndex(activeIndex);
     setHeroAnimating(true);
     setActiveIndex(i);
@@ -275,7 +284,8 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       valid.forEach(p => bounds.extend([p.places!.longitude, p.places!.latitude]));
       const map = new mb.Map({
         container: mapRef.current!,
-        style: 'mapbox://styles/mapbox/light-v11',
+        // warm dark style to match RIGHT_BG
+        style: 'mapbox://styles/mapbox/dark-v11',
         bounds,
         fitBoundsOptions: { padding: 48, maxZoom: 14 },
         attributionControl: false,
@@ -295,7 +305,7 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           type: 'line',
           source: 'route',
           layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#aaa', 'line-width': 1.5, 'line-dasharray': [2, 3], 'line-opacity': 0.5 },
+          paint: { 'line-color': GOLD, 'line-width': 1.5, 'line-dasharray': [2, 3], 'line-opacity': 0.55 },
         });
 
         valid.forEach((p, i) => {
@@ -303,15 +313,15 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           const el = document.createElement('div');
           el.style.cssText = `
             width: 28px; height: 28px;
-            background: ${isAct ? GOLD : '#1a1a1a'};
-            border: 2px solid ${isAct ? GOLD : '#333'};
+            background: ${isAct ? GOLD : 'rgba(28,22,16,0.85)'};
+            border: 1.5px solid ${isAct ? GOLD : 'rgba(200,150,90,0.45)'};
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            color: ${isAct ? '#fff' : '#fff'};
+            color: ${isAct ? '#0A0806' : 'rgba(200,150,90,0.9)'};
             font-size: 11px; font-weight: 700;
             cursor: pointer;
             transition: transform 220ms ease, background 220ms ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             font-family: 'DM Sans', sans-serif;
           `;
           el.textContent = String(i + 1);
@@ -331,20 +341,20 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedPlaces]);
 
+  // Sync markers + fly when activeIndex changes
   useEffect(() => {
     markersRef.current.forEach((marker, i) => {
       const el = marker.getElement() as HTMLDivElement;
       const a = i === activeIndex;
-      el.style.background = a ? GOLD : '#1a1a1a';
-      el.style.borderColor = a ? GOLD : '#333';
-      el.style.transform = a ? 'scale(1.25)' : 'scale(1)';
+      el.style.background = a ? GOLD : 'rgba(28,22,16,0.85)';
+      el.style.borderColor = a ? GOLD : 'rgba(200,150,90,0.45)';
+      el.style.color = a ? '#0A0806' : 'rgba(200,150,90,0.9)';
+      el.style.transform = a ? 'scale(1.3)' : 'scale(1)';
       el.style.zIndex = a ? '10' : '1';
     });
-    if (mapInstanceRef.current && places[activeIndex]?.places?.latitude) {
-      const p = places[activeIndex].places!;
-      mapInstanceRef.current.flyTo({ center: [p.longitude, p.latitude], zoom: 13, duration: 800, essential: true });
-    }
-  }, [activeIndex, places]);
+    flyToIndex(activeIndex);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
 
   useEffect(() => {
     if (places.length > 0 && activeIndex >= places.length) {
@@ -421,11 +431,13 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           )}
 
           {/* Gradient overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,4,3,0.92) 0%, rgba(5,4,3,0.35) 50%, rgba(5,4,3,0.08) 100%)' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(5,4,3,0.1) 0%, transparent 70%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,4,3,0.94) 0%, rgba(5,4,3,0.35) 50%, rgba(5,4,3,0.06) 100%)' }} />
+          {/* Right edge fade — hero bleeds into right panel */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, rgba(28,22,16,0.85) 100%)' }} />
 
-          {/* Top-left: VIEW GALLERY */}
-          <div style={{ position: 'absolute', top: 18, left: 18, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+          {/* Top-left: VIEW GALLERY — click opens place detail */}
+          <div
+            style={{ position: 'absolute', top: 18, left: 18, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
             onClick={() => setExpandPlace(active)}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -436,18 +448,16 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
 
           {/* Top-right: counter */}
           <div style={{ position: 'absolute', top: 18, right: 18 }}>
-            <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.45)', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.1em' }}>
+            <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.1em' }}>
               {activeIndex + 1} / {places.length}
             </span>
           </div>
 
           {/* Bottom info */}
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 22px 28px' }}>
-            {activePlace?.category && (
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', margin: '0 0 8px', fontFamily: "'DM Sans',sans-serif" }}>
-                Welcome to
-              </p>
-            )}
+            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', margin: '0 0 8px', fontFamily: "'DM Sans',sans-serif" }}>
+              Welcome to
+            </p>
             <h2
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -470,7 +480,7 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
             {activePlace?.rating && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 16 }}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill={i < Math.round(activePlace.rating ?? 0) ? GOLD : 'rgba(200,150,90,0.25)'} stroke="none">
+                  <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill={i < Math.round(activePlace.rating ?? 0) ? GOLD : 'rgba(200,150,90,0.2)'} stroke="none">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
                 ))}
@@ -478,17 +488,17 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
             )}
 
             {/* Meta row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 14 }}>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: "'DM Sans',sans-serif" }}>Location</p>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: "'DM Sans',sans-serif" }}>Location</p>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.8)', fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {activePlace?.city ?? activePlace?.category ?? '—'}
                 </p>
               </div>
               {activePlace?.category && (
-                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.12)', paddingLeft: 14 }}>
-                  <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: "'DM Sans',sans-serif" }}>Category</p>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: 14 }}>
+                  <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: "'DM Sans',sans-serif" }}>Category</p>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.8)', fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     {activePlace.category}
                   </p>
                 </div>
@@ -496,6 +506,29 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
 
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: 8, marginLeft: 14 }}>
+                {/* Locate on map — flies map to current place */}
+                <button
+                  onClick={() => flyToIndex(activeIndex)}
+                  aria-label="Locate on map"
+                  style={{
+                    width: 34, height: 34, borderRadius: 4,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.55)',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'border-color 180ms ease, color 180ms ease, background 180ms ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; e.currentTarget.style.background = GOLD_DIM; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" strokeOpacity="0.3" />
+                  </svg>
+                </button>
+                {/* Add to itinerary */}
                 <button
                   onClick={() => {
                     if (!active?.places) return;
@@ -510,21 +543,22 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   style={{
                     height: 34, padding: '0 14px', borderRadius: 4,
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.45)',
-                    color: 'rgba(255,255,255,0.85)',
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    color: 'rgba(255,255,255,0.8)',
                     fontSize: 9, fontWeight: 700,
                     letterSpacing: '0.14em', textTransform: 'uppercase',
                     cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
                     display: 'flex', alignItems: 'center', gap: 5,
-                    transition: 'border-color 180ms ease, color 180ms ease',
+                    transition: 'border-color 180ms ease, color 180ms ease, background 180ms ease',
                     whiteSpace: 'nowrap',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; e.currentTarget.style.background = GOLD_DIM; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; e.currentTarget.style.background = 'transparent'; }}
                 >
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                   Add
                 </button>
+                {/* Unsave */}
                 <button
                   onClick={handleUnsave}
                   disabled={unsaving}
@@ -532,14 +566,14 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   style={{
                     width: 34, height: 34, borderRadius: 4,
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    color: unsaving ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: unsaving ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)',
                     cursor: unsaving ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'border-color 180ms ease, color 180ms ease',
                   }}
                   onMouseEnter={e => { if (!unsaving) { e.currentTarget.style.borderColor = 'rgba(200,60,60,0.6)'; e.currentTarget.style.color = 'rgba(200,80,80,0.9)'; } }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
@@ -548,22 +582,26 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           </div>
         </div>
 
-        {/* ── RIGHT: Map + filmstrip ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f3f0' }}>
+        {/* ── RIGHT: Map + filmstrip — unified warm dark bg ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: RIGHT_BG }}>
 
-          {/* Map */}
-          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+          {/* Map — fills majority, dark-v11 blends with RIGHT_BG */}
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', background: RIGHT_BG }}>
             <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
+            {/* Subtle top vignette so map blends into bg */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 32, background: `linear-gradient(to bottom, ${RIGHT_BG} 0%, transparent 100%)`, pointerEvents: 'none', zIndex: 2 }} />
+            {/* Subtle bottom vignette */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: `linear-gradient(to top, ${RIGHT_BG} 0%, transparent 100%)`, pointerEvents: 'none', zIndex: 2 }} />
             {!mapLoaded && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ece9e4' }}>
-                <div style={{ width: 20, height: 20, border: `2px solid rgba(200,150,90,0.3)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'spin 700ms linear infinite' }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: RIGHT_BG }}>
+                <div style={{ width: 20, height: 20, border: `2px solid rgba(200,150,90,0.25)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'spin 700ms linear infinite' }} />
               </div>
             )}
           </div>
 
           {/* Filmstrip label */}
-          <div style={{ flexShrink: 0, padding: '10px 14px 4px', background: '#f5f3f0', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-            <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(30,20,10,0.45)', fontFamily: "'DM Sans',sans-serif" }}>
+          <div style={{ flexShrink: 0, padding: '8px 14px 4px', background: RIGHT_BG }}>
+            <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(200,150,90,0.4)', fontFamily: "'DM Sans',sans-serif" }}>
               Saved Places
             </p>
           </div>
@@ -579,11 +617,11 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              padding: '0 14px 10px',
+              padding: '0 14px 12px',
               scrollSnapType: 'x mandatory',
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
-              background: '#f5f3f0',
+              background: RIGHT_BG,
             }}
           >
             {places.map((item, i) => {
@@ -595,14 +633,14 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   style={{
                     flexShrink: 0,
                     width: 120,
-                    height: 85,
+                    height: 84,
                     borderRadius: 8,
                     overflow: 'hidden',
                     position: 'relative',
-                    border: isActive ? `2px solid ${GOLD}` : '2px solid transparent',
-                    background: '#ccc',
+                    border: isActive ? `1.5px solid ${GOLD}` : '1.5px solid rgba(200,150,90,0.15)',
+                    background: '#2a201a',
                     transition: 'border-color 240ms ease, box-shadow 240ms ease',
-                    boxShadow: isActive ? `0 4px 18px rgba(200,150,90,0.28)` : '0 2px 8px rgba(0,0,0,0.1)',
+                    boxShadow: isActive ? `0 4px 20px rgba(200,150,90,0.22)` : 'none',
                     scrollSnapAlign: 'start',
                     cursor: 'pointer',
                   }}
@@ -616,24 +654,25 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 300ms ease', transform: isActive ? 'scale(1.04)' : 'scale(1)' }}
                     />
                   ) : (
-                    <div style={{ position: 'absolute', inset: 0, background: '#d0ccc8' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: '#2a2018' }} />
                   )}
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%)' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 55%)' }} />
 
                   {/* Number badge */}
                   <div style={{
                     position: 'absolute', top: 6, left: 6,
                     width: 20, height: 20, borderRadius: '50%',
-                    background: isActive ? GOLD : 'rgba(0,0,0,0.55)',
+                    background: isActive ? GOLD : 'rgba(10,8,6,0.7)',
+                    border: `1px solid ${isActive ? GOLD : 'rgba(200,150,90,0.35)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, fontWeight: 700, color: '#fff',
+                    fontSize: 9, fontWeight: 700, color: isActive ? '#0A0806' : 'rgba(200,150,90,0.9)',
                     fontFamily: "'DM Sans',sans-serif",
                     transition: 'background 240ms ease',
                   }}>
                     {i + 1}
                   </div>
 
-                  <p style={{ position: 'absolute', bottom: 6, left: 8, right: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.95)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", margin: 0 }}>
+                  <p style={{ position: 'absolute', bottom: 6, left: 8, right: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", margin: 0 }}>
                     {p?.name ?? '—'}
                   </p>
                 </div>
