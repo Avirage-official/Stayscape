@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
@@ -10,6 +10,7 @@ import type { DbSavedPlaceEnriched } from '@/lib/supabase/saved-places-repositor
 import type { DbItineraryListed, DbItineraryItemEnriched } from '@/lib/supabase/itinerary-repository';
 
 type Tab = 'saved' | 'itineraries';
+type MobileTab = 'saved' | 'saved-map' | 'itineraries' | 'itin-map';
 
 async function getBearerToken(): Promise<string | null> {
   const supabase = getSupabaseBrowser();
@@ -48,7 +49,13 @@ export default function PlannerPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
+  // Desktop
   const [activeTab, setActiveTab] = useState<Tab>('saved');
+  // Mobile
+  const [mobileTab, setMobileTab] = useState<MobileTab>('saved');
+  const [savedActiveIndex, setSavedActiveIndex] = useState(0);
+  const [selectedItinForMap, setSelectedItinForMap] = useState<DbItineraryListed | null>(null);
+
   const [savedPlaces, setSavedPlaces] = useState<DbSavedPlaceEnriched[] | null>(null);
   const [savedLoading, setSavedLoading] = useState(true);
   const [savedError, setSavedError] = useState<string | null>(null);
@@ -89,48 +96,123 @@ export default function PlannerPage() {
   useEffect(() => { if (user) void fetchSavedPlaces(); }, [user, fetchSavedPlaces]);
 
   const itinFetchedRef = useRef(false);
-  const handleTabSwitch = (tab: Tab) => {
+
+  function handleDesktopTabSwitch(tab: Tab) {
     setActiveTab(tab);
     if (tab === 'itineraries' && !itinFetchedRef.current && user) {
       itinFetchedRef.current = true;
       void fetchItineraries();
     }
-  };
+  }
+
+  function handleMobileTabSwitch(tab: MobileTab) {
+    setMobileTab(tab);
+    if ((tab === 'itineraries' || tab === 'itin-map') && !itinFetchedRef.current && user) {
+      itinFetchedRef.current = true;
+      void fetchItineraries();
+    }
+  }
 
   if (authLoading || !user || savedLoading) return <GuestArrivalSkeleton />;
 
+  const unsaveFn = async (placeId: string) => {
+    const token = await getBearerToken(); if (!token) return;
+    await fetch(`/api/customer/saved-places/${placeId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    setSavedPlaces(prev => prev?.filter(p => p.place_id !== placeId) ?? null);
+  };
+
+  const MOBILE_TABS: { id: MobileTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'saved', label: 'Saved', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg> },
+    { id: 'saved-map', label: 'Map', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg> },
+    { id: 'itineraries', label: 'Trips', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+    { id: 'itin-map', label: 'Trip Map', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
+  ];
+
   return (
     <div style={{ height:'calc(100dvh - 64px)',display:'flex',flexDirection:'column',background:BG,overflow:'hidden' }} className="md:h-dvh md:ml-[52px]">
-      {/* Tab bar */}
-      <div style={{ flexShrink:0,display:'flex',borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
-        {(['saved','itineraries'] as Tab[]).map((tab) => {
-          const isActive = activeTab === tab;
+
+      {/* Mobile 4-tab bar */}
+      <div className="md:hidden" style={{ flexShrink:0,display:'flex',borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
+        {MOBILE_TABS.map(({ id, label, icon }) => {
+          const isActive = mobileTab === id;
           return (
-            <button key={tab} onClick={() => handleTabSwitch(tab)}
-              style={{ flex:1,height:48,background:'transparent',border:'none',borderBottom:isActive?`2px solid ${GOLD}`:'2px solid transparent',color:isActive?GOLD:TEXT_MUTED,fontSize:13,fontWeight:isActive?600:400,letterSpacing:'0.04em',cursor:'pointer',transition:'color 200ms ease,border-color 200ms ease',fontFamily:"'DM Sans',sans-serif" }}
-            >{tab === 'saved' ? 'Saved' : 'Itineraries'}</button>
+            <button key={id} onClick={() => handleMobileTabSwitch(id)}
+              style={{ flex:1,height:52,background:'transparent',border:'none',borderBottom:isActive?`2px solid ${GOLD}`:'2px solid transparent',color:isActive?GOLD:TEXT_MUTED,cursor:'pointer',transition:'color 200ms ease,border-color 200ms ease',fontFamily:"'DM Sans',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,padding:'4px 2px' }}
+            >
+              {icon}
+              <span style={{ fontSize:9,fontWeight:isActive?600:400,letterSpacing:'0.04em' }}>{label}</span>
+            </button>
           );
         })}
       </div>
+
+      {/* Desktop 2-tab bar */}
+      <div className="hidden md:block" style={{ flexShrink:0 }}>
+        <div style={{ display:'flex',borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
+          {(['saved','itineraries'] as Tab[]).map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button key={tab} onClick={() => handleDesktopTabSwitch(tab)}
+                style={{ flex:1,height:48,background:'transparent',border:'none',borderBottom:isActive?`2px solid ${GOLD}`:'2px solid transparent',color:isActive?GOLD:TEXT_MUTED,fontSize:13,fontWeight:isActive?600:400,letterSpacing:'0.04em',cursor:'pointer',transition:'color 200ms ease,border-color 200ms ease',fontFamily:"'DM Sans',sans-serif" }}
+              >{tab === 'saved' ? 'Saved' : 'Itineraries'}</button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={{ flex:1,minHeight:0,overflow:'hidden' }}>
-        {activeTab === 'saved' && (
-          <SavedTab
-            savedPlaces={savedPlaces} isLoading={savedLoading} error={savedError}
-            onRetry={() => void fetchSavedPlaces()}
-            onUnsave={async (placeId) => {
-              const token = await getBearerToken(); if (!token) return;
-              await fetch(`/api/customer/saved-places/${placeId}`, { method:'DELETE', headers:{ Authorization:`Bearer ${token}` } });
-              setSavedPlaces(prev => prev?.filter(p => p.place_id !== placeId) ?? null);
-            }}
-          />
-        )}
-        {activeTab === 'itineraries' && (
-          <ItinerariesTab
-            itineraries={itineraries} isLoading={itinLoading} error={itinError}
-            onRetry={() => void fetchItineraries()}
-            onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
-          />
-        )}
+        {/* Desktop content */}
+        <div className="hidden md:block h-full">
+          {activeTab === 'saved' && (
+            <SavedTab
+              savedPlaces={savedPlaces} isLoading={savedLoading} error={savedError}
+              onRetry={() => void fetchSavedPlaces()}
+              onUnsave={unsaveFn}
+            />
+          )}
+          {activeTab === 'itineraries' && (
+            <ItinerariesTab
+              itineraries={itineraries} isLoading={itinLoading} error={itinError}
+              onRetry={() => void fetchItineraries()}
+              onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
+            />
+          )}
+        </div>
+
+        {/* Mobile content */}
+        <div className="md:hidden h-full">
+          {mobileTab === 'saved' && (
+            <SavedMobileTab
+              savedPlaces={savedPlaces} isLoading={savedLoading} error={savedError}
+              onRetry={() => void fetchSavedPlaces()}
+              onUnsave={unsaveFn}
+              activeIndex={savedActiveIndex}
+              setActiveIndex={setSavedActiveIndex}
+              onLocate={() => handleMobileTabSwitch('saved-map')}
+            />
+          )}
+          {mobileTab === 'saved-map' && (
+            <SavedMapMobileTab
+              savedPlaces={savedPlaces}
+              activeIndex={savedActiveIndex}
+              onMarkerTap={(i) => { setSavedActiveIndex(i); handleMobileTabSwitch('saved'); }}
+            />
+          )}
+          {mobileTab === 'itineraries' && (
+            <ItinerariesTab
+              itineraries={itineraries} isLoading={itinLoading} error={itinError}
+              onRetry={() => void fetchItineraries()}
+              onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
+              onItinerarySelect={(itin) => setSelectedItinForMap(itin)}
+            />
+          )}
+          {mobileTab === 'itin-map' && (
+            <ItinMapMobileTab
+              itinerary={selectedItinForMap}
+              onGoToItineraries={() => handleMobileTabSwitch('itineraries')}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -390,6 +472,348 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   );
 }
 
+/* ══ SAVED TAB — MOBILE ══ */
+
+function SavedMobileTab({
+  savedPlaces, isLoading, error, onRetry, onUnsave, activeIndex, setActiveIndex, onLocate,
+}: {
+  savedPlaces: DbSavedPlaceEnriched[] | null;
+  isLoading: boolean; error: string | null;
+  onRetry: () => void;
+  onUnsave: (placeId: string) => Promise<void>;
+  activeIndex: number;
+  setActiveIndex: (i: number) => void;
+  onLocate: () => void;
+}) {
+  const [pickerPlace, setPickerPlace] = useState<{ id: string; name: string; category?: string | null; image_url?: string | null } | null>(null);
+  const [expandPlace, setExpandPlace] = useState<DbSavedPlaceEnriched | null>(null);
+  const [unsaving, setUnsaving] = useState(false);
+
+  const places = savedPlaces ?? [];
+  const active = places[activeIndex] ?? null;
+  const activePlace = active?.places ?? null;
+
+  useEffect(() => {
+    if (places.length > 0 && activeIndex >= places.length) setActiveIndex(places.length - 1);
+  }, [places.length, activeIndex, setActiveIndex]);
+
+  async function handleUnsave() {
+    if (!active || unsaving) return;
+    setUnsaving(true);
+    await onUnsave(active.place_id);
+    setUnsaving(false);
+  }
+
+  if (!isLoading && places.length === 0 && !error) {
+    return (
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%' }}>
+        <div style={{ textAlign:'center',padding:'0 32px',maxWidth:300 }}>
+          <div style={{ width:56,height:56,margin:'0 auto 20px',borderRadius:16,background:GOLD_DIM,border:`1px solid rgba(200,150,90,0.2)`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeOpacity="0.7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          </div>
+          <p style={{ color:'rgba(255,255,255,0.75)',fontSize:15,marginBottom:8,fontFamily:"'DM Sans',sans-serif" }}>No saved places yet</p>
+          <p style={{ color:TEXT_FAINT,fontSize:13,lineHeight:1.6,fontFamily:"'DM Sans',sans-serif" }}>Explore and bookmark places you want to visit.</p>
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%' }}>
+        <div style={{ textAlign:'center' }}>
+          <p style={{ color:TEXT_MUTED,fontSize:13,marginBottom:12,fontFamily:"'DM Sans',sans-serif" }}>{error}</p>
+          <button onClick={onRetry} style={{ fontSize:12,color:GOLD,background:'none',border:'none',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",textDecoration:'underline' }}>Try again</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height:'100%',display:'flex',flexDirection:'column',overflow:'hidden' }}>
+      {/* Hero */}
+      <div style={{ position:'relative',flexShrink:0,height:'45vw',minHeight:160,maxHeight:260,overflow:'hidden',background:'#1a1614' }}>
+        {activePlace?.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={activePlace.image_url} src={activePlace.image_url} alt={activePlace.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',transition:'opacity 400ms ease' }} />
+        ) : (<div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,#1a1614,#2a2018)' }} />)}
+        <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top,rgba(10,8,6,0.92) 0%,rgba(10,8,6,0.4) 55%,rgba(10,8,6,0.1) 100%)' }} />
+
+        {/* Counter + actions */}
+        <div style={{ position:'absolute',top:14,left:14,right:14,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+          <span style={{ fontSize:11,fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.5)',fontFamily:"'DM Sans',sans-serif" }}>{activeIndex+1} / {places.length}</span>
+          <div style={{ display:'flex',gap:7 }}>
+            <button onClick={() => { if (!active?.places) return; setPickerPlace({ id:active.place_id,name:active.places.name??'Unnamed place',category:active.places.category??null,image_url:active.places.image_url??null }); }} aria-label="Add to itinerary"
+              style={{ width:30,height:30,borderRadius:'50%',background:'rgba(0,0,0,0.4)',border:`1px solid ${GOLD}55`,color:GOLD,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button onClick={onLocate} aria-label="View on map"
+              style={{ width:30,height:30,borderRadius:'50%',background:'rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.75)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+            </button>
+            <button onClick={handleUnsave} disabled={unsaving} aria-label="Remove"
+              style={{ width:30,height:30,borderRadius:'50%',background:'rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.18)',color:unsaving?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.7)',cursor:unsaving?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)' }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Place info */}
+        <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'0 14px 14px' }}>
+          {activePlace?.category && <p style={{ fontSize:9,fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:GOLD,marginBottom:3,fontFamily:"'DM Sans',sans-serif" }}>{activePlace.category}</p>}
+          <h2 style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontStyle:'italic',fontSize:'clamp(1.4rem,4.5vw,2rem)',fontWeight:500,color:TEXT,lineHeight:1.1,margin:'0 0 5px' }}>{activePlace?.name??'Unnamed place'}</h2>
+          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+            {activePlace?.city && <span style={{ fontSize:11,color:'rgba(255,255,255,0.55)',fontFamily:"'DM Sans',sans-serif" }}>{activePlace.city}</span>}
+            {activePlace?.rating && (<><span style={{ width:3,height:3,borderRadius:'50%',background:'rgba(255,255,255,0.25)',display:'inline-block' }}/><span style={{ display:'flex',alignItems:'center',gap:3,fontSize:11,color:GOLD,fontFamily:"'DM Sans',sans-serif" }}><svg width="10" height="10" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{activePlace.rating.toFixed(1)}</span></>)}
+          </div>
+        </div>
+      </div>
+
+      {/* Portrait card list */}
+      <div style={{ flex:1,minHeight:0,overflowY:'auto',scrollbarWidth:'none' }}>
+        {places.map((item, i) => {
+          const p = item.places;
+          const isActive = i === activeIndex;
+          return (
+            <button key={item.id} onClick={() => setActiveIndex(i)}
+              style={{ width:'100%',height:110,display:'flex',alignItems:'stretch',background:isActive?'rgba(200,150,90,0.06)':'transparent',border:'none',borderBottom:`1px solid ${BORDER}`,borderLeft:isActive?`3px solid ${GOLD}`:'3px solid transparent',cursor:'pointer',padding:0,transition:'background 180ms ease,border-color 180ms ease',textAlign:'left' }}
+            >
+              {/* Image */}
+              <div style={{ flexShrink:0,width:90,position:'relative',background:'#1a1614',overflow:'hidden' }}>
+                {p?.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.image_url} alt={p.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover' }} />
+                ) : (<div style={{ position:'absolute',inset:0,background:'#2a2018' }} />)}
+              </div>
+              {/* Text */}
+              <div style={{ flex:1,minWidth:0,padding:'14px 14px 14px 12px',display:'flex',flexDirection:'column',justifyContent:'center',gap:3 }}>
+                {p?.category && <p style={{ margin:0,fontSize:9,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:isActive?GOLD:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.category}</p>}
+                <p style={{ margin:0,fontSize:13,fontWeight:500,color:TEXT,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif" }}>{p?.name??'—'}</p>
+                {p?.city && <p style={{ margin:0,fontSize:11,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.city}</p>}
+                {p?.rating != null && (
+                  <span style={{ display:'flex',alignItems:'center',gap:3,fontSize:11,color:GOLD,fontFamily:"'DM Sans',sans-serif" }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    {p.rating.toFixed(1)}
+                  </span>
+                )}
+              </div>
+              {/* Expand icon */}
+              <button
+                onClick={e => { e.stopPropagation(); setExpandPlace(item); }}
+                aria-label="View details"
+                style={{ flexShrink:0,width:40,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'none',color:TEXT_FAINT,cursor:'pointer' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              </button>
+            </button>
+          );
+        })}
+      </div>
+
+      {pickerPlace && (
+        <ItineraryPickerSheet place={pickerPlace} getBearerToken={getBearerToken}
+          onClose={() => setPickerPlace(null)} onAdded={() => setPickerPlace(null)} />
+      )}
+      {expandPlace && (
+        <SavedPlaceSheet item={expandPlace} onClose={() => setExpandPlace(null)}
+          onUnsave={async () => { await onUnsave(expandPlace.place_id); setExpandPlace(null); }}
+          onAddToItinerary={() => {
+            const p = expandPlace.places; if (!p) return;
+            setExpandPlace(null);
+            setPickerPlace({ id:expandPlace.place_id,name:p.name,category:p.category??null,image_url:p.image_url??null });
+          }}
+        />
+      )}
+      <style>{`div[style*='overflow-y: auto']::-webkit-scrollbar{display:none}`}</style>
+    </div>
+  );
+}
+
+/* ══ SAVED MAP TAB — MOBILE ══ */
+
+function SavedMapMobileTab({
+  savedPlaces, activeIndex, onMarkerTap,
+}: {
+  savedPlaces: DbSavedPlaceEnriched[] | null;
+  activeIndex: number;
+  onMarkerTap: (i: number) => void;
+}) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstanceRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
+  const places = (savedPlaces ?? []).filter(p => p.places?.latitude && p.places?.longitude);
+
+  useEffect(() => {
+    if (!mapRef.current || !places.length) { setMapLoaded(true); return; }
+    import('mapbox-gl').then((mapboxgl) => {
+      if (!mapRef.current || mapInstanceRef.current) return;
+      const mb = mapboxgl.default;
+      mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
+      const bounds = new mb.LngLatBounds();
+      places.forEach(p => bounds.extend([p.places!.longitude, p.places!.latitude]));
+      const map = new mb.Map({
+        container: mapRef.current!,
+        style: 'mapbox://styles/mapbox/dark-v11',
+        bounds, fitBoundsOptions: { padding: 48, maxZoom: 14 },
+        attributionControl: false, logoPosition: 'bottom-right',
+      });
+      map.on('load', () => {
+        setMapLoaded(true);
+        places.forEach((p, i) => {
+          const el = document.createElement('div');
+          const isA = i === activeIndex;
+          el.style.cssText = `width:28px;height:28px;background:${isA?GOLD:'rgba(255,255,255,0.15)'};border:2px solid ${isA?GOLD:'rgba(255,255,255,0.35)'};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${isA?BG:'rgba(255,255,255,0.7)'};font-size:11px;font-weight:700;cursor:pointer;transition:transform 200ms ease;font-family:'DM Sans',sans-serif;`;
+          el.textContent = String(i + 1);
+          el.addEventListener('click', () => onMarkerTap(i));
+          const marker = new mb.Marker({ element: el }).setLngLat([p.places!.longitude, p.places!.latitude]).addTo(map);
+          markersRef.current.push(marker);
+        });
+      });
+      mapInstanceRef.current = map;
+    }).catch(console.error);
+    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null; markersRef.current = []; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPlaces]);
+
+  useEffect(() => {
+    markersRef.current.forEach((marker, i) => {
+      const el = marker.getElement() as HTMLDivElement;
+      const a = i === activeIndex;
+      el.style.background = a ? GOLD : 'rgba(255,255,255,0.15)';
+      el.style.borderColor = a ? GOLD : 'rgba(255,255,255,0.35)';
+      el.style.color = a ? BG : 'rgba(255,255,255,0.7)';
+      el.style.transform = a ? 'scale(1.25)' : 'scale(1)';
+      el.style.zIndex = a ? '10' : '1';
+    });
+    if (mapInstanceRef.current && places[activeIndex]?.places?.latitude) {
+      const p = places[activeIndex].places!;
+      mapInstanceRef.current.flyTo({ center: [p.longitude, p.latitude], zoom: 13, duration: 800, essential: true });
+    }
+  }, [activeIndex, places]);
+
+  if (!places.length) {
+    return (
+      <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center' }}>
+        <p style={{ color:TEXT_FAINT,fontSize:13,fontFamily:"'DM Sans',sans-serif" }}>No places with location data.</p>
+      </div>
+    );
+  }
+  return (
+    <div style={{ height:'100%',position:'relative',background:'#111' }}>
+      <div ref={mapRef} style={{ position:'absolute',inset:0 }} />
+      {!mapLoaded && (
+        <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#111' }}>
+          <div style={{ width:20,height:20,border:`2px solid rgba(200,150,90,0.25)`,borderTopColor:GOLD,borderRadius:'50%',animation:'spin 700ms linear infinite' }} />
+        </div>
+      )}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+/* ══ ITIN MAP TAB — MOBILE ══ */
+
+function ItinMapMobileTab({ itinerary, onGoToItineraries }: { itinerary: DbItineraryListed | null; onGoToItineraries: () => void }) {
+  if (!itinerary) {
+    return (
+      <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center' }}>
+        <div style={{ textAlign:'center',padding:'0 32px',maxWidth:280 }}>
+          <div style={{ width:52,height:52,margin:'0 auto 18px',borderRadius:14,background:GOLD_DIM,border:`1px solid rgba(200,150,90,0.2)`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeOpacity="0.75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <p style={{ color:'rgba(255,255,255,0.75)',fontSize:14,margin:'0 0 6px',fontFamily:"'DM Sans',sans-serif" }}>No itinerary selected</p>
+          <p style={{ color:TEXT_FAINT,fontSize:12,lineHeight:1.6,margin:'0 0 18px',fontFamily:"'DM Sans',sans-serif" }}>Pick a trip from your itineraries to see its stops on the map.</p>
+          <button onClick={onGoToItineraries}
+            style={{ padding:'10px 20px',borderRadius:10,background:GOLD_DIM,border:`1px solid rgba(200,150,90,0.3)`,color:GOLD,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif" }}>
+            Browse Itineraries
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <ItinMapOnly itin={itinerary} />;
+}
+
+function ItinMapOnly({ itin }: { itin: DbItineraryListed }) {
+  const [items, setItems] = useState<DbItineraryItemEnriched[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const mapRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstanceRef = useRef<any>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const token = await getBearerToken(); if (!token) { setLoading(false); return; }
+      try {
+        const res = await fetch(`/api/customer/itineraries/${itin.id}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error();
+        const json = await res.json() as { itinerary: DbItineraryListed; items: DbItineraryItemEnriched[] };
+        setItems(json.items);
+      } catch { setItems([]); }
+      finally { setLoading(false); }
+    }
+    void load();
+  }, [itin.id]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!items?.length || !mapRef.current || mapInstanceRef.current) { setMapReady(true); return; }
+    const geo = items.filter(i => i.places?.latitude && i.places?.longitude);
+    if (!geo.length) { setMapReady(true); return; }
+    import('mapbox-gl').then((mapboxgl) => {
+      if (!mapRef.current) return;
+      const mb = mapboxgl.default;
+      mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
+      const bounds = new mb.LngLatBounds();
+      geo.forEach(i => bounds.extend([i.places!.longitude, i.places!.latitude]));
+      const map = new mb.Map({ container: mapRef.current!, style: 'mapbox://styles/mapbox/dark-v11', bounds, fitBoundsOptions: { padding: 48, maxZoom: 14 }, attributionControl: false, logoPosition: 'bottom-right' });
+      map.on('load', () => {
+        setMapReady(true);
+        const coords = geo.map(i => [i.places!.longitude, i.places!.latitude] as [number, number]);
+        map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } });
+        map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': GOLD, 'line-width': 2, 'line-dasharray': [2, 3], 'line-opacity': 0.6 } });
+        geo.forEach((item, idx) => {
+          const el = document.createElement('div');
+          el.style.cssText = `width:26px;height:26px;background:rgba(200,150,90,0.15);border:1.5px solid ${GOLD};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${GOLD};font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;`;
+          el.textContent = String(idx + 1);
+          new mb.Marker({ element: el }).setLngLat([item.places!.longitude, item.places!.latitude]).addTo(map);
+        });
+      });
+      mapInstanceRef.current = map;
+    }).catch(console.error);
+    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items?.length]);
+
+  const checkin = itin.stays?.checkindate ?? itin.startdate;
+  const checkout = itin.stays?.checkoutdate ?? itin.enddate;
+  const title = itin.title ?? itin.stays?.properties?.name ?? 'Itinerary';
+
+  return (
+    <div style={{ height:'100%',position:'relative',background:'#0e0c0a' }}>
+      <div ref={mapRef} style={{ position:'absolute',inset:0 }} />
+      {!mapReady && (
+        <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#0e0c0a' }}>
+          <div style={{ width:20,height:20,border:`2px solid rgba(200,150,90,0.25)`,borderTopColor:GOLD,borderRadius:'50%',animation:'spin 700ms linear infinite' }} />
+        </div>
+      )}
+      {mapReady && (
+        <div style={{ position:'absolute',top:16,left:16,right:16,pointerEvents:'none' }}>
+          <div style={{ display:'inline-flex',flexDirection:'column',background:'rgba(10,8,6,0.75)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',borderRadius:12,padding:'10px 14px',border:`1px solid ${BORDER}` }}>
+            <span style={{ fontSize:13,fontWeight:600,color:TEXT,fontFamily:"'DM Sans',sans-serif" }}>{title}</span>
+            {checkin && checkout && <span style={{ fontSize:11,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif",marginTop:2 }}>{formatDate(checkin)} – {formatDate(checkout)}</span>}
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
 /* ══ ITINERARIES TAB ══ */
 
 interface ItinerariesTabProps {
@@ -397,10 +821,17 @@ interface ItinerariesTabProps {
   isLoading: boolean; error: string | null;
   onRetry: () => void;
   onDelete: (id: string) => void;
+  onItinerarySelect?: (itin: DbItineraryListed) => void;
 }
 
-function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete }: ItinerariesTabProps) {
+function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onItinerarySelect }: ItinerariesTabProps) {
   const [selected, setSelected] = useState<DbItineraryListed | null>(null);
+
+  function selectItinerary(itin: DbItineraryListed) {
+    setSelected(itin);
+    onItinerarySelect?.(itin);
+  }
+
   if (selected) {
     return <ItineraryDetail itin={selected} onBack={() => setSelected(null)} onDelete={(id) => { onDelete(id); setSelected(null); }} />;
   }
@@ -437,7 +868,7 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete }: It
         const checkout = itin.stays?.checkoutdate ?? itin.enddate;
         const title = itin.title ?? (propertyName ?? 'Untitled itinerary');
         return (
-          <button key={itin.id} onClick={() => setSelected(itin)}
+          <button key={itin.id} onClick={() => selectItinerary(itin)}
             style={{ width:'100%',textAlign:'left',borderRadius:14,padding:'14px 16px',background:SURFACE,border:`1px solid ${BORDER}`,cursor:'pointer',transition:'background 180ms ease',display:'block' }}
             onMouseEnter={e=>{ e.currentTarget.style.background=SURFACE_2; }}
             onMouseLeave={e=>{ e.currentTarget.style.background=SURFACE; }}
