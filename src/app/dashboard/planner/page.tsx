@@ -929,7 +929,8 @@ function SavedMapMobileTab({
   const markersRef = useRef<any[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  const places = (savedPlaces ?? []).filter(p => p.places?.latitude && p.places?.longitude);
+  const allPlaces = savedPlaces ?? [];
+  const places = allPlaces.filter(p => p.places?.latitude && p.places?.longitude);
 
   useEffect(() => {
     if (!mapRef.current || !places.length) { setMapLoaded(true); return; }
@@ -939,6 +940,7 @@ function SavedMapMobileTab({
       mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
       const bounds = new mb.LngLatBounds();
       places.forEach(p => bounds.extend([p.places!.longitude, p.places!.latitude]));
+      const activeFilteredIdx = places.findIndex(p => p.place_id === allPlaces[activeIndex]?.place_id);
       const map = new mb.Map({
         container: mapRef.current!,
         style: 'mapbox://styles/mapbox/dark-v11',
@@ -948,11 +950,12 @@ function SavedMapMobileTab({
       map.on('load', () => {
         setMapLoaded(true);
         places.forEach((p, i) => {
+          const origIdx = allPlaces.findIndex(sp => sp.place_id === p.place_id);
           const el = document.createElement('div');
-          const isA = i === activeIndex;
+          const isA = i === activeFilteredIdx;
           el.style.cssText = `width:28px;height:28px;background:${isA?GOLD:'rgba(255,255,255,0.15)'};border:2px solid ${isA?GOLD:'rgba(255,255,255,0.35)'};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${isA?BG:'rgba(255,255,255,0.7)'};font-size:11px;font-weight:700;cursor:pointer;transition:transform 200ms ease;font-family:'DM Sans',sans-serif;`;
           el.textContent = String(i + 1);
-          el.addEventListener('click', () => onMarkerTap(i));
+          el.addEventListener('click', () => onMarkerTap(origIdx));
           const marker = new mb.Marker({ element: el }).setLngLat([p.places!.longitude, p.places!.latitude]).addTo(map);
           markersRef.current.push(marker);
         });
@@ -964,20 +967,21 @@ function SavedMapMobileTab({
   }, [savedPlaces]);
 
   useEffect(() => {
+    const activeFilteredIdx = places.findIndex(p => p.place_id === allPlaces[activeIndex]?.place_id);
     markersRef.current.forEach((marker, i) => {
       const el = marker.getElement() as HTMLDivElement;
-      const a = i === activeIndex;
+      const a = i === activeFilteredIdx;
       el.style.background = a ? GOLD : 'rgba(255,255,255,0.15)';
       el.style.borderColor = a ? GOLD : 'rgba(255,255,255,0.35)';
       el.style.color = a ? BG : 'rgba(255,255,255,0.7)';
       el.style.transform = a ? 'scale(1.25)' : 'scale(1)';
       el.style.zIndex = a ? '10' : '1';
     });
-    if (mapInstanceRef.current && places[activeIndex]?.places?.latitude) {
-      const p = places[activeIndex].places!;
+    if (mapInstanceRef.current && places[activeFilteredIdx]?.places?.latitude) {
+      const p = places[activeFilteredIdx].places!;
       mapInstanceRef.current.flyTo({ center: [p.longitude, p.latitude], zoom: 13, duration: 800, essential: true });
     }
-  }, [activeIndex, places]);
+  }, [activeIndex, places, allPlaces]);
 
   if (!places.length) {
     return (
@@ -1153,7 +1157,7 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
         const checkout = itin.stays?.checkoutdate ?? itin.enddate;
         const title = itin.title ?? (propertyName ?? 'Untitled itinerary');
         return (
-          <button key={itin.id} onClick={() => setSelected(itin)}
+          <button key={itin.id} onClick={() => selectItinerary(itin)}
             style={{ width: '100%', textAlign: 'left', borderRadius: 14, padding: '14px 16px', background: SURFACE, border: `1px solid ${BORDER}`, cursor: 'pointer', transition: 'background 180ms ease', display: 'block' }}
             onMouseEnter={e => { e.currentTarget.style.background = SURFACE_2; }}
             onMouseLeave={e => { e.currentTarget.style.background = SURFACE; }}
