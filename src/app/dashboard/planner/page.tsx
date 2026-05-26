@@ -52,6 +52,7 @@ export default function PlannerPage() {
 
   // Desktop
   const [activeTab, setActiveTab] = useState<Tab>('saved');
+  const [isDesktop, setIsDesktop] = useState(false);
   // Mobile
   const [mobileTab, setMobileTab] = useState<MobileTab>('saved');
   const [savedActiveIndex, setSavedActiveIndex] = useState(0);
@@ -92,6 +93,14 @@ export default function PlannerPage() {
       setItineraries(json.itineraries);
     } catch { setItinError('Could not load your itineraries.'); }
     finally { setItinLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    setIsDesktop(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => { if (user) void fetchSavedPlaces(); }, [user, fetchSavedPlaces]);
@@ -230,9 +239,9 @@ export default function PlannerPage() {
       </div>{/* end desktop tab bar wrapper */}
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Desktop content */}
+        {/* Desktop content — only mounted when confirmed desktop to prevent Mapbox running on mobile */}
         <div className="hidden md:block h-full">
-          {activeTab === 'saved' && (
+          {isDesktop && activeTab === 'saved' && (
             <SavedTab
               savedPlaces={savedPlaces}
               isLoading={savedLoading}
@@ -241,7 +250,7 @@ export default function PlannerPage() {
               onUnsave={unsaveFn}
             />
           )}
-          {activeTab === 'itineraries' && (
+          {isDesktop && activeTab === 'itineraries' && (
             <ItinerariesTab
               itineraries={itineraries}
               isLoading={itinLoading}
@@ -350,9 +359,9 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       markersRef.current = [];
       setMapLoaded(false);
     }
-    if (!places.length || !mapRef.current) return;
+    if (!places.length || !mapRef.current) { setMapLoaded(true); return; }
     const valid = places.filter(p => p.places?.latitude && p.places?.longitude);
-    if (!valid.length) return;
+    if (!valid.length) { setMapLoaded(true); return; }
 
     import('mapbox-gl').then((mapboxgl) => {
       if (!mapRef.current) return;
@@ -1029,6 +1038,7 @@ function ItinMapMobileTab({ itinerary, onGoToItineraries }: { itinerary: DbItine
 function ItinMapOnly({ itin }: { itin: DbItineraryListed }) {
   const [items, setItems] = useState<DbItineraryItemEnriched[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [noStops, setNoStops] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
@@ -1049,10 +1059,10 @@ function ItinMapOnly({ itin }: { itin: DbItineraryListed }) {
   }, [itin.id]);
 
   useEffect(() => {
-    if (loading) return;
-    if (!items?.length || !mapRef.current || mapInstanceRef.current) { setMapReady(true); return; }
+    if (loading || items === null) return;
     const geo = items.filter(i => i.places?.latitude && i.places?.longitude);
-    if (!geo.length) { setMapReady(true); return; }
+    if (!geo.length) { setNoStops(true); setMapReady(true); return; }
+    if (!mapRef.current || mapInstanceRef.current) { setMapReady(true); return; }
     import('mapbox-gl').then((mapboxgl) => {
       if (!mapRef.current) return;
       const mb = mapboxgl.default;
@@ -1076,7 +1086,22 @@ function ItinMapOnly({ itin }: { itin: DbItineraryListed }) {
     }).catch(console.error);
     return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items?.length]);
+  }, [loading, items?.length]);
+
+  if (noStops) {
+    const title = itin.title ?? itin.stays?.properties?.name ?? 'Itinerary';
+    return (
+      <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#0e0c0a' }}>
+        <div style={{ textAlign:'center',padding:'0 32px',maxWidth:280 }}>
+          <div style={{ width:48,height:48,margin:'0 auto 16px',borderRadius:12,background:GOLD_DIM,border:`1px solid rgba(200,150,90,0.2)`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeOpacity="0.75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <p style={{ color:'rgba(255,255,255,0.75)',fontSize:14,margin:'0 0 5px',fontFamily:"'DM Sans',sans-serif",fontWeight:600 }}>{title}</p>
+          <p style={{ color:TEXT_FAINT,fontSize:12,lineHeight:1.6,margin:0,fontFamily:"'DM Sans',sans-serif" }}>No stops with location data on this itinerary yet. Add places to see them on the map.</p>
+        </div>
+      </div>
+    );
+  }
 
   const checkin = itin.stays?.checkindate ?? itin.startdate;
   const checkout = itin.stays?.checkoutdate ?? itin.enddate;
