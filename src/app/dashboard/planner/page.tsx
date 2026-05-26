@@ -44,7 +44,7 @@ const TEXT = '#FAF8F5';
 const TEXT_MUTED = 'rgba(250,248,245,0.45)';
 const TEXT_FAINT = 'rgba(250,248,245,0.22)';
 
-/* ══ ROOT PAGE ══ */
+/*  ROOT PAGE  */
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -132,7 +132,7 @@ export default function PlannerPage() {
       style={{ height: 'calc(100dvh - 64px)', display: 'flex', flexDirection: 'column', background: BG, overflow: 'hidden' }}
       className="md:h-dvh md:ml-[52px]"
     >
-      {/* ── Mobile 4-tab bar ── */}
+      {/*  Mobile 4-tab bar  */}
       <div className="flex md:hidden" style={{ flexShrink:0,borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
         {MOBILE_TABS.map(({ id, label, icon }) => {
           const isActive = mobileTab === id;
@@ -147,7 +147,7 @@ export default function PlannerPage() {
         })}
       </div>
 
-      {/* ── Desktop tab bar ── */}
+      {/*  Desktop tab bar  */}
       <div className="hidden md:block" style={{ flexShrink: 0 }}>
       <div style={{
         flexShrink: 0,
@@ -289,7 +289,7 @@ export default function PlannerPage() {
   );
 }
 
-/* ══ SAVED TAB ══ */
+/*  SAVED TAB  */
 
 interface SavedTabProps {
   savedPlaces: DbSavedPlaceEnriched[] | null;
@@ -716,7 +716,7 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   );
 }
 
-/* ══ SAVED TAB — MOBILE ══ */
+/*  SAVED TAB  MOBILE  */
 
 function SavedMobileTab({
   savedPlaces, isLoading, error, onRetry, onUnsave, activeIndex, setActiveIndex, onLocate,
@@ -861,7 +861,7 @@ function SavedMobileTab({
   );
 }
 
-/* ══ SAVED MAP TAB — MOBILE ══ */
+/*  SAVED MAP TAB  MOBILE  */
 
 function SavedMapMobileTab({
   savedPlaces, activeIndex, onMarkerTap,
@@ -947,7 +947,7 @@ function SavedMapMobileTab({
   );
 }
 
-/* ══ ITIN MAP TAB — MOBILE ══ */
+/*  ITIN MAP TAB  MOBILE  */
 
 function ItinMapMobileTab({ itinerary, onGoToItineraries }: { itinerary: DbItineraryListed | null; onGoToItineraries: () => void }) {
   if (!itinerary) {
@@ -1047,7 +1047,7 @@ function ItinMapOnly({ itin }: { itin: DbItineraryListed }) {
   );
 }
 
-/* ══ ITINERARIES TAB ══ */
+/*  ITINERARIES TAB  */
 
 interface ItinerariesTabProps {
   itineraries: (DbItineraryListed & { cover_image?: string | null })[] | null;
@@ -1106,155 +1106,337 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
     );
   }
 
+  const heroItineraries = itineraries.slice(0, Math.min(6, itineraries.length));
+
   return (
     <div style={{
       height: '100%',
       overflowY: 'auto',
       padding: '24px',
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-      gap: 16,
-      alignContent: 'start',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 24,
       scrollbarWidth: 'none',
     }}>
-      {itineraries.map((itin) => {
-        const isStayLinked = !!itin.stayid;
-        const checkin = itin.stays?.checkindate ?? itin.startdate;
-        const checkout = itin.stays?.checkoutdate ?? itin.enddate;
-        const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled itinerary';
-        const coverImg = (itin as DbItineraryListed & { cover_image?: string | null }).cover_image;
-        const isHovered = hoveredId === itin.id;
+      {/* Top horizontal slideshow row */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+          <h2 style={{
+            margin: 0,
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontSize: '1.6rem',
+            fontWeight: 600,
+            color: TEXT,
+            letterSpacing: '0.04em',
+          }}>Continue planning</h2>
+          <span style={{
+            fontSize: 11,
+            color: TEXT_FAINT,
+            fontFamily: "'DM Sans',sans-serif",
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}>{itineraries.length} trip{itineraries.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            overflowX: 'auto',
+            paddingBottom: 6,
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {heroItineraries.map((itin) => {
+            const isStayLinked = !!itin.stayid;
+            const checkin = itin.stays?.checkindate ?? itin.startdate;
+            const checkout = itin.stays?.checkoutdate ?? itin.enddate;
+            const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled itinerary';
+            const coverImg = (itin as DbItineraryListed & { cover_image?: string | null }).cover_image;
+            const isHovered = hoveredId === itin.id;
 
-        return (
-          <button
-            key={itin.id}
-            onClick={() => selectItinerary(itin)}
-            onMouseEnter={() => setHoveredId(itin.id)}
-            onMouseLeave={() => setHoveredId(null)}
-            style={{
-              position: 'relative',
-              height: 200,
-              borderRadius: 16,
-              overflow: 'hidden',
-              border: isHovered ? `1px solid rgba(200,150,90,0.45)` : `1px solid ${BORDER}`,
-              cursor: 'pointer',
-              background: '#1a1410',
-              transition: 'border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease',
-              transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-              boxShadow: isHovered ? '0 8px 32px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.3)',
-              textAlign: 'left',
-            }}
-          >
-            {/* Cover image */}
-            {coverImg ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={coverImg}
-                alt={title}
+            return (
+              <button
+                key={`hero-${itin.id}`}
+                onClick={() => selectItinerary(itin)}
+                onMouseEnter={() => setHoveredId(itin.id)}
+                onMouseLeave={() => setHoveredId(null)}
                 style={{
-                  position: 'absolute', inset: 0, width: '100%', height: '100%',
-                  objectFit: 'cover',
-                  transition: 'transform 400ms ease',
-                  transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                  position: 'relative',
+                  width: 320,
+                  height: 180,
+                  borderRadius: 18,
+                  overflow: 'hidden',
+                  border: isHovered ? `1px solid rgba(200,150,90,0.6)` : `1px solid ${BORDER}`,
+                  cursor: 'pointer',
+                  background: '#1a1410',
+                  textAlign: 'left',
+                  flexShrink: 0,
+                  scrollSnapAlign: 'start',
+                  boxShadow: isHovered ? '0 10px 36px rgba(0,0,0,0.65)' : '0 4px 18px rgba(0,0,0,0.45)',
+                  transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                  transition: 'border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease',
                 }}
-              />
-            ) : (
-              /* Placeholder — subtle gradient when no image */
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: `linear-gradient(135deg, #1e170f 0%, #2a1e10 50%, #1a1208 100%)`,
-              }}>
+              >
+                {coverImg ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={coverImg}
+                    alt={title}
+                    style={{
+                      position: 'absolute', inset: 0, width: '100%', height: '100%',
+                      objectFit: 'cover',
+                      transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                      transition: 'transform 380ms ease',
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'radial-gradient(circle at top left, #2b1d10 0%, #130d08 55%, #090604 100%)',
+                  }} />
+                )}
                 <div style={{
-                  position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  opacity: 0.18,
-                }}>
-                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  </svg>
-                </div>
-              </div>
-            )}
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(to top, rgba(5,3,2,0.98) 0%, rgba(5,3,2,0.65) 50%, rgba(5,3,2,0.12) 100%)',
+                }} />
 
-            {/* Dark gradient overlay — stronger at bottom */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to top, rgba(5,3,2,0.96) 0%, rgba(5,3,2,0.55) 45%, rgba(5,3,2,0.1) 100%)',
-            }} />
-
-            {/* Top badge */}
-            <div style={{ position: 'absolute', top: 12, left: 12 }}>
-              <span style={{
-                fontSize: 8, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase',
-                color: isStayLinked ? GOLD : TEXT_MUTED,
-                background: isStayLinked ? 'rgba(10,8,6,0.72)' : 'rgba(10,8,6,0.6)',
-                border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.4)' : 'rgba(255,255,255,0.12)'}`,
-                padding: '3px 8px', borderRadius: 999,
-                fontFamily: "'DM Sans',sans-serif",
-                backdropFilter: 'blur(6px)',
-              }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
-            </div>
-
-            {/* Arrow indicator top-right */}
-            <div style={{
-              position: 'absolute', top: 12, right: 12,
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'rgba(10,8,6,0.55)',
-              border: `1px solid ${isHovered ? 'rgba(200,150,90,0.45)' : 'rgba(255,255,255,0.1)'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(6px)',
-              transition: 'border-color 220ms ease',
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={isHovered ? GOLD : TEXT_FAINT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 220ms ease' }}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </div>
-
-            {/* Bottom content */}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 14px 16px' }}>
-              <h3 style={{
-                margin: '0 0 6px',
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: 'clamp(1.1rem, 2vw, 1.4rem)',
-                fontWeight: 700,
-                color: TEXT,
-                lineHeight: 1.15,
-                letterSpacing: '0.02em',
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                textShadow: '0 1px 8px rgba(0,0,0,0.6)',
-              }}>{title}</h3>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {checkin && checkout && (
+                <div style={{ position: 'absolute', top: 10, left: 12 }}>
                   <span style={{
-                    fontSize: 10, color: 'rgba(250,248,245,0.55)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: isStayLinked ? GOLD : TEXT_MUTED,
+                    background: 'rgba(10,8,6,0.7)',
+                    borderRadius: 999,
+                    border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                    padding: '3px 9px',
                     fontFamily: "'DM Sans',sans-serif",
-                    display: 'flex', alignItems: 'center', gap: 4,
+                    backdropFilter: 'blur(6px)',
+                  }}>{isStayLinked ? 'Stay' : 'Personal'}</span>
+                </div>
+
+                <div style={{ position: 'absolute', top: 10, right: 10 }}>
+                  <div style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: '999px',
+                    background: 'rgba(10,8,6,0.72)',
+                    border: `1px solid ${isHovered ? 'rgba(200,150,90,0.6)' : 'rgba(255,255,255,0.16)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backdropFilter: 'blur(6px)',
                   }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={isHovered ? GOLD : TEXT_FAINT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div style={{ position: 'absolute', left: 14, right: 14, bottom: 14 }}>
+                  <h3 style={{
+                    margin: '0 0 4px',
+                    fontFamily: "'Cormorant Garamond', Georgia, serif",
+                    fontSize: '1.35rem',
+                    fontWeight: 700,
+                    color: TEXT,
+                    letterSpacing: '0.02em',
+                    lineHeight: 1.2,
+                    textShadow: '0 1px 10px rgba(0,0,0,0.7)',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}>{title}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {checkin && checkout && (
+                      <span style={{
+                        fontSize: 11,
+                        color: 'rgba(250,248,245,0.6)',
+                        fontFamily: "'DM Sans',sans-serif",
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        {formatDate(checkin)} – {formatDate(checkout)}
+                      </span>
+                    )}
+                    {!checkin && (
+                      <span style={{ fontSize: 11, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif" }}>No dates set</span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Divider + label for grid */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontSize: 11,
+            fontFamily: "'DM Sans',sans-serif",
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: TEXT_MUTED,
+          }}>All trips</span>
+          <div style={{ flexGrow: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+        </div>
+      </div>
+
+      {/* Bottom grid of itinerary cards (existing design) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: 16,
+        alignContent: 'start',
+      }}>
+        {itineraries.map((itin) => {
+          const isStayLinked = !!itin.stayid;
+          const checkin = itin.stays?.checkindate ?? itin.startdate;
+          const checkout = itin.stays?.checkoutdate ?? itin.enddate;
+          const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled itinerary';
+          const coverImg = (itin as DbItineraryListed & { cover_image?: string | null }).cover_image;
+          const isHovered = hoveredId === itin.id;
+
+          return (
+            <button
+              key={itin.id}
+              onClick={() => selectItinerary(itin)}
+              onMouseEnter={() => setHoveredId(itin.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{
+                position: 'relative',
+                height: 200,
+                borderRadius: 16,
+                overflow: 'hidden',
+                border: isHovered ? `1px solid rgba(200,150,90,0.45)` : `1px solid ${BORDER}`,
+                cursor: 'pointer',
+                background: '#1a1410',
+                transition: 'border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease',
+                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                boxShadow: isHovered ? '0 8px 32px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.3)',
+                textAlign: 'left',
+              }}
+            >
+              {/* Cover image */}
+              {coverImg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverImg}
+                  alt={title}
+                  style={{
+                    position: 'absolute', inset: 0, width: '100%', height: '100%',
+                    objectFit: 'cover',
+                    transition: 'transform 400ms ease',
+                    transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                  }}
+                />
+              ) : (
+                /* Placeholder — subtle gradient when no image */
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: `linear-gradient(135deg, #1e170f 0%, #2a1e10 50%, #1a1208 100%)`,
+                }}>
+                  <div style={{
+                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    opacity: 0.18,
+                  }}>
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                     </svg>
-                    {formatDate(checkin)} – {formatDate(checkout)}
-                  </span>
-                )}
-                {!checkin && (
-                  <span style={{ fontSize: 10, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif" }}>
-                    No dates set
-                  </span>
-                )}
+                  </div>
+                </div>
+              )}
+
+              {/* Dark gradient overlay — stronger at bottom */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to top, rgba(5,3,2,0.96) 0%, rgba(5,3,2,0.55) 45%, rgba(5,3,2,0.1) 100%)',
+              }} />
+
+              {/* Top badge */}
+              <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                <span style={{
+                  fontSize: 8, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase',
+                  color: isStayLinked ? GOLD : TEXT_MUTED,
+                  background: isStayLinked ? 'rgba(10,8,6,0.72)' : 'rgba(10,8,6,0.6)',
+                  border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                  padding: '3px 8px', borderRadius: 999,
+                  fontFamily: "'DM Sans',sans-serif",
+                  backdropFilter: 'blur(6px)',
+                }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
               </div>
-            </div>
-          </button>
-        );
-      })}
+
+              {/* Arrow indicator top-right */}
+              <div style={{
+                position: 'absolute', top: 12, right: 12,
+                width: 28, height: 28, borderRadius: '50%',
+                background: 'rgba(10,8,6,0.55)',
+                border: `1px solid ${isHovered ? 'rgba(200,150,90,0.45)' : 'rgba(255,255,255,0.1)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(6px)',
+                transition: 'border-color 220ms ease',
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={isHovered ? GOLD : TEXT_FAINT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 220ms ease' }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </div>
+
+              {/* Bottom content */}
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 14px 16px' }}>
+                <h3 style={{
+                  margin: '0 0 6px',
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontSize: 'clamp(1.1rem, 2vw, 1.4rem)',
+                  fontWeight: 700,
+                  color: TEXT,
+                  lineHeight: 1.15,
+                  letterSpacing: '0.02em',
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  textShadow: '0 1px 8px rgba(0,0,0,0.6)',
+                }}>{title}</h3>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {checkin && checkout && (
+                    <span style={{
+                      fontSize: 10, color: 'rgba(250,248,245,0.55)',
+                      fontFamily: "'DM Sans',sans-serif",
+                      display: 'flex', alignItems: 'center', gap: 4,
+                    }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                      {formatDate(checkin)} – {formatDate(checkout)}
+                    </span>
+                  )}
+                  {!checkin && (
+                    <span style={{ fontSize: 10, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif" }}>
+                      No dates set
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
     </div>
   );
 }
 
-/* ══ EDIT ITEM SHEET ══ */
+/*  EDIT ITEM SHEET  */
 
 interface EditItemSheetProps {
   item: DbItineraryItemEnriched;
@@ -1317,7 +1499,7 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
           <div style={{ width: 36, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.12)' }} />
         </div>
         <div style={{ marginBottom: 20 }}>
-          {category && <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: GOLD, margin: '0 0 3px', fontFamily: "'DM Sans',sans-serif" }}>{category}</p>}
+          {category && <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: TEXT_MUTED, margin: '0 0 3px', fontFamily: "'DM Sans',sans-serif" }}>{category}</p>}
           <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: TEXT, fontFamily: "'DM Sans',sans-serif" }}>{name}</h4>
         </div>
         <div style={{ marginBottom: 14 }}>
@@ -1336,19 +1518,19 @@ function EditItemSheet({ item, itineraryId, onClose, onSaved }: EditItemSheetPro
         </div>
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: TEXT_MUTED, marginBottom: 6, fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase' }}>Notes</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Reservation number, what to order, who to ask for…" style={{ ...inputStyle, height: 'auto', padding: '10px 12px', resize: 'vertical', lineHeight: 1.5, minHeight: 72 }} onFocus={e => { e.target.style.borderColor = GOLD; }} onBlur={e => { e.target.style.borderColor = BORDER_2; }} />
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Reservation number, what to order, who to ask for'" style={{ ...inputStyle, height: 'auto', padding: '10px 12px', resize: 'vertical', lineHeight: 1.5, minHeight: 72 }} onFocus={e => { e.target.style.borderColor = GOLD; }} onBlur={e => { e.target.style.borderColor = BORDER_2; }} />
         </div>
         {error && <p style={{ color: 'rgba(220,80,80,0.9)', fontSize: 12, marginBottom: 12, fontFamily: "'DM Sans',sans-serif" }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, height: 46, borderRadius: 10, background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 2, height: 46, borderRadius: 10, background: saving ? GOLD_DIM : GOLD, border: 'none', color: saving ? GOLD : BG, fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'background 180ms ease,color 180ms ease' }}>{saving ? 'Saving…' : 'Save changes'}</button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 2, height: 46, borderRadius: 10, background: saving ? GOLD_DIM : GOLD, border: 'none', color: saving ? GOLD : BG, fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'background 180ms ease,color 180ms ease' }}>{saving ? 'Saving' : 'Save changes'}</button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ══ ITINERARY DETAIL ══ */
+/*  ITINERARY DETAIL  */
 
 interface ItineraryDetailProps {
   itin: DbItineraryListed;
@@ -1526,7 +1708,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
   return (
     <div style={{ height: '100%', display: 'flex', overflow: 'hidden', position: 'relative', background: BG }}>
 
-      {/* ── LEFT PANEL: Stop timeline ── */}
+      {/*  LEFT PANEL: Stop timeline  */}
       <div style={{ width: '48%', flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: `1px solid ${BORDER}` }}>
 
         <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(10,8,6,0.98)' }}>
@@ -1547,7 +1729,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,58,58,0.12)'; e.currentTarget.style.color = 'rgba(220,80,80,0.9)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.3)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.borderColor = BORDER; }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6M9 6V4h6v2" /></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M9 6V4h6v2" /></svg>
                 </button>
               )}
             </div>
@@ -1721,7 +1903,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         </div>
       </div>
 
-      {/* ── RIGHT PANEL: Full-height map ── */}
+      {/*  RIGHT PANEL: Full-height map  */}
       <div style={{ flex: 1, position: 'relative', background: '#0d0b09' }}>
         <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
 
@@ -1777,7 +1959,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
             <p style={{ margin: '0 0 20px', fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6, fontFamily: "'DM Sans',sans-serif" }}>This will permanently remove this itinerary and all its stops.</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
-              <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, height: 44, borderRadius: 10, background: 'rgba(193,58,58,0.15)', border: '1px solid rgba(193,58,58,0.3)', color: deleting ? 'rgba(255,255,255,0.3)' : 'rgba(220,80,80,0.9)', fontSize: 14, fontWeight: 600, cursor: deleting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif" }}>{deleting ? 'Deleting…' : 'Delete'}</button>
+              <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, height: 44, borderRadius: 10, background: 'rgba(193,58,58,0.15)', border: '1px solid rgba(193,58,58,0.3)', color: deleting ? 'rgba(255,255,255,0.3)' : 'rgba(220,80,80,0.9)', fontSize: 14, fontWeight: 600, cursor: deleting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'background 160ms ease' }}>{deleting ? 'Deleting' : 'Delete'}</button>
             </div>
           </div>
         </div>
@@ -1788,7 +1970,7 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
   );
 }
 
-/* ══ SAVED PLACE DETAIL SHEET ══ */
+/*  SAVED PLACE DETAIL SHEET  */
 
 interface SavedPlaceSheetProps {
   item: DbSavedPlaceEnriched;
@@ -1893,7 +2075,7 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
               onMouseEnter={e => { if (!unsaving) e.currentTarget.style.background = 'rgba(193,58,58,0.22)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(193,58,58,0.12)'; }}
             >
-              {unsaving ? 'Removing…' : 'Remove'}
+              {unsaving ? 'Removing' : 'Remove'}
             </button>
           </div>
         </div>
