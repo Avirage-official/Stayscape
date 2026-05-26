@@ -104,9 +104,31 @@ export default function PlannerPage() {
       style={{ height: 'calc(100dvh - 64px)', display: 'flex', flexDirection: 'column', background: BG, overflow: 'hidden' }}
       className="md:h-dvh md:ml-[52px]"
     >
-      {/* ── Pill toggle (replaces old underline tab bar) ── */}
-      <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '14px 20px 10px', background: 'rgba(10,8,6,0.96)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
-        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.06)', borderRadius: 999, padding: 3, border: `1px solid ${BORDER}`, gap: 2 }}>
+      {/* ── Tab Bar ── */}
+      <div style={{
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 20px',
+        height: 52,
+        borderBottom: `1px solid ${BORDER}`,
+        background: 'rgba(10,8,6,0.98)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}>
+        {/* Left: wordmark / title */}
+        <span style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontSize: 15,
+          fontWeight: 600,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: GOLD,
+        }}>Planner</span>
+
+        {/* Centre: tab pills */}
+        <div style={{ display: 'flex', gap: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3, border: `1px solid ${BORDER}` }}>
           {(['saved', 'itineraries'] as Tab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
@@ -114,27 +136,53 @@ export default function PlannerPage() {
                 key={tab}
                 onClick={() => handleTabSwitch(tab)}
                 style={{
-                  height: 34,
-                  padding: '0 22px',
-                  borderRadius: 999,
+                  height: 30,
+                  padding: '0 18px',
+                  borderRadius: 6,
                   border: 'none',
-                  background: isActive ? GOLD : 'transparent',
-                  color: isActive ? BG : TEXT_MUTED,
-                  fontSize: 12,
-                  fontWeight: isActive ? 700 : 500,
-                  letterSpacing: '0.06em',
+                  background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent',
+                  color: isActive ? TEXT : TEXT_MUTED,
+                  fontSize: 11,
+                  fontWeight: isActive ? 600 : 400,
+                  letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   cursor: 'pointer',
-                  transition: 'background 220ms ease, color 220ms ease',
-                  fontFamily: "'DM Sans',sans-serif",
+                  transition: 'background 200ms ease, color 200ms ease',
+                  fontFamily: "'DM Sans', sans-serif",
                   whiteSpace: 'nowrap',
+                  position: 'relative',
                 }}
               >
                 {tab === 'saved' ? 'Saved' : 'Itineraries'}
+                {isActive && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 4,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 14,
+                    height: 1.5,
+                    background: GOLD,
+                    borderRadius: 999,
+                    display: 'block',
+                  }} />
+                )}
               </button>
             );
           })}
         </div>
+
+        {/* Right: place count */}
+        <span style={{
+          fontSize: 11,
+          color: TEXT_FAINT,
+          fontFamily: "'DM Sans', sans-serif",
+          letterSpacing: '0.06em',
+          minWidth: 40,
+          textAlign: 'right',
+        }}>
+          {activeTab === 'saved' ? `${(savedPlaces ?? []).length} place${(savedPlaces ?? []).length !== 1 ? 's' : ''}` : ''}
+        </span>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -177,8 +225,8 @@ interface SavedTabProps {
 
 function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTabProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [prevIndex, setPrevIndex] = useState(0);
   const [heroAnimating, setHeroAnimating] = useState(false);
+  const [prevIndex, setPrevIndex] = useState(0);
   const [unsaving, setUnsaving] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [pickerPlace, setPickerPlace] = useState<{ id: string; name: string; category?: string | null; image_url?: string | null } | null>(null);
@@ -200,7 +248,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
     setPrevIndex(activeIndex);
     setHeroAnimating(true);
     setActiveIndex(i);
-    // scroll filmstrip card into view
     const strip = filmstripRef.current;
     if (strip) {
       const card = strip.children[i] as HTMLElement | undefined;
@@ -209,7 +256,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
     setTimeout(() => setHeroAnimating(false), 420);
   }
 
-  // Destroy and re-init map whenever saved places array changes
   useEffect(() => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
@@ -217,7 +263,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       markersRef.current = [];
       setMapLoaded(false);
     }
-
     if (!places.length || !mapRef.current) return;
     const valid = places.filter(p => p.places?.latitude && p.places?.longitude);
     if (!valid.length) return;
@@ -238,10 +283,37 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
       });
       map.on('load', () => {
         setMapLoaded(true);
+
+        // dashed route line
+        const coords = valid.map(p => [p.places!.longitude, p.places!.latitude] as [number, number]);
+        map.addSource('route', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } },
+        });
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#aaa', 'line-width': 1.5, 'line-dasharray': [2, 3], 'line-opacity': 0.5 },
+        });
+
         valid.forEach((p, i) => {
-          const el = document.createElement('div');
           const isAct = i === 0;
-          el.style.cssText = `width:30px;height:30px;background:${isAct ? GOLD : '#fff'};border:2px solid ${isAct ? GOLD : 'rgba(0,0,0,0.18)'};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${isAct ? BG : 'rgba(0,0,0,0.6)'};font-size:11px;font-weight:700;cursor:pointer;transition:transform 220ms ease,background 220ms ease;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-family:'DM Sans',sans-serif;`;
+          const el = document.createElement('div');
+          el.style.cssText = `
+            width: 28px; height: 28px;
+            background: ${isAct ? GOLD : '#1a1a1a'};
+            border: 2px solid ${isAct ? GOLD : '#333'};
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: ${isAct ? '#fff' : '#fff'};
+            font-size: 11px; font-weight: 700;
+            cursor: pointer;
+            transition: transform 220ms ease, background 220ms ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+            font-family: 'DM Sans', sans-serif;
+          `;
           el.textContent = String(i + 1);
           el.addEventListener('click', () => selectIndex(i));
           const marker = new mb.Marker({ element: el }).setLngLat([p.places!.longitude, p.places!.latitude]).addTo(map);
@@ -259,15 +331,13 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedPlaces]);
 
-  // Update marker styles when active index changes
   useEffect(() => {
     markersRef.current.forEach((marker, i) => {
       const el = marker.getElement() as HTMLDivElement;
       const a = i === activeIndex;
-      el.style.background = a ? GOLD : '#fff';
-      el.style.borderColor = a ? GOLD : 'rgba(0,0,0,0.18)';
-      el.style.color = a ? BG : 'rgba(0,0,0,0.6)';
-      el.style.transform = a ? 'scale(1.3)' : 'scale(1)';
+      el.style.background = a ? GOLD : '#1a1a1a';
+      el.style.borderColor = a ? GOLD : '#333';
+      el.style.transform = a ? 'scale(1.25)' : 'scale(1)';
       el.style.zIndex = a ? '10' : '1';
     });
     if (mapInstanceRef.current && places[activeIndex]?.places?.latitude) {
@@ -276,7 +346,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
     }
   }, [activeIndex, places]);
 
-  // Keep activeIndex in bounds after unsave
   useEffect(() => {
     if (places.length > 0 && activeIndex >= places.length) {
       setActiveIndex(places.length - 1);
@@ -318,208 +387,260 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── HERO ── */}
-      <div style={{ position: 'relative', flexShrink: 0, height: '46%', minHeight: 220, overflow: 'hidden', background: '#14100d' }}>
+      {/* ══ SPLIT PANEL ══ */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
 
-        {/* Outgoing image (fades out) */}
-        {heroAnimating && places[prevIndex]?.places?.image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={places[prevIndex].places!.image_url!}
-            alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 380ms ease' }}
-          />
-        )}
+        {/* ── LEFT: Hero image panel ── */}
+        <div style={{ position: 'relative', width: '48%', flexShrink: 0, overflow: 'hidden', background: '#14100d' }}>
 
-        {/* Active image (fades in) */}
-        {activePlace?.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={activePlace.image_url}
-            src={activePlace.image_url}
-            alt={activePlace.name ?? ''}
-            style={{
-              position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-              opacity: heroAnimating ? 0 : 1,
-              transition: 'opacity 380ms ease',
-            }}
-          />
-        ) : (
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#1a1614,#2a2018)' }} />
-        )}
-
-        {/* Gradient overlays */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,8,6,0.96) 0%, rgba(10,8,6,0.5) 45%, rgba(10,8,6,0.08) 100%)' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(10,8,6,0.3) 0%, transparent 60%)' }} />
-
-        {/* Top-right action buttons */}
-        <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8 }}>
-          {/* Add to itinerary */}
-          <button
-            onClick={() => {
-              if (!active?.places) return;
-              setPickerPlace({
-                id: active.place_id,
-                name: active.places.name ?? 'Unnamed place',
-                category: active.places.category ?? null,
-                image_url: active.places.image_url ?? null,
-              });
-            }}
-            aria-label="Add to itinerary"
-            style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.45)', border: `1px solid ${GOLD}66`, color: GOLD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', transition: 'background 180ms ease' }}
-            onMouseEnter={e => { e.currentTarget.style.background = GOLD_DIM; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.45)'; }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
-          {/* Unsave */}
-          <button
-            onClick={handleUnsave}
-            disabled={unsaving}
-            aria-label="Remove from saved"
-            style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.2)', color: unsaving ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)', cursor: unsaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', transition: 'background 180ms ease, color 180ms ease' }}
-            onMouseEnter={e => { if (!unsaving) e.currentTarget.style.background = 'rgba(193,58,58,0.5)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.45)'; }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          </button>
-        </div>
-
-        {/* Counter top-left */}
-        <div style={{ position: 'absolute', top: 20, left: 18 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans',sans-serif" }}>
-            {activeIndex + 1} / {places.length}
-          </span>
-        </div>
-
-        {/* Place info — bottom-left, bold uppercase serif */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 22px' }}>
-          {activePlace?.category && (
-            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: 6, fontFamily: "'DM Sans',sans-serif", margin: '0 0 6px' }}>
-              {activePlace.category}
-            </p>
+          {/* Outgoing image */}
+          {heroAnimating && places[prevIndex]?.places?.image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={places[prevIndex].places!.image_url!}
+              alt=""
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 380ms ease' }}
+            />
           )}
-          <h2
-            style={{
-              fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontStyle: 'normal',
-              fontWeight: 700,
-              fontSize: 'clamp(2rem,7vw,3.2rem)',
-              color: TEXT,
-              lineHeight: 1.0,
-              margin: '0 0 10px',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              opacity: heroAnimating ? 0 : 1,
-              transform: heroAnimating ? 'translateY(6px)' : 'translateY(0)',
-              transition: 'opacity 320ms ease, transform 320ms ease',
-            }}
+
+          {/* Active image */}
+          {activePlace?.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={activePlace.image_url}
+              src={activePlace.image_url}
+              alt={activePlace.name ?? ''}
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                opacity: heroAnimating ? 0 : 1,
+                transition: 'opacity 380ms ease',
+              }}
+            />
+          ) : (
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#1a1614,#2a2018)' }} />
+          )}
+
+          {/* Gradient overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,4,3,0.92) 0%, rgba(5,4,3,0.35) 50%, rgba(5,4,3,0.08) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(5,4,3,0.1) 0%, transparent 70%)' }} />
+
+          {/* Top-left: VIEW GALLERY */}
+          <div style={{ position: 'absolute', top: 18, left: 18, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+            onClick={() => setExpandPlace(active)}
           >
-            {activePlace?.name ?? 'Unnamed place'}
-          </h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {activePlace?.city && (
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {activePlace.city}
-              </span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', fontFamily: "'DM Sans',sans-serif" }}>View Gallery</span>
+          </div>
+
+          {/* Top-right: counter */}
+          <div style={{ position: 'absolute', top: 18, right: 18 }}>
+            <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.45)', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.1em' }}>
+              {activeIndex + 1} / {places.length}
+            </span>
+          </div>
+
+          {/* Bottom info */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 22px 28px' }}>
+            {activePlace?.category && (
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', margin: '0 0 8px', fontFamily: "'DM Sans',sans-serif" }}>
+                Welcome to
+              </p>
             )}
+            <h2
+              style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontWeight: 800,
+                fontSize: 'clamp(1.8rem, 5.5vw, 3rem)',
+                color: '#FFFFFF',
+                lineHeight: 0.95,
+                margin: '0 0 14px',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                opacity: heroAnimating ? 0 : 1,
+                transform: heroAnimating ? 'translateY(8px)' : 'translateY(0)',
+                transition: 'opacity 320ms ease, transform 320ms ease',
+              }}
+            >
+              {activePlace?.name ?? 'Unnamed place'}
+            </h2>
+
+            {/* Star rating */}
             {activePlace?.rating && (
-              <>
-                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'inline-block', flexShrink: 0 }} />
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: GOLD, fontFamily: "'DM Sans',sans-serif", fontWeight: 600 }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                  {activePlace.rating.toFixed(1)}
-                </span>
-              </>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 16 }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill={i < Math.round(activePlace.rating ?? 0) ? GOLD : 'rgba(200,150,90,0.25)'} stroke="none">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                ))}
+              </div>
             )}
+
+            {/* Meta row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: 14 }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: "'DM Sans',sans-serif" }}>Location</p>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {activePlace?.city ?? activePlace?.category ?? '—'}
+                </p>
+              </div>
+              {activePlace?.category && (
+                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.12)', paddingLeft: 14 }}>
+                  <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: "'DM Sans',sans-serif" }}>Category</p>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: "'DM Sans',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {activePlace.category}
+                  </p>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 8, marginLeft: 14 }}>
+                <button
+                  onClick={() => {
+                    if (!active?.places) return;
+                    setPickerPlace({
+                      id: active.place_id,
+                      name: active.places.name ?? 'Unnamed place',
+                      category: active.places.category ?? null,
+                      image_url: active.places.image_url ?? null,
+                    });
+                  }}
+                  aria-label="Add to itinerary"
+                  style={{
+                    height: 34, padding: '0 14px', borderRadius: 4,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.45)',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontSize: 9, fontWeight: 700,
+                    letterSpacing: '0.14em', textTransform: 'uppercase',
+                    cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    transition: 'border-color 180ms ease, color 180ms ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.color = GOLD; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  Add
+                </button>
+                <button
+                  onClick={handleUnsave}
+                  disabled={unsaving}
+                  aria-label="Remove from saved"
+                  style={{
+                    width: 34, height: 34, borderRadius: 4,
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: unsaving ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)',
+                    cursor: unsaving ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'border-color 180ms ease, color 180ms ease',
+                  }}
+                  onMouseEnter={e => { if (!unsaving) { e.currentTarget.style.borderColor = 'rgba(200,60,60,0.6)'; e.currentTarget.style.color = 'rgba(200,80,80,0.9)'; } }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── MAP (light style) ── */}
-      <div style={{ flexShrink: 0, height: '26%', minHeight: 130, position: 'relative', background: '#e8e4df' }}>
-        <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
-        {!mapLoaded && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e8e4df' }}>
-            <div style={{ width: 20, height: 20, border: `2px solid rgba(200,150,90,0.3)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'spin 700ms linear infinite' }} />
+        {/* ── RIGHT: Map + filmstrip ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f3f0' }}>
+
+          {/* Map */}
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
+            {!mapLoaded && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ece9e4' }}>
+                <div style={{ width: 20, height: 20, border: `2px solid rgba(200,150,90,0.3)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'spin 700ms linear infinite' }} />
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* ── FILMSTRIP ── */}
-      <div
-        ref={filmstripRef}
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'hidden',
-          overflowX: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '0 16px',
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-          background: BG,
-        }}
-      >
-        {places.map((item, i) => {
-          const p = item.places;
-          const isActive = i === activeIndex;
-          return (
-            <div
-              key={item.id}
-              style={{
-                flexShrink: 0,
-                width: 110,
-                height: 80,
-                borderRadius: 12,
-                overflow: 'hidden',
-                position: 'relative',
-                border: isActive ? `2px solid ${GOLD}` : '2px solid rgba(255,255,255,0.06)',
-                background: '#1a1614',
-                transition: 'border-color 240ms ease, transform 240ms ease, box-shadow 240ms ease',
-                transform: isActive ? 'scale(1.06)' : 'scale(1)',
-                boxShadow: isActive ? `0 4px 20px rgba(200,150,90,0.25)` : 'none',
-                scrollSnapAlign: 'start',
-                cursor: 'pointer',
-              }}
-              onClick={() => selectIndex(i)}
-            >
-              {p?.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={p.image_url}
-                  alt={p.name ?? ''}
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 300ms ease', transform: isActive ? 'scale(1.04)' : 'scale(1)' }}
-                />
-              ) : (
-                <div style={{ position: 'absolute', inset: 0, background: '#2a2018' }} />
-              )}
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 55%)' }} />
+          {/* Filmstrip label */}
+          <div style={{ flexShrink: 0, padding: '10px 14px 4px', background: '#f5f3f0', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(30,20,10,0.45)', fontFamily: "'DM Sans',sans-serif" }}>
+              Saved Places
+            </p>
+          </div>
 
-              {/* Place name */}
-              <p style={{ position: 'absolute', bottom: 6, left: 8, right: 32, fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", margin: 0 }}>
-                {p?.name ?? '—'}
-              </p>
+          {/* Filmstrip */}
+          <div
+            ref={filmstripRef}
+            style={{
+              flexShrink: 0,
+              height: 110,
+              overflowY: 'hidden',
+              overflowX: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '0 14px 10px',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              background: '#f5f3f0',
+            }}
+          >
+            {places.map((item, i) => {
+              const p = item.places;
+              const isActive = i === activeIndex;
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    flexShrink: 0,
+                    width: 120,
+                    height: 85,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    border: isActive ? `2px solid ${GOLD}` : '2px solid transparent',
+                    background: '#ccc',
+                    transition: 'border-color 240ms ease, box-shadow 240ms ease',
+                    boxShadow: isActive ? `0 4px 18px rgba(200,150,90,0.28)` : '0 2px 8px rgba(0,0,0,0.1)',
+                    scrollSnapAlign: 'start',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => selectIndex(i)}
+                >
+                  {p?.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.image_url}
+                      alt={p.name ?? ''}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 300ms ease', transform: isActive ? 'scale(1.04)' : 'scale(1)' }}
+                    />
+                  ) : (
+                    <div style={{ position: 'absolute', inset: 0, background: '#d0ccc8' }} />
+                  )}
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%)' }} />
 
-              {/* Expand icon — open place detail sheet */}
-              <button
-                onClick={(e) => { e.stopPropagation(); setExpandPlace(item); }}
-                aria-label="View details"
-                style={{ position: 'absolute', bottom: 5, right: 5, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
-              >
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
-              </button>
+                  {/* Number badge */}
+                  <div style={{
+                    position: 'absolute', top: 6, left: 6,
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: isActive ? GOLD : 'rgba(0,0,0,0.55)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 9, fontWeight: 700, color: '#fff',
+                    fontFamily: "'DM Sans',sans-serif",
+                    transition: 'background 240ms ease',
+                  }}>
+                    {i + 1}
+                  </div>
 
-              {/* Active indicator dot */}
-              {isActive && (
-                <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: '50%', background: GOLD, boxShadow: `0 0 6px ${GOLD}` }} />
-              )}
-            </div>
-          );
-        })}
+                  <p style={{ position: 'absolute', bottom: 6, left: 8, right: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.95)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", margin: 0 }}>
+                    {p?.name ?? '—'}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Itinerary Picker Sheet */}
@@ -549,7 +670,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
-        @keyframes heroIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
       `}</style>
     </div>
   );
