@@ -63,10 +63,11 @@ export default function ItineraryPickerSheet({
   const [createError, setCreateError] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Step 3 — date for this place
+  // Step 3 — date + time for this place
   const [selectedItinId, setSelectedItinId] = useState<string | null>(null);
   const [selectedItin, setSelectedItin] = useState<SlimItinerary | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('10:00');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -171,7 +172,7 @@ export default function ItineraryPickerSheet({
           category: place.category ?? null,
           image: place.image_url ?? null,
           scheduleddate: selectedDate,
-          starttime: '10:00',
+          starttime: selectedTime,
           durationhours: 1,
         }),
       });
@@ -394,19 +395,36 @@ export default function ItineraryPickerSheet({
               </div>
             )}
 
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
-              Date
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              min={selectedItin?.startdate ?? undefined}
-              max={selectedItin?.enddate ?? undefined}
-              onChange={e => setSelectedDate(e.target.value)}
-              style={inputStyle}
-              onFocus={e => { e.target.style.borderColor = GOLD; }}
-              onBlur={e => { e.target.style.borderColor = BORDER_2; }}
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  min={selectedItin?.startdate ?? undefined}
+                  max={selectedItin?.enddate ?? undefined}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = GOLD; }}
+                  onBlur={e => { e.target.style.borderColor = BORDER_2; }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: TEXT_MUTED, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  Time
+                </label>
+                <input
+                  type="time"
+                  value={selectedTime}
+                  onChange={e => setSelectedTime(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = GOLD; }}
+                  onBlur={e => { e.target.style.borderColor = BORDER_2; }}
+                />
+              </div>
+            </div>
 
             {addError && (
               <p style={{ color: 'rgba(220,80,80,0.85)', fontSize: 12, margin: '8px 0 0', fontFamily: "'DM Sans', sans-serif" }}>{addError}</p>
