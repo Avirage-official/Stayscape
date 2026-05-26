@@ -64,6 +64,7 @@ export default function PlannerPage() {
   const [itineraries, setItineraries] = useState<DbItineraryListed[] | null>(null);
   const [itinLoading, setItinLoading] = useState(false);
   const [itinError, setItinError] = useState<string | null>(null);
+  const savedMapMountedRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/guests');
@@ -105,20 +106,16 @@ export default function PlannerPage() {
 
   useEffect(() => { if (user) void fetchSavedPlaces(); }, [user, fetchSavedPlaces]);
 
-  const itinFetchedRef = useRef(false);
-
   function handleDesktopTabSwitch(tab: Tab) {
     setActiveTab(tab);
-    if (tab === 'itineraries' && !itinFetchedRef.current && user) {
-      itinFetchedRef.current = true;
+    if (tab === 'itineraries' && itineraries === null && !itinLoading && user) {
       void fetchItineraries();
     }
   }
 
   function handleMobileTabSwitch(tab: MobileTab) {
     setMobileTab(tab);
-    if ((tab === 'itineraries' || tab === 'itin-map') && !itinFetchedRef.current && user) {
-      itinFetchedRef.current = true;
+    if ((tab === 'itineraries' || tab === 'itin-map') && itineraries === null && !itinLoading && user) {
       void fetchItineraries();
     }
   }
@@ -262,7 +259,7 @@ export default function PlannerPage() {
         </div>
 
         {/* Mobile content */}
-        <div className="md:hidden h-full">
+        <div className="md:hidden h-full" style={{ position: 'relative' }}>
           {mobileTab === 'saved' && (
             <SavedMobileTab
               savedPlaces={savedPlaces} isLoading={savedLoading} error={savedError}
@@ -273,13 +270,20 @@ export default function PlannerPage() {
               onLocate={() => handleMobileTabSwitch('saved-map')}
             />
           )}
-          {mobileTab === 'saved-map' && (
-            <SavedMapMobileTab
-              savedPlaces={savedPlaces}
-              activeIndex={savedActiveIndex}
-              onMarkerTap={(i) => { setSavedActiveIndex(i); handleMobileTabSwitch('saved'); }}
-            />
-          )}
+          {/* SavedMapMobileTab: once mounted, stay mounted (visibility-hidden when inactive)
+              so Mapbox doesn't re-initialise on every tab switch */}
+          {(mobileTab === 'saved-map' || savedMapMountedRef.current) && (() => {
+            if (mobileTab === 'saved-map') savedMapMountedRef.current = true;
+            return (
+              <div style={{ position: 'absolute', inset: 0, visibility: mobileTab === 'saved-map' ? 'visible' : 'hidden', pointerEvents: mobileTab === 'saved-map' ? 'auto' : 'none' }}>
+                <SavedMapMobileTab
+                  savedPlaces={savedPlaces}
+                  activeIndex={savedActiveIndex}
+                  onMarkerTap={(i) => { setSavedActiveIndex(i); handleMobileTabSwitch('saved'); }}
+                />
+              </div>
+            );
+          })()}
           {mobileTab === 'itineraries' && (
             <ItinerariesTab
               itineraries={itineraries} isLoading={itinLoading} error={itinError}
@@ -782,6 +786,9 @@ function SavedMobileTab({
   const [pickerPlace, setPickerPlace] = useState<{ id: string; name: string; category?: string | null; image_url?: string | null } | null>(null);
   const [expandPlace, setExpandPlace] = useState<DbSavedPlaceEnriched | null>(null);
   const [unsaving, setUnsaving] = useState(false);
+  const [heroAnimating, setHeroAnimating] = useState(false);
+  const [prevHeroIndex, setPrevHeroIndex] = useState(activeIndex);
+  const heroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const places = savedPlaces ?? [];
   const active = places[activeIndex] ?? null;
@@ -790,6 +797,19 @@ function SavedMobileTab({
   useEffect(() => {
     if (places.length > 0 && activeIndex >= places.length) setActiveIndex(places.length - 1);
   }, [places.length, activeIndex, setActiveIndex]);
+
+  useEffect(() => {
+    if (activeIndex === prevHeroIndex) return;
+    setHeroAnimating(true);
+    if (heroTimerRef.current) clearTimeout(heroTimerRef.current);
+    heroTimerRef.current = setTimeout(() => {
+      setHeroAnimating(false);
+      setPrevHeroIndex(activeIndex);
+    }, 420);
+    return () => { if (heroTimerRef.current) clearTimeout(heroTimerRef.current); };
+  // prevHeroIndex intentionally excluded — we capture the old value before it updates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
 
   async function handleUnsave() {
     if (!active || unsaving) return;
@@ -826,9 +846,16 @@ function SavedMobileTab({
     <div style={{ height:'100%',display:'flex',flexDirection:'column',overflow:'hidden' }}>
       {/* Hero */}
       <div style={{ position:'relative',flexShrink:0,height:'45vw',minHeight:160,maxHeight:260,overflow:'hidden',background:'#1a1614' }}>
+        {/* Outgoing image fades out during crossfade */}
+        {heroAnimating && places[prevHeroIndex]?.places?.image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={places[prevHeroIndex].places!.image_url!} alt=""
+            style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:0,transition:'opacity 380ms ease' }} />
+        )}
         {activePlace?.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={activePlace.image_url} src={activePlace.image_url} alt={activePlace.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',transition:'opacity 400ms ease' }} />
+          <img key={activePlace.image_url} src={activePlace.image_url} alt={activePlace.name??''}
+            style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:heroAnimating?0:1,transition:'opacity 380ms ease' }} />
         ) : (<div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,#1a1614,#2a2018)' }} />)}
         <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top,rgba(10,8,6,0.92) 0%,rgba(10,8,6,0.4) 55%,rgba(10,8,6,0.1) 100%)' }} />
 
@@ -853,8 +880,8 @@ function SavedMobileTab({
 
         {/* Place info */}
         <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'0 14px 14px' }}>
-          {activePlace?.category && <p style={{ fontSize:9,fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:GOLD,marginBottom:3,fontFamily:"'DM Sans',sans-serif" }}>{activePlace.category}</p>}
-          <h2 style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontStyle:'italic',fontSize:'clamp(1.4rem,4.5vw,2rem)',fontWeight:500,color:TEXT,lineHeight:1.1,margin:'0 0 5px' }}>{activePlace?.name??'Unnamed place'}</h2>
+          {activePlace?.category && <p style={{ fontSize:9,fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:GOLD,marginBottom:3,fontFamily:"'DM Sans',sans-serif",opacity:heroAnimating?0:1,transition:'opacity 300ms ease' }}>{activePlace.category}</p>}
+          <h2 style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontStyle:'italic',fontSize:'clamp(1.4rem,4.5vw,2rem)',fontWeight:500,color:TEXT,lineHeight:1.1,margin:'0 0 5px',opacity:heroAnimating?0:1,transform:heroAnimating?'translateY(6px)':'translateY(0)',transition:'opacity 300ms ease,transform 300ms ease' }}>{activePlace?.name??'Unnamed place'}</h2>
           <div style={{ display:'flex',alignItems:'center',gap:8 }}>
             {activePlace?.city && <span style={{ fontSize:11,color:'rgba(255,255,255,0.55)',fontFamily:"'DM Sans',sans-serif" }}>{activePlace.city}</span>}
             {activePlace?.rating && (<><span style={{ width:3,height:3,borderRadius:'50%',background:'rgba(255,255,255,0.25)',display:'inline-block' }}/><span style={{ display:'flex',alignItems:'center',gap:3,fontSize:11,color:GOLD,fontFamily:"'DM Sans',sans-serif" }}><svg width="10" height="10" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{activePlace.rating.toFixed(1)}</span></>)}
