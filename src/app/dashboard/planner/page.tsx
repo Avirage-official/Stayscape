@@ -50,9 +50,7 @@ export default function PlannerPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
-  // Desktop
   const [activeTab, setActiveTab] = useState<Tab>('saved');
-  // Mobile
   const [mobileTab, setMobileTab] = useState<MobileTab>('saved');
   const [savedActiveIndex, setSavedActiveIndex] = useState(0);
   const [selectedItinForMap, setSelectedItinForMap] = useState<DbItineraryListed | null>(null);
@@ -227,7 +225,7 @@ export default function PlannerPage() {
           {activeTab === 'saved' ? `${(savedPlaces ?? []).length} place${(savedPlaces ?? []).length !== 1 ? 's' : ''}` : ''}
         </span>
       </div>
-      </div>{/* end desktop tab bar wrapper */}
+      </div>
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Desktop content */}
@@ -469,11 +467,8 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-      {/* ══ SPLIT PANEL ══ */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
-
-        {/* ── LEFT: Hero image panel ── */}
+        {/* LEFT: Hero image panel */}
         <div style={{ position: 'relative', width: '48%', flexShrink: 0, overflow: 'hidden', background: '#14100d' }}>
           {heroAnimating && places[prevIndex]?.places?.image_url && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -583,10 +578,8 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
           </div>
         </div>
 
-        {/* ── RIGHT: Map + filmstrip ── */}
+        {/* RIGHT: Map + filmstrip */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: RIGHT_BG }}>
-
-          {/* Map */}
           <div style={{ flex: 1, minHeight: 0, position: 'relative', background: RIGHT_BG }}>
             <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 32, background: `linear-gradient(to bottom, ${RIGHT_BG} 0%, transparent 100%)`, pointerEvents: 'none', zIndex: 2 }} />
@@ -598,18 +591,15 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
             )}
           </div>
 
-          {/* ── Filmstrip ── */}
-          {/* label */}
           <div style={{ flexShrink: 0, padding: '10px 16px 6px', background: RIGHT_BG }}>
             <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(200,150,90,0.4)', fontFamily: "'DM Sans',sans-serif" }}>Saved Places</p>
           </div>
 
-          {/* scroll track — taller to match reference */}
           <div
             ref={filmstripRef}
             style={{
               flexShrink: 0,
-              height: 172,
+              height: 210,
               overflowY: 'hidden',
               overflowX: 'auto',
               display: 'flex',
@@ -631,14 +621,13 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   onClick={() => selectIndex(i)}
                   style={{
                     flexShrink: 0,
-                    width: 148,
-                    height: 150,
+                    width: 170,
+                    height: 190,
                     borderRadius: 10,
                     overflow: 'hidden',
                     position: 'relative',
                     cursor: 'pointer',
                     scrollSnapAlign: 'start',
-                    /* active: gold ring + outer glow matching the reference */
                     border: isActive ? `2px solid ${GOLD}` : '2px solid rgba(200,150,90,0.12)',
                     boxShadow: isActive
                       ? `0 0 0 3px rgba(200,150,90,0.18), 0 6px 24px rgba(200,150,90,0.22)`
@@ -647,7 +636,6 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                     transition: 'border-color 240ms ease, box-shadow 240ms ease',
                   }}
                 >
-                  {/* background image */}
                   {p?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -662,13 +650,9 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   ) : (
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#241c14,#3a2a1a)' }} />
                   )}
-
-                  {/* gradient scrim — stronger at bottom for text legibility */}
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.18) 50%, transparent 100%)' }} />
-
-                  {/* top-left: numbered badge */}
                   <div style={{
-                    position: 'absolute', top: 8, left: 8,
+                    position: 'absolute', top: 10, left: 10,
                     width: 24, height: 24, borderRadius: '50%',
                     background: isActive ? GOLD : 'rgba(10,8,6,0.72)',
                     border: `1.5px solid ${isActive ? GOLD : 'rgba(200,150,90,0.4)'}`,
@@ -681,50 +665,25 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                   }}>
                     {i + 1}
                   </div>
-
-                  {/* bottom text block — place name + category pill */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 10px 10px' }}>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 10px 12px' }}>
                     {p?.category && (
                       <p style={{
-                        margin: '0 0 3px',
-                        fontSize: 8,
-                        fontWeight: 700,
-                        letterSpacing: '0.16em',
-                        textTransform: 'uppercase',
-                        color: isActive ? GOLD : 'rgba(200,150,90,0.7)',
-                        fontFamily: "'DM Sans',sans-serif",
-                        transition: 'color 240ms ease',
-                      }}>
-                        {p.category}
-                      </p>
+                        margin: '0 0 3px', fontSize: 8, fontWeight: 700, letterSpacing: '0.16em',
+                        textTransform: 'uppercase', color: isActive ? GOLD : 'rgba(200,150,90,0.7)',
+                        fontFamily: "'DM Sans',sans-serif", transition: 'color 240ms ease',
+                      }}>{p.category}</p>
                     )}
                     <p style={{
-                      margin: 0,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(255,255,255,0.95)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontFamily: "'DM Sans',sans-serif",
-                      lineHeight: 1.2,
-                    }}>
-                      {p?.name ?? '—'}
-                    </p>
+                      margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: '0.05em',
+                      textTransform: 'uppercase', color: 'rgba(255,255,255,0.95)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      fontFamily: "'DM Sans',sans-serif", lineHeight: 1.2,
+                    }}>{p?.name ?? '—'}</p>
                     {p?.city && (
                       <p style={{
-                        margin: '2px 0 0',
-                        fontSize: 9,
-                        color: 'rgba(255,255,255,0.45)',
-                        fontFamily: "'DM Sans',sans-serif",
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {p.city}
-                      </p>
+                        margin: '2px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.45)',
+                        fontFamily: "'DM Sans',sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{p.city}</p>
                     )}
                   </div>
                 </div>
@@ -815,15 +774,12 @@ function SavedMobileTab({
 
   return (
     <div style={{ height:'100%',display:'flex',flexDirection:'column',overflow:'hidden' }}>
-      {/* Hero */}
       <div style={{ position:'relative',flexShrink:0,height:'45vw',minHeight:160,maxHeight:260,overflow:'hidden',background:'#1a1614' }}>
         {activePlace?.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={activePlace.image_url} src={activePlace.image_url} alt={activePlace.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',transition:'opacity 400ms ease' }} />
         ) : (<div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,#1a1614,#2a2018)' }} />)}
         <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top,rgba(10,8,6,0.92) 0%,rgba(10,8,6,0.4) 55%,rgba(10,8,6,0.1) 100%)' }} />
-
-        {/* Counter + actions */}
         <div style={{ position:'absolute',top:14,left:14,right:14,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <span style={{ fontSize:11,fontWeight:600,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.5)',fontFamily:"'DM Sans',sans-serif" }}>{activeIndex+1} / {places.length}</span>
           <div style={{ display:'flex',gap:7 }}>
@@ -841,8 +797,6 @@ function SavedMobileTab({
             </button>
           </div>
         </div>
-
-        {/* Place info */}
         <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'0 14px 14px' }}>
           {activePlace?.category && <p style={{ fontSize:9,fontWeight:600,letterSpacing:'0.16em',textTransform:'uppercase',color:GOLD,marginBottom:3,fontFamily:"'DM Sans',sans-serif" }}>{activePlace.category}</p>}
           <h2 style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",fontStyle:'italic',fontSize:'clamp(1.4rem,4.5vw,2rem)',fontWeight:500,color:TEXT,lineHeight:1.1,margin:'0 0 5px' }}>{activePlace?.name??'Unnamed place'}</h2>
@@ -852,8 +806,6 @@ function SavedMobileTab({
           </div>
         </div>
       </div>
-
-      {/* Portrait card list */}
       <div style={{ flex:1,minHeight:0,overflowY:'auto',scrollbarWidth:'none' }}>
         {places.map((item, i) => {
           const p = item.places;
@@ -862,14 +814,12 @@ function SavedMobileTab({
             <button key={item.id} onClick={() => setActiveIndex(i)}
               style={{ width:'100%',height:110,display:'flex',alignItems:'stretch',background:isActive?'rgba(200,150,90,0.06)':'transparent',border:'none',borderBottom:`1px solid ${BORDER}`,borderLeft:isActive?`3px solid ${GOLD}`:'3px solid transparent',cursor:'pointer',padding:0,transition:'background 180ms ease,border-color 180ms ease',textAlign:'left' }}
             >
-              {/* Image */}
               <div style={{ flexShrink:0,width:90,position:'relative',background:'#1a1614',overflow:'hidden' }}>
                 {p?.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.image_url} alt={p.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover' }} />
                 ) : (<div style={{ position:'absolute',inset:0,background:'#2a2018' }} />)}
               </div>
-              {/* Text */}
               <div style={{ flex:1,minWidth:0,padding:'14px 14px 14px 12px',display:'flex',flexDirection:'column',justifyContent:'center',gap:3 }}>
                 {p?.category && <p style={{ margin:0,fontSize:9,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:isActive?GOLD:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.category}</p>}
                 <p style={{ margin:0,fontSize:13,fontWeight:500,color:TEXT,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif" }}>{p?.name??'—'}</p>
@@ -881,7 +831,6 @@ function SavedMobileTab({
                   </span>
                 )}
               </div>
-              {/* Expand icon */}
               <button
                 onClick={e => { e.stopPropagation(); setExpandPlace(item); }}
                 aria-label="View details"
@@ -893,7 +842,6 @@ function SavedMobileTab({
           );
         })}
       </div>
-
       {pickerPlace && (
         <ItineraryPickerSheet place={pickerPlace} getBearerToken={getBearerToken}
           onClose={() => setPickerPlace(null)} onAdded={() => setPickerPlace(null)} />
@@ -1122,14 +1070,23 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
   }
   if (isLoading) {
     return (
-      <div style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {Array.from({ length: 3 }).map((_, i) => (<div key={i} style={{ height: 80, borderRadius: 14, background: SURFACE, border: `1px solid ${BORDER}`, animation: 'pulse 1.6s ease-in-out infinite' }} />))}
+      <div style={{ padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} style={{ height: 96, borderRadius: 16, background: SURFACE, border: `1px solid ${BORDER}`, animation: 'pulse 1.6s ease-in-out infinite' }} />
+        ))}
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.45}}`}</style>
       </div>
     );
   }
   if (error) {
-    return (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><div style={{ textAlign: 'center' }}><p style={{ color: TEXT_MUTED, fontSize: 13, marginBottom: 12, fontFamily: "'DM Sans',sans-serif" }}>{error}</p><button onClick={onRetry} style={{ fontSize: 12, color: GOLD, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'underline' }}>Try again</button></div></div>);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: TEXT_MUTED, fontSize: 13, marginBottom: 12, fontFamily: "'DM Sans',sans-serif" }}>{error}</p>
+          <button onClick={onRetry} style={{ fontSize: 12, color: GOLD, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'underline' }}>Try again</button>
+        </div>
+      </div>
+    );
   }
   if (!itineraries || itineraries.length === 0) {
     return (
@@ -1144,33 +1101,72 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
       </div>
     );
   }
+
   return (
-    <div style={{ padding: '16px', overflow: 'auto', height: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ height: '100%', overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 14, scrollbarWidth: 'none' }}>
       {itineraries.map((itin) => {
         const isStayLinked = !!itin.stayid;
-        const propertyName = itin.stays?.properties?.name;
         const checkin = itin.stays?.checkindate ?? itin.startdate;
         const checkout = itin.stays?.checkoutdate ?? itin.enddate;
-        const title = itin.title ?? (propertyName ?? 'Untitled itinerary');
+        const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled itinerary';
+        const stopCount = (itin as DbItineraryListed & { item_count?: number }).item_count;
         return (
-          <button key={itin.id} onClick={() => setSelected(itin)}
-            style={{ width: '100%', textAlign: 'left', borderRadius: 14, padding: '14px 16px', background: SURFACE, border: `1px solid ${BORDER}`, cursor: 'pointer', transition: 'background 180ms ease', display: 'block' }}
-            onMouseEnter={e => { e.currentTarget.style.background = SURFACE_2; }}
-            onMouseLeave={e => { e.currentTarget.style.background = SURFACE; }}
+          <button
+            key={itin.id}
+            onClick={() => selectItinerary(itin)}
+            style={{
+              width: '100%', textAlign: 'left', borderRadius: 16, overflow: 'hidden',
+              background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`,
+              cursor: 'pointer', transition: 'background 200ms ease, border-color 200ms ease',
+              display: 'flex', flexDirection: 'row', height: 96, flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(200,150,90,0.22)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = BORDER; }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 500, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>{title}</p>
-                {checkin && checkout && (<p style={{ color: TEXT_MUTED, fontSize: 12, margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{formatDate(checkin)} – {formatDate(checkout)}</p>)}
+            {/* Left accent bar */}
+            <div style={{ width: 4, flexShrink: 0, background: isStayLinked ? GOLD : 'rgba(200,150,90,0.28)', borderRadius: '0 0 0 0' }} />
+
+            {/* Content */}
+            <div style={{ flex: 1, minWidth: 0, padding: '16px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: isStayLinked ? GOLD : TEXT_MUTED,
+                  background: isStayLinked ? GOLD_DIM : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  padding: '2px 7px', borderRadius: 999,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 999, fontWeight: 600, letterSpacing: '0.08em', background: isStayLinked ? GOLD_DIM : SURFACE, color: isStayLinked ? GOLD : TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+              <p style={{
+                margin: 0, fontSize: 15, fontWeight: 600, color: TEXT,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.01em',
+              }}>{title}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {checkin && checkout && (
+                  <span style={{ fontSize: 11, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {formatDate(checkin)} – {formatDate(checkout)}
+                  </span>
+                )}
+                {stopCount != null && stopCount > 0 && (
+                  <span style={{ fontSize: 11, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+                    {stopCount} stop{stopCount !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
+            </div>
+
+            {/* Arrow */}
+            <div style={{ flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT_FAINT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
             </div>
           </button>
         );
       })}
+      <style>{`div::-webkit-scrollbar{display:none}`}</style>
     </div>
   );
 }
@@ -1286,10 +1282,13 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
 
   const days = items ? Array.from(new Set(items.map(i => i.scheduleddate))).sort() : [];
   const [activeDay, setActiveDay] = useState<string | null>(null);
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
 
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapMarkersRef = useRef<any[]>([]);
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
@@ -1307,12 +1306,16 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
   }, [itin.id]);
 
   useEffect(() => {
-    if (days.length && !activeDay) setActiveDay(days[0]);
+    if (days.length && !activeDay) {
+      setActiveDay(days[0]);
+      setActiveDayIndex(0);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days.length]);
 
   const visibleItems = items?.filter(i => !activeDay || i.scheduleddate === activeDay) ?? [];
 
+  // Build map once items load
   useEffect(() => {
     if (loading) return;
     if (!items?.length || !mapRef.current || mapInstanceRef.current) { setMapReady(true); return; }
@@ -1323,25 +1326,72 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
       mb.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
       const bounds = new mb.LngLatBounds();
       geo.forEach(i => bounds.extend([i.places!.longitude, i.places!.latitude]));
-      const map = new mb.Map({ container: mapRef.current!, style: 'mapbox://styles/mapbox/dark-v11', bounds, fitBoundsOptions: { padding: 40, maxZoom: 14 }, attributionControl: false, logoPosition: 'bottom-right' });
+      const map = new mb.Map({
+        container: mapRef.current!,
+        style: 'mapbox://styles/mapbox/dark-v11',
+        bounds,
+        fitBoundsOptions: { padding: 56, maxZoom: 13 },
+        attributionControl: false,
+        logoPosition: 'bottom-right',
+      });
       map.on('load', () => {
         setMapReady(true);
         const coords = geo.map(i => [i.places!.longitude, i.places!.latitude] as [number, number]);
-        map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } });
-        map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': GOLD, 'line-width': 2, 'line-dasharray': [2, 3], 'line-opacity': 0.6 } });
+        map.addSource('route', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } },
+        });
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': GOLD, 'line-width': 2.5, 'line-opacity': 0.75 },
+        });
         geo.forEach((itm, idx) => {
+          const img = itm.image ?? itm.places?.image_url;
           const el = document.createElement('div');
-          el.style.cssText = `width:26px;height:26px;background:rgba(200,150,90,0.15);border:1.5px solid ${GOLD};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${GOLD};font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;`;
-          el.textContent = String(idx + 1);
-          new mb.Marker({ element: el }).setLngLat([itm.places!.longitude, itm.places!.latitude]).addTo(map);
+          el.style.cssText = `
+            width: 38px; height: 38px; border-radius: 50%;
+            border: 2.5px solid ${GOLD};
+            overflow: hidden; cursor: pointer;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.6), 0 0 0 2px rgba(200,150,90,0.22);
+            transition: transform 200ms ease;
+            background: #1a1614;
+          `;
+          if (img) {
+            const imgEl = document.createElement('img');
+            imgEl.src = img;
+            imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            el.appendChild(imgEl);
+          } else {
+            el.style.background = 'rgba(200,150,90,0.15)';
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.color = GOLD;
+            el.style.fontSize = '12px';
+            el.style.fontWeight = '700';
+            el.style.fontFamily = "'DM Sans',sans-serif";
+            el.textContent = String(idx + 1);
+          }
+          const marker = new mb.Marker({ element: el })
+            .setLngLat([itm.places!.longitude, itm.places!.latitude])
+            .addTo(map);
+          mapMarkersRef.current.push(marker);
         });
       });
       mapInstanceRef.current = map;
     }).catch(console.error);
-    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null; };
+    return () => {
+      mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
+      mapMarkersRef.current = [];
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items?.length]);
 
+  // Fly map on day change
   useEffect(() => {
     if (!mapInstanceRef.current || !activeDay || !items) return;
     const dayItems = items.filter(i => i.scheduleddate === activeDay && i.places?.latitude);
@@ -1353,11 +1403,25 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
         const mb = mapboxgl.default;
         const bounds = new mb.LngLatBounds();
         dayItems.forEach(i => bounds.extend([i.places!.longitude, i.places!.latitude]));
-        mapInstanceRef.current.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 700 });
+        mapInstanceRef.current.fitBounds(bounds, { padding: 56, maxZoom: 13, duration: 700 });
       }).catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDay]);
+
+  function prevDay() {
+    if (activeDayIndex <= 0) return;
+    const ni = activeDayIndex - 1;
+    setActiveDayIndex(ni);
+    setActiveDay(days[ni]);
+  }
+
+  function nextDay() {
+    if (activeDayIndex >= days.length - 1) return;
+    const ni = activeDayIndex + 1;
+    setActiveDayIndex(ni);
+    setActiveDay(days[ni]);
+  }
 
   async function handleDelete() {
     if (itin.stayid) return;
@@ -1367,115 +1431,259 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
     onDelete(itin.id);
   }
 
-  const propertyName = itin.stays?.properties?.name;
   const checkin = itin.stays?.checkindate ?? itin.startdate;
   const checkout = itin.stays?.checkoutdate ?? itin.enddate;
-  const title = itin.title ?? propertyName ?? 'Untitled itinerary';
+  const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled itinerary';
   const isStayLinked = !!itin.stayid;
 
+  const activeDayLabel = activeDay
+    ? new Date(activeDay).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' })
+    : null;
+
+  const activeDayStopCount = visibleItems.length;
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onBack} aria-label="Back"
-          style={{ width: 34, height: 34, borderRadius: 10, background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT_MUTED, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'color 180ms ease,border-color 180ms ease' }}
-          onMouseEnter={e => { e.currentTarget.style.color = TEXT; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.borderColor = BORDER; }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-        </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>{title}</h3>
-          {checkin && checkout && (<p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>{formatDate(checkin)} – {formatDate(checkout)}</p>)}
-        </div>
-        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 999, fontWeight: 600, letterSpacing: '0.08em', background: isStayLinked ? GOLD_DIM : SURFACE, color: isStayLinked ? GOLD : TEXT_MUTED, fontFamily: "'DM Sans',sans-serif", flexShrink: 0 }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
-        {!isStayLinked && (
-          <button onClick={() => setShowDeleteConfirm(true)} aria-label="Delete itinerary"
-            style={{ width: 34, height: 34, borderRadius: 10, background: 'transparent', border: `1px solid ${BORDER}`, color: TEXT_MUTED, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'color 180ms ease,border-color 180ms ease,background 180ms ease' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,58,58,0.12)'; e.currentTarget.style.color = 'rgba(220,80,80,0.9)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.borderColor = BORDER; }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" /></svg>
-          </button>
-        )}
-      </div>
+    <div style={{ height: '100%', display: 'flex', overflow: 'hidden', position: 'relative', background: BG }}>
 
-      <div style={{ flexShrink: 0, height: '32%', minHeight: 150, position: 'relative', background: '#0e0c0a' }}>
-        <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
-        {!mapReady && (<div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0e0c0a' }}><div style={{ width: 20, height: 20, border: `2px solid rgba(200,150,90,0.25)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'spin 700ms linear infinite' }} /></div>)}
-      </div>
+      {/* ── LEFT PANEL: Stop timeline ── */}
+      <div style={{ width: '48%', flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: `1px solid ${BORDER}` }}>
 
-      {days.length > 1 && (
-        <div style={{ flexShrink: 0, display: 'flex', gap: 8, padding: '10px 16px', overflowX: 'auto', scrollbarWidth: 'none', borderBottom: `1px solid ${BORDER}` }}>
-          {days.map((day, idx) => {
-            const isActive = day === activeDay;
-            return (
-              <button key={day} onClick={() => setActiveDay(day)}
-                style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', border: `1px solid ${isActive ? GOLD : BORDER}`, background: isActive ? GOLD_DIM : 'transparent', color: isActive ? GOLD : TEXT_MUTED, cursor: 'pointer', transition: 'all 180ms ease', fontFamily: "'DM Sans',sans-serif" }}
-              >Day {idx + 1}</button>
-            );
-          })}
-        </div>
-      )}
-
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 16px 24px', scrollbarWidth: 'thin', scrollbarColor: `${BORDER} transparent` }}>
-        {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: SURFACE, animation: 'pulse 1.6s ease-in-out infinite' }} />
-                <div style={{ flex: 1, height: 64, borderRadius: 12, background: SURFACE, animation: 'pulse 1.6s ease-in-out infinite' }} />
-              </div>
-            ))}
-          </div>
-        )}
-        {!loading && visibleItems.length === 0 && (
-          <div style={{ textAlign: 'center', paddingTop: 40 }}>
-            <p style={{ color: TEXT_FAINT, fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>No stops planned for this day yet.</p>
-          </div>
-        )}
-        {!loading && visibleItems.length > 0 && (
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 12, top: 13, bottom: 13, width: 1, background: `linear-gradient(to bottom,${GOLD}44,${GOLD}22,transparent)` }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {visibleItems.map((itm, idx) => {
-                const place = itm.places;
-                const name = itm.titleoverride ?? itm.name ?? place?.name ?? 'Unnamed stop';
-                const category = itm.category ?? place?.category;
-                const image = itm.image ?? place?.image_url;
-                const time = formatTime(itm.starttime);
-                const dur = itm.durationhours ? `${itm.durationhours}h` : null;
-                const isLast = idx === visibleItems.length - 1;
-                return (
-                  <div key={itm.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: isLast ? 0 : 20, position: 'relative' }}>
-                    <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: BG, border: `1.5px solid ${GOLD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GOLD, fontSize: 10, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", zIndex: 1, marginTop: 2 }}>{idx + 1}</div>
-                    <button onClick={() => setEditingItem(itm)}
-                      style={{ flex: 1, borderRadius: 12, background: SURFACE, border: `1px solid ${BORDER}`, overflow: 'hidden', display: 'flex', gap: 0, cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'background 180ms ease,border-color 180ms ease' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = SURFACE_2; e.currentTarget.style.borderColor = BORDER_2; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = BORDER; }}
-                    >
-                      {image && (
-                        <div style={{ flexShrink: 0, width: 68, position: 'relative', background: '#1a1614' }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={image} alt={name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
-                      )}
-                      <div style={{ flex: 1, minWidth: 0, padding: '10px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                          {time && <span style={{ fontSize: 10, color: GOLD, fontWeight: 600, letterSpacing: '0.08em', fontFamily: "'DM Sans',sans-serif" }}>{time}</span>}
-                          {dur && <span style={{ fontSize: 10, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif" }}>{dur}</span>}
-                          <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={TEXT_FAINT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                          </span>
-                        </div>
-                        <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>{name}</p>
-                        {category && <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>{category}</p>}
-                        {itm.notes && <p style={{ margin: '5px 0 0', fontSize: 11, color: TEXT_FAINT, lineHeight: 1.5, fontFamily: "'DM Sans',sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{itm.notes}</p>}
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
+        {/* Header */}
+        <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(10,8,6,0.98)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <button onClick={onBack} aria-label="Back"
+              style={{ width: 32, height: 32, borderRadius: 8, background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT_MUTED, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'color 160ms ease,border-color 160ms ease' }}
+              onMouseEnter={e => { e.currentTarget.style.color = TEXT; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.borderColor = BORDER; }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>Itinerary Detail</span>
+            <div style={{ flex: 1 }} />
+            {/* action icons */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {!isStayLinked && (
+                <button onClick={() => setShowDeleteConfirm(true)} aria-label="Delete"
+                  style={{ width: 32, height: 32, borderRadius: 8, background: 'transparent', border: `1px solid ${BORDER}`, color: TEXT_MUTED, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 160ms ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,58,58,0.12)'; e.currentTarget.style.color = 'rgba(220,80,80,0.9)'; e.currentTarget.style.borderColor = 'rgba(220,80,80,0.3)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.borderColor = BORDER; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6M9 6V4h6v2" /></svg>
+                </button>
+              )}
             </div>
+          </div>
+
+          {/* Trip title */}
+          <h2 style={{
+            margin: '0 0 6px',
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontSize: 'clamp(1.3rem,2.8vw,2rem)',
+            fontWeight: 700,
+            color: TEXT,
+            lineHeight: 1.1,
+            letterSpacing: '0.02em',
+          }}>{title}</h2>
+
+          {/* Meta pills row */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 0 }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: isStayLinked ? GOLD : TEXT_MUTED,
+              background: isStayLinked ? GOLD_DIM : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              padding: '3px 8px', borderRadius: 999,
+              fontFamily: "'DM Sans',sans-serif",
+            }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
+            {checkin && checkout && (
+              <span style={{ fontSize: 10, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                {formatDate(checkin)} – {formatDate(checkout)}
+              </span>
+            )}
+            {days.length > 0 && (
+              <span style={{ fontSize: 10, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif", padding: '3px 8px', borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE }}>
+                {days.length} day{days.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Day navigator */}
+        {days.length > 0 && (
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0, padding: '10px 20px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(10,8,6,0.95)' }}>
+            <button onClick={prevDay} disabled={activeDayIndex <= 0}
+              style={{ width: 28, height: 28, borderRadius: 6, background: 'transparent', border: `1px solid ${activeDayIndex <= 0 ? 'transparent' : BORDER}`, color: activeDayIndex <= 0 ? TEXT_FAINT : TEXT_MUTED, cursor: activeDayIndex <= 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 150ms ease', flexShrink: 0 }}
+              onMouseEnter={e => { if (activeDayIndex > 0) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = TEXT; } }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = activeDayIndex <= 0 ? 'transparent' : BORDER; e.currentTarget.style.color = activeDayIndex <= 0 ? TEXT_FAINT : TEXT_MUTED; }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: '0.14em', textTransform: 'uppercase', fontFamily: "'DM Sans',sans-serif" }}>Day {activeDayIndex + 1}</p>
+              {activeDayLabel && <p style={{ margin: '1px 0 0', fontSize: 12, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>{activeDayLabel}</p>}
+            </div>
+
+            <button onClick={nextDay} disabled={activeDayIndex >= days.length - 1}
+              style={{ width: 28, height: 28, borderRadius: 6, background: 'transparent', border: `1px solid ${activeDayIndex >= days.length - 1 ? 'transparent' : BORDER}`, color: activeDayIndex >= days.length - 1 ? TEXT_FAINT : TEXT_MUTED, cursor: activeDayIndex >= days.length - 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 150ms ease', flexShrink: 0 }}
+              onMouseEnter={e => { if (activeDayIndex < days.length - 1) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = TEXT; } }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = activeDayIndex >= days.length - 1 ? 'transparent' : BORDER; e.currentTarget.style.color = activeDayIndex >= days.length - 1 ? TEXT_FAINT : TEXT_MUTED; }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          </div>
+        )}
+
+        {/* Stop count sub-header */}
+        {!loading && activeDayStopCount > 0 && (
+          <div style={{ flexShrink: 0, padding: '8px 20px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(200,150,90,0.5)', fontFamily: "'DM Sans',sans-serif" }}>
+              {activeDayStopCount} stop{activeDayStopCount !== 1 ? 's' : ''}
+            </span>
+            <button
+              style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: TEXT_FAINT, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'DM Sans',sans-serif", padding: 0 }}
+              onClick={() => setEditingItem(visibleItems[0] ?? null)}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit day
+            </button>
+          </div>
+        )}
+
+        {/* Timeline list */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 20px 32px', scrollbarWidth: 'none' }}>
+          {loading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', background: SURFACE, animation: 'pulse 1.6s ease-in-out infinite' }} />
+                  <div style={{ flex: 1, height: 78, borderRadius: 12, background: SURFACE, animation: 'pulse 1.6s ease-in-out infinite' }} />
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && visibleItems.length === 0 && (
+            <div style={{ textAlign: 'center', paddingTop: 48 }}>
+              <p style={{ color: TEXT_FAINT, fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>No stops planned for this day.</p>
+            </div>
+          )}
+          {!loading && visibleItems.length > 0 && (
+            <div style={{ position: 'relative' }}>
+              {/* Dashed timeline line */}
+              <div style={{
+                position: 'absolute',
+                left: 15,
+                top: 16,
+                bottom: 16,
+                width: 1,
+                backgroundImage: `repeating-linear-gradient(to bottom, rgba(200,150,90,0.35) 0px, rgba(200,150,90,0.35) 6px, transparent 6px, transparent 12px)`,
+              }} />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {visibleItems.map((itm, idx) => {
+                  const place = itm.places;
+                  const name = itm.titleoverride ?? itm.name ?? place?.name ?? 'Unnamed stop';
+                  const category = itm.category ?? place?.category;
+                  const image = itm.image ?? place?.image_url;
+                  const time = formatTime(itm.starttime);
+                  const dur = itm.durationhours ? `${itm.durationhours}h` : null;
+                  const isLast = idx === visibleItems.length - 1;
+
+                  return (
+                    <div key={itm.id} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: isLast ? 0 : 14, position: 'relative' }}>
+                      {/* Number circle */}
+                      <div style={{
+                        flexShrink: 0,
+                        width: 32, height: 32,
+                        borderRadius: '50%',
+                        background: BG,
+                        border: `2px solid ${GOLD}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: GOLD, fontSize: 11, fontWeight: 700,
+                        fontFamily: "'DM Sans',sans-serif",
+                        zIndex: 1,
+                        boxShadow: `0 0 0 3px ${BG}`,
+                      }}>{idx + 1}</div>
+
+                      {/* Stop card */}
+                      <button
+                        onClick={() => setEditingItem(itm)}
+                        style={{
+                          flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${BORDER}`, overflow: 'hidden',
+                          display: 'flex', cursor: 'pointer', width: '100%',
+                          textAlign: 'left', transition: 'background 160ms ease, border-color 160ms ease',
+                          minHeight: 72,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(200,150,90,0.22)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = BORDER; }}
+                      >
+                        {image && (
+                          <div style={{ flexShrink: 0, width: 80, position: 'relative', background: '#1a1614', overflow: 'hidden' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={image} alt={name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0, padding: '10px 12px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                          {time && (
+                            <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: '0.1em', fontFamily: "'DM Sans',sans-serif" }}>{time}{dur ? ` · ${dur}` : ''}</p>
+                          )}
+                          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>{name}</p>
+                          {category && (
+                            <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>{category}</p>
+                          )}
+                          {itm.notes && (
+                            <p style={{ margin: '5px 0 0', fontSize: 10, color: TEXT_FAINT, lineHeight: 1.5, fontFamily: "'DM Sans',sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{itm.notes}</p>
+                          )}
+                        </div>
+                        <div style={{ flexShrink: 0, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={TEXT_FAINT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── RIGHT PANEL: Full-height map ── */}
+      <div style={{ flex: 1, position: 'relative', background: '#0d0b09' }}>
+        <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
+
+        {/* Top-right day breadcrumb overlay */}
+        {mapReady && days.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 16, right: 16, zIndex: 10,
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(10,8,6,0.78)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            border: `1px solid ${BORDER_2}`,
+            borderRadius: 10, padding: '7px 12px',
+          }}>
+            <button onClick={prevDay} disabled={activeDayIndex <= 0}
+              style={{ background: 'none', border: 'none', color: activeDayIndex <= 0 ? TEXT_FAINT : TEXT_MUTED, cursor: activeDayIndex <= 0 ? 'default' : 'pointer', padding: '0 2px', display: 'flex', alignItems: 'center' }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <span style={{ fontSize: 11, fontWeight: 600, color: TEXT, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap' }}>
+              Day {activeDayIndex + 1}
+              {activeDayLabel ? ` — ${activeDayLabel}` : ''}
+            </span>
+            <button onClick={nextDay} disabled={activeDayIndex >= days.length - 1}
+              style={{ background: 'none', border: 'none', color: activeDayIndex >= days.length - 1 ? TEXT_FAINT : TEXT_MUTED, cursor: activeDayIndex >= days.length - 1 ? 'default' : 'pointer', padding: '0 2px', display: 'flex', alignItems: 'center' }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          </div>
+        )}
+
+        {!mapReady && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0b09' }}>
+            <div style={{ width: 22, height: 22, border: `2px solid rgba(200,150,90,0.25)`, borderTopColor: GOLD, borderRadius: '50%', animation: 'spin 700ms linear infinite' }} />
           </div>
         )}
       </div>
