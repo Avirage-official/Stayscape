@@ -86,7 +86,7 @@ export default function PlannerPage() {
     try {
       const res = await fetch('/api/customer/itineraries', { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error();
-      const json = await res.json() as { itineraries: DbItineraryListed[] };
+      const json = await res.json() as { itineraries: (DbItineraryListed & { cover_image?: string | null })[] };
       setItineraries(json.itineraries);
     } catch { setItinError('Could not load your itineraries.'); }
     finally { setItinLoading(false); }
@@ -1050,7 +1050,7 @@ function ItinMapOnly({ itin }: { itin: DbItineraryListed }) {
 /* ══ ITINERARIES TAB ══ */
 
 interface ItinerariesTabProps {
-  itineraries: DbItineraryListed[] | null;
+  itineraries: (DbItineraryListed & { cover_image?: string | null })[] | null;
   isLoading: boolean; error: string | null;
   onRetry: () => void;
   onDelete: (id: string) => void;
@@ -1059,6 +1059,7 @@ interface ItinerariesTabProps {
 
 function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onItinerarySelect }: ItinerariesTabProps) {
   const [selected, setSelected] = useState<DbItineraryListed | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   function selectItinerary(itin: DbItineraryListed) {
     setSelected(itin);
@@ -1068,16 +1069,18 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
   if (selected) {
     return <ItineraryDetail itin={selected} onBack={() => setSelected(null)} onDelete={(id) => { onDelete(id); setSelected(null); }} />;
   }
+
   if (isLoading) {
     return (
-      <div style={{ padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} style={{ height: 96, borderRadius: 16, background: SURFACE, border: `1px solid ${BORDER}`, animation: 'pulse 1.6s ease-in-out infinite' }} />
+      <div style={{ padding: '28px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} style={{ height: 200, borderRadius: 16, background: SURFACE, border: `1px solid ${BORDER}`, animation: 'pulse 1.6s ease-in-out infinite' }} />
         ))}
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.45}}`}</style>
       </div>
     );
   }
+
   if (error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -1088,6 +1091,7 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
       </div>
     );
   }
+
   if (!itineraries || itineraries.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -1103,65 +1107,144 @@ function ItinerariesTab({ itineraries, isLoading, error, onRetry, onDelete, onIt
   }
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 14, scrollbarWidth: 'none' }}>
+    <div style={{
+      height: '100%',
+      overflowY: 'auto',
+      padding: '24px',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+      gap: 16,
+      alignContent: 'start',
+      scrollbarWidth: 'none',
+    }}>
       {itineraries.map((itin) => {
         const isStayLinked = !!itin.stayid;
         const checkin = itin.stays?.checkindate ?? itin.startdate;
         const checkout = itin.stays?.checkoutdate ?? itin.enddate;
         const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled itinerary';
-        const stopCount = (itin as DbItineraryListed & { item_count?: number }).item_count;
+        const coverImg = (itin as DbItineraryListed & { cover_image?: string | null }).cover_image;
+        const isHovered = hoveredId === itin.id;
+
         return (
           <button
             key={itin.id}
             onClick={() => selectItinerary(itin)}
+            onMouseEnter={() => setHoveredId(itin.id)}
+            onMouseLeave={() => setHoveredId(null)}
             style={{
-              width: '100%', textAlign: 'left', borderRadius: 16, overflow: 'hidden',
-              background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`,
-              cursor: 'pointer', transition: 'background 200ms ease, border-color 200ms ease',
-              display: 'flex', flexDirection: 'row', height: 96, flexShrink: 0,
+              position: 'relative',
+              height: 200,
+              borderRadius: 16,
+              overflow: 'hidden',
+              border: isHovered ? `1px solid rgba(200,150,90,0.45)` : `1px solid ${BORDER}`,
+              cursor: 'pointer',
+              background: '#1a1410',
+              transition: 'border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease',
+              transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+              boxShadow: isHovered ? '0 8px 32px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.3)',
+              textAlign: 'left',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(200,150,90,0.22)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = BORDER; }}
           >
-            {/* Left accent bar */}
-            <div style={{ width: 4, flexShrink: 0, background: isStayLinked ? GOLD : 'rgba(200,150,90,0.28)', borderRadius: '0 0 0 0' }} />
-
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0, padding: '16px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                <span style={{
-                  fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
-                  color: isStayLinked ? GOLD : TEXT_MUTED,
-                  background: isStayLinked ? GOLD_DIM : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  padding: '2px 7px', borderRadius: 999,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
+            {/* Cover image */}
+            {coverImg ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={coverImg}
+                alt={title}
+                style={{
+                  position: 'absolute', inset: 0, width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  transition: 'transform 400ms ease',
+                  transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                }}
+              />
+            ) : (
+              /* Placeholder — subtle gradient when no image */
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: `linear-gradient(135deg, #1e170f 0%, #2a1e10 50%, #1a1208 100%)`,
+              }}>
+                <div style={{
+                  position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  opacity: 0.18,
+                }}>
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
               </div>
-              <p style={{
-                margin: 0, fontSize: 15, fontWeight: 600, color: TEXT,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.01em',
-              }}>{title}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            )}
+
+            {/* Dark gradient overlay — stronger at bottom */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(5,3,2,0.96) 0%, rgba(5,3,2,0.55) 45%, rgba(5,3,2,0.1) 100%)',
+            }} />
+
+            {/* Top badge */}
+            <div style={{ position: 'absolute', top: 12, left: 12 }}>
+              <span style={{
+                fontSize: 8, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase',
+                color: isStayLinked ? GOLD : TEXT_MUTED,
+                background: isStayLinked ? 'rgba(10,8,6,0.72)' : 'rgba(10,8,6,0.6)',
+                border: `1px solid ${isStayLinked ? 'rgba(200,150,90,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                padding: '3px 8px', borderRadius: 999,
+                fontFamily: "'DM Sans',sans-serif",
+                backdropFilter: 'blur(6px)',
+              }}>{isStayLinked ? 'STAY' : 'PERSONAL'}</span>
+            </div>
+
+            {/* Arrow indicator top-right */}
+            <div style={{
+              position: 'absolute', top: 12, right: 12,
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'rgba(10,8,6,0.55)',
+              border: `1px solid ${isHovered ? 'rgba(200,150,90,0.45)' : 'rgba(255,255,255,0.1)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(6px)',
+              transition: 'border-color 220ms ease',
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={isHovered ? GOLD : TEXT_FAINT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 220ms ease' }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+
+            {/* Bottom content */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 14px 16px' }}>
+              <h3 style={{
+                margin: '0 0 6px',
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: 'clamp(1.1rem, 2vw, 1.4rem)',
+                fontWeight: 700,
+                color: TEXT,
+                lineHeight: 1.15,
+                letterSpacing: '0.02em',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                textShadow: '0 1px 8px rgba(0,0,0,0.6)',
+              }}>{title}</h3>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 {checkin && checkout && (
-                  <span style={{ fontSize: 11, color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span style={{
+                    fontSize: 10, color: 'rgba(250,248,245,0.55)',
+                    fontFamily: "'DM Sans',sans-serif",
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
                     {formatDate(checkin)} – {formatDate(checkout)}
                   </span>
                 )}
-                {stopCount != null && stopCount > 0 && (
-                  <span style={{ fontSize: 11, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
-                    {stopCount} stop{stopCount !== 1 ? 's' : ''}
+                {!checkin && (
+                  <span style={{ fontSize: 10, color: TEXT_FAINT, fontFamily: "'DM Sans',sans-serif" }}>
+                    No dates set
                   </span>
                 )}
               </div>
-            </div>
-
-            {/* Arrow */}
-            <div style={{ flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT_FAINT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
             </div>
           </button>
         );
@@ -1315,7 +1398,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
 
   const visibleItems = items?.filter(i => !activeDay || i.scheduleddate === activeDay) ?? [];
 
-  // Build map once items load
   useEffect(() => {
     if (loading) return;
     if (!items?.length || !mapRef.current || mapInstanceRef.current) { setMapReady(true); return; }
@@ -1391,7 +1473,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items?.length]);
 
-  // Fly map on day change
   useEffect(() => {
     if (!mapInstanceRef.current || !activeDay || !items) return;
     const dayItems = items.filter(i => i.scheduleddate === activeDay && i.places?.latitude);
@@ -1448,7 +1529,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
       {/* ── LEFT PANEL: Stop timeline ── */}
       <div style={{ width: '48%', flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: `1px solid ${BORDER}` }}>
 
-        {/* Header */}
         <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(10,8,6,0.98)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <button onClick={onBack} aria-label="Back"
@@ -1460,7 +1540,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
             </button>
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEXT_MUTED, fontFamily: "'DM Sans',sans-serif" }}>Itinerary Detail</span>
             <div style={{ flex: 1 }} />
-            {/* action icons */}
             <div style={{ display: 'flex', gap: 6 }}>
               {!isStayLinked && (
                 <button onClick={() => setShowDeleteConfirm(true)} aria-label="Delete"
@@ -1474,7 +1553,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
             </div>
           </div>
 
-          {/* Trip title */}
           <h2 style={{
             margin: '0 0 6px',
             fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -1485,7 +1563,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
             letterSpacing: '0.02em',
           }}>{title}</h2>
 
-          {/* Meta pills row */}
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 0 }}>
             <span style={{
               fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
@@ -1509,7 +1586,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
           </div>
         </div>
 
-        {/* Day navigator */}
         {days.length > 0 && (
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0, padding: '10px 20px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(10,8,6,0.95)' }}>
             <button onClick={prevDay} disabled={activeDayIndex <= 0}
@@ -1535,7 +1611,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
           </div>
         )}
 
-        {/* Stop count sub-header */}
         {!loading && activeDayStopCount > 0 && (
           <div style={{ flexShrink: 0, padding: '8px 20px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(200,150,90,0.5)', fontFamily: "'DM Sans',sans-serif" }}>
@@ -1551,7 +1626,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
           </div>
         )}
 
-        {/* Timeline list */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 20px 32px', scrollbarWidth: 'none' }}>
           {loading && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1570,7 +1644,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
           )}
           {!loading && visibleItems.length > 0 && (
             <div style={{ position: 'relative' }}>
-              {/* Dashed timeline line */}
               <div style={{
                 position: 'absolute',
                 left: 15,
@@ -1592,7 +1665,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
 
                   return (
                     <div key={itm.id} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: isLast ? 0 : 14, position: 'relative' }}>
-                      {/* Number circle */}
                       <div style={{
                         flexShrink: 0,
                         width: 32, height: 32,
@@ -1606,7 +1678,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
                         boxShadow: `0 0 0 3px ${BG}`,
                       }}>{idx + 1}</div>
 
-                      {/* Stop card */}
                       <button
                         onClick={() => setEditingItem(itm)}
                         style={{
@@ -1654,7 +1725,6 @@ function ItineraryDetail({ itin, onBack, onDelete }: ItineraryDetailProps) {
       <div style={{ flex: 1, position: 'relative', background: '#0d0b09' }}>
         <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
 
-        {/* Top-right day breadcrumb overlay */}
         {mapReady && days.length > 0 && (
           <div style={{
             position: 'absolute', top: 16, right: 16, zIndex: 10,
