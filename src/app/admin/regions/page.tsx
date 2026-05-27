@@ -341,7 +341,7 @@ export default function AdminRegionsPage() {
                         },
                         {
                           key: 'images' as ActionKey,
-                          label: 'Fetch Foursquare Images',
+                          label: 'Fetch Google Images',
                           loadingLabel: 'Fetching images…',
                         },
                       ] as const

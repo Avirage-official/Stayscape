@@ -27,6 +27,7 @@ import type {
   EventTag,
 } from '@/types/database';
 import { getPlaceDetails } from '@/lib/services/foursquare';
+import { fetchAndStoreGooglePlaceImage } from '@/lib/services/google-places-image';
 import { ClaudeProvider } from './claude-provider';
 
 /* ── Types ───────────────────────────────────────────────────── */
@@ -163,7 +164,7 @@ export async function enrichPlace(
 
   if (needsBetterImage) {
     try {
-      const betterImage = await fetchPlaceImage(place.name, place.city ?? '', place.country_code ?? '');
+      const betterImage = await fetchPlaceImage(supabase, place.id, place.name, place.city ?? '', place.country_code ?? '');
       if (betterImage) {
         await supabase
           .from('places')
@@ -371,45 +372,26 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Fetch a high-quality image for a place.
- * Strategy: Google Places Photos (1200px) → Unsplash (landscape, relevant).
+ * Fetch a high-quality image for a place and persist it.
+ *
+ * Strategy:
+ *   1. Google Places → download bytes → upload to Supabase Storage → return stable URL
+ *   2. Unsplash fallback → return direct Unsplash URL (hotlinking required by their API terms)
+ *
  * Both keys are optional — whichever is configured will be tried.
  */
 async function fetchPlaceImage(
+  supabase: SupabaseClient,
+  placeId: string,
   name: string,
   city: string,
   countryCode: string,
 ): Promise<string | null> {
-  const googleKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (googleKey) {
-    try {
-      const query = city ? `${name} ${city}` : `${name} ${countryCode}`;
-      const searchUrl =
-        `https://maps.googleapis.com/maps/api/place/textsearch/json` +
-        `?query=${encodeURIComponent(query)}&key=${googleKey}`;
+  // Primary: Google Places — image stored in Supabase, URL is permanent
+  const googleImage = await fetchAndStoreGooglePlaceImage(supabase, placeId, name, city, countryCode);
+  if (googleImage) return googleImage;
 
-      const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
-      if (searchRes.ok) {
-        const searchData = (await searchRes.json()) as {
-          results?: Array<{ photos?: Array<{ photo_reference: string }> }>;
-        };
-        const photoRef = searchData.results?.[0]?.photos?.[0]?.photo_reference;
-        if (photoRef) {
-          const photoUrl =
-            `https://maps.googleapis.com/maps/api/place/photo` +
-            `?maxwidth=1600&photoreference=${encodeURIComponent(photoRef)}&key=${googleKey}`;
-          const photoRes = await fetch(photoUrl, {
-            redirect: 'follow',
-            signal: AbortSignal.timeout(8000),
-          });
-          if (photoRes.ok && photoRes.url) return photoRes.url;
-        }
-      }
-    } catch {
-      // Try Unsplash
-    }
-  }
-
+  // Fallback: Unsplash — must hotlink per their API terms, URL is stable
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
   if (unsplashKey) {
     const queries = [
