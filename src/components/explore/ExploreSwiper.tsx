@@ -27,6 +27,7 @@ type SelectedItem = {
 };
 
 const AUTO_DRILL_SECTIONS = new Set(['made_for_you', 'happening_now', 'arias_picks']);
+const DOT_MAX = 12; // max dots shown before truncating
 
 function sectionShortLabel(id: string) {
   if (id === 'made_for_you') return 'Yours';
@@ -102,7 +103,7 @@ function priceDots(level: number | null): string | null {
 function fmtEventPrice(min: number | null, max: number | null, currency: string | null): string | null {
   if (min == null && max == null) return null;
   const sym = currency === 'SGD' ? 'S$' : currency === 'USD' ? '$' : (currency ?? '$');
-  if (min != null && max != null && min !== max) return `${sym}${min}–${sym}${max}`;
+  if (min != null && max != null && min !== max) return `${sym}${min}\u2013${sym}${max}`;
   if (min != null) return `from ${sym}${min}`;
   if (max != null) return `up to ${sym}${max}`;
   return null;
@@ -133,11 +134,32 @@ export default function ExploreSwiper({
   const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  // Track whether the next scroll event is programmatic (dot click) so we
+  // don't double-fire setCarouselIndex.
+  const programmaticScroll = useRef(false);
+
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
   const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
+
+  // ── Programmatic carousel navigation ──────────────────────────────────────
+  // Scroll to a card by reading its actual offsetLeft so card-width changes
+  // (active = 72%, inactive = 18%) never cause drift.
+  const scrollToCard = useCallback((idx: number) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const card = el.children[idx] as HTMLElement | undefined;
+    if (!card) return;
+    programmaticScroll.current = true;
+    // Centre the card: offsetLeft - (container - card) / 2
+    const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
+    el.scrollTo({ left, behavior: 'smooth' });
+    setCarouselIndex(idx);
+    // Release the programmatic flag after the smooth scroll settles (~600ms)
+    setTimeout(() => { programmaticScroll.current = false; }, 650);
+  }, []);
 
   const fetchDrillData = useCallback(async (sectionId: string, region: RegionOption, category: string | null) => {
     const cacheKey: DrillCacheKey = `${sectionId}:${region.id}:${category ?? 'all'}`;
@@ -399,7 +421,7 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Centred tall spotlight carousel ────────────────────────────────────
+  // ─── L2: Centred tall spotlight carousel (no item cap) ────────────────────────
   function renderL2ItemList() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
@@ -434,24 +456,39 @@ export default function ExploreSwiper({
     }
 
     const total = drillItems.length;
+    // Dots: show up to DOT_MAX; if more exist, show a "+N" overflow label instead
+    const dotsCount = Math.min(total, DOT_MAX);
+    const dotsOverflow = total > DOT_MAX ? total - DOT_MAX : 0;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
+        {/* Counter — now shows real total */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '0 20px 12px' }}>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 700, color: '#FAF8F5', letterSpacing: '0.04em' }}>{pad(carouselIndex)}</span>
           <div style={{ position: 'relative', width: '36px', height: '1px', background: 'rgba(250,248,245,0.18)' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '1px', background: accentFg, width: `${((carouselIndex + 1) / Math.min(total, 6)) * 100}%`, transition: 'width 340ms cubic-bezier(0.25,0,0,1)' }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, height: '1px', background: accentFg, width: `${((carouselIndex + 1) / total) * 100}%`, transition: 'width 340ms cubic-bezier(0.25,0,0,1)' }} />
           </div>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(Math.min(total, 6) - 1)}</span>
+          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
         </div>
 
+        {/* Carousel — ALL items, no slice */}
         <div
           ref={carouselRef}
           onScroll={() => {
+            if (programmaticScroll.current) return;
             const el = carouselRef.current;
             if (!el) return;
-            const cardW = el.clientWidth * 0.72 + 12;
-            setCarouselIndex(Math.round(el.scrollLeft / cardW));
+            // Determine which card centre is closest to the container centre
+            const containerCentre = el.scrollLeft + el.clientWidth / 2;
+            let closest = 0;
+            let minDist = Infinity;
+            Array.from(el.children).forEach((child, i) => {
+              const c = child as HTMLElement;
+              const cardCentre = c.offsetLeft + c.offsetWidth / 2;
+              const dist = Math.abs(cardCentre - containerCentre);
+              if (dist < minDist) { minDist = dist; closest = i; }
+            });
+            setCarouselIndex(closest);
           }}
           style={{
             display: 'flex',
@@ -467,7 +504,7 @@ export default function ExploreSwiper({
             scrollbarWidth: 'none',
           } as React.CSSProperties}
         >
-          {drillItems.slice(0, 6).map((item, idx) => {
+          {drillItems.map((item, idx) => {
             const isActive = idx === carouselIndex;
             const price = buildPrice(item);
             const pl = item as DrillPlaceCard;
@@ -479,7 +516,14 @@ export default function ExploreSwiper({
             return (
               <button
                 key={item.id}
-                onClick={() => drillToItem(item, active?.id ?? '')}
+                onClick={() => {
+                  if (idx !== carouselIndex) {
+                    // Tapping a side card navigates to it instead of opening detail
+                    scrollToCard(idx);
+                  } else {
+                    drillToItem(item, active?.id ?? '');
+                  }
+                }}
                 style={{
                   flex: `0 0 ${isActive ? '72%' : '18%'}`,
                   height: isActive ? '380px' : '320px',
@@ -498,7 +542,7 @@ export default function ExploreSwiper({
                 } as React.CSSProperties}
               >
                 {hasImage && (
-                  <img src={item.image_url!} alt={item.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', transform: isActive ? 'scale(1)' : 'scale(1.06)', transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)' }} loading={idx === 0 ? 'eager' : 'lazy'} />
+                  <img src={item.image_url!} alt={item.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', transform: isActive ? 'scale(1)' : 'scale(1.06)', transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)' }} loading={idx < 3 ? 'eager' : 'lazy'} />
                 )}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,4,2,0.92) 0%, rgba(6,4,2,0.3) 45%, transparent 100%)', pointerEvents: 'none' }} />
 
@@ -556,11 +600,38 @@ export default function ExploreSwiper({
           })}
         </div>
 
-        {drillItems.length > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', paddingTop: '16px' }}>
-            {drillItems.slice(0, 6).map((_, i) => (
-              <div key={i} style={{ width: i === carouselIndex ? '18px' : '5px', height: '5px', borderRadius: '3px', background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.2)', transition: 'width 260ms cubic-bezier(0.25,0,0,1), background 260ms ease' }} />
+        {/* Dot nav — capped at DOT_MAX, overflow shown as "+N" */}
+        {total > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', paddingTop: '16px' }}>
+            {Array.from({ length: dotsCount }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => scrollToCard(i)}
+                style={{
+                  width: i === carouselIndex ? '18px' : '5px',
+                  height: '5px',
+                  borderRadius: '3px',
+                  background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.2)',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  transition: 'width 260ms cubic-bezier(0.25,0,0,1), background 260ms ease',
+                  flexShrink: 0,
+                }}
+              />
             ))}
+            {dotsOverflow > 0 && (
+              <span style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '10px',
+                fontWeight: 600,
+                color: 'rgba(250,248,245,0.35)',
+                letterSpacing: '0.04em',
+                marginLeft: '2px',
+              }}>
+                +{dotsOverflow}
+              </span>
+            )}
           </div>
         )}
       </div>
