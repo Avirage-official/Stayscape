@@ -632,25 +632,25 @@ export default function ExploreSwiper({
       >
         {view.level === 0 ? (
           <>
+            {/* ── Persistent header bar: always visible, never floats over imagery ── */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 10px', background: 'linear-gradient(to bottom, rgba(10,8,6,0.72) 0%, transparent 100%)', pointerEvents: 'none' }}>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0 }}>Explore {greeting}</p>
+              <button
+                onClick={() => setShowRegionSheet(true)}
+                style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.60)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: `1px solid ${nudgeRegion ? 'rgba(193,127,58,0.80)' : 'rgba(250,248,245,0.22)'}`, borderRadius: '20px', padding: '7px 12px 7px 10px', cursor: 'pointer', transition: 'border-color 0.2s ease, box-shadow 0.2s ease', boxShadow: nudgeRegion ? '0 0 0 3px rgba(193,127,58,0.30)' : 'none' }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                </svg>
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 500, color: nudgeRegion ? 'rgba(250,248,245,0.95)' : 'rgba(250,248,245,0.82)', whiteSpace: 'nowrap' }}>
+                  {regions.find(r => r.id === selectedRegionId)?.name ?? 'Select city'}
+                </span>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.45)" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
             <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
-            <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>Explore {greeting}</p>
-            <button
-              onClick={() => setShowRegionSheet(true)}
-              style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(14,11,8,0.52)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: `1px solid ${nudgeRegion ? 'rgba(193,127,58,0.7)' : 'rgba(250,248,245,0.14)'}`, borderRadius: '20px', padding: '7px 11px 7px 9px', cursor: 'pointer', animation: nudgeRegion ? 'hsNudge 0.45s ease-in-out 4' : 'none' }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.85)" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-              </svg>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', color: 'rgba(250,248,245,0.75)' }}>{regions.find(r => r.id === selectedRegionId)?.name ?? 'Select city'}</span>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.4)" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {nudgeRegion && (
-              <p style={{ position: 'absolute', top: 48, right: 16, zIndex: 21, margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(193,127,58,0.9)', background: 'rgba(14,11,8,0.75)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(193,127,58,0.3)', pointerEvents: 'none', animation: 'hsFadeIn 150ms ease' }}>
-                Please select a city
-              </p>
-            )}
           </>
         ) : renderLeftDrillCanvas()}
 
