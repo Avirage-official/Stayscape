@@ -200,10 +200,10 @@ export async function upsertPlace(
   supabase: SupabaseClient,
   input: PlaceUpsertInput,
 ): Promise<{ place: InternalPlace; created: boolean }> {
-  // Check if record exists
+  // Check if record exists — also fetch image fields so we can preserve them
   const { data: existing } = await supabase
     .from('places')
-    .select('id')
+    .select('id, image_url, image_urls')
     .eq('external_source', input.external_source)
     .eq('external_id', input.external_id)
     .maybeSingle();
@@ -218,9 +218,17 @@ export async function upsertPlace(
   };
 
   if (existing) {
+    // Existing images are never overwritten by sync — only the admin can remove them.
+    // Sync may only fill in images that are currently missing.
+    const preservedImageUrl =
+      (existing.image_url as string | null) ?? input.image_url ?? null;
+    const existingImageUrls = (existing.image_urls as string[]) ?? [];
+    const preservedImageUrls =
+      existingImageUrls.length > 0 ? existingImageUrls : (input.image_urls ?? []);
+
     const { data, error } = await supabase
       .from('places')
-      .update(record)
+      .update({ ...record, image_url: preservedImageUrl, image_urls: preservedImageUrls })
       .eq('id', existing.id)
       .select()
       .single();

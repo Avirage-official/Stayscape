@@ -4,10 +4,11 @@ export {
   getPlaceById,
   getPlaceTags,
   upsertPlace,
+  deactivateStalePlaces,
   toDiscoveryCard,
   toDiscoveryDetail,
 } from './places-repository';
-export type { PlaceUpsertInput } from './places-repository';
+export type { PlaceUpsertInput, GeoBounds } from './places-repository';
 export {
   queryEvents,
   getEventById,

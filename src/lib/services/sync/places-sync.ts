@@ -18,6 +18,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import {
   upsertPlace,
+  deactivateStalePlaces,
   createSyncRun,
   completeSyncRun,
   failSyncRun,
@@ -61,10 +62,13 @@ export async function syncPlaces(
 
   try {
     // 2. Fetch from Foursquare
+    const syncStartedAt = new Date().toISOString();
+    const radiusMeters = options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS;
+
     const searchParams: FoursquareSearchParams = {
       latitude: options.latitude,
       longitude: options.longitude,
-      radius_meters: options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS,
+      radius_meters: radiusMeters,
       limit: options.limit ?? 100,
     };
 
@@ -88,18 +92,31 @@ export async function syncPlaces(
       }
     }
 
-    // 4. AI enrichment for new records
+    // 4. Deactivate places from this region+source that weren't seen in this sync
+    const deactivated = await deactivateStalePlaces(
+      supabase,
+      'foursquare',
+      options.region_id,
+      syncStartedAt,
+      {
+        latitude: options.latitude,
+        longitude: options.longitude,
+        radius_meters: radiusMeters,
+      },
+    );
+
+    // 5. AI enrichment for new records
     let enrichment: { enriched: number; failed: number } | undefined;
     if (!options.skip_enrichment && newPlaceIds.length > 0) {
       enrichment = await enrichNewPlaces(supabase, newPlaceIds);
     }
 
-    // 5. Complete sync_run
+    // 6. Complete sync_run
     const syncResult = {
       records_fetched: rawPlaces.length,
       records_created: created,
       records_updated: updated,
-      records_deactivated: 0,
+      records_deactivated: deactivated,
     };
     await completeSyncRun(supabase, syncRun.id, syncResult);
 
