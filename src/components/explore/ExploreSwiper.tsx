@@ -519,7 +519,6 @@ export default function ExploreSwiper({
             alignItems: 'center',
             overflowX: 'auto',
             overflowY: 'hidden',
-            scrollSnapType: 'x mandatory',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-x',
             gap: '10px',
@@ -549,7 +548,6 @@ export default function ExploreSwiper({
                 style={{
                   flex: `0 0 ${isActive ? '72%' : '18%'}`,
                   height: isActive ? '380px' : '320px',
-                  scrollSnapAlign: 'center',
                   borderRadius: '20px',
                   overflow: 'hidden',
                   position: 'relative',
