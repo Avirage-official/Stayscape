@@ -185,24 +185,6 @@ export default function ExploreSwiper({
     });
   }, []);
 
-  // ── Detect centred card from native scroll (debounced 80 ms) ───────────
-  const handleCarouselScroll = useCallback(() => {
-    if (programmaticScrollRef.current) return;
-    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-    scrollDebounceRef.current = setTimeout(() => {
-      const el = carouselRef.current;
-      if (!el || programmaticScrollRef.current) return;
-      const containerCenter = el.scrollLeft + el.clientWidth / 2;
-      let closestIdx = 0;
-      let closestDist = Infinity;
-      Array.from(el.children).forEach((child, i) => {
-        const card = child as HTMLElement;
-        const dist = Math.abs((card.offsetLeft + card.offsetWidth / 2) - containerCenter);
-        if (dist < closestDist) { closestDist = dist; closestIdx = i; }
-      });
-      setCarouselIndex(closestIdx);
-    }, 80);
-  }, []);
 
   // ── Re-centre after the active card expands (layout reflow) ────────────
   useEffect(() => {
@@ -257,8 +239,6 @@ export default function ExploreSwiper({
   useEffect(() => () => {
     if (panelT1Ref.current) clearTimeout(panelT1Ref.current);
     if (panelT2Ref.current) clearTimeout(panelT2Ref.current);
-    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-    if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
   }, []);
 
   const goTo = useCallback((index: number) => {
