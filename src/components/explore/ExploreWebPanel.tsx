@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ExploreSection, ExploreItem } from './ExploreCard';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 
@@ -61,12 +61,24 @@ export default function ExploreWebPanel({
 }: ExploreWebPanelProps) {
   const [ariaQuery, setAriaQuery] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
+  const [ariaGateVisible, setAriaGateVisible] = useState(false);
+  const ariaGateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // When the parent signals that the city picker should open (e.g. guest hits
-  // Explore with no city selected), open the dropdown automatically.
   useEffect(() => {
     if (openCityPicker) setCityOpen(true);
   }, [openCityPicker]);
+
+  // Clear gate message timer on unmount
+  useEffect(() => () => {
+    if (ariaGateTimerRef.current) clearTimeout(ariaGateTimerRef.current);
+  }, []);
+
+  function handleAriaSend() {
+    setAriaQuery('');
+    setAriaGateVisible(true);
+    if (ariaGateTimerRef.current) clearTimeout(ariaGateTimerRef.current);
+    ariaGateTimerRef.current = setTimeout(() => setAriaGateVisible(false), 3000);
+  }
 
   const active = sections[activeIndex];
   const isAria   = active?.id === 'arias_picks';
@@ -197,7 +209,7 @@ export default function ExploreWebPanel({
       {/* L1 content */}
       <div style={{ ...GLASS, padding: '14px 16px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-        {/* Aria: featured pick + concierge input */}
+        {/* Aria: featured pick + gate message + concierge input */}
         {isAria && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
             {active?.items[0] && (
@@ -213,18 +225,45 @@ export default function ExploreWebPanel({
                 )}
               </button>
             )}
-            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.55)', margin: 0, lineHeight: 1.5 }}>
-              Tell Aria what you&apos;re looking for and she&apos;ll find it.
+
+            {/* Gate message — replaces the old plain italic prompt */}
+            <p style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontStyle: 'italic',
+              fontSize: '15px',
+              color: 'rgba(193,127,58,0.85)',
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              Unlock Aria when you book your trip.
             </p>
+
+            {/* Inline gate reply — fades in on send, clears after 3s */}
+            {ariaGateVisible && (
+              <p style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic',
+                fontSize: '13px',
+                color: 'rgba(193,127,58,0.75)',
+                margin: 0,
+                lineHeight: 1.5,
+                animation: 'wcFadeIn 220ms ease',
+              }}>
+                Aria unlocks once your trip is confirmed.
+              </p>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(250,248,245,0.05)', border: '1px solid rgba(193,127,58,0.3)', borderRadius: '12px', padding: '0 6px 0 14px', height: '44px' }}>
               <input
                 type="text"
                 value={ariaQuery}
                 onChange={e => setAriaQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && ariaQuery.trim()) handleAriaSend(); }}
                 placeholder="Rooftop bar with a view…"
                 style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontFamily: "'DM Sans', sans-serif", fontSize: '13px', color: '#FAF8F5', caretColor: '#C17F3A' }}
               />
               <button
+                onClick={() => { if (ariaQuery.trim()) handleAriaSend(); }}
                 style={{ width: '32px', height: '32px', borderRadius: '9px', background: '#C17F3A', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 160ms ease', boxShadow: '0 2px 8px rgba(193,127,58,0.28)' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#D6A252'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A'; }}
