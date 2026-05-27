@@ -113,19 +113,6 @@ function pad(n: number) {
   return String(n + 1).padStart(2, '0');
 }
 
-// Returns the index of the card whose centre is closest to the container centre
-function getClosestCardIndex(el: HTMLDivElement): number {
-  const containerCentre = el.scrollLeft + el.clientWidth / 2;
-  let closest = 0;
-  let minDist = Infinity;
-  Array.from(el.children).forEach((child, i) => {
-    const c = child as HTMLElement;
-    const cardCentre = c.offsetLeft + c.offsetWidth / 2;
-    const dist = Math.abs(cardCentre - containerCentre);
-    if (dist < minDist) { minDist = dist; closest = i; }
-  });
-  return closest;
-}
 
 export default function ExploreSwiper({
   sections, regions, selectedRegionId, firstName,
@@ -156,15 +143,15 @@ export default function ExploreSwiper({
   const lastDrilledCityRef = useRef<string | null>(null);
 
   // ── Carousel scroll handler ───────────────────────────────────────────────
-  // Debounced: fires ~80ms after scrolling stops and picks the card whose
-  // centre is closest to the container centre. Works on mobile and desktop.
+  // All cards are equal-width so the active index is just scrollLeft / cardStep.
   const handleCarouselScroll = useCallback(() => {
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
       const el = carouselRef.current;
-      if (!el) return;
-      const idx = getClosestCardIndex(el);
-      setCarouselIndex(idx);
+      if (!el || !el.children.length) return;
+      const cardStep = (el.children[0] as HTMLElement).offsetWidth + 10;
+      const idx = Math.round(el.scrollLeft / cardStep);
+      setCarouselIndex(Math.max(0, Math.min(idx, el.children.length - 1)));
     }, 80);
   }, []);
 
@@ -172,26 +159,15 @@ export default function ExploreSwiper({
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
   }, []);
 
-  // ── Programmatic navigation (dots / side-card tap) ────────────────────────
+  // ── Programmatic navigation (dots / card tap) ────────────────────────────
+  // All cards are equal-width so the scroll target is simply idx * cardStep.
   const scrollToCard = useCallback((idx: number) => {
     const el = carouselRef.current;
-    if (!el) return;
-    const card = el.children[idx] as HTMLElement | undefined;
-    if (!card) return;
+    if (!el || !el.children.length) return;
+    const cardStep = (el.children[0] as HTMLElement).offsetWidth + 10;
     setCarouselIndex(idx);
-    requestAnimationFrame(() => {
-      const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
-      el.scrollTo({ left, behavior: 'smooth' });
-    });
+    el.scrollTo({ left: idx * cardStep, behavior: 'smooth' });
   }, []);
-
-
-  // ── Re-centre after the active card expands (layout reflow) ────────────
-  useEffect(() => {
-    if (view.level !== 2 || drillItems.length === 0) return;
-    const raf = requestAnimationFrame(() => { scrollToCard(carouselIndex); });
-    return () => cancelAnimationFrame(raf);
-  }, [carouselIndex, view.level, drillItems.length, scrollToCard]);
 
   // ── Reset to card 0 when a new category is loaded ──────────────────────
   useEffect(() => {
@@ -510,7 +486,7 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
         </div>
 
-        {/* Carousel — onScroll picks the closest card to centre */}
+        {/* Carousel */}
         <div
           ref={carouselRef}
           onScroll={handleCarouselScroll}
@@ -519,6 +495,7 @@ export default function ExploreSwiper({
             alignItems: 'center',
             overflowX: 'auto',
             overflowY: 'hidden',
+            scrollSnapType: 'x mandatory',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-x',
             gap: '10px',
@@ -546,8 +523,9 @@ export default function ExploreSwiper({
                   }
                 }}
                 style={{
-                  flex: `0 0 ${isActive ? '72%' : '18%'}`,
+                  flex: '0 0 72%',
                   height: isActive ? '380px' : '320px',
+                  scrollSnapAlign: 'center',
                   borderRadius: '20px',
                   overflow: 'hidden',
                   position: 'relative',
@@ -556,7 +534,7 @@ export default function ExploreSwiper({
                   background: hasImage ? 'rgba(20,16,12,1)' : catGradient,
                   flexShrink: 0,
                   opacity: isActive ? 1 : 0.45,
-                  transition: 'flex 400ms cubic-bezier(0.16,1,0.3,1), height 400ms cubic-bezier(0.16,1,0.3,1), opacity 400ms ease',
+                  transition: 'height 400ms cubic-bezier(0.16,1,0.3,1), opacity 400ms ease',
                   boxShadow: isActive ? '0 16px 48px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.3)',
                   touchAction: 'manipulation',
                 } as React.CSSProperties}
@@ -631,7 +609,7 @@ export default function ExploreSwiper({
             {Array.from({ length: dotsCount }).map((_, i) => (
               <button
                 key={i}
-                onClick={() => setCarouselIndex(i)}
+                onClick={() => scrollToCard(i)}
                 style={{
                   width: i === carouselIndex ? '18px' : '5px',
                   height: '5px',
