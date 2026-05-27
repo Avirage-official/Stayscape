@@ -185,6 +185,22 @@ export default function ExploreSwiper({
     });
   }, []);
 
+
+  // ── Re-centre after the active card expands (layout reflow) ────────────
+  useEffect(() => {
+    if (view.level !== 2 || drillItems.length === 0) return;
+    const raf = requestAnimationFrame(() => { scrollToCard(carouselIndex); });
+    return () => cancelAnimationFrame(raf);
+  }, [carouselIndex, view.level, drillItems.length, scrollToCard]);
+
+  // ── Reset to card 0 when a new category is loaded ──────────────────────
+  useEffect(() => {
+    if (drillItems.length === 0) return;
+    setCarouselIndex(0);
+    const el = carouselRef.current;
+    if (el) el.scrollLeft = 0;
+  }, [drillItems]);
+
   const fetchDrillData = useCallback(async (sectionId: string, region: RegionOption, category: string | null) => {
     const cacheKey: DrillCacheKey = `${sectionId}:${region.id}:${category ?? 'all'}`;
     const cached = cacheRef.current.get(cacheKey);
@@ -617,7 +633,7 @@ export default function ExploreSwiper({
             {Array.from({ length: dotsCount }).map((_, i) => (
               <button
                 key={i}
-                onClick={() => scrollToCard(i)}
+                onClick={() => setCarouselIndex(i)}
                 style={{
                   width: i === carouselIndex ? '18px' : '5px',
                   height: '5px',
@@ -692,7 +708,7 @@ export default function ExploreSwiper({
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y' } as React.CSSProperties}>
+        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y pan-x' } as React.CSSProperties}>
           {view.level === 1 && renderL1CategoryGrid()}
           {view.level === 2 && renderL2ItemList()}
         </div>
