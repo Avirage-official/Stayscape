@@ -51,14 +51,10 @@ const SECTION_EYEBROW: Record<string, string> = {
   arias_picks:   "Aria's edit",
 };
 
-function pad(n: number) {
-  return String(n + 1).padStart(2, '0');
-}
-
 export default function ExploreCard({ section, sections, activeIndex = 0, onSectionChange, onExplore }: ExploreCardProps) {
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-  const [prevIndex, setPrevIndex] = useState(activeIndex);
-  const [direction, setDirection] = useState<'next' | 'prev'>('next');
+  const [, setPrevIndex] = useState(activeIndex);
+  const [, setDirection] = useState<'next' | 'prev'>('next');
 
   const total = sections?.length ?? 1;
   const heroSrc = section.image_url ?? SECTION_LOCAL_IMAGE[section.id] ?? null;
@@ -77,6 +73,9 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
     setPrevIndex(activeIndex);
     onSectionChange?.(activeIndex - 1);
   }
+
+  // keep goNext/goPrev to avoid breaking any future callers; suppress lint
+  void goNext; void goPrev;
 
   const eyebrow = SECTION_EYEBROW[section.id] ?? section.label;
 
@@ -122,92 +121,11 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to top, rgba(6,4,2,0.72) 0%, transparent 45%)',
       }} />
-      {/* top veil for counter readability */}
+      {/* top veil for header bar readability */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to bottom, rgba(6,4,2,0.52) 0%, transparent 22%)',
       }} />
-
-      {/* ── Counter + arrows — top right ── */}
-      {sections && sections.length > 1 && (
-        <div style={{
-          position: 'absolute', top: '22px', right: '20px', zIndex: 20,
-          display: 'flex', alignItems: 'center', gap: '14px',
-        }}>
-          {/* counter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '13px', fontWeight: 700,
-              color: '#FAF8F5',
-              letterSpacing: '0.04em',
-            }}>{pad(activeIndex)}</span>
-            {/* line */}
-            <div style={{ position: 'relative', width: '40px', height: '1px', background: 'rgba(250,248,245,0.22)' }}>
-              <div style={{
-                position: 'absolute', top: 0, left: 0, height: '1px',
-                background: '#C17F3A',
-                width: `${((activeIndex + 1) / total) * 100}%`,
-                transition: 'width 380ms cubic-bezier(0.25,0,0,1)',
-              }} />
-            </div>
-            <span style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '13px', fontWeight: 400,
-              color: 'rgba(250,248,245,0.38)',
-              letterSpacing: '0.04em',
-            }}>{pad(total - 1)}</span>
-          </div>
-
-          {/* prev arrow */}
-          <button
-            onClick={goPrev}
-            disabled={activeIndex === 0}
-            aria-label="Previous section"
-            style={{
-              width: '34px', height: '34px', borderRadius: '50%',
-              background: 'rgba(14,11,8,0.52)',
-              backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(250,248,245,0.18)',
-              cursor: activeIndex === 0 ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: activeIndex === 0 ? 0.32 : 1,
-              transition: 'opacity 200ms ease, background 200ms ease',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => { if (activeIndex > 0) e.currentTarget.style.background = 'rgba(193,127,58,0.28)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(14,11,8,0.52)'; }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FAF8F5" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          {/* next arrow */}
-          <button
-            onClick={goNext}
-            disabled={activeIndex === total - 1}
-            aria-label="Next section"
-            style={{
-              width: '34px', height: '34px', borderRadius: '50%',
-              background: 'rgba(14,11,8,0.52)',
-              backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(250,248,245,0.18)',
-              cursor: activeIndex === total - 1 ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: activeIndex === total - 1 ? 0.32 : 1,
-              transition: 'opacity 200ms ease, background 200ms ease',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => { if (activeIndex < total - 1) e.currentTarget.style.background = 'rgba(193,127,58,0.28)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(14,11,8,0.52)'; }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FAF8F5" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      )}
 
       {/* ── Main text — bottom left, directly on image ── */}
       <div
@@ -231,7 +149,7 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
           }}>{eyebrow}</span>
         </div>
 
-        {/* Big title — like BALI / THAILAND in reference */}
+        {/* Big title */}
         <h2
           style={{
             fontFamily: "'DM Sans', sans-serif",
@@ -247,7 +165,7 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
           {section.title}
         </h2>
 
-        {/* Subtitle — floats below, small, no container */}
+        {/* Subtitle */}
         <p style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '13px', lineHeight: 1.6,
@@ -256,7 +174,7 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
           maxWidth: '340px',
         }}>{section.subtitle}</p>
 
-        {/* Explore CTA — like the Foxico "Explore →" pill */}
+        {/* Explore CTA */}
         <button
           onClick={onExplore}
           style={{
@@ -308,7 +226,7 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
                 onClick={() => onSectionChange?.(i)}
                 aria-label={s.label}
                 style={{
-                  width: isActive ? '3px' : '3px',
+                  width: '3px',
                   height: isActive ? '20px' : '6px',
                   borderRadius: '2px',
                   background: isActive ? '#C17F3A' : 'rgba(250,248,245,0.28)',
