@@ -129,13 +129,10 @@ export default function ExploreSwiper({
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionOption | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
-  // nudgeRegion: still used for the mobile city-button border highlight
   const [nudgeRegion, setNudgeRegion] = useState(false);
-  // openCityPicker: tells the desktop web panel to open its city dropdown
   const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  // L0 swipe state — only used on the section hero, never on drill levels
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
   const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -233,18 +230,15 @@ export default function ExploreSwiper({
 
   const handleExplore = useCallback(() => {
     if (selectedRegionId) {
-      // City already selected — drill straight in
       const region = regions.find(r => r.id === selectedRegionId);
       if (region) drillToRegion(region);
     } else {
-      // No city selected — open the picker directly so the guest knows what to do.
-      // Mobile: open the bottom sheet. Desktop: open the city dropdown in the side panel.
-      setShowRegionSheet(true);          // mobile bottom sheet
-      setOpenCityPicker(true);           // desktop dropdown (resets via useEffect in panel)
-      setNudgeRegion(true);              // keep the mobile city button highlighted
+      setShowRegionSheet(true);
+      setOpenCityPicker(true);
+      setNudgeRegion(true);
       setTimeout(() => {
         setNudgeRegion(false);
-        setOpenCityPicker(false);        // reset so future prop changes are reactive
+        setOpenCityPicker(false);
       }, 2000);
     }
   }, [selectedRegionId, regions, drillToRegion]);
@@ -276,7 +270,6 @@ export default function ExploreSwiper({
     if (view.level === 0) setHeroImageUrl(sections[activeIndex]?.image_url ?? null);
   }, [activeIndex, sections, view.level]);
 
-  // ─── L0 swipe handlers — ONLY fire when at root section level ──────────────
   function handlePointerDown(e: React.PointerEvent) {
     if (view.level > 0 || showRegionSheet) return;
     pointerStartX.current = e.clientX;
@@ -315,7 +308,11 @@ export default function ExploreSwiper({
       );
     }
     if (drillCategories.length === 0) {
-      return <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '60px', margin: 0 }}>Nothing to explore here yet.</p>;
+      return (
+        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.32)', textAlign: 'center', paddingTop: '60px', margin: '0 24px', lineHeight: 1.6 }}>
+          We&rsquo;re still curating this city — check back soon, or explore somewhere nearby.
+        </p>
+      );
     }
 
     const countMap: Record<string, number> = {};
@@ -371,7 +368,18 @@ export default function ExploreSwiper({
                 <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentColor, boxShadow: `0 0 8px ${accentColor}`, flexShrink: 0 }} />
                   {vibe && (
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FAF8F5', background: 'rgba(0,0,0,0.38)', backdropFilter: 'blur(8px)', borderRadius: '20px', padding: '3px 8px', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{vibe}</span>
+                    <span style={{
+                      fontFamily: "'Cormorant Garamond', Georgia, serif",
+                      fontStyle: 'italic',
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: 'rgba(250,248,245,0.75)',
+                      background: 'rgba(0,0,0,0.38)',
+                      backdropFilter: 'blur(8px)',
+                      borderRadius: '20px',
+                      padding: '3px 8px',
+                      whiteSpace: 'nowrap',
+                    }}>{vibe}</span>
                   )}
                 </div>
                 <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
@@ -410,7 +418,11 @@ export default function ExploreSwiper({
     }
 
     if (drillItems.length === 0) {
-      return <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '60px', margin: 0 }}>Nothing on just yet.</p>;
+      return (
+        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.32)', textAlign: 'center', paddingTop: '60px', margin: '0 24px', lineHeight: 1.6 }}>
+          Nothing on the books just yet — our concierge is working on it.
+        </p>
+      );
     }
 
     function buildPrice(item: DrillPlaceCard | DrillEventCard): string | null {
@@ -494,7 +506,18 @@ export default function ExploreSwiper({
                   <div style={{ position: 'absolute', top: '14px', left: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentFg, boxShadow: `0 0 10px ${accentFg}`, flexShrink: 0 }} />
                     {(vibeTag ?? metaLine) && (
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#FAF8F5', background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(10px)', borderRadius: '20px', padding: '3px 9px', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{vibeTag ?? metaLine}</span>
+                      <span style={{
+                        fontFamily: "'Cormorant Garamond', Georgia, serif",
+                        fontStyle: 'italic',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: 'rgba(250,248,245,0.75)',
+                        background: 'rgba(0,0,0,0.42)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '20px',
+                        padding: '3px 9px',
+                        whiteSpace: 'nowrap',
+                      }}>{vibeTag ?? metaLine}</span>
                     )}
                   </div>
                 )}
@@ -670,7 +693,7 @@ export default function ExploreSwiper({
               <div style={{ width: '32px', height: '4px', background: 'rgba(250,248,245,0.18)', borderRadius: '2px' }} />
             </div>
             <div style={{ padding: '8px 24px 14px', borderBottom: '1px solid rgba(250,248,245,0.07)', flexShrink: 0 }}>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>Select your city</p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>Where are you exploring first?</p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px', touchAction: 'pan-y' } as React.CSSProperties}>
               {regions.map(region => {

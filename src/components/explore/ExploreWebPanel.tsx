@@ -60,33 +60,22 @@ export default function ExploreWebPanel({
   openCityPicker,
 }: ExploreWebPanelProps) {
   const [ariaQuery, setAriaQuery] = useState('');
-  // cityOpen is true when the parent requests it OR when the user toggles it manually.
-  // We derive the initial value from the prop so we never call setState inside an effect.
   const [cityOpen, setCityOpen] = useState(() => !!openCityPicker);
   const [ariaGateVisible, setAriaGateVisible] = useState(false);
   const ariaGateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // When the parent flips openCityPicker to true after mount, open the picker.
-  // We only ever set state to `true` here (never to false) so there is no
-  // "toggle on every render" risk, and the user can still close it manually.
   const prevOpenCityPickerRef = useRef(openCityPicker);
   if (openCityPicker && !prevOpenCityPickerRef.current) {
-    // Mutate the ref synchronously during render — safe, no setState in effect.
     prevOpenCityPickerRef.current = openCityPicker;
-    // This is a render-time state update via useState initialiser — we can't
-    // call setCityOpen here either.  Use a layout effect instead so it fires
-    // before the browser paints (no cascading-render problem).
   }
 
   useEffect(() => {
     if (openCityPicker && !cityOpen) {
       setCityOpen(true);
     }
-    // We intentionally only track openCityPicker here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCityPicker]);
 
-  // Clear gate message timer on unmount
   useEffect(() => () => {
     if (ariaGateTimerRef.current) clearTimeout(ariaGateTimerRef.current);
   }, []);
@@ -111,7 +100,7 @@ export default function ExploreWebPanel({
       style={{ width: '300px', flexShrink: 0, gap: '10px', overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}
     >
 
-      {/* ── City selector — always visible, always at the top ── */}
+      {/* ── City selector ── */}
       <div style={{ ...GLASS, padding: 0, flexShrink: 0, overflow: 'hidden', animation: nudgeCity ? 'wcNudge 0.45s ease-in-out 4' : 'none' }}>
         <button
           onClick={() => setCityOpen(v => !v)}
@@ -244,7 +233,6 @@ export default function ExploreWebPanel({
               </button>
             )}
 
-            {/* Gate message */}
             <p style={{
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               fontStyle: 'italic',
@@ -256,7 +244,6 @@ export default function ExploreWebPanel({
               Unlock Aria when you book your trip.
             </p>
 
-            {/* Inline gate reply — fades in on send, clears after 3s */}
             {ariaGateVisible && (
               <p style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -303,7 +290,7 @@ export default function ExploreWebPanel({
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
               {regions.length === 0 && (
                 <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', paddingTop: '20px', margin: 0 }}>
-                  No destinations yet.
+                  We&rsquo;re still mapping nearby destinations — check back soon.
                 </p>
               )}
               {regions.map(region => {
@@ -380,7 +367,7 @@ export default function ExploreWebPanel({
         )}
       </div>
 
-      {/* Refresh curation */}
+      {/* Show me something new */}
       <div style={{ ...GLASS, padding: '10px', flexShrink: 0 }}>
         <button
           onClick={onPersonalise}
@@ -389,7 +376,7 @@ export default function ExploreWebPanel({
           onMouseEnter={e => { if (!isPersonalising) e.currentTarget.style.background = '#D6A252'; }}
           onMouseLeave={e => { e.currentTarget.style.background = '#C17F3A'; }}
         >
-          {isPersonalising ? 'Refreshing…' : 'Refresh my curation'}
+          {isPersonalising ? 'Refreshing…' : 'Show me something new'}
         </button>
       </div>
 
