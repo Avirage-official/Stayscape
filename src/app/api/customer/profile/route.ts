@@ -5,8 +5,12 @@
  * and derives persona scores (Cartographer, Epicurean, etc.) into user_profiles.extra.
  *
  * Auth: Bearer token (Supabase session).
- * Body: { name?, age_band?, location_city?, location_country?, novelty?, vibe?,
- *         discovery?, food?, planning?, spend?, dealbreakers? }
+ * Body: { name?, age_band?, location_city?, location_country?, region_id?,
+ *         novelty?, vibe?, discovery?, food?, planning?, spend?, dealbreakers? }
+ *
+ * region_id: canonical UUID from the regions table — set by the country/city
+ *            dropdowns added in onboarding. Supersedes location_city freetext.
+ *
  * Reply: { ok: true } | { error }
  *
  * GET /api/customer/profile
@@ -240,12 +244,22 @@ export async function POST(request: NextRequest) {
     dealbreakers = deduped;
   }
 
-  // ── Free-form fields ──────────────────────────────────────────────────────
+  // ── Free-form / canonical location fields ─────────────────────────────────
 
   const name = typeof body.name === 'string' ? body.name.trim() : null;
-  const location_city = typeof body.location_city === 'string' ? body.location_city.trim() || null : null;
+  // Legacy freetext fields — kept for backwards compatibility, still written
+  // so existing data pipelines aren't broken. Prefer region_id going forward.
+  const location_city =
+    typeof body.location_city === 'string' ? body.location_city.trim() || null : null;
   const location_country =
     typeof body.location_country === 'string' ? body.location_country.trim() || null : null;
+  // Canonical home-city FK — set by the country → city dropdown in onboarding.
+  // When present this is the source of truth for Explore region resolution.
+  const region_id =
+    typeof body.region_id === 'string' && body.region_id.trim() !== ''
+      ? body.region_id.trim()
+      : null;
+
   const now = new Date().toISOString();
 
   // ── Write 1: update users.firstname if name provided ─────────────────────
@@ -294,27 +308,32 @@ export async function POST(request: NextRequest) {
 
   // ── Write 2: upsert user_profiles ─────────────────────────────────────────
 
+  const upsertPayload: Record<string, unknown> = {
+    user_id: user.id,
+    age_band: age_band_result.value,
+    location_city,
+    location_country,
+    novelty: novelty_result.value,
+    vibe: vibes,
+    discovery: discovery_result.value,
+    food: food_result.value,
+    planning: planning_result.value,
+    spend: spend_result.value,
+    dealbreakers,
+    completed: true,
+    completed_at: now,
+    extra: { ...existingExtra, persona_scores: personaScores },
+  };
+
+  // Only write region_id when the client provided one — avoids accidentally
+  // clearing an already-set region on a partial profile update.
+  if (region_id !== null) {
+    upsertPayload.region_id = region_id;
+  }
+
   const { error: profileError } = await supabase
     .from('user_profiles')
-    .upsert(
-      {
-        user_id: user.id,
-        age_band: age_band_result.value,
-        location_city,
-        location_country,
-        novelty: novelty_result.value,
-        vibe: vibes,
-        discovery: discovery_result.value,
-        food: food_result.value,
-        planning: planning_result.value,
-        spend: spend_result.value,
-        dealbreakers,
-        completed: true,
-        completed_at: now,
-        extra: { ...existingExtra, persona_scores: personaScores },
-      },
-      { onConflict: 'user_id' },
-    );
+    .upsert(upsertPayload, { onConflict: 'user_id' });
 
   if (profileError) {
     console.error('[profile] Failed to upsert user_profiles:', profileError.message);
