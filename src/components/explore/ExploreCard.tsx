@@ -51,12 +51,18 @@ const SECTION_EYEBROW: Record<string, string> = {
   arias_picks:   "Aria's edit",
 };
 
+const SECTION_NAV_LABEL: Record<string, string> = {
+  made_for_you:  'Yours',
+  in_your_world: 'Nearby',
+  happening_now: 'Tonight',
+  arias_picks:   'Aria’s Edit',
+};
+
 export default function ExploreCard({ section, sections, activeIndex = 0, onSectionChange, onExplore }: ExploreCardProps) {
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const [, setPrevIndex] = useState(activeIndex);
   const [, setDirection] = useState<'next' | 'prev'>('next');
 
-  const total = sections?.length ?? 1;
   const heroSrc = section.image_url ?? SECTION_LOCAL_IMAGE[section.id] ?? null;
   const imgLoaded = loadedSrc === heroSrc;
 
@@ -170,9 +176,90 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '13px', lineHeight: 1.6,
           color: 'rgba(250,248,245,0.62)',
-          margin: '0 0 22px',
+          margin: '0 0 18px',
           maxWidth: '340px',
         }}>{section.subtitle}</p>
+
+        {/* ── Editorial section nav — thin rule + labels ── */}
+        {sections && sections.length > 1 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0',
+              marginBottom: '20px',
+            }}
+          >
+            {sections.map((s, i) => {
+              const isActive = i === activeIndex;
+              const isLast = i === sections.length - 1;
+              return (
+                <div
+                  key={s.id}
+                  style={{ display: 'flex', alignItems: 'flex-start' }}
+                >
+                  {/* Section label + active dot */}
+                  <button
+                    onClick={() => onSectionChange?.(i)}
+                    aria-label={s.label}
+                    aria-current={isActive ? 'true' : undefined}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: isActive ? 'default' : 'pointer',
+                      padding: '0 10px 0 0',
+                      transition: 'opacity 220ms ease',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontSize: '10px',
+                        fontWeight: isActive ? 600 : 400,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        color: isActive ? '#FAF8F5' : 'rgba(250,248,245,0.32)',
+                        transition: 'color 220ms ease, font-weight 220ms ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {SECTION_NAV_LABEL[s.id] ?? s.label}
+                    </span>
+                    {/* Active indicator dot */}
+                    <div
+                      style={{
+                        width: '3px',
+                        height: '3px',
+                        borderRadius: '50%',
+                        background: isActive ? '#C17F3A' : 'transparent',
+                        transition: 'background 220ms ease',
+                        flexShrink: 0,
+                      }}
+                    />
+                  </button>
+
+                  {/* Vertical rule divider between items */}
+                  {!isLast && (
+                    <div
+                      style={{
+                        width: '1px',
+                        height: '11px',
+                        background: 'rgba(193,127,58,0.35)',
+                        marginRight: '10px',
+                        marginTop: '1px',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Explore CTA */}
         <button
@@ -209,35 +296,6 @@ export default function ExploreCard({ section, sections, activeIndex = 0, onSect
           </svg>
         </button>
       </div>
-
-      {/* ── Section dots — bottom right ── */}
-      {sections && sections.length > 1 && (
-        <div style={{
-          position: 'absolute', bottom: '38px', right: '24px',
-          zIndex: 10,
-          display: 'flex', flexDirection: 'column', gap: '6px',
-          alignItems: 'center',
-        }}>
-          {sections.map((s, i) => {
-            const isActive = i === activeIndex;
-            return (
-              <button
-                key={s.id}
-                onClick={() => onSectionChange?.(i)}
-                aria-label={s.label}
-                style={{
-                  width: '3px',
-                  height: isActive ? '20px' : '6px',
-                  borderRadius: '2px',
-                  background: isActive ? '#C17F3A' : 'rgba(250,248,245,0.28)',
-                  border: 'none', cursor: 'pointer', padding: 0,
-                  transition: 'height 280ms cubic-bezier(0.25,0,0,1), background 280ms ease',
-                }}
-              />
-            );
-          })}
-        </div>
-      )}
 
       <style>{`
         @keyframes ecTextIn {
