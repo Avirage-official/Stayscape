@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ExploreSection, ExploreItem } from './ExploreCard';
 import type { RegionOption } from '@/app/dashboard/explore/page';
 
@@ -17,6 +17,7 @@ export interface ExploreWebPanelProps {
   isPersonalising: boolean;
   onItemClick?: (item: ExploreItem, contentType: ExploreSection['content_type']) => void;
   nudgeCity?: boolean;
+  openCityPicker?: boolean;
 }
 
 const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
@@ -56,9 +57,16 @@ export default function ExploreWebPanel({
   isPersonalising,
   onItemClick,
   nudgeCity,
+  openCityPicker,
 }: ExploreWebPanelProps) {
   const [ariaQuery, setAriaQuery] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
+
+  // When the parent signals that the city picker should open (e.g. guest hits
+  // Explore with no city selected), open the dropdown automatically.
+  useEffect(() => {
+    if (openCityPicker) setCityOpen(true);
+  }, [openCityPicker]);
 
   const active = sections[activeIndex];
   const isAria   = active?.id === 'arias_picks';
@@ -135,8 +143,7 @@ export default function ExploreWebPanel({
                   </p>
                   {isSel && (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   )}
                 </button>
               );

@@ -129,7 +129,10 @@ export default function ExploreSwiper({
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionOption | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  // nudgeRegion: still used for the mobile city-button border highlight
   const [nudgeRegion, setNudgeRegion] = useState(false);
+  // openCityPicker: tells the desktop web panel to open its city dropdown
+  const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   // L0 swipe state — only used on the section hero, never on drill levels
@@ -230,11 +233,19 @@ export default function ExploreSwiper({
 
   const handleExplore = useCallback(() => {
     if (selectedRegionId) {
+      // City already selected — drill straight in
       const region = regions.find(r => r.id === selectedRegionId);
       if (region) drillToRegion(region);
     } else {
-      setNudgeRegion(true);
-      setTimeout(() => setNudgeRegion(false), 2000);
+      // No city selected — open the picker directly so the guest knows what to do.
+      // Mobile: open the bottom sheet. Desktop: open the city dropdown in the side panel.
+      setShowRegionSheet(true);          // mobile bottom sheet
+      setOpenCityPicker(true);           // desktop dropdown (resets via useEffect in panel)
+      setNudgeRegion(true);              // keep the mobile city button highlighted
+      setTimeout(() => {
+        setNudgeRegion(false);
+        setOpenCityPicker(false);        // reset so future prop changes are reactive
+      }, 2000);
     }
   }, [selectedRegionId, regions, drillToRegion]);
 
@@ -267,7 +278,6 @@ export default function ExploreSwiper({
 
   // ─── L0 swipe handlers — ONLY fire when at root section level ──────────────
   function handlePointerDown(e: React.PointerEvent) {
-    // only handle L0 swipe; when inside drill or region sheet, bail immediately
     if (view.level > 0 || showRegionSheet) return;
     pointerStartX.current = e.clientX;
     isDragging.current = false;
@@ -340,7 +350,6 @@ export default function ExploreSwiper({
                   animation: `hsCatIn 400ms ${idx * 35}ms cubic-bezier(0.16,1,0.3,1) both`,
                   transition: 'transform 220ms cubic-bezier(0.25,0,0,1), box-shadow 220ms ease',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.45)',
-                  // IMPORTANT: let browser handle vertical scroll on this element
                   touchAction: 'manipulation',
                 } as React.CSSProperties}
                 onMouseEnter={e => {
@@ -424,7 +433,6 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(Math.min(total, 6) - 1)}</span>
         </div>
 
-        {/* carousel — touch-action pan-x so browser handles horizontal swipe natively */}
         <div
           ref={carouselRef}
           onScroll={() => {
@@ -441,7 +449,6 @@ export default function ExploreSwiper({
             scrollSnapType: 'x mandatory',
             scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch',
-            // KEY FIX: tell the browser this strip scrolls horizontally
             touchAction: 'pan-x',
             gap: '10px',
             padding: '0 14% 0',
@@ -475,7 +482,6 @@ export default function ExploreSwiper({
                   opacity: isActive ? 1 : 0.45,
                   transition: 'flex 400ms cubic-bezier(0.16,1,0.3,1), height 400ms cubic-bezier(0.16,1,0.3,1), opacity 400ms ease',
                   boxShadow: isActive ? '0 16px 48px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.3)',
-                  // let scroll happen on the parent, not steal it
                   touchAction: 'manipulation',
                 } as React.CSSProperties}
               >
@@ -553,11 +559,9 @@ export default function ExploreSwiper({
         borderRadius: '20px',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
-        // KEY FIX: let the drill canvas pass all touch events to children
         touchAction: 'auto',
         ...panelStyle,
       } as React.CSSProperties}>
-        {/* header */}
         <div style={{ padding: '24px 24px 16px', flexShrink: 0, borderBottom: '1px solid rgba(250,248,245,0.07)' }}>
           <button
             onClick={navigateBack}
@@ -590,7 +594,6 @@ export default function ExploreSwiper({
           )}
         </div>
 
-        {/* scrollable content — touch-action auto = browser handles scroll */}
         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y' } as React.CSSProperties}>
           {view.level === 1 && renderL1CategoryGrid()}
           {view.level === 2 && renderL2ItemList()}
@@ -604,7 +607,6 @@ export default function ExploreSwiper({
       style={{
         position: 'relative', width: '100%', height: '100%',
         overflow: 'hidden', background: '#0A0806',
-        // only intercept pointer when L0 is active; drill + region sheet handle their own touch
         touchAction: view.level === 0 && !showRegionSheet ? 'none' : 'auto',
       } as React.CSSProperties}
       onPointerDown={handlePointerDown}
@@ -625,14 +627,12 @@ export default function ExploreSwiper({
           position: 'absolute',
           inset: 0,
           zIndex: 10,
-          // push content up so it clears the bottom nav bar on mobile
           paddingBottom: 80,
           boxSizing: 'border-box',
         }}
       >
         {view.level === 0 ? (
           <>
-            {/* ── Persistent header bar: always visible, never floats over imagery ── */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 10px', background: 'linear-gradient(to bottom, rgba(10,8,6,0.72) 0%, transparent 100%)', pointerEvents: 'none' }}>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0 }}>Explore {greeting}</p>
               <button
@@ -730,6 +730,7 @@ export default function ExploreSwiper({
           onPersonalise={onPersonalise}
           isPersonalising={isPersonalising}
           nudgeCity={nudgeRegion}
+          openCityPicker={openCityPicker}
           onItemClick={(item, contentType) => setSelectedItem({ item, contentType })}
         />
       </div>
