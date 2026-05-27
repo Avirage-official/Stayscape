@@ -218,14 +218,13 @@ export async function upsertPlace(
   };
 
   if (existing) {
-    // Never overwrite images that were manually set or previously enriched.
-    // Only replace them if the incoming sync data actually carries image values.
+    // Existing images are never overwritten by sync — only the admin can remove them.
+    // Sync may only fill in images that are currently missing.
     const preservedImageUrl =
-      input.image_url ?? (existing.image_url as string | null) ?? null;
+      (existing.image_url as string | null) ?? input.image_url ?? null;
+    const existingImageUrls = (existing.image_urls as string[]) ?? [];
     const preservedImageUrls =
-      input.image_urls && input.image_urls.length > 0
-        ? input.image_urls
-        : ((existing.image_urls as string[]) ?? []);
+      existingImageUrls.length > 0 ? existingImageUrls : (input.image_urls ?? []);
 
     const { data, error } = await supabase
       .from('places')
