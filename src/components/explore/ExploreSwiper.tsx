@@ -27,7 +27,7 @@ type SelectedItem = {
 };
 
 const AUTO_DRILL_SECTIONS = new Set(['made_for_you', 'happening_now', 'arias_picks']);
-const DOT_MAX = 12; // max dots shown before truncating
+const DOT_MAX = 12;
 
 function sectionShortLabel(id: string) {
   if (id === 'made_for_you') return 'Yours';
@@ -133,10 +133,8 @@ export default function ExploreSwiper({
   const [nudgeRegion, setNudgeRegion] = useState(false);
   const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
-
-  // Track whether the next scroll event is programmatic (dot click) so we
-  // don't double-fire setCarouselIndex.
-  const programmaticScroll = useRef(false);
+  // Holds the IntersectionObserver so we can disconnect it when items change
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
@@ -144,21 +142,52 @@ export default function ExploreSwiper({
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
 
-  // ── Programmatic carousel navigation ──────────────────────────────────────
-  // Scroll to a card by reading its actual offsetLeft so card-width changes
-  // (active = 72%, inactive = 18%) never cause drift.
+  // ── IntersectionObserver: fires mid-swipe as a card crosses 50% visibility ──
+  // Re-wires every time drillItems changes (new category drilled into).
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el || drillItems.length === 0) return;
+
+    // Disconnect any previous observer
+    observerRef.current?.disconnect();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the entry with the highest intersection ratio — that card is most centred
+        let best = entries[0];
+        for (const e of entries) {
+          if (e.intersectionRatio > (best?.intersectionRatio ?? 0)) best = e;
+        }
+        if (best && best.intersectionRatio >= 0.5) {
+          const idx = Array.from(el.children).indexOf(best.target as HTMLElement);
+          if (idx !== -1) setCarouselIndex(idx);
+        }
+      },
+      {
+        root: el,           // observe within the carousel scroll container
+        threshold: 0.5,     // fire when card is 50%+ visible in the container
+      }
+    );
+
+    // Observe every card
+    Array.from(el.children).forEach(child => observer.observe(child));
+    observerRef.current = observer;
+
+    return () => observer.disconnect();
+  // Re-run when the list of items changes or the view level changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drillItems, view.level]);
+
+  // ── Programmatic dot/button navigation ─────────────────────────────────
+  // Centres a card by its actual DOM offsetLeft — no fixed-width maths.
   const scrollToCard = useCallback((idx: number) => {
     const el = carouselRef.current;
     if (!el) return;
     const card = el.children[idx] as HTMLElement | undefined;
     if (!card) return;
-    programmaticScroll.current = true;
-    // Centre the card: offsetLeft - (container - card) / 2
     const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
     el.scrollTo({ left, behavior: 'smooth' });
-    setCarouselIndex(idx);
-    // Release the programmatic flag after the smooth scroll settles (~600ms)
-    setTimeout(() => { programmaticScroll.current = false; }, 650);
+    // setCarouselIndex is handled by the observer firing on the newly centred card
   }, []);
 
   const fetchDrillData = useCallback(async (sectionId: string, region: RegionOption, category: string | null) => {
@@ -421,7 +450,7 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Centred tall spotlight carousel (no item cap) ────────────────────────
+  // ─── L2: Centred tall spotlight carousel ───────────────────────────────────────
   function renderL2ItemList() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
@@ -456,13 +485,12 @@ export default function ExploreSwiper({
     }
 
     const total = drillItems.length;
-    // Dots: show up to DOT_MAX; if more exist, show a "+N" overflow label instead
     const dotsCount = Math.min(total, DOT_MAX);
     const dotsOverflow = total > DOT_MAX ? total - DOT_MAX : 0;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
-        {/* Counter — now shows real total */}
+        {/* Counter */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '0 20px 12px' }}>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 700, color: '#FAF8F5', letterSpacing: '0.04em' }}>{pad(carouselIndex)}</span>
           <div style={{ position: 'relative', width: '36px', height: '1px', background: 'rgba(250,248,245,0.18)' }}>
@@ -471,25 +499,9 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
         </div>
 
-        {/* Carousel — ALL items, no slice */}
+        {/* Carousel — expansion driven by IntersectionObserver, not click/hover */}
         <div
           ref={carouselRef}
-          onScroll={() => {
-            if (programmaticScroll.current) return;
-            const el = carouselRef.current;
-            if (!el) return;
-            // Determine which card centre is closest to the container centre
-            const containerCentre = el.scrollLeft + el.clientWidth / 2;
-            let closest = 0;
-            let minDist = Infinity;
-            Array.from(el.children).forEach((child, i) => {
-              const c = child as HTMLElement;
-              const cardCentre = c.offsetLeft + c.offsetWidth / 2;
-              const dist = Math.abs(cardCentre - containerCentre);
-              if (dist < minDist) { minDist = dist; closest = i; }
-            });
-            setCarouselIndex(closest);
-          }}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -517,8 +529,8 @@ export default function ExploreSwiper({
               <button
                 key={item.id}
                 onClick={() => {
-                  if (idx !== carouselIndex) {
-                    // Tapping a side card navigates to it instead of opening detail
+                  if (!isActive) {
+                    // Side card tapped: scroll it to centre; observer will expand it
                     scrollToCard(idx);
                   } else {
                     drillToItem(item, active?.id ?? '');
@@ -542,7 +554,12 @@ export default function ExploreSwiper({
                 } as React.CSSProperties}
               >
                 {hasImage && (
-                  <img src={item.image_url!} alt={item.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', transform: isActive ? 'scale(1)' : 'scale(1.06)', transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)' }} loading={idx < 3 ? 'eager' : 'lazy'} />
+                  <img
+                    src={item.image_url!}
+                    alt={item.name}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', transform: isActive ? 'scale(1)' : 'scale(1.06)', transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)' }}
+                    loading={idx < 3 ? 'eager' : 'lazy'}
+                  />
                 )}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,4,2,0.92) 0%, rgba(6,4,2,0.3) 45%, transparent 100%)', pointerEvents: 'none' }} />
 
@@ -600,7 +617,7 @@ export default function ExploreSwiper({
           })}
         </div>
 
-        {/* Dot nav — capped at DOT_MAX, overflow shown as "+N" */}
+        {/* Dots — capped at DOT_MAX, +N overflow */}
         {total > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', paddingTop: '16px' }}>
             {Array.from({ length: dotsCount }).map((_, i) => (
@@ -621,14 +638,7 @@ export default function ExploreSwiper({
               />
             ))}
             {dotsOverflow > 0 && (
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '10px',
-                fontWeight: 600,
-                color: 'rgba(250,248,245,0.35)',
-                letterSpacing: '0.04em',
-                marginLeft: '2px',
-              }}>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em', marginLeft: '2px' }}>
                 +{dotsOverflow}
               </span>
             )}
@@ -717,13 +727,7 @@ export default function ExploreSwiper({
       {/* ── Mobile ── */}
       <div
         className="block md:hidden"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 10,
-          paddingBottom: 80,
-          boxSizing: 'border-box',
-        }}
+        style={{ position: 'absolute', inset: 0, zIndex: 10, paddingBottom: 80, boxSizing: 'border-box' }}
       >
         {view.level === 0 ? (
           <>
