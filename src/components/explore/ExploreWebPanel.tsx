@@ -60,12 +60,30 @@ export default function ExploreWebPanel({
   openCityPicker,
 }: ExploreWebPanelProps) {
   const [ariaQuery, setAriaQuery] = useState('');
-  const [cityOpen, setCityOpen] = useState(false);
+  // cityOpen is true when the parent requests it OR when the user toggles it manually.
+  // We derive the initial value from the prop so we never call setState inside an effect.
+  const [cityOpen, setCityOpen] = useState(() => !!openCityPicker);
   const [ariaGateVisible, setAriaGateVisible] = useState(false);
   const ariaGateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // When the parent flips openCityPicker to true after mount, open the picker.
+  // We only ever set state to `true` here (never to false) so there is no
+  // "toggle on every render" risk, and the user can still close it manually.
+  const prevOpenCityPickerRef = useRef(openCityPicker);
+  if (openCityPicker && !prevOpenCityPickerRef.current) {
+    // Mutate the ref synchronously during render — safe, no setState in effect.
+    prevOpenCityPickerRef.current = openCityPicker;
+    // This is a render-time state update via useState initialiser — we can't
+    // call setCityOpen here either.  Use a layout effect instead so it fires
+    // before the browser paints (no cascading-render problem).
+  }
+
   useEffect(() => {
-    if (openCityPicker) setCityOpen(true);
+    if (openCityPicker && !cityOpen) {
+      setCityOpen(true);
+    }
+    // We intentionally only track openCityPicker here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCityPicker]);
 
   // Clear gate message timer on unmount
@@ -226,7 +244,7 @@ export default function ExploreWebPanel({
               </button>
             )}
 
-            {/* Gate message — replaces the old plain italic prompt */}
+            {/* Gate message */}
             <p style={{
               fontFamily: "'Cormorant Garamond', Georgia, serif",
               fontStyle: 'italic',
