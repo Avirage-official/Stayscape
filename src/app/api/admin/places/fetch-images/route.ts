@@ -1,21 +1,23 @@
 /**
  * POST /api/admin/places/fetch-images
  *
- * Fetches up to 3 Foursquare images for places in a region that
- * currently have no image_url, and updates the places table with
- * image_url + image_urls. Only affects places where
- *   external_source = 'foursquare'.
+ * For each place in a region that has no image_url, fetches a photo via the
+ * Google Places API, downloads it, and stores it in the Supabase `place-images`
+ * storage bucket. The resulting permanent public URL is written back to the
+ * places table.
  *
  * Body:
- *   region_id  — required, which region to update
+ *   region_id  — required
  *   limit?     — max places to process (default 30, max 100)
+ *
+ * Requires GOOGLE_PLACES_API_KEY to be set; returns 503 otherwise.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { requireAdminKey } from '@/lib/auth/require-admin-key';
-import { getPlacePhotoUrls } from '@/lib/services/foursquare';
+import { fetchAndStoreGooglePlaceImage } from '@/lib/services/google-places-image';
 
 interface FetchImagesBody {
   region_id: string;
@@ -28,7 +30,17 @@ export async function POST(request: NextRequest) {
 
   const rateLimit = await applyRateLimit(request, 'admin');
   if (!rateLimit.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: rateLimit.headers });
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
+  if (!process.env.GOOGLE_PLACES_API_KEY) {
+    return NextResponse.json(
+      { error: 'GOOGLE_PLACES_API_KEY is not configured' },
+      { status: 503 },
+    );
   }
 
   try {
@@ -41,19 +53,21 @@ export async function POST(request: NextRequest) {
     const limit = Math.min(body.limit ?? 30, 100);
     const supabase = getSupabaseAdmin();
 
-    // Find Foursquare places in this region with no images yet
+    // Find places in this region that have no image yet
     const { data: places, error } = await supabase
       .from('places')
-      .select('id, external_id, image_url, image_urls')
+      .select('id, name, city, country_code')
       .eq('region_id', body.region_id)
-      .eq('external_source', 'foursquare')
       .is('image_url', null)
       .limit(limit);
 
     if (error) throw new Error(error.message);
 
     if (!places || places.length === 0) {
-      return NextResponse.json({ data: { updated: 0, skipped: 0, failed: 0, total: 0, message: 'No Foursquare places without images' } }, { headers: rateLimit.headers });
+      return NextResponse.json(
+        { data: { updated: 0, skipped: 0, failed: 0, total: 0, message: 'No places without images' } },
+        { headers: rateLimit.headers },
+      );
     }
 
     let updated = 0;
@@ -61,22 +75,27 @@ export async function POST(request: NextRequest) {
     let failed = 0;
 
     for (const place of places) {
-      const fsqId = place.external_id as string | null;
-      if (!fsqId) {
-        skipped++;
-        continue;
-      }
-
       try {
-        const urls = await getPlacePhotoUrls(fsqId, 3);
-        if (!urls || urls.length === 0) {
+        const imageUrl = await fetchAndStoreGooglePlaceImage(
+          supabase,
+          place.id as string,
+          place.name as string,
+          (place.city as string | null) ?? '',
+          (place.country_code as string | null) ?? '',
+        );
+
+        if (!imageUrl) {
           skipped++;
           continue;
         }
 
         const { error: updateError } = await supabase
           .from('places')
-          .update({ image_url: urls[0], image_urls: urls })
+          .update({
+            image_url: imageUrl,
+            image_urls: [imageUrl],
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', place.id);
 
         if (updateError) {
@@ -89,9 +108,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      data: { updated, skipped, failed, total: places.length },
-    }, { headers: rateLimit.headers });
+    return NextResponse.json(
+      { data: { updated, skipped, failed, total: places.length } },
+      { headers: rateLimit.headers },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
