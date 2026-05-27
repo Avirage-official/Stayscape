@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
@@ -55,7 +55,7 @@ const PLANNING_OPTIONS = [
   { value: 'planner',      label: 'Spreadsheet, itinerary, fully sorted' },
   { value: 'loose_plan',   label: 'A few anchors, rest is open' },
   { value: 'first_day',    label: 'I plan the first day, then improvise' },
-  { value: 'full_improv',  label: 'Wing it entirely — that\'s the fun' },
+  { value: 'full_improv',  label: "Wing it entirely — that's the fun" },
 ] as const;
 
 const SPEND_OPTIONS = [
@@ -73,6 +73,62 @@ const DEALBREAKER_OPTIONS = [
   { value: 'overspending', label: 'Overspending' },
   { value: 'chaos',        label: 'Disorganised chaos' },
 ] as const;
+
+// ─── Country / city data ──────────────────────────────────────────────────────
+// A curated list of popular travel countries with major cities.
+// Covers the most common home-base selections globally.
+
+const COUNTRY_CITY_MAP: Record<string, string[]> = {
+  'Australia':           ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Gold Coast', 'Canberra'],
+  'Austria':             ['Vienna', 'Salzburg', 'Graz', 'Innsbruck'],
+  'Belgium':             ['Brussels', 'Antwerp', 'Ghent', 'Bruges'],
+  'Brazil':              ['São Paulo', 'Rio de Janeiro', 'Brasília', 'Salvador', 'Fortaleza', 'Belo Horizonte'],
+  'Canada':              ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Ottawa', 'Edmonton', 'Quebec City'],
+  'China':               ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Chengdu', 'Hangzhou', 'Xi\'an'],
+  'Czech Republic':      ['Prague', 'Brno', 'Ostrava'],
+  'Denmark':             ['Copenhagen', 'Aarhus', 'Odense'],
+  'Egypt':               ['Cairo', 'Alexandria', 'Hurghada', 'Sharm el-Sheikh'],
+  'Finland':             ['Helsinki', 'Tampere', 'Turku'],
+  'France':              ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Nice', 'Toulouse', 'Strasbourg'],
+  'Germany':             ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne', 'Stuttgart', 'Düsseldorf'],
+  'Greece':              ['Athens', 'Thessaloniki', 'Heraklion', 'Patras'],
+  'Hong Kong':           ['Hong Kong'],
+  'Hungary':             ['Budapest', 'Debrecen', 'Pécs'],
+  'India':               ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'],
+  'Indonesia':           ['Jakarta', 'Bali', 'Surabaya', 'Bandung', 'Yogyakarta', 'Medan'],
+  'Ireland':             ['Dublin', 'Cork', 'Galway', 'Limerick'],
+  'Israel':              ['Tel Aviv', 'Jerusalem', 'Haifa', 'Eilat'],
+  'Italy':               ['Rome', 'Milan', 'Florence', 'Venice', 'Naples', 'Turin', 'Bologna', 'Palermo'],
+  'Japan':               ['Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Hiroshima'],
+  'Jordan':              ['Amman', 'Aqaba', 'Petra'],
+  'Malaysia':            ['Kuala Lumpur', 'George Town', 'Johor Bahru', 'Kota Kinabalu', 'Ipoh'],
+  'Mexico':              ['Mexico City', 'Guadalajara', 'Monterrey', 'Cancún', 'Puebla', 'Oaxaca'],
+  'Morocco':             ['Casablanca', 'Marrakech', 'Fez', 'Rabat', 'Tangier'],
+  'Netherlands':         ['Amsterdam', 'Rotterdam', 'The Hague', 'Utrecht', 'Eindhoven'],
+  'New Zealand':         ['Auckland', 'Wellington', 'Christchurch', 'Queenstown', 'Hamilton'],
+  'Norway':              ['Oslo', 'Bergen', 'Trondheim', 'Stavanger'],
+  'Philippines':         ['Manila', 'Cebu City', 'Davao', 'Quezon City', 'Makati'],
+  'Poland':              ['Warsaw', 'Kraków', 'Wrocław', 'Gdańsk', 'Poznań'],
+  'Portugal':            ['Lisbon', 'Porto', 'Faro', 'Braga', 'Coimbra'],
+  'Saudi Arabia':        ['Riyadh', 'Jeddah', 'Mecca', 'Medina', 'Dammam'],
+  'Singapore':           ['Singapore'],
+  'South Africa':        ['Cape Town', 'Johannesburg', 'Durban', 'Pretoria'],
+  'South Korea':         ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon'],
+  'Spain':               ['Madrid', 'Barcelona', 'Seville', 'Valencia', 'Bilbao', 'Málaga', 'Granada'],
+  'Sweden':              ['Stockholm', 'Gothenburg', 'Malmö', 'Uppsala'],
+  'Switzerland':         ['Zurich', 'Geneva', 'Basel', 'Bern', 'Lausanne'],
+  'Taiwan':              ['Taipei', 'Taichung', 'Kaohsiung', 'Tainan'],
+  'Thailand':            ['Bangkok', 'Chiang Mai', 'Phuket', 'Pattaya', 'Hua Hin'],
+  'Turkey':              ['Istanbul', 'Ankara', 'Izmir', 'Antalya', 'Bursa'],
+  'United Arab Emirates': ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman'],
+  'United Kingdom':      ['London', 'Manchester', 'Birmingham', 'Edinburgh', 'Glasgow', 'Liverpool', 'Bristol'],
+  'United States':       ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Miami', 'San Francisco', 'Seattle', 'Boston', 'Washington DC', 'Las Vegas', 'Dallas', 'Denver', 'Atlanta', 'Austin'],
+  'Vietnam':             ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Hoi An', 'Nha Trang'],
+};
+
+const ALL_COUNTRIES = Object.keys(COUNTRY_CITY_MAP).sort();
+
+// ─── Step types ───────────────────────────────────────────────────────────────
 
 type Step =
   | 'greeting' | 'name' | 'age_band' | 'location' | 'location_bridge'
@@ -105,11 +161,9 @@ const PANEL_IMAGE: Partial<Record<Step, string>> = {
 
 const ALL_IMAGES: string[] = [
   ...Object.values(PANEL_IMAGE) as string[],
-  // public/onboarding/novelty/
   '/onboarding/novelty/pioneer.jpg',
   '/onboarding/novelty/explorer.jpg',
   '/onboarding/novelty/homebody.jpg',
-  // public/onboarding/vibe/
   '/onboarding/vibe/city.jpg',
   '/onboarding/vibe/culture.jpg',
   '/onboarding/vibe/nature.jpg',
@@ -196,6 +250,10 @@ const GLOBAL_CSS = `
     from { opacity: 0; transform: translateY(16px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
+  @keyframes ob-dropdown {
+    from { opacity: 0; transform: translateY(6px) scaleY(0.96); }
+    to   { opacity: 1; transform: translateY(0) scaleY(1); }
+  }
 
   .ob-input {
     background: #FFFFFF !important;
@@ -227,6 +285,10 @@ const GLOBAL_CSS = `
     transform: translateY(-3px) scale(1.02) !important;
     box-shadow: 0 10px 28px rgba(0,0,0,0.20) !important;
   }
+  .ob-dd-item:hover {
+    background: #F7F6F3 !important;
+    color: #0F0F0F !important;
+  }
 
   @media (max-width: 767px) {
     .ob-right { display: none !important; }
@@ -234,12 +296,6 @@ const GLOBAL_CSS = `
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function parseLocation(raw: string): { city: string; country: string } {
-  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
-  if (parts.length >= 2) return { city: parts[0], country: parts[parts.length - 1] };
-  return { city: raw.trim(), country: '' };
-}
 
 function useImagePreloader(urls: string[]) {
   useEffect(() => {
@@ -255,7 +311,7 @@ const stagger = (i: number, base = 0.06): CSSProperties => ({
   animation: `ob-fade 0.44s cubic-bezier(0.22,1,0.36,1) ${(i * base).toFixed(3)}s both`,
 });
 
-// ─── Three-chapter progress dots: ● ● —— ─────────────────────────────────────
+// ─── Progress dots ────────────────────────────────────────────────────────────
 
 const CHAPTERS: Step[][] = [
   ['greeting', 'name', 'age_band', 'location', 'location_bridge'],
@@ -284,7 +340,221 @@ function ProgressDots({ step }: { step: Step }) {
   );
 }
 
-// ─── Right panel: crossfade artwork + floating card ───────────────────────────
+// ─── Searchable dropdown ──────────────────────────────────────────────────────
+
+interface SearchDropdownProps {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  label: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
+}
+
+function SearchDropdown({ options, value, onChange, placeholder, label, disabled, autoFocus }: SearchDropdownProps) {
+  const [open, setOpen]     = useState(false);
+  const [query, setQuery]   = useState('');
+  const containerRef        = useRef<HTMLDivElement>(null);
+  const inputRef            = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return options;
+    const q = query.toLowerCase();
+    return options.filter((o) => o.toLowerCase().includes(q));
+  }, [options, query]);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery('');
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  function select(option: string) {
+    onChange(option);
+    setOpen(false);
+    setQuery('');
+  }
+
+  function handleTriggerClick() {
+    if (disabled) return;
+    setOpen((v) => !v);
+    // Focus the search input when opening
+    setTimeout(() => inputRef.current?.focus(), 30);
+  }
+
+  const fieldLabelStyle: CSSProperties = {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: 500,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: C.muted,
+    marginBottom: '8px',
+    fontFamily: SANS,
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <label style={fieldLabelStyle}>{label}</label>
+
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={handleTriggerClick}
+        disabled={disabled}
+        style={{
+          width: '100%',
+          height: '52px',
+          padding: '0 18px',
+          borderRadius: '14px',
+          background: C.surface,
+          border: `1px solid ${open ? C.ink : C.line}`,
+          color: value ? C.ink : C.muted,
+          fontSize: '15px',
+          fontFamily: SANS,
+          fontWeight: 400,
+          outline: 'none',
+          transition: 'border-color 150ms ease',
+          boxSizing: 'border-box',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          opacity: disabled ? 0.42 : 1,
+          textAlign: 'left',
+        }}
+      >
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value || placeholder}
+        </span>
+        {/* Chevron */}
+        <svg
+          width="12" height="12" viewBox="0 0 24 24" fill="none"
+          stroke={C.muted} strokeWidth={2.2}
+          style={{ flexShrink: 0, transition: 'transform 180ms ease', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 6px)',
+          left: 0,
+          right: 0,
+          background: C.surface,
+          border: `1px solid ${C.line}`,
+          borderRadius: '16px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+          zIndex: 100,
+          overflow: 'hidden',
+          animation: 'ob-dropdown 0.22s cubic-bezier(0.22,1,0.36,1) both',
+          transformOrigin: 'top',
+        }}>
+          {/* Search input */}
+          <div style={{ padding: '10px 10px 6px', borderBottom: `1px solid ${C.line}` }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: C.bg,
+              borderRadius: '10px',
+              padding: '0 12px',
+              height: '38px',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth={2}>
+                <circle cx="11" cy="11" r="8" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                autoFocus={autoFocus}
+                style={{
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  fontFamily: SANS,
+                  fontSize: '13px',
+                  color: C.ink,
+                  fontWeight: 400,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Options list */}
+          <div style={{ maxHeight: '220px', overflowY: 'auto', padding: '6px 6px 8px', scrollbarWidth: 'thin' }}>
+            {filtered.length === 0 ? (
+              <p style={{
+                fontFamily: SERIF,
+                fontStyle: 'italic',
+                fontSize: '14px',
+                color: C.muted,
+                textAlign: 'center',
+                padding: '14px 0',
+                margin: 0,
+              }}>
+                Nothing found
+              </p>
+            ) : filtered.map((option) => {
+              const isSel = option === value;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => select(option)}
+                  className="ob-dd-item"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: isSel ? '#F7F6F3' : 'transparent',
+                    color: isSel ? C.ink : C.soft,
+                    fontFamily: SANS,
+                    fontSize: '14px',
+                    fontWeight: isSel ? 500 : 400,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 100ms ease, color 100ms ease',
+                    outline: 'none',
+                  }}
+                >
+                  <span>{option}</span>
+                  {isSel && (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2.5} style={{ flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Right panel ──────────────────────────────────────────────────────────────
 
 function RightPanel({ src, step }: { src: string; step: Step }) {
   const [layers, setLayers] = useState<{ src: string; key: number; opacity: number }[]>([
@@ -611,33 +881,6 @@ const stepLabel: CSSProperties = {
   margin: 0,
 };
 
-const fieldLabel: CSSProperties = {
-  display: 'block',
-  fontSize: '11px',
-  fontWeight: 500,
-  letterSpacing: '0.04em',
-  textTransform: 'uppercase' as const,
-  color: C.muted,
-  marginBottom: '8px',
-  fontFamily: SANS,
-};
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  height: '52px',
-  padding: '0 18px',
-  borderRadius: '14px',
-  background: C.surface,
-  border: `1px solid ${C.line}`,
-  color: C.ink,
-  fontSize: '15px',
-  fontFamily: SANS,
-  fontWeight: 400,
-  outline: 'none',
-  transition: 'border-color 150ms ease',
-  boxSizing: 'border-box' as const,
-};
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props { userId: string; onCompleted: () => void; }
@@ -645,23 +888,24 @@ interface Props { userId: string; onCompleted: () => void; }
 export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: Props) {
   useImagePreloader(ALL_IMAGES);
 
-  const [step,          setStep]          = useState<Step>('greeting');
-  const [animKey,       setAnimKey]       = useState(0);
-  const [userName,      setUserName]      = useState('');
-  const [nameInput,     setNameInput]     = useState('');
-  const [ageBand,       setAgeBand]       = useState('');
-  const [ageReaction,   setAgeReaction]   = useState('');
-  const [locationInput, setLocationInput] = useState('');
-  const [locationCity,  setLocationCity]  = useState('');
-  const [novelty,       setNovelty]       = useState('');
-  const [vibe,          setVibe]          = useState<string[]>([]);
-  const [discovery,     setDiscovery]     = useState('');
-  const [food,          setFood]          = useState('');
-  const [planning,      setPlanning]      = useState('');
-  const [spend,         setSpend]         = useState('');
-  const [dealbreakers,  setDealbreakers]  = useState<string[]>([]);
-  const [isSaving,      setIsSaving]      = useState(false);
-  const [saveError,     setSaveError]     = useState<string | null>(null);
+  const [step,           setStep]          = useState<Step>('greeting');
+  const [animKey,        setAnimKey]       = useState(0);
+  const [userName,       setUserName]      = useState('');
+  const [nameInput,      setNameInput]     = useState('');
+  const [ageBand,        setAgeBand]       = useState('');
+  const [ageReaction,    setAgeReaction]   = useState('');
+  // Location: separate country + city dropdowns
+  const [locCountry,     setLocCountry]    = useState('');
+  const [locCity,        setLocCity]       = useState('');
+  const [novelty,        setNovelty]       = useState('');
+  const [vibe,           setVibe]          = useState<string[]>([]);
+  const [discovery,      setDiscovery]     = useState('');
+  const [food,           setFood]          = useState('');
+  const [planning,       setPlanning]      = useState('');
+  const [spend,          setSpend]         = useState('');
+  const [dealbreakers,   setDealbreakers]  = useState<string[]>([]);
+  const [isSaving,       setIsSaving]      = useState(false);
+  const [saveError,      setSaveError]     = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, [step]);
@@ -692,6 +936,20 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
     setStep(prev);
   }, [step]);
 
+  // Cities for the selected country
+  const cityOptions = useMemo(
+    () => (locCountry ? (COUNTRY_CITY_MAP[locCountry] ?? []) : []),
+    [locCountry],
+  );
+
+  // Clear city when country changes
+  const handleCountryChange = useCallback((country: string) => {
+    setLocCountry(country);
+    setLocCity('');
+  }, []);
+
+  const locationReady = !!locCountry && !!locCity;
+
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -703,21 +961,20 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
     }
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const { city, country } = parseLocation(locationInput);
     try {
       const res = await fetch('/api/customer/profile', {
         method: 'POST', headers,
         body: JSON.stringify({
-          name:             userName   || undefined,
-          age_band:         ageBand    || undefined,
-          location_city:    city       || undefined,
-          location_country: country    || undefined,
-          novelty:          novelty    || undefined,
+          name:             userName    || undefined,
+          age_band:         ageBand     || undefined,
+          location_city:    locCity     || undefined,
+          location_country: locCountry  || undefined,
+          novelty:          novelty     || undefined,
           vibe:             vibe.length         ? vibe         : undefined,
-          discovery:        discovery  || undefined,
-          food:             food       || undefined,
-          planning:         planning   || undefined,
-          spend:            spend      || undefined,
+          discovery:        discovery   || undefined,
+          food:             food        || undefined,
+          planning:         planning    || undefined,
+          spend:            spend       || undefined,
           dealbreakers:     dealbreakers.length ? dealbreakers : undefined,
         }),
       });
@@ -729,11 +986,11 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
     } finally {
       setIsSaving(false);
     }
-  }, [userName, ageBand, locationInput, novelty, vibe, discovery, food, planning, spend, dealbreakers, onCompleted]);
+  }, [userName, ageBand, locCity, locCountry, novelty, vibe, discovery, food, planning, spend, dealbreakers, onCompleted]);
 
   const panelSrc    = PANEL_IMAGE[step] ?? '/onboarding/scenes/welcome.jpg';
   const displayName = userName || 'you';
-  const displayCity = locationCity || 'That';
+  const displayCity = locCity || locCountry || 'That';
 
   return (
     <div style={{
@@ -755,7 +1012,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
           flexDirection: 'column',
           minHeight: 0,
         }}>
-          {/* Header: wordmark + progress */}
+          {/* Header */}
           <div style={{
             flexShrink: 0,
             padding: 'clamp(22px,3vh,34px) clamp(32px,5vw,60px) 0',
@@ -776,7 +1033,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
             <ProgressDots step={step} />
           </div>
 
-          {/* Scrollable content area */}
+          {/* Scrollable content */}
           <div style={{
             flex: 1,
             overflowY: 'auto',
@@ -786,7 +1043,6 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
             padding: 'clamp(28px,4.5vh,52px) clamp(32px,5vw,64px)',
             minHeight: 0,
           }}>
-            {/* Inner width cap keeps text readable on very wide viewports */}
             <div style={{ maxWidth: '520px' }}>
             <div
               key={`content-${step}-${animKey}`}
@@ -817,7 +1073,13 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                     I&apos;m Aria — and you are?
                   </h2>
                   <div style={stagger(1)}>
-                    <label style={fieldLabel}>Your name</label>
+                    <label style={{
+                      display: 'block', fontSize: '11px', fontWeight: 500,
+                      letterSpacing: '0.04em', textTransform: 'uppercase' as const,
+                      color: C.muted, marginBottom: '8px', fontFamily: SANS,
+                    }}>
+                      Your name
+                    </label>
                     <input
                       className="ob-input"
                       type="text"
@@ -831,7 +1093,14 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                       }}
                       placeholder="Your first name"
                       autoFocus
-                      style={inputStyle}
+                      style={{
+                        width: '100%', height: '52px', padding: '0 18px',
+                        borderRadius: '14px', background: C.surface,
+                        border: `1px solid ${C.line}`, color: C.ink,
+                        fontSize: '15px', fontFamily: SANS, fontWeight: 400,
+                        outline: 'none', transition: 'border-color 150ms ease',
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                   <div style={{ display: 'flex', gap: '10px', ...stagger(2) }}>
@@ -888,11 +1157,8 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                   </div>
                   {ageReaction && (
                     <p key={ageReaction} style={{
-                      fontFamily: SERIF,
-                      fontStyle: 'italic',
-                      fontSize: '16px',
-                      color: C.soft,
-                      margin: 0,
+                      fontFamily: SERIF, fontStyle: 'italic', fontSize: '16px',
+                      color: C.soft, margin: 0,
                       animation: 'ob-reaction 0.38s ease-out both',
                     }}>
                       {ageReaction}
@@ -912,34 +1178,37 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
                   <h2 style={{ ...heading, fontSize: 'clamp(1.7rem,2.8vw,2.4rem)', ...stagger(0) }}>
                     And where do you call mi casa?
                   </h2>
-                  <div style={stagger(1)}>
-                    <label style={fieldLabel}>City, Country</label>
-                    <input
-                      className="ob-input"
-                      type="text"
-                      value={locationInput}
-                      onChange={(e) => setLocationInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && locationInput.trim()) {
-                          const { city } = parseLocation(locationInput);
-                          setLocationCity(city);
-                          advance('location_bridge');
-                        }
-                      }}
-                      placeholder="e.g. Singapore, Singapore"
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', ...stagger(1) }}>
+                    {/* Country dropdown */}
+                    <SearchDropdown
+                      label="Country"
+                      options={ALL_COUNTRIES}
+                      value={locCountry}
+                      onChange={handleCountryChange}
+                      placeholder="Select your country"
                       autoFocus
-                      style={inputStyle}
                     />
+
+                    {/* City dropdown — appears once a country is chosen */}
+                    {locCountry && (
+                      <div style={{ animation: 'ob-fade 0.3s cubic-bezier(0.22,1,0.36,1) both' }}>
+                        <SearchDropdown
+                          label="City"
+                          options={cityOptions}
+                          value={locCity}
+                          onChange={setLocCity}
+                          placeholder="Select your city"
+                        />
+                      </div>
+                    )}
                   </div>
+
                   <div style={{ display: 'flex', gap: '10px', ...stagger(2) }}>
                     <Btn variant="ghost" fullWidth={false} onClick={goBack}>Back</Btn>
                     <Btn
-                      onClick={() => {
-                        const { city } = parseLocation(locationInput);
-                        setLocationCity(city);
-                        advance('location_bridge');
-                      }}
-                      disabled={!locationInput.trim()}
+                      onClick={() => advance('location_bridge')}
+                      disabled={!locationReady}
                     >
                       Continue
                     </Btn>
@@ -1229,7 +1498,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
               )}
 
             </div>
-            </div>{/* /inner width cap */}
+            </div>
           </div>
         </div>
 
