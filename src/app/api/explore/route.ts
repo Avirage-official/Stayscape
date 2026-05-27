@@ -90,11 +90,11 @@ export async function GET(request: NextRequest) {
   const regionOverride = searchParams.get('region_id') ?? null;
 
   try {
-    // Parallel: profile, most-recent stay region, region list, user name
+    // Parallel: profile (now includes region_id), most-recent stay region, region list, user name
     const [profileResult, staysResult, regionsResult, userRow] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('vibe, spend, food, extra')
+        .select('vibe, spend, food, extra, region_id')  // region_id added: home city set during onboarding
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
@@ -119,7 +119,9 @@ export async function GET(request: NextRequest) {
 
     const profileVibes: string[] = profileResult.data?.vibe ?? [];
     const stayRegionId: string | null = staysResult.data?.region_id ?? null;
-    const regionId: string | null = regionOverride ?? stayRegionId;
+    // Priority: URL override → active stay region → home city set during onboarding
+    const profileRegionId: string | null = (profileResult.data?.region_id as string | null) ?? null;
+    const regionId: string | null = regionOverride ?? stayRegionId ?? profileRegionId;
     const regions = regionsResult.data ?? [];
     const firstName = userRow.data?.firstname ?? null;
 
