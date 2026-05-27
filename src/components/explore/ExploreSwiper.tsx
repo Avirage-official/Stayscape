@@ -113,6 +113,20 @@ function pad(n: number) {
   return String(n + 1).padStart(2, '0');
 }
 
+// Returns the index of the card whose centre is closest to the container centre
+function getClosestCardIndex(el: HTMLDivElement): number {
+  const containerCentre = el.scrollLeft + el.clientWidth / 2;
+  let closest = 0;
+  let minDist = Infinity;
+  Array.from(el.children).forEach((child, i) => {
+    const c = child as HTMLElement;
+    const cardCentre = c.offsetLeft + c.offsetWidth / 2;
+    const dist = Math.abs(cardCentre - containerCentre);
+    if (dist < minDist) { minDist = dist; closest = i; }
+  });
+  return closest;
+}
+
 export default function ExploreSwiper({
   sections, regions, selectedRegionId, firstName,
   onPersonalise, isPersonalising, isRefreshing, onRegionChange,
@@ -133,9 +147,7 @@ export default function ExploreSwiper({
   const [nudgeRegion, setNudgeRegion] = useState(false);
   const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const programmaticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const programmaticScrollRef = useRef(false);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
@@ -143,19 +155,34 @@ export default function ExploreSwiper({
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
 
-  // ── Scroll to a card by DOM position (used after expansion reflow) ────────
+  // ── Carousel scroll handler ───────────────────────────────────────────────
+  // Debounced: fires ~80ms after scrolling stops and picks the card whose
+  // centre is closest to the container centre. Works on mobile and desktop.
+  const handleCarouselScroll = useCallback(() => {
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      const el = carouselRef.current;
+      if (!el) return;
+      const idx = getClosestCardIndex(el);
+      setCarouselIndex(idx);
+    }, 80);
+  }, []);
+
+  useEffect(() => () => {
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+  }, []);
+
+  // ── Programmatic navigation (dots / side-card tap) ────────────────────────
   const scrollToCard = useCallback((idx: number) => {
     const el = carouselRef.current;
     if (!el) return;
     const card = el.children[idx] as HTMLElement | undefined;
     if (!card) return;
-    programmaticScrollRef.current = true;
-    if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
-    const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
-    el.scrollTo({ left, behavior: 'smooth' });
-    programmaticTimerRef.current = setTimeout(() => {
-      programmaticScrollRef.current = false;
-    }, 600);
+    setCarouselIndex(idx);
+    requestAnimationFrame(() => {
+      const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
+      el.scrollTo({ left, behavior: 'smooth' });
+    });
   }, []);
 
   // ── Detect centred card from native scroll (debounced 80 ms) ───────────
@@ -454,7 +481,7 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Centred tall spotlight carousel ───────────────────────────────────────
+  // ─── L2: Centred tall spotlight carousel ─────────────────────────────────────
   function renderL2ItemList() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
@@ -503,7 +530,7 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
         </div>
 
-        {/* Carousel — active card detected via onScroll debounce */}
+        {/* Carousel — onScroll picks the closest card to centre */}
         <div
           ref={carouselRef}
           onScroll={handleCarouselScroll}
@@ -513,7 +540,6 @@ export default function ExploreSwiper({
             overflowX: 'auto',
             overflowY: 'hidden',
             scrollSnapType: 'x mandatory',
-            scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-x',
             gap: '10px',
@@ -535,7 +561,7 @@ export default function ExploreSwiper({
                 key={item.id}
                 onClick={() => {
                   if (!isActive) {
-                    setCarouselIndex(idx);
+                    scrollToCard(idx);
                   } else {
                     drillToItem(item, active?.id ?? '');
                   }
@@ -621,7 +647,7 @@ export default function ExploreSwiper({
           })}
         </div>
 
-        {/* Dots — capped at DOT_MAX, +N overflow */}
+        {/* Dots */}
         {total > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', paddingTop: '16px' }}>
             {Array.from({ length: dotsCount }).map((_, i) => (
@@ -782,7 +808,7 @@ export default function ExploreSwiper({
                     key={region.id}
                     onClick={() => { onRegionChange?.(region.id); setShowRegionSheet(false); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box', touchAction: 'manipulation' } as React.CSSProperties}
-                  >
+                    >
                     <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {region.image_url
                         ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
