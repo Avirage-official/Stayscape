@@ -298,79 +298,110 @@ export default function HomeDashboard() {
 
         .hd-greeting-eyebrow {
           font-size: 13px;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.78);
-          margin: 0 0 14px;
           font-weight: 400;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.65);
+          margin: 0 0 10px;
         }
 
         .hd-greeting-name {
-          margin: 0;
-          font-size: clamp(56px, 9vw, 132px);
-          line-height: 0.95;
+          font-size: clamp(3rem, 6vw, 5.5rem);
           font-weight: 300;
+          line-height: 0.95;
           letter-spacing: -0.01em;
           color: #fdf9f2;
+          margin: 0 0 14px;
         }
 
         .hd-greeting-property {
-          margin: 18px 0 0;
-          font-size: clamp(15px, 1.3vw, 18px);
-          color: rgba(253, 249, 242, 0.82);
-          max-width: 520px;
-          line-height: 1.5;
+          font-size: 15px;
           font-weight: 300;
+          color: rgba(253, 249, 242, 0.75);
+          margin: 0;
+          line-height: 1.5;
         }
 
-        /* Stats strip — sits on video, no card */
+        /* Stats strip */
         .hd-stats {
           display: flex;
-          align-items: stretch;
-          gap: 0;
-          margin-top: 24px;
-          max-width: 560px;
-        }
-        .hd-stat {
-          flex: 1;
-          padding: 18px 0;
-          border-left: 1px solid rgba(253, 249, 242, 0.22);
-        }
-        .hd-stat:first-child { border-left: none; padding-left: 0; }
-        .hd-stat:not(:first-child) { padding-left: 22px; }
-        .hd-stat-value {
-          margin: 0;
-          font-size: 38px;
-          line-height: 1;
-          font-weight: 300;
-          color: #fdf9f2;
-        }
-        .hd-stat-label {
-          margin: 8px 0 0;
-          font-size: 10px;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.7);
-          font-weight: 500;
+          gap: 28px;
         }
 
-        /* Right zone — dark rounded panel */
-        .hd-right {
-          background: rgba(20, 16, 12, 0.72);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border: 1px solid rgba(253, 249, 242, 0.08);
-          border-radius: 28px;
-          padding: 28px;
+        .hd-stat {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .hd-stat-value {
+          font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+          font-weight: 300;
+          line-height: 1;
           color: #fdf9f2;
+          margin: 0;
+        }
+
+        .hd-stat-label {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.5);
+          margin: 0;
+        }
+
+        /* Soft card (Bookings & Reservations) */
+        .hd-soft-card {
+          border-radius: 16px;
+          border: 1px solid rgba(253, 249, 242, 0.12);
+          background: rgba(253, 249, 242, 0.07);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          padding: 16px 18px;
+        }
+
+        /* Other stays row */
+        .hd-other-stays-row {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .hd-other-stay {
+          border-radius: 14px;
+          border: 1px solid rgba(253, 249, 242, 0.1);
+          background: rgba(253, 249, 242, 0.06);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          padding: 10px 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          cursor: pointer;
+          color: #fdf9f2;
+          transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .hd-other-stay:hover {
+          background: rgba(253, 249, 242, 0.1);
+          border-color: rgba(253, 249, 242, 0.2);
+        }
+
+        /* Right panel */
+        .hd-right {
           display: flex;
           flex-direction: column;
           gap: 20px;
-          min-height: 480px;
-        }
-
-        @media (min-width: 900px) {
-          .hd-right { min-height: auto; }
+          border-radius: 24px;
+          border: 1px solid rgba(253, 249, 242, 0.1);
+          background: rgba(14, 10, 6, 0.72);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          padding: 28px;
+          color: #fdf9f2;
+          overflow: hidden;
+          position: relative;
         }
 
         .hd-right-header {
@@ -381,116 +412,156 @@ export default function HomeDashboard() {
         }
 
         .hd-right-title {
-          margin: 0;
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 500;
-          color: rgba(253, 249, 242, 0.7);
-          letter-spacing: 0.04em;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.5);
+          margin: 0 0 8px;
         }
 
         .hd-countdown-num {
-          margin: 6px 0 0;
-          font-size: 56px;
-          line-height: 1;
+          font-size: clamp(3.5rem, 6vw, 5rem);
           font-weight: 300;
+          line-height: 0.9;
           color: #fdf9f2;
-          letter-spacing: -0.01em;
+          margin: 0 0 10px;
         }
 
         .hd-countdown-sub {
-          margin: 6px 0 0;
-          font-size: 13px;
-          color: rgba(253, 249, 242, 0.65);
-          font-weight: 300;
+          font-size: 12px;
+          font-weight: 400;
+          color: rgba(253, 249, 242, 0.5);
+          margin: 0;
+          letter-spacing: 0.04em;
         }
 
+        /* Arrow nav buttons */
         .hd-arrow-btn {
-          width: 40px;
-          height: 40px;
-          border-radius: 999px;
-          border: 1px solid rgba(253, 249, 242, 0.22);
-          background: transparent;
-          color: rgba(253, 249, 242, 0.85);
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          border: 1px solid rgba(253, 249, 242, 0.15);
+          background: rgba(253, 249, 242, 0.07);
+          color: rgba(253, 249, 242, 0.7);
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: background 0.2s ease, border-color 0.2s ease;
-        }
-        .hd-arrow-btn:hover {
-          background: rgba(253, 249, 242, 0.08);
-          border-color: rgba(253, 249, 242, 0.4);
+          transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
-        /* Property image inside right panel */
+        .hd-arrow-btn:hover {
+          background: rgba(253, 249, 242, 0.14);
+          border-color: rgba(253, 249, 242, 0.28);
+          color: #fdf9f2;
+        }
+
+        /* Property image card */
         .hd-property-card {
           position: relative;
-          flex: 1;
-          min-height: 240px;
-          border-radius: 22px;
-          overflow: hidden;
-          cursor: pointer;
-          background: rgba(253, 249, 242, 0.05);
-          transition: transform 0.4s ease;
-        }
-        .hd-property-card:hover { transform: translateY(-2px); }
-        .hd-property-card-img {
-          position: absolute;
-          inset: 0;
-          background-size: cover;
-          background-position: center;
-        }
-        .hd-property-card-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(180deg, transparent 50%, rgba(20, 16, 12, 0.85) 100%);
-        }
-        .hd-property-card-meta {
-          position: absolute;
-          left: 22px;
-          right: 22px;
-          bottom: 20px;
-          color: #fdf9f2;
-        }
-
-        /* Bookings & multi-stays — soft glass strips on video */
-        .hd-soft-card {
-          background: rgba(253, 249, 242, 0.1);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(253, 249, 242, 0.18);
-          border-radius: 20px;
-          padding: 18px 20px;
-          color: #fdf9f2;
-        }
-
-        .hd-other-stays-row {
-          display: flex;
-          gap: 12px;
-          overflow-x: auto;
-          padding-bottom: 4px;
-          scrollbar-width: none;
-        }
-        .hd-other-stays-row::-webkit-scrollbar { display: none; }
-
-        .hd-other-stay {
-          flex: 0 0 240px;
-          background: rgba(253, 249, 242, 0.1);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(253, 249, 242, 0.18);
           border-radius: 18px;
-          padding: 14px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          color: #fdf9f2;
-          cursor: pointer;
-          transition: transform 0.2s ease, background 0.2s ease;
+          overflow: hidden;
+          flex: 1;
+          min-height: 180px;
+          background: rgba(253, 249, 242, 0.04);
         }
-        .hd-other-stay:hover {
-          transform: translateY(-2px);
-          background: rgba(253, 249, 242, 0.15);
+
+        .hd-property-card[role="button"] {
+          cursor: pointer;
+        }
+
+        .hd-property-card[role="button"]:hover .hd-property-overlay {
+          background: rgba(14, 10, 6, 0.30);
+        }
+
+        .hd-property-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            180deg,
+            rgba(14, 10, 6, 0.05) 0%,
+            rgba(14, 10, 6, 0.55) 100%
+          );
+          transition: background 0.3s ease;
+        }
+
+        .hd-property-label {
+          position: absolute;
+          bottom: 16px;
+          left: 16px;
+          right: 16px;
+        }
+
+        .hd-property-city {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.6);
+          margin: 0 0 4px;
+        }
+
+        .hd-property-name {
+          font-size: 18px;
+          font-weight: 300;
+          color: #fdf9f2;
+          margin: 0;
+          line-height: 1.25;
+        }
+
+        /* Divider */
+        .hd-divider {
+          height: 1px;
+          background: rgba(253, 249, 242, 0.1);
+          margin: 0;
+        }
+
+        /* Check-in/out row */
+        .hd-checkinout {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+        }
+
+        .hd-checkinout-item {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+        }
+
+        .hd-checkinout-label {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: rgba(253, 249, 242, 0.45);
+          margin: 0;
+        }
+
+        .hd-checkinout-value {
+          font-size: 15px;
+          font-weight: 300;
+          color: #fdf9f2;
+          margin: 0;
+        }
+
+        .hd-checkinout-sep {
+          width: 1px;
+          height: 32px;
+          background: rgba(253, 249, 242, 0.12);
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 899px) {
+          .hd-topbar {
+            padding: 18px 24px;
+          }
+          .hd-right {
+            border-radius: 20px;
+            padding: 22px;
+          }
         }
       `}</style>
 
@@ -499,39 +570,75 @@ export default function HomeDashboard() {
         <video
           src={VIDEO_SRC}
           autoPlay
-          loop
           muted
+          loop
           playsInline
-          poster={propertyImage}
+          preload="auto"
         />
         <div className="hd-video-overlay" />
       </div>
 
-      {/* ── CONTENT LAYER ── */}
+      {/* ── CONTENT ── */}
       <div className="hd-content">
-        {/* TOP BAR */}
-        <MountSection mounted={mounted} delay={0}>
-          <div className="hd-topbar">
-            <span
+        {/* Top bar */}
+        <div className="hd-topbar">
+          <MountSection mounted={mounted} delay={0}>
+            <div
               className={cormorant.className}
               style={{
                 fontSize: 22,
                 fontWeight: 400,
-                color: '#fdf9f2',
-                letterSpacing: '0.01em',
+                fontStyle: 'italic',
+                color: 'rgba(253, 249, 242, 0.9)',
+                letterSpacing: '0.02em',
               }}
             >
               Stayscape
-            </span>
-            <span style={{ width: 22 }} />
-          </div>
-        </MountSection>
+            </div>
+          </MountSection>
 
-        {/* MAIN GRID */}
+          <MountSection mounted={mounted} delay={60}>
+            <button
+              type="button"
+              aria-label="Open notifications"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                border: '1px solid rgba(253, 249, 242, 0.14)',
+                background: 'rgba(253, 249, 242, 0.07)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                color: 'rgba(253, 249, 242, 0.75)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(253, 249, 242, 0.12)';
+                e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.24)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(253, 249, 242, 0.07)';
+                e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.14)';
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </button>
+          </MountSection>
+        </div>
+
+        {/* Main grid */}
         <div className="hd-grid">
-          {/* LEFT ZONE — editorial */}
+          {/* LEFT ZONE — editorial greeting + stats */}
           <div className="hd-left">
-            <MountSection mounted={mounted} delay={120}>
+            {/* Greeting block */}
+            <MountSection mounted={mounted} delay={100}>
               <div>
                 <p className={`${dmSans.className} hd-greeting-eyebrow`}>
                   {greeting}
@@ -550,7 +657,7 @@ export default function HomeDashboard() {
                   </p>
                 ) : (
                   <p className={`${dmSans.className} hd-greeting-property`}>
-                    Add a booking reference to begin your stay.
+                    Your stay will appear here once you add a booking reference.
                   </p>
                 )}
               </div>
@@ -610,7 +717,7 @@ export default function HomeDashboard() {
                         }}
                       >
                         {allStays.length === 0
-                          ? 'No upcoming bookings.'
+                          ? 'Nothing booked yet — let\'s change that.'
                           : `${allStays.length} ${allStays.length === 1 ? 'booking' : 'bookings'}`}
                       </p>
                     )}
@@ -768,104 +875,59 @@ export default function HomeDashboard() {
                   <Shimmer style={{ position: 'absolute', inset: 0, borderRadius: 22 }} />
                 ) : (
                   <>
-                    <div
-                      className="hd-property-card-img"
-                      style={{ backgroundImage: `url(${propertyImage})` }}
+                    <img
+                      src={propertyImage}
+                      alt={propertyName || 'Property'}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                      loading="lazy"
+                      decoding="async"
                     />
-                    <div className="hd-property-card-overlay" />
-                    <div className="hd-property-card-meta">
-                      <p
-                        className={cormorant.className}
-                        style={{
-                          margin: 0,
-                          fontSize: 22,
-                          fontWeight: 400,
-                          fontStyle: propertyName ? 'normal' : 'italic',
-                          color: '#fdf9f2',
-                          lineHeight: 1.15,
-                        }}
-                      >
-                        {propertyName || 'No active stay'}
-                      </p>
-                      {propertyCity ? (
-                        <p
-                          style={{
-                            margin: '4px 0 0',
-                            fontSize: 12,
-                            letterSpacing: '0.16em',
-                            textTransform: 'uppercase',
-                            color: 'rgba(253, 249, 242, 0.78)',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {[propertyCity, propertyCountry].filter(Boolean).join(' · ')}
+                    <div className="hd-property-overlay" />
+                    {propertyName && (
+                      <div className="hd-property-label">
+                        {propertyCity && (
+                          <p className={`${dmSans.className} hd-property-city`}>
+                            {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                        <p className={`${cormorant.className} hd-property-name`}>
+                          {propertyName}
                         </p>
-                      ) : null}
-                    </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
 
-              {/* Check-in / check-out footer */}
+              {/* Divider */}
+              {(checkIn || checkOut) && <div className="hd-divider" />}
+
+              {/* Check-in / check-out row */}
               {(checkIn || checkOut) && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    paddingTop: 4,
-                    borderTop: '1px solid rgba(253, 249, 242, 0.1)',
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 10,
-                        letterSpacing: '0.2em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(253, 249, 242, 0.6)',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Check-in
-                    </p>
-                    <p
-                      className={cormorant.className}
-                      style={{
-                        margin: '6px 0 0',
-                        fontSize: 18,
-                        fontWeight: 400,
-                        color: '#fdf9f2',
-                      }}
-                    >
-                      {formatDayMonth(checkIn)}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 10,
-                        letterSpacing: '0.2em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(253, 249, 242, 0.6)',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Checkout
-                    </p>
-                    <p
-                      className={cormorant.className}
-                      style={{
-                        margin: '6px 0 0',
-                        fontSize: 18,
-                        fontWeight: 400,
-                        color: '#fdf9f2',
-                      }}
-                    >
-                      {formatDayMonth(checkOut)}
-                    </p>
-                  </div>
+                <div className="hd-checkinout">
+                  {checkIn && (
+                    <div className="hd-checkinout-item">
+                      <p className={`${dmSans.className} hd-checkinout-label`}>Check-in</p>
+                      <p className={`${cormorant.className} hd-checkinout-value`}>
+                        {formatDayMonth(checkIn)}
+                      </p>
+                    </div>
+                  )}
+                  {checkIn && checkOut && <div className="hd-checkinout-sep" />}
+                  {checkOut && (
+                    <div className="hd-checkinout-item">
+                      <p className={`${dmSans.className} hd-checkinout-label`}>Check-out</p>
+                      <p className={`${cormorant.className} hd-checkinout-value`}>
+                        {formatDayMonth(checkOut)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -915,7 +977,7 @@ export default function HomeDashboard() {
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                {stay ? 'Add another stay' : 'Add booking reference'}
+                {stay ? 'Add another stay' : 'Add my booking'}
               </button>
             </div>
           </MountSection>
