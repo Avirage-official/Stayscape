@@ -113,6 +113,20 @@ function pad(n: number) {
   return String(n + 1).padStart(2, '0');
 }
 
+// Returns the index of the card whose centre is closest to the container centre
+function getClosestCardIndex(el: HTMLDivElement): number {
+  const containerCentre = el.scrollLeft + el.clientWidth / 2;
+  let closest = 0;
+  let minDist = Infinity;
+  Array.from(el.children).forEach((child, i) => {
+    const c = child as HTMLElement;
+    const cardCentre = c.offsetLeft + c.offsetWidth / 2;
+    const dist = Math.abs(cardCentre - containerCentre);
+    if (dist < minDist) { minDist = dist; closest = i; }
+  });
+  return closest;
+}
+
 export default function ExploreSwiper({
   sections, regions, selectedRegionId, firstName,
   onPersonalise, isPersonalising, isRefreshing, onRegionChange,
@@ -133,7 +147,7 @@ export default function ExploreSwiper({
   const [nudgeRegion, setNudgeRegion] = useState(false);
   const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
@@ -141,58 +155,30 @@ export default function ExploreSwiper({
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
 
-  // ── IntersectionObserver wired to the VIEWPORT (root: null) ──────────────
-  // rootMargin clips to a central horizontal band so only the card physically
-  // centred on screen crosses the threshold — works on mobile where the
-  // carousel container has no fixed height and root: el fires for all cards.
-  useEffect(() => {
-    const el = carouselRef.current;
-    if (!el || drillItems.length === 0) return;
+  // ── Carousel scroll handler ───────────────────────────────────────────────
+  // Debounced: fires ~80ms after scrolling stops and picks the card whose
+  // centre is closest to the container centre. Works on mobile and desktop.
+  const handleCarouselScroll = useCallback(() => {
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      const el = carouselRef.current;
+      if (!el) return;
+      const idx = getClosestCardIndex(el);
+      setCarouselIndex(idx);
+    }, 80);
+  }, []);
 
-    observerRef.current?.disconnect();
-
-    // Shrink the observed zone to the middle 40% of the viewport width.
-    // Cards are ~72vw wide when active; 30% margin each side leaves ~40vw.
-    const hMargin = '-30%';
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the entry with the highest intersection ratio
-        let best: IntersectionObserverEntry | null = null;
-        for (const e of entries) {
-          if (e.isIntersecting && (!best || e.intersectionRatio > best.intersectionRatio)) {
-            best = e;
-          }
-        }
-        if (best) {
-          const idx = Array.from(el.children).indexOf(best.target as HTMLElement);
-          if (idx !== -1) setCarouselIndex(idx);
-        }
-      },
-      {
-        root: null,                          // use the viewport
-        rootMargin: `0px ${hMargin} 0px ${hMargin}`,
-        threshold: 0.5,
-      }
-    );
-
-    Array.from(el.children).forEach(child => observer.observe(child));
-    observerRef.current = observer;
-
-    return () => observer.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drillItems, view.level]);
+  useEffect(() => () => {
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+  }, []);
 
   // ── Programmatic navigation (dots / side-card tap) ────────────────────────
-  // Sets carouselIndex immediately so the card expands at once, then scrolls.
   const scrollToCard = useCallback((idx: number) => {
     const el = carouselRef.current;
     if (!el) return;
     const card = el.children[idx] as HTMLElement | undefined;
     if (!card) return;
-    // Expand immediately — don't wait for observer
     setCarouselIndex(idx);
-    // Then scroll so the snap settles there
     requestAnimationFrame(() => {
       const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
       el.scrollTo({ left, behavior: 'smooth' });
@@ -508,16 +494,16 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
         </div>
 
-        {/* Carousel */}
+        {/* Carousel — onScroll picks the closest card to centre */}
         <div
           ref={carouselRef}
+          onScroll={handleCarouselScroll}
           style={{
             display: 'flex',
             alignItems: 'center',
             overflowX: 'auto',
             overflowY: 'hidden',
             scrollSnapType: 'x mandatory',
-            scrollBehavior: 'smooth',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-x',
             gap: '10px',
@@ -786,7 +772,7 @@ export default function ExploreSwiper({
                     key={region.id}
                     onClick={() => { onRegionChange?.(region.id); setShowRegionSheet(false); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box', touchAction: 'manipulation' } as React.CSSProperties}
-                  >
+                    >
                     <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {region.image_url
                         ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
