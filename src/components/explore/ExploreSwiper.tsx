@@ -133,8 +133,9 @@ export default function ExploreSwiper({
   const [nudgeRegion, setNudgeRegion] = useState(false);
   const [openCityPicker, setOpenCityPicker] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
-  // Holds the IntersectionObserver so we can disconnect it when items change
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const programmaticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const programmaticScrollRef = useRef(false);
 
   const pointerStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
@@ -142,53 +143,54 @@ export default function ExploreSwiper({
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
 
-  // ── IntersectionObserver: fires mid-swipe as a card crosses 50% visibility ──
-  // Re-wires every time drillItems changes (new category drilled into).
-  useEffect(() => {
-    const el = carouselRef.current;
-    if (!el || drillItems.length === 0) return;
-
-    // Disconnect any previous observer
-    observerRef.current?.disconnect();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Find the entry with the highest intersection ratio — that card is most centred
-        let best = entries[0];
-        for (const e of entries) {
-          if (e.intersectionRatio > (best?.intersectionRatio ?? 0)) best = e;
-        }
-        if (best && best.intersectionRatio >= 0.5) {
-          const idx = Array.from(el.children).indexOf(best.target as HTMLElement);
-          if (idx !== -1) setCarouselIndex(idx);
-        }
-      },
-      {
-        root: el,           // observe within the carousel scroll container
-        threshold: 0.5,     // fire when card is 50%+ visible in the container
-      }
-    );
-
-    // Observe every card
-    Array.from(el.children).forEach(child => observer.observe(child));
-    observerRef.current = observer;
-
-    return () => observer.disconnect();
-  // Re-run when the list of items changes or the view level changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drillItems, view.level]);
-
-  // ── Programmatic dot/button navigation ─────────────────────────────────
-  // Centres a card by its actual DOM offsetLeft — no fixed-width maths.
+  // ── Scroll to a card by DOM position (used after expansion reflow) ────────
   const scrollToCard = useCallback((idx: number) => {
     const el = carouselRef.current;
     if (!el) return;
     const card = el.children[idx] as HTMLElement | undefined;
     if (!card) return;
+    programmaticScrollRef.current = true;
+    if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
     const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
     el.scrollTo({ left, behavior: 'smooth' });
-    // setCarouselIndex is handled by the observer firing on the newly centred card
+    programmaticTimerRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 600);
   }, []);
+
+  // ── Detect centred card from native scroll (debounced 80 ms) ───────────
+  const handleCarouselScroll = useCallback(() => {
+    if (programmaticScrollRef.current) return;
+    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+    scrollDebounceRef.current = setTimeout(() => {
+      const el = carouselRef.current;
+      if (!el || programmaticScrollRef.current) return;
+      const containerCenter = el.scrollLeft + el.clientWidth / 2;
+      let closestIdx = 0;
+      let closestDist = Infinity;
+      Array.from(el.children).forEach((child, i) => {
+        const card = child as HTMLElement;
+        const dist = Math.abs((card.offsetLeft + card.offsetWidth / 2) - containerCenter);
+        if (dist < closestDist) { closestDist = dist; closestIdx = i; }
+      });
+      setCarouselIndex(closestIdx);
+    }, 80);
+  }, []);
+
+  // ── Re-centre after the active card expands (layout reflow) ────────────
+  useEffect(() => {
+    if (view.level !== 2 || drillItems.length === 0) return;
+    const raf = requestAnimationFrame(() => { scrollToCard(carouselIndex); });
+    return () => cancelAnimationFrame(raf);
+  }, [carouselIndex, view.level, drillItems.length, scrollToCard]);
+
+  // ── Reset to card 0 when a new category is loaded ──────────────────────
+  useEffect(() => {
+    if (drillItems.length === 0) return;
+    setCarouselIndex(0);
+    const el = carouselRef.current;
+    if (el) el.scrollLeft = 0;
+  }, [drillItems]);
 
   const fetchDrillData = useCallback(async (sectionId: string, region: RegionOption, category: string | null) => {
     const cacheKey: DrillCacheKey = `${sectionId}:${region.id}:${category ?? 'all'}`;
@@ -228,6 +230,8 @@ export default function ExploreSwiper({
   useEffect(() => () => {
     if (panelT1Ref.current) clearTimeout(panelT1Ref.current);
     if (panelT2Ref.current) clearTimeout(panelT2Ref.current);
+    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+    if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
   }, []);
 
   const goTo = useCallback((index: number) => {
@@ -499,9 +503,10 @@ export default function ExploreSwiper({
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
         </div>
 
-        {/* Carousel — expansion driven by IntersectionObserver, not click/hover */}
+        {/* Carousel — active card detected via onScroll debounce */}
         <div
           ref={carouselRef}
+          onScroll={handleCarouselScroll}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -530,8 +535,7 @@ export default function ExploreSwiper({
                 key={item.id}
                 onClick={() => {
                   if (!isActive) {
-                    // Side card tapped: scroll it to centre; observer will expand it
-                    scrollToCard(idx);
+                    setCarouselIndex(idx);
                   } else {
                     drillToItem(item, active?.id ?? '');
                   }
@@ -623,7 +627,7 @@ export default function ExploreSwiper({
             {Array.from({ length: dotsCount }).map((_, i) => (
               <button
                 key={i}
-                onClick={() => scrollToCard(i)}
+                onClick={() => setCarouselIndex(i)}
                 style={{
                   width: i === carouselIndex ? '18px' : '5px',
                   height: '5px',
@@ -698,7 +702,7 @@ export default function ExploreSwiper({
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y' } as React.CSSProperties}>
+        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y pan-x' } as React.CSSProperties}>
           {view.level === 1 && renderL1CategoryGrid()}
           {view.level === 2 && renderL2ItemList()}
         </div>
