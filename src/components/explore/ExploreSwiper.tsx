@@ -486,7 +486,7 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Centred tall spotlight carousel ─────────────────────────────────────
+  // ─── L2: Vertical editorial place list ──────────────────────────────────────
   function renderL2ItemList() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
@@ -496,9 +496,15 @@ export default function ExploreSwiper({
 
     if (drillLoading) {
       return (
-        <div style={{ padding: '16px', display: 'flex', gap: '10px', overflow: 'hidden' }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{ flex: i === 1 ? '0 0 72%' : '0 0 18%', height: '380px', borderRadius: '20px', background: 'rgba(250,248,245,0.05)', animation: `hsSkeleton 1.4s ${i * 0.1}s ease-in-out infinite` }} />
+        <div style={{ padding: '14px 14px 32px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{ borderRadius: '16px', overflow: 'hidden', animation: `hsSkeleton 1.4s ${i * 0.08}s ease-in-out infinite` }}>
+              <div style={{ height: '190px', background: 'rgba(250,248,245,0.05)' }} />
+              <div style={{ height: '62px', background: 'rgba(250,248,245,0.03)', borderTop: '1px solid rgba(250,248,245,0.04)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ height: '12px', width: '55%', borderRadius: '4px', background: 'rgba(250,248,245,0.07)' }} />
+                <div style={{ height: '10px', width: '35%', borderRadius: '4px', background: 'rgba(250,248,245,0.04)' }} />
+              </div>
+            </div>
           ))}
         </div>
       );
@@ -521,164 +527,119 @@ export default function ExploreSwiper({
     }
 
     const total = drillItems.length;
-    const dotsCount = Math.min(total, DOT_MAX);
-    const dotsOverflow = total > DOT_MAX ? total - DOT_MAX : 0;
+    const noun = isEvent ? 'event' : 'place';
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
-        {/* Counter */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '0 20px 12px' }}>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 700, color: '#FAF8F5', letterSpacing: '0.04em' }}>{pad(carouselIndex)}</span>
-          <div style={{ position: 'relative', width: '36px', height: '1px', background: 'rgba(250,248,245,0.18)' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '1px', background: accentFg, width: `${((carouselIndex + 1) / total) * 100}%`, transition: 'width 340ms cubic-bezier(0.25,0,0,1)' }} />
-          </div>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '12px', fontWeight: 400, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em' }}>{pad(total - 1)}</span>
-        </div>
+      <div style={{ padding: '14px 14px 32px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-        {/* Carousel */}
-        <div
-          ref={carouselRef}
-          onScroll={handleCarouselScroll}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-x',
-            gap: '10px',
-            padding: '0 14% 0',
-            scrollbarWidth: 'none',
-          } as React.CSSProperties}
-        >
-          {drillItems.map((item, idx) => {
-            const isActive = idx === carouselIndex;
-            const price = buildPrice(item);
-            const pl = item as DrillPlaceCard;
-            const ev = item as DrillEventCard;
-            const vibeTag = !isEvent && pl.vibes?.[0] ? pl.vibes[0] : null;
-            const metaLine = isEvent ? fmtDate(ev.start_date) : null;
-            const hasImage = !!item.image_url;
+        {/* Count header */}
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.25)', margin: '0 2px 4px' }}>
+          {total} {noun}{total !== 1 ? 's' : ''}
+        </p>
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (!isActive) {
-                    scrollToCard(idx);
-                  } else {
-                    drillToItem(item, active?.id ?? '');
-                  }
-                }}
-                style={{
-                  flex: '0 0 72%',
-                  height: isActive ? '380px' : '320px',
-                  scrollSnapAlign: 'center',
-                  borderRadius: '20px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: hasImage ? 'rgba(20,16,12,1)' : catGradient,
-                  flexShrink: 0,
-                  opacity: isActive ? 1 : 0.45,
-                  transition: 'height 400ms cubic-bezier(0.16,1,0.3,1), opacity 400ms ease',
-                  boxShadow: isActive ? '0 16px 48px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.3)',
-                  touchAction: 'manipulation',
-                } as React.CSSProperties}
-              >
+        {drillItems.map((item, idx) => {
+          const pl = item as DrillPlaceCard;
+          const ev = item as DrillEventCard;
+          const price = buildPrice(item);
+          const vibeTag = !isEvent && pl.vibes?.[0] ? pl.vibes[0] : null;
+          const metaLine = isEvent ? fmtDate(ev.start_date) : null;
+          const hasImage = !!item.image_url;
+          const secondaryText = isEvent
+            ? fmtDate(ev.start_date)
+            : (pl.address ?? pl.vibes?.[1] ?? null);
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => drillToItem(item, active?.id ?? '')}
+              style={{
+                width: '100%',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '1px solid rgba(250,248,245,0.06)',
+                cursor: 'pointer',
+                background: 'rgba(250,248,245,0.03)',
+                display: 'flex',
+                flexDirection: 'column',
+                textAlign: 'left',
+                padding: 0,
+                animation: `hsItemIn 360ms ${idx * 42}ms cubic-bezier(0.16,1,0.3,1) both`,
+                transition: 'background 180ms ease, border-color 180ms ease',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.28)',
+                touchAction: 'manipulation',
+              } as React.CSSProperties}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(250,248,245,0.06)';
+                e.currentTarget.style.borderColor = 'rgba(250,248,245,0.1)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(250,248,245,0.03)';
+                e.currentTarget.style.borderColor = 'rgba(250,248,245,0.06)';
+              }}
+            >
+              {/* Image */}
+              <div style={{ position: 'relative', height: '190px', overflow: 'hidden', background: hasImage ? '#0A0806' : catGradient, flexShrink: 0 }}>
                 {hasImage && (
                   <img
                     src={item.image_url!}
                     alt={item.name}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', transform: isActive ? 'scale(1)' : 'scale(1.06)', transition: 'transform 400ms cubic-bezier(0.16,1,0.3,1)' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
                     loading={idx < 3 ? 'eager' : 'lazy'}
                   />
                 )}
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,4,2,0.92) 0%, rgba(6,4,2,0.3) 45%, transparent 100%)', pointerEvents: 'none' }} />
+                {/* Bottom fade — just enough for legibility, not decorative */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to top, rgba(6,4,2,0.62) 0%, transparent 100%)', pointerEvents: 'none' }} />
 
-                {isActive && (
-                  <div style={{ position: 'absolute', top: '14px', left: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentFg, boxShadow: `0 0 10px ${accentFg}`, flexShrink: 0 }} />
-                    {(vibeTag ?? metaLine) && (
-                      <span style={{
-                        fontFamily: "'Cormorant Garamond', Georgia, serif",
-                        fontStyle: 'italic',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        color: 'rgba(250,248,245,0.75)',
-                        background: 'rgba(0,0,0,0.42)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '20px',
-                        padding: '3px 9px',
-                        whiteSpace: 'nowrap',
-                      }}>{vibeTag ?? metaLine}</span>
+                {/* Top-left: accent dot + vibe/date */}
+                {(vibeTag ?? metaLine) && (
+                  <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentFg, flexShrink: 0 }} />
+                    <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '11px', fontWeight: 500, color: 'rgba(250,248,245,0.78)', background: 'rgba(0,0,0,0.36)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: '20px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                      {vibeTag ?? metaLine}
+                    </span>
+                  </div>
+                )}
+
+                {/* Top-right: price — subdued frosted label */}
+                {price && (
+                  <span style={{ position: 'absolute', top: '10px', right: '10px', fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 600, color: 'rgba(250,248,245,0.7)', background: 'rgba(0,0,0,0.36)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: '8px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                    {price}
+                  </span>
+                )}
+              </div>
+
+              {/* Info row */}
+              <div style={{ padding: '12px 14px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', fontWeight: 700, color: '#FAF8F5', margin: '0 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                    {item.name}
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {!isEvent && pl.rating && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '4px', padding: '1px 5px', lineHeight: 1.6, flexShrink: 0 }}>
+                        ★ {pl.rating.toFixed(1)}
+                      </span>
+                    )}
+                    {isEvent && ev.is_featured && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: accentFg, flexShrink: 0 }}>
+                        Featured
+                      </span>
+                    )}
+                    {secondaryText && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 400, color: 'rgba(250,248,245,0.36)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {secondaryText}
+                      </span>
                     )}
                   </div>
-                )}
-
-                {isActive && (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '18px 18px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '8px' }}>
-                      <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)', fontWeight: 800, color: '#FAF8F5', margin: 0, lineHeight: 1.05, letterSpacing: '-0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{item.name}</h3>
-                      {price && (
-                        <>
-                          <div style={{ width: '1px', height: '14px', background: 'rgba(250,248,245,0.35)', flexShrink: 0 }} />
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 700, color: accentFg, whiteSpace: 'nowrap', flexShrink: 0 }}>{price}</span>
-                        </>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {!isEvent && pl.rating && (
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '5px', padding: '2px 6px', lineHeight: 1.5, flexShrink: 0 }}>★ {pl.rating.toFixed(1)}</span>
-                      )}
-                      {isEvent && ev.is_featured && (
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: accentFg }}>Featured</span>
-                      )}
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={accentFg} strokeWidth={2} style={{ flexShrink: 0 }}>
-                        {isEvent
-                          ? <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>
-                          : <><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" /><circle cx="12" cy="9" r="2.5" /></>}
-                      </svg>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 500, color: accentFg, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {isEvent ? fmtDate(ev.start_date) : (pl.address ?? pl.vibes?.[1] ?? '')}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Dots */}
-        {total > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', paddingTop: '16px' }}>
-            {Array.from({ length: dotsCount }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => scrollToCard(i)}
-                style={{
-                  width: i === carouselIndex ? '18px' : '5px',
-                  height: '5px',
-                  borderRadius: '3px',
-                  background: i === carouselIndex ? accentFg : 'rgba(250,248,245,0.2)',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  transition: 'width 260ms cubic-bezier(0.25,0,0,1), background 260ms ease',
-                  flexShrink: 0,
-                }}
-              />
-            ))}
-            {dotsOverflow > 0 && (
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, color: 'rgba(250,248,245,0.35)', letterSpacing: '0.04em', marginLeft: '2px' }}>
-                +{dotsOverflow}
-              </span>
-            )}
-          </div>
-        )}
+                </div>
+                {/* Tap indicator */}
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.18)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
+          );
+        })}
       </div>
     );
   }
