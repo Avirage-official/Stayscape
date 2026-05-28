@@ -21,7 +21,7 @@ export const metadata = {
   description: 'The terms governing your use of Stayscape.',
 };
 
-const EFFECTIVE_DATE = '26/03/3036';
+const EFFECTIVE_DATE = '26/03/2026';
 
 export default function TermsPage() {
   return (
