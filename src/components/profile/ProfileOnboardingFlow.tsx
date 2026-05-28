@@ -355,7 +355,9 @@ interface SearchDropdownProps {
 function SearchDropdown({ options, value, onChange, placeholder, label, disabled, autoFocus }: SearchDropdownProps) {
   const [open, setOpen]     = useState(false);
   const [query, setQuery]   = useState('');
+  const [fixedRect, setFixedRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef        = useRef<HTMLDivElement>(null);
+  const triggerRef          = useRef<HTMLButtonElement>(null);
   const inputRef            = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
@@ -384,8 +386,11 @@ function SearchDropdown({ options, value, onChange, placeholder, label, disabled
 
   function handleTriggerClick() {
     if (disabled) return;
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setFixedRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    }
     setOpen((v) => !v);
-    // Focus the search input when opening
     setTimeout(() => inputRef.current?.focus(), 30);
   }
 
@@ -406,6 +411,7 @@ function SearchDropdown({ options, value, onChange, placeholder, label, disabled
 
       {/* Trigger */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={handleTriggerClick}
         disabled={disabled}
@@ -445,18 +451,18 @@ function SearchDropdown({ options, value, onChange, placeholder, label, disabled
         </svg>
       </button>
 
-      {/* Dropdown panel */}
-      {open && (
+      {/* Dropdown panel — position:fixed escapes the scroll container's overflow clip */}
+      {open && fixedRect && (
         <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 6px)',
-          left: 0,
-          right: 0,
+          position: 'fixed',
+          top: fixedRect.top,
+          left: fixedRect.left,
+          width: fixedRect.width,
           background: C.surface,
           border: `1px solid ${C.line}`,
           borderRadius: '16px',
           boxShadow: '0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-          zIndex: 100,
+          zIndex: 9999,
           overflow: 'hidden',
           animation: 'ob-dropdown 0.22s cubic-bezier(0.22,1,0.36,1) both',
           transformOrigin: 'top',
