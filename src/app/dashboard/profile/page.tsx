@@ -21,9 +21,15 @@ async function fetchDashboardApi(): Promise<DashboardData> {
 
 function ProfileContent({ _userId }: { _userId: string }) {
   const router = useRouter();
+  const { logout } = useAuth();
   const [errorMsg, setErrorMsg] = useState('');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
+
+  function handleLogout() {
+    logout();
+    router.replace('/guests');
+  }
 
   useEffect(() => {
     fetchDashboardApi()
@@ -162,6 +168,42 @@ function ProfileContent({ _userId }: { _userId: string }) {
               >
                 Your details are managed by your hotel. Contact your property to update personal information.
               </p>
+            </div>
+          )}
+
+          {loadState === 'ready' && (
+            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', gap: 24 }}>
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none', letterSpacing: '0.04em' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--gold)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-muted)'; }}
+                >
+                  Privacy Policy
+                </a>
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none', letterSpacing: '0.04em' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--gold)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-muted)'; }}
+                >
+                  Terms of Service
+                </a>
+              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{ alignSelf: 'flex-start', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, letterSpacing: '0.04em', transition: 'color 0.2s ease' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,80,80,0.85)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
+              >
+                Sign out
+              </button>
             </div>
           )}
         </div>
