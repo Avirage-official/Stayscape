@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
 import { useAuth } from '@/lib/context/auth-context';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 import type { DashboardData } from '@/types/customer';
+import type { DbItineraryListed } from '@/lib/supabase/itinerary-repository';
 import AddStayDialog from '@/components/guest-lounge/AddStayDialog';
 
 /* ─── Fonts ─── */
@@ -25,14 +27,18 @@ const dmSans = DM_Sans({
 
 /* ─── Constants ─── */
 
-const HERO_FALLBACK =
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80&auto=format&fit=crop';
-
 const VIDEO_SRC = '/videos/postlogin.mp4';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-/* ─── Date helpers ─── */
+/* ─── Helpers ─── */
+
+async function getBearerToken(): Promise<string | null> {
+  const supabase = getSupabaseBrowser();
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
 
 function parseLocalDate(dateStr: string): Date {
   return new Date(dateStr + 'T00:00:00');
@@ -54,37 +60,9 @@ function getGreeting(): 'Good morning' | 'Good afternoon' | 'Good evening' {
 
 /* ─── Inline SVG icons ─── */
 
-function IconAirplane() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
-    </svg>
-  );
-}
-
 function IconArrow() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <line x1="5" y1="12" x2="19" y2="12" />
       <polyline points="12 5 19 12 12 19" />
     </svg>
@@ -142,16 +120,16 @@ export default function HomeDashboard() {
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [mounted, setMounted] = useState(false);
   const [addStayOpen, setAddStayOpen] = useState(false);
-  const [selectedStayIdx, setSelectedStayIdx] = useState(0);
 
-  // Mount animation trigger
+  const [itineraries, setItineraries] = useState<DbItineraryListed[] | null>(null);
+  const [itinLoading, setItinLoading] = useState(true);
+
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Reusable dashboard fetcher (used for initial load + after AddStayDialog success)
-  const loadDashboard = React.useCallback(async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       const res = await fetch('/api/customer/dashboard', { credentials: 'same-origin' });
       if (!res.ok) throw new Error('Failed to load dashboard');
@@ -167,35 +145,38 @@ export default function HomeDashboard() {
     void loadDashboard();
   }, [loadDashboard]);
 
-  // All stays (current + upcoming) — drives the selected-stay index
+  useEffect(() => {
+    async function loadItineraries() {
+      const token = await getBearerToken();
+      if (!token) { setItinLoading(false); return; }
+      try {
+        const res = await fetch('/api/customer/itineraries', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const json = await res.json() as { itineraries: DbItineraryListed[] };
+        setItineraries(json.itineraries);
+      } catch {
+        setItineraries([]);
+      } finally {
+        setItinLoading(false);
+      }
+    }
+    void loadItineraries();
+  }, []);
+
+  // Preserved: stays data still fetched for AddStayDialog activation flow
   const allStays = useMemo(() => {
     const current = data?.currentStays ?? [];
     const upcoming = data?.upcomingStays ?? [];
     return [...current, ...upcoming];
   }, [data]);
+  // allStays intentionally kept for future hotel concierge feature
+  void allStays;
 
-  // Derived stay values from the currently selected stay
-  const stay = allStays[selectedStayIdx] ?? null;
   const firstName = data?.profile?.full_name?.split(' ')?.[0] ?? 'Guest';
-  const propertyName = stay?.property?.name ?? '';
-  const propertyCity = stay?.property?.city ?? '';
-  const propertyCountry = stay?.property?.country ?? '';
-  const propertyImage = stay?.property?.image_url ?? HERO_FALLBACK;
-  const checkIn = stay?.check_in ?? null;
-  const checkOut = stay?.check_out ?? null;
-  const guestCount = stay?.guests ?? null;
-  const stayId = stay?.id ?? null;
-
-  const today = useMemo(() => new Date(), []);
-  const checkoutDate = checkOut ? parseLocalDate(checkOut) : null;
-  const nightsLeft = checkoutDate
-    ? Math.max(0, Math.ceil((checkoutDate.getTime() - today.getTime()) / 86400000))
-    : null;
-  const checkOutFormatted = checkOut ? formatDayMonth(checkOut) : null;
   const greeting = getGreeting();
-
-  const otherStays = allStays.filter((_, i) => i !== selectedStayIdx);
-  const hasOtherStays = allStays.length > 1;
+  const isNewUser = !itinLoading && loadState === 'ready' && (!itineraries || itineraries.length === 0);
 
   /* ─── Render ─── */
 
@@ -216,14 +197,9 @@ export default function HomeDashboard() {
           50% { opacity: 1 }
           100% { opacity: 0.5 }
         }
-        @keyframes hd-fade-in {
-          from { opacity: 0 }
-          to { opacity: 1 }
-        }
 
         .hd-body { max-width: 100%; }
 
-        /* Video background */
         .hd-video-wrap {
           position: fixed;
           inset: 0;
@@ -235,7 +211,6 @@ export default function HomeDashboard() {
           height: 100%;
           object-fit: cover;
         }
-        /* Soft warm linen tint over the video for legibility */
         .hd-video-overlay {
           position: absolute;
           inset: 0;
@@ -245,7 +220,6 @@ export default function HomeDashboard() {
           backdrop-filter: blur(0.5px);
         }
 
-        /* Content layer above the video */
         .hd-content {
           position: relative;
           z-index: 1;
@@ -254,7 +228,6 @@ export default function HomeDashboard() {
           flex-direction: column;
         }
 
-        /* Top bar */
         .hd-topbar {
           padding: 22px 36px;
           display: flex;
@@ -262,7 +235,6 @@ export default function HomeDashboard() {
           justify-content: space-between;
         }
 
-        /* Two-column grid */
         .hd-grid {
           flex: 1;
           display: grid;
@@ -287,7 +259,7 @@ export default function HomeDashboard() {
           }
         }
 
-        /* Left zone — editorial */
+        /* Left zone */
         .hd-left {
           display: flex;
           flex-direction: column;
@@ -314,7 +286,7 @@ export default function HomeDashboard() {
           margin: 0 0 14px;
         }
 
-        .hd-greeting-property {
+        .hd-greeting-sub {
           font-size: 15px;
           font-weight: 300;
           color: rgba(253, 249, 242, 0.75);
@@ -322,28 +294,64 @@ export default function HomeDashboard() {
           line-height: 1.5;
         }
 
-        /* Stats strip */
-        .hd-stats {
-          display: flex;
-          gap: 28px;
-        }
-
-        .hd-stat {
+        /* Welcome cards — shown for brand new users */
+        .hd-welcome-cards {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 10px;
         }
 
-        .hd-stat-value {
-          font-size: clamp(1.6rem, 2.8vw, 2.4rem);
-          font-weight: 300;
-          line-height: 1;
+        .hd-welcome-card {
+          border-radius: 14px;
+          border: 1px solid rgba(253, 249, 242, 0.1);
+          background: rgba(253, 249, 242, 0.06);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          padding: 14px 16px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          cursor: pointer;
           color: #fdf9f2;
-          margin: 0;
+          transition: background 0.2s ease, border-color 0.2s ease;
+          text-align: left;
         }
 
-        .hd-stat-label {
-          font-size: 11px;
+        .hd-welcome-card:hover {
+          background: rgba(253, 249, 242, 0.1);
+          border-color: rgba(253, 249, 242, 0.18);
+        }
+
+        /* Shortcut row — shown when user has trips */
+        .hd-shortcuts {
+          display: flex;
+          gap: 12px;
+        }
+
+        .hd-shortcut {
+          flex: 1;
+          border-radius: 14px;
+          border: 1px solid rgba(253, 249, 242, 0.1);
+          background: rgba(253, 249, 242, 0.06);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          padding: 16px;
+          cursor: pointer;
+          color: #fdf9f2;
+          transition: background 0.2s ease, border-color 0.2s ease;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .hd-shortcut:hover {
+          background: rgba(253, 249, 242, 0.11);
+          border-color: rgba(253, 249, 242, 0.2);
+        }
+
+        .hd-shortcut-eyebrow {
+          font-size: 10px;
           font-weight: 500;
           letter-spacing: 0.14em;
           text-transform: uppercase;
@@ -351,41 +359,11 @@ export default function HomeDashboard() {
           margin: 0;
         }
 
-        /* Soft card (Bookings & Reservations) */
-        .hd-soft-card {
-          border-radius: 16px;
-          border: 1px solid rgba(253, 249, 242, 0.12);
-          background: rgba(253, 249, 242, 0.07);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          padding: 16px 18px;
-        }
-
-        /* Other stays row */
-        .hd-other-stays-row {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-
-        .hd-other-stay {
-          border-radius: 14px;
-          border: 1px solid rgba(253, 249, 242, 0.1);
-          background: rgba(253, 249, 242, 0.06);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          padding: 10px 14px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
+        .hd-shortcut-title {
+          font-size: 15px;
+          font-weight: 300;
           color: #fdf9f2;
-          transition: background 0.2s ease, border-color 0.2s ease;
-        }
-
-        .hd-other-stay:hover {
-          background: rgba(253, 249, 242, 0.1);
-          border-color: rgba(253, 249, 242, 0.2);
+          margin: 0;
         }
 
         /* Right panel */
@@ -404,110 +382,33 @@ export default function HomeDashboard() {
           position: relative;
         }
 
-        .hd-right-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 16px;
-        }
-
-        .hd-right-title {
+        .hd-section-label {
           font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.18em;
           text-transform: uppercase;
           color: rgba(253, 249, 242, 0.5);
-          margin: 0 0 8px;
-        }
-
-        .hd-countdown-num {
-          font-size: clamp(3.5rem, 6vw, 5rem);
-          font-weight: 300;
-          line-height: 0.9;
-          color: #fdf9f2;
-          margin: 0 0 10px;
-        }
-
-        .hd-countdown-sub {
-          font-size: 12px;
-          font-weight: 400;
-          color: rgba(253, 249, 242, 0.5);
           margin: 0;
-          letter-spacing: 0.04em;
         }
 
-        /* Arrow nav buttons */
-        .hd-arrow-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          border: 1px solid rgba(253, 249, 242, 0.15);
-          background: rgba(253, 249, 242, 0.07);
-          color: rgba(253, 249, 242, 0.7);
+        /* Itinerary list items */
+        .hd-itin-item {
           display: flex;
           align-items: center;
-          justify-content: center;
+          gap: 14px;
+          padding: 13px 0;
+          border-bottom: 1px solid rgba(253, 249, 242, 0.07);
           cursor: pointer;
-          transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+          transition: opacity 0.18s ease;
         }
 
-        .hd-arrow-btn:hover {
-          background: rgba(253, 249, 242, 0.14);
-          border-color: rgba(253, 249, 242, 0.28);
-          color: #fdf9f2;
+        .hd-itin-item:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
         }
 
-        /* Property image card */
-        .hd-property-card {
-          position: relative;
-          border-radius: 18px;
-          overflow: hidden;
-          flex: 1;
-          min-height: 180px;
-          background: rgba(253, 249, 242, 0.04);
-        }
-
-        .hd-property-card[role="button"] {
-          cursor: pointer;
-        }
-
-        .hd-property-card[role="button"]:hover .hd-property-overlay {
-          background: rgba(14, 10, 6, 0.30);
-        }
-
-        .hd-property-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            180deg,
-            rgba(14, 10, 6, 0.05) 0%,
-            rgba(14, 10, 6, 0.55) 100%
-          );
-          transition: background 0.3s ease;
-        }
-
-        .hd-property-label {
-          position: absolute;
-          bottom: 16px;
-          left: 16px;
-          right: 16px;
-        }
-
-        .hd-property-city {
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.6);
-          margin: 0 0 4px;
-        }
-
-        .hd-property-name {
-          font-size: 18px;
-          font-weight: 300;
-          color: #fdf9f2;
-          margin: 0;
-          line-height: 1.25;
+        .hd-itin-item:hover {
+          opacity: 0.75;
         }
 
         /* Divider */
@@ -517,114 +418,70 @@ export default function HomeDashboard() {
           margin: 0;
         }
 
-        /* Check-in/out row */
-        .hd-checkinout {
-          display: flex;
-          gap: 16px;
+        /* Coming soon badge */
+        .hd-coming-soon {
+          display: inline-flex;
           align-items: center;
-        }
-
-        .hd-checkinout-item {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          flex: 1;
-        }
-
-        .hd-checkinout-label {
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 0.16em;
+          padding: 3px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(200, 150, 90, 0.35);
+          background: rgba(200, 150, 90, 0.08);
+          color: rgba(200, 150, 90, 0.8);
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.45);
-          margin: 0;
         }
 
-        .hd-checkinout-value {
-          font-size: 15px;
-          font-weight: 300;
-          color: #fdf9f2;
-          margin: 0;
+        /* Notification bell button */
+        .hd-bell-btn {
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          border: 1px solid rgba(253, 249, 242, 0.14);
+          background: rgba(253, 249, 242, 0.07);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          color: rgba(253, 249, 242, 0.75);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease;
         }
 
-        .hd-checkinout-sep {
-          width: 1px;
-          height: 32px;
+        .hd-bell-btn:hover {
           background: rgba(253, 249, 242, 0.12);
-          flex-shrink: 0;
+          border-color: rgba(253, 249, 242, 0.24);
         }
 
         @media (max-width: 899px) {
-          .hd-topbar {
-            padding: 18px 24px;
-          }
-          .hd-right {
-            border-radius: 20px;
-            padding: 22px;
-          }
+          .hd-topbar { padding: 18px 24px; }
+          .hd-right { border-radius: 20px; padding: 22px; }
         }
       `}</style>
 
       {/* ── VIDEO BACKGROUND ── */}
       <div className="hd-video-wrap" aria-hidden="true">
-        <video
-          src={VIDEO_SRC}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-        />
+        <video src={VIDEO_SRC} autoPlay muted loop playsInline preload="auto" />
         <div className="hd-video-overlay" />
       </div>
 
       {/* ── CONTENT ── */}
       <div className="hd-content">
+
         {/* Top bar */}
         <div className="hd-topbar">
           <MountSection mounted={mounted} delay={0}>
             <div
               className={cormorant.className}
-              style={{
-                fontSize: 22,
-                fontWeight: 400,
-                fontStyle: 'italic',
-                color: 'rgba(253, 249, 242, 0.9)',
-                letterSpacing: '0.02em',
-              }}
+              style={{ fontSize: 22, fontWeight: 400, fontStyle: 'italic', color: 'rgba(253, 249, 242, 0.9)', letterSpacing: '0.02em' }}
             >
               Stayscape
             </div>
           </MountSection>
-
           <MountSection mounted={mounted} delay={60}>
-            <button
-              type="button"
-              aria-label="Open notifications"
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                border: '1px solid rgba(253, 249, 242, 0.14)',
-                background: 'rgba(253, 249, 242, 0.07)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                color: 'rgba(253, 249, 242, 0.75)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'background 0.2s ease, border-color 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(253, 249, 242, 0.12)';
-                e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.24)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(253, 249, 242, 0.07)';
-                e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.14)';
-              }}
-            >
+            <button type="button" aria-label="Open notifications" className="hd-bell-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -635,356 +492,224 @@ export default function HomeDashboard() {
 
         {/* Main grid */}
         <div className="hd-grid">
-          {/* LEFT ZONE — editorial greeting + stats */}
+
+          {/* ── LEFT ZONE ── */}
           <div className="hd-left">
-            {/* Greeting block */}
+
+            {/* Greeting */}
             <MountSection mounted={mounted} delay={100}>
               <div>
-                <p className={`${dmSans.className} hd-greeting-eyebrow`}>
-                  {greeting}
-                </p>
+                <p className={`${dmSans.className} hd-greeting-eyebrow`}>{greeting}</p>
                 {loadState === 'loading' ? (
                   <Shimmer style={{ height: 96, width: '60%', borderRadius: 12 }} />
                 ) : (
-                  <h1 className={cormorant.className + ' hd-greeting-name'}>
-                    {firstName}.
-                  </h1>
+                  <h1 className={`${cormorant.className} hd-greeting-name`}>{firstName}.</h1>
                 )}
-                {propertyName ? (
-                  <p className={`${dmSans.className} hd-greeting-property`}>
-                    Welcome to <em style={{ fontStyle: 'italic' }}>{propertyName}</em>
-                    {propertyCity ? ` — ${[propertyCity, propertyCountry].filter(Boolean).join(', ')}` : ''}.
-                  </p>
-                ) : (
-                  <p className={`${dmSans.className} hd-greeting-property`}>
-                    Your stay will appear here once you add a booking reference.
-                  </p>
-                )}
+                <p className={`${dmSans.className} hd-greeting-sub`}>
+                  {itinLoading
+                    ? ''
+                    : itineraries && itineraries.length > 0
+                    ? `${itineraries.length} trip${itineraries.length !== 1 ? 's' : ''} in your planner.`
+                    : loadState === 'ready'
+                    ? 'Welcome to Stayscape — your travel journal starts here.'
+                    : ''}
+                </p>
               </div>
             </MountSection>
 
-            {/* Bottom block: stats + bookings + multi-stays */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Stats strip */}
-              <MountSection mounted={mounted} delay={220}>
-                <div className="hd-stats">
+            {/* New user — tab introduction cards */}
+            {isNewUser && (
+              <MountSection mounted={mounted} delay={200}>
+                <div className="hd-welcome-cards">
                   {[
-                    { value: nightsLeft !== null ? String(nightsLeft) : '—', label: 'Nights' },
-                    { value: guestCount !== null ? String(guestCount) : '—', label: 'Guests' },
-                    { value: checkOutFormatted ?? '—', label: 'Checkout' },
-                  ].map((col) => (
-                    <div key={col.label} className="hd-stat">
-                      <p className={cormorant.className + ' hd-stat-value'}>
-                        {col.value}
-                      </p>
-                      <p className={`${dmSans.className} hd-stat-label`}>{col.label}</p>
+                    {
+                      title: 'Explore',
+                      desc: 'Browse and save places wherever you are headed.',
+                      href: '/dashboard/explore',
+                      icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10" />
+                          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      title: 'Planner',
+                      desc: 'Build itineraries for trips, weekends, or just things to do.',
+                      href: '/dashboard/planner',
+                      icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      title: 'Profile',
+                      desc: 'Your preferences help us tailor your experience.',
+                      href: '/dashboard/profile',
+                      icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                      ),
+                    },
+                  ].map((card) => (
+                    <div
+                      key={card.title}
+                      className="hd-welcome-card"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(card.href)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(card.href); } }}
+                    >
+                      <div style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(253,249,242,0.08)', border: '1px solid rgba(253,249,242,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'rgba(253,249,242,0.7)' }}>
+                        {card.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className={dmSans.className} style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#fdf9f2' }}>{card.title}</p>
+                        <p className={dmSans.className} style={{ margin: '2px 0 0', fontSize: 12, color: 'rgba(253,249,242,0.55)', fontWeight: 300 }}>{card.desc}</p>
+                      </div>
+                      <div style={{ color: 'rgba(253,249,242,0.3)', flexShrink: 0 }}>
+                        <IconArrow />
+                      </div>
                     </div>
                   ))}
                 </div>
               </MountSection>
+            )}
 
-              {/* Bookings & Reservations */}
-              <MountSection mounted={mounted} delay={300}>
-                <div
-                  className="hd-soft-card"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 16,
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: '#fdf9f2',
-                      }}
+            {/* Returning user — quick shortcut buttons */}
+            {!isNewUser && !itinLoading && (
+              <MountSection mounted={mounted} delay={220}>
+                <div className="hd-shortcuts">
+                  {[
+                    { eyebrow: 'Discover', title: 'Explore Places', href: '/dashboard/explore' },
+                    { eyebrow: 'Planner', title: 'My Trips', href: '/dashboard/planner' },
+                  ].map((s) => (
+                    <button
+                      key={s.eyebrow}
+                      type="button"
+                      className={`${dmSans.className} hd-shortcut`}
+                      onClick={() => router.push(s.href)}
                     >
-                      Bookings &amp; Reservations
-                    </p>
-                    {loadState === 'loading' ? (
-                      <Shimmer style={{ height: 14, width: 120, marginTop: 4 }} />
-                    ) : (
-                      <p
-                        style={{
-                          margin: '4px 0 0',
-                          fontSize: 12,
-                          color: 'rgba(253, 249, 242, 0.7)',
-                          fontWeight: 300,
-                        }}
-                      >
-                        {allStays.length === 0
-                          ? 'Nothing booked yet — let\'s change that.'
-                          : `${allStays.length} ${allStays.length === 1 ? 'booking' : 'bookings'}`}
-                      </p>
-                    )}
-                  </div>
-                  <div style={{ color: 'rgba(253, 249, 242, 0.7)' }}>
-                    <IconAirplane />
-                  </div>
+                      <p className="hd-shortcut-eyebrow">{s.eyebrow}</p>
+                      <p className="hd-shortcut-title">{s.title}</p>
+                    </button>
+                  ))}
                 </div>
               </MountSection>
-
-              {/* Multiple stays row */}
-              {hasOtherStays && (
-                <MountSection mounted={mounted} delay={380}>
-                  <div className="hd-other-stays-row">
-                    {otherStays.map((s) => {
-                      const name = s.property?.name ?? 'Stay';
-                      const city = s.property?.city ?? '';
-                      const country = s.property?.country ?? '';
-                      const img = s.property?.image_url ?? HERO_FALLBACK;
-                      return (
-                        <div
-                          key={s.id}
-                          className="hd-other-stay"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() =>
-                            s.property?.slug
-                              ? router.push(`/stay/${s.property.slug}/${s.id}`)
-                              : router.push('/dashboard')
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              s.property?.slug
-                                ? router.push(`/stay/${s.property.slug}/${s.id}`)
-                                : router.push('/dashboard');
-                            }
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 44,
-                              height: 44,
-                              borderRadius: 12,
-                              backgroundImage: `url(${img})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                              flexShrink: 0,
-                            }}
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: 13,
-                                fontWeight: 500,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {name}
-                            </p>
-                            <p
-                              style={{
-                                margin: '2px 0 0',
-                                fontSize: 11,
-                                color: 'rgba(253, 249, 242, 0.65)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {[city, country].filter(Boolean).join(', ')}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </MountSection>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* RIGHT ZONE — dark rounded panel */}
+          {/* ── RIGHT ZONE — dark panel ── */}
           <MountSection mounted={mounted} delay={200}>
             <div className="hd-right">
-              <div className="hd-right-header">
+
+              {/* Your Trips header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
                 <div>
-                  <p className={`${dmSans.className} hd-right-title`}>
-                    {nightsLeft !== null && nightsLeft > 0 ? 'Nights remaining' : 'Your next stay'}
-                  </p>
-                  {loadState === 'loading' ? (
-                    <Shimmer style={{ height: 56, width: 100, marginTop: 6 }} />
+                  <p className={`${dmSans.className} hd-section-label`} style={{ marginBottom: 8 }}>Your Trips</p>
+                  {itinLoading ? (
+                    <Shimmer style={{ height: 52, width: 60, borderRadius: 8 }} />
                   ) : (
-                    <>
-                      <p className={cormorant.className + ' hd-countdown-num'}>
-                        {nightsLeft !== null ? nightsLeft : '—'}
-                      </p>
-                      {checkOutFormatted ? (
-                        <p className={`${dmSans.className} hd-countdown-sub`}>
-                          Until checkout · {checkOutFormatted}
-                        </p>
-                      ) : null}
-                    </>
+                    <p className={cormorant.className} style={{ margin: 0, fontSize: 'clamp(2.6rem, 4.5vw, 3.8rem)', fontWeight: 300, lineHeight: 0.9, color: '#fdf9f2' }}>
+                      {itineraries?.length ?? 0}
+                    </p>
                   )}
                 </div>
-
-                {hasOtherStays && (
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      className="hd-arrow-btn"
-                      aria-label="Previous stay"
-                      style={{ transform: 'scaleX(-1)' }}
-                      onClick={() => setSelectedStayIdx((i) => (i - 1 + allStays.length) % allStays.length)}
-                    >
-                      <IconArrow />
-                    </button>
-                    <button
-                      type="button"
-                      className="hd-arrow-btn"
-                      aria-label="Next stay"
-                      onClick={() => setSelectedStayIdx((i) => (i + 1) % allStays.length)}
-                    >
-                      <IconArrow />
-                    </button>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  aria-label="Open planner"
+                  onClick={() => router.push('/dashboard/planner')}
+                  style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid rgba(253,249,242,0.15)', background: 'rgba(253,249,242,0.07)', color: 'rgba(253,249,242,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease', flexShrink: 0 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.14)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.28)'; e.currentTarget.style.color = '#fdf9f2'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.07)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.15)'; e.currentTarget.style.color = 'rgba(253,249,242,0.7)'; }}
+                >
+                  <IconArrow />
+                </button>
               </div>
 
-              {/* Property image card */}
-              <div
-                className="hd-property-card"
-                role={stay?.property?.slug && stayId ? 'button' : undefined}
-                tabIndex={stay?.property?.slug && stayId ? 0 : -1}
-                onClick={() =>
-                  stay?.property?.slug && stayId
-                    ? router.push(`/stay/${stay.property.slug}/${stayId}`)
-                    : undefined
-                }
-                onKeyDown={(e) => {
-                  if (
-                    (e.key === 'Enter' || e.key === ' ') &&
-                    stay?.property?.slug &&
-                    stayId
-                  ) {
-                    e.preventDefault();
-                    router.push(`/stay/${stay.property.slug}/${stayId}`);
-                  }
-                }}
-              >
-                {loadState === 'loading' ? (
-                  <Shimmer style={{ position: 'absolute', inset: 0, borderRadius: 22 }} />
-                ) : (
-                  <>
-                    <img
-                      src={propertyImage}
-                      alt={propertyName || 'Property'}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <div className="hd-property-overlay" />
-                    {propertyName && (
-                      <div className="hd-property-label">
-                        {propertyCity && (
-                          <p className={`${dmSans.className} hd-property-city`}>
-                            {[propertyCity, propertyCountry].filter(Boolean).join(', ')}
+              {/* Itinerary list */}
+              {itinLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Shimmer style={{ height: 50, borderRadius: 8 }} />
+                  <Shimmer style={{ height: 50, borderRadius: 8 }} />
+                </div>
+              ) : itineraries && itineraries.length > 0 ? (
+                <div>
+                  {itineraries.slice(0, 4).map((itin) => {
+                    const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled trip';
+                    const start = itin.stays?.checkindate ?? itin.startdate;
+                    const end = itin.stays?.checkoutdate ?? itin.enddate;
+                    return (
+                      <div
+                        key={itin.id}
+                        className="hd-itin-item"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push('/dashboard/planner')}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push('/dashboard/planner'); } }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className={dmSans.className} style={{ margin: 0, fontSize: 14, fontWeight: 400, color: '#fdf9f2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {title}
                           </p>
-                        )}
-                        <p className={`${cormorant.className} hd-property-name`}>
-                          {propertyName}
-                        </p>
+                          {start && end ? (
+                            <p className={dmSans.className} style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(253,249,242,0.5)', fontWeight: 300 }}>
+                              {formatDayMonth(start)} – {formatDayMonth(end)}
+                            </p>
+                          ) : (
+                            <p className={dmSans.className} style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(253,249,242,0.35)', fontWeight: 300 }}>
+                              No dates set
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ color: 'rgba(253,249,242,0.3)', flexShrink: 0 }}>
+                          <IconArrow />
+                        </div>
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Divider */}
-              {(checkIn || checkOut) && <div className="hd-divider" />}
-
-              {/* Check-in / check-out row */}
-              {(checkIn || checkOut) && (
-                <div className="hd-checkinout">
-                  {checkIn && (
-                    <div className="hd-checkinout-item">
-                      <p className={`${dmSans.className} hd-checkinout-label`}>Check-in</p>
-                      <p className={`${cormorant.className} hd-checkinout-value`}>
-                        {formatDayMonth(checkIn)}
-                      </p>
-                    </div>
-                  )}
-                  {checkIn && checkOut && <div className="hd-checkinout-sep" />}
-                  {checkOut && (
-                    <div className="hd-checkinout-item">
-                      <p className={`${dmSans.className} hd-checkinout-label`}>Check-out</p>
-                      <p className={`${cormorant.className} hd-checkinout-value`}>
-                        {formatDayMonth(checkOut)}
-                      </p>
-                    </div>
-                  )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p className={dmSans.className} style={{ margin: 0, fontSize: 13, color: 'rgba(253,249,242,0.5)', fontWeight: 300, lineHeight: 1.65 }}>
+                    Nothing planned yet. Head to the Planner to start building your first trip.
+                  </p>
+                  <button
+                    type="button"
+                    className={dmSans.className}
+                    onClick={() => router.push('/dashboard/planner')}
+                    style={{ alignSelf: 'flex-start', height: 36, padding: '0 16px', borderRadius: 10, border: '1px solid rgba(253,249,242,0.2)', background: 'rgba(253,249,242,0.07)', color: 'rgba(253,249,242,0.85)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s ease, border-color 0.2s ease' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.12)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.3)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.07)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.2)'; }}
+                  >
+                    Open Planner
+                  </button>
                 </div>
               )}
 
-              {/* Add booking reference — secondary action */}
-              <button
-                type="button"
-                onClick={() => setAddStayOpen(true)}
-                className={dmSans.className}
-                style={{
-                  marginTop: 4,
-                  width: '100%',
-                  height: 44,
-                  borderRadius: 14,
-                  border: '1px solid rgba(253, 249, 242, 0.18)',
-                  background: 'rgba(253, 249, 242, 0.06)',
-                  color: 'rgba(253, 249, 242, 0.85)',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  letterSpacing: '0.02em',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(253, 249, 242, 0.12)';
-                  e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.32)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(253, 249, 242, 0.06)';
-                  e.currentTarget.style.borderColor = 'rgba(253, 249, 242, 0.18)';
-                }}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                {stay ? 'Add another stay' : 'Add my booking'}
-              </button>
+              <div className="hd-divider" />
+
+              {/* Hotel Concierge — Coming Soon */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <p className={`${dmSans.className} hd-section-label`} style={{ margin: 0 }}>Hotel Concierge</p>
+                  <span className="hd-coming-soon">Coming Soon</span>
+                </div>
+                <p className={dmSans.className} style={{ margin: 0, fontSize: 12, color: 'rgba(253,249,242,0.38)', fontWeight: 300, lineHeight: 1.6 }}>
+                  Link your hotel stay to unlock concierge services, in-room requests, and a curated local experience.
+                </p>
+              </div>
+
             </div>
           </MountSection>
+
         </div>
       </div>
 
-      {/* ── ADD STAY DIALOG ── */}
+      {/* ── ADD STAY DIALOG — preserved for hotel concierge launch ── */}
       <AddStayDialog
         open={addStayOpen}
         onOpenChange={setAddStayOpen}
