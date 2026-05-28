@@ -10,7 +10,7 @@ import type { DbSavedPlaceEnriched } from '@/lib/supabase/saved-places-repositor
 import type { DbItineraryListed, DbItineraryItemEnriched } from '@/lib/supabase/itinerary-repository';
 
 type Tab = 'saved' | 'itineraries';
-type MobileTab = 'saved' | 'saved-map' | 'itineraries' | 'itin-map';
+type MobileTab = 'saved' | 'saved-map' | 'itineraries';
 
 async function getBearerToken(): Promise<string | null> {
   const supabase = getSupabaseBrowser();
@@ -56,7 +56,6 @@ export default function PlannerPage() {
   // Mobile
   const [mobileTab, setMobileTab] = useState<MobileTab>('saved');
   const [savedActiveIndex, setSavedActiveIndex] = useState(0);
-  const [selectedItinForMap, setSelectedItinForMap] = useState<DbItineraryListed | null>(null);
 
   const [savedPlaces, setSavedPlaces] = useState<DbSavedPlaceEnriched[] | null>(null);
   const [savedLoading, setSavedLoading] = useState(true);
@@ -115,7 +114,7 @@ export default function PlannerPage() {
 
   function handleMobileTabSwitch(tab: MobileTab) {
     setMobileTab(tab);
-    if ((tab === 'itineraries' || tab === 'itin-map') && itineraries === null && !itinLoading && user) {
+    if (tab === 'itineraries' && itineraries === null && !itinLoading && user) {
       void fetchItineraries();
     }
   }
@@ -128,28 +127,22 @@ export default function PlannerPage() {
     setSavedPlaces(prev => prev?.filter(p => p.place_id !== placeId) ?? null);
   };
 
-  const MOBILE_TABS: { id: MobileTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'saved', label: 'Saved', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg> },
-    { id: 'saved-map', label: 'Map', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg> },
-    { id: 'itineraries', label: 'Trips', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-    { id: 'itin-map', label: 'Trip Map', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
-  ];
 
   return (
     <div
       style={{ height: 'calc(100dvh - 64px)', display: 'flex', flexDirection: 'column', background: BG, overflow: 'hidden' }}
       className="md:h-dvh md:ml-[52px]"
     >
-      {/* ── Mobile 4-tab bar ── */}
+      {/* ── Mobile 2-tab bar ── */}
       <div className="flex md:hidden" style={{ flexShrink:0,borderBottom:`1px solid ${BORDER}`,background:'rgba(10,8,6,0.95)',backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)' }}>
-        {MOBILE_TABS.map(({ id, label, icon }) => {
-          const isActive = mobileTab === id;
+        {(['saved', 'itineraries'] as MobileTab[]).map((id) => {
+          const label = id === 'saved' ? 'Saved' : 'Trips';
+          const isActive = mobileTab === id || (id === 'saved' && mobileTab === 'saved-map');
           return (
             <button key={id} onClick={() => handleMobileTabSwitch(id)}
-              style={{ flex:1,height:52,background:'transparent',border:'none',borderBottom:isActive?`2px solid ${GOLD}`:'2px solid transparent',color:isActive?GOLD:TEXT_MUTED,cursor:'pointer',transition:'color 200ms ease,border-color 200ms ease',fontFamily:"'DM Sans',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,padding:'4px 2px' }}
+              style={{ flex:1,height:52,background:'transparent',border:'none',borderBottom:isActive?`2px solid ${GOLD}`:'2px solid transparent',color:isActive?GOLD:TEXT_MUTED,cursor:'pointer',transition:'color 200ms ease,border-color 200ms ease',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',justifyContent:'center',padding:'4px 2px' }}
             >
-              {icon}
-              <span style={{ fontSize:9,fontWeight:isActive?600:400,letterSpacing:'0.04em' }}>{label}</span>
+              <span style={{ fontSize:13,fontWeight:isActive?600:400,letterSpacing:'0.06em' }}>{label}</span>
             </button>
           );
         })}
@@ -289,13 +282,6 @@ export default function PlannerPage() {
               itineraries={itineraries} isLoading={itinLoading} error={itinError}
               onRetry={() => void fetchItineraries()}
               onDelete={(id) => setItineraries(prev => prev?.filter(i => i.id !== id) ?? null)}
-              onItinerarySelect={(itin) => setSelectedItinForMap(itin)}
-            />
-          )}
-          {mobileTab === 'itin-map' && (
-            <ItinMapMobileTab
-              itinerary={selectedItinForMap}
-              onGoToItineraries={() => handleMobileTabSwitch('itineraries')}
             />
           )}
         </div>
