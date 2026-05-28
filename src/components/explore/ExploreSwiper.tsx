@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ExploreCard, { type ExploreSection, type ExploreItem } from './ExploreCard';
 import ExploreDetailSheet from './ExploreDetailSheet';
 import ExploreWebPanel from './ExploreWebPanel';
@@ -118,6 +119,8 @@ export default function ExploreSwiper({
   sections, regions, selectedRegionId, firstName,
   onPersonalise, isPersonalising, isRefreshing, onRegionChange,
 }: ExploreSwiperProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeIndex, setActiveIndex] = useState(0);
   const [view, setView] = useState<ExploreView>({ level: 0 });
   const [drillItems, setDrillItems] = useState<(DrillPlaceCard | DrillEventCard)[]>([]);
@@ -141,6 +144,45 @@ export default function ExploreSwiper({
   const panelT1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelT2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDrilledCityRef = useRef<string | null>(null);
+  const restoredRef = useRef(false);
+
+  // ── URL param helpers ─────────────────────────────────────────────────────
+  // Encode nav state as ?s=sectionId&r=regionId&c=category so refresh restores position.
+  const updateUrl = useCallback((s?: string, r?: string, c?: string) => {
+    const p = new URLSearchParams();
+    if (s) p.set('s', s);
+    if (r) p.set('r', r);
+    if (c) p.set('c', c);
+    const qs = p.toString();
+    router.replace(`/dashboard/explore${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router]);
+
+  // Restore nav state from URL params on first render (after data is available)
+  useEffect(() => {
+    if (restoredRef.current || !sections.length) return;
+    restoredRef.current = true;
+    const s = searchParams.get('s');
+    const r = searchParams.get('r');
+    const c = searchParams.get('c');
+    if (!s) return;
+    const sIdx = sections.findIndex(sec => sec.id === s);
+    const validIdx = sIdx >= 0 ? sIdx : 0;
+    const section = sections[validIdx];
+    setActiveIndex(validIdx);
+    if (!r) return;
+    const region = regions.find(reg => reg.id === r);
+    if (!region) return;
+    setActiveRegion(region);
+    lastDrilledCityRef.current = region.id;
+    if (!c) {
+      setView({ level: 1, sectionId: section.id });
+      void fetchDrillData(section.id, region, null);
+    } else {
+      setView({ level: 2, sectionId: section.id, region, category: c });
+      void fetchDrillData(section.id, region, c);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections.length]);
 
   // ── Carousel scroll handler ───────────────────────────────────────────────
   // All cards are equal-width so the active index is just scrollLeft / cardStep.
@@ -230,11 +272,13 @@ export default function ExploreSwiper({
           setView({ level: 1, sectionId: targetSection.id });
           void fetchDrillData(targetSection.id, region, null);
         });
+        updateUrl(targetSection.id, region.id);
         return;
       }
     }
     setView({ level: 0 }); setActiveRegion(null);
-  }, [sections, selectedRegionId, regions, transitionPanel, fetchDrillData]);
+    updateUrl(targetSection?.id);
+  }, [sections, selectedRegionId, regions, transitionPanel, fetchDrillData, updateUrl]);
 
   useEffect(() => {
     if (!selectedRegionId || !sections.length) return;
@@ -258,13 +302,15 @@ export default function ExploreSwiper({
     setNextHeroImageUrl(region.image_url ?? null);
     setTimeout(() => { setHeroImageUrl(region.image_url ?? null); setNextHeroImageUrl(null); }, 680);
     transitionPanel(() => { setView({ level: 1, sectionId: active.id }); fetchDrillData(active.id, region, null); });
-  }, [sections, activeIndex, transitionPanel, fetchDrillData]);
+    updateUrl(active.id, region.id);
+  }, [sections, activeIndex, transitionPanel, fetchDrillData, updateUrl]);
 
   const drillToCategory = useCallback((region: RegionOption, category: string) => {
     const active = sections[activeIndex];
     setCarouselIndex(0);
     transitionPanel(() => { setView({ level: 2, sectionId: active.id, region, category }); fetchDrillData(active.id, region, category); });
-  }, [sections, activeIndex, transitionPanel, fetchDrillData]);
+    updateUrl(active.id, region.id, category);
+  }, [sections, activeIndex, transitionPanel, fetchDrillData, updateUrl]);
 
   const handleExplore = useCallback(() => {
     if (selectedRegionId) {
@@ -289,9 +335,11 @@ export default function ExploreSwiper({
   const navigateBack = useCallback(() => {
     if (view.level === 0) return;
     if (view.level === 1) {
+      const sId = (view as Extract<ExploreView, { level: 1 }>).sectionId;
       setNextHeroImageUrl(sections[activeIndex]?.image_url ?? null);
       setTimeout(() => { setHeroImageUrl(sections[activeIndex]?.image_url ?? null); setNextHeroImageUrl(null); }, 680);
       transitionPanel(() => { setView({ level: 0 }); setDrillItems([]); setDrillCategories([]); setActiveRegion(null); });
+      updateUrl(sId);
     } else if (view.level === 2) {
       const v = view as Extract<ExploreView, { level: 2 }>;
       transitionPanel(() => {
@@ -301,8 +349,9 @@ export default function ExploreSwiper({
         if (cached) { setDrillItems(cached.items); setDrillCategories(cached.categories); }
         else { setDrillItems([]); setDrillCategories([]); fetchDrillData(v.sectionId, v.region, null); }
       });
+      updateUrl(v.sectionId, v.region.id);
     }
-  }, [view, sections, activeIndex, transitionPanel, fetchDrillData]);
+  }, [view, sections, activeIndex, transitionPanel, fetchDrillData, updateUrl]);
 
   useEffect(() => {
     if (view.level === 0) setHeroImageUrl(sections[activeIndex]?.image_url ?? null);

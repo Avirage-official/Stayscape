@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
@@ -134,16 +134,18 @@ export default function ExplorePage() {
 
   return (
     <div style={{ height: 'calc(100dvh - 72px)', overflow: 'hidden' }}>
-      <ExploreSwiper
-        sections={data.sections}
-        regions={data.regions}
-        selectedRegionId={selectedRegionId}
-        firstName={data.firstName}
-        onPersonalise={handlePersonalise}
-        isPersonalising={isPersonalising}
-        isRefreshing={isRefreshing}
-        onRegionChange={handleRegionChange}
-      />
+      <Suspense fallback={null}>
+        <ExploreSwiper
+          sections={data.sections}
+          regions={data.regions}
+          selectedRegionId={selectedRegionId}
+          firstName={data.firstName}
+          onPersonalise={handlePersonalise}
+          isPersonalising={isPersonalising}
+          isRefreshing={isRefreshing}
+          onRegionChange={handleRegionChange}
+        />
+      </Suspense>
     </div>
   );
 }

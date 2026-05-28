@@ -1603,8 +1603,17 @@ function SavedPlaceSheet({ item, onClose, onUnsave, onAddToItinerary }: SavedPla
         onClick={e => e.stopPropagation()}
         style={{ position: 'relative', width: '100%', background: '#181412', borderRadius: '20px 20px 0 0', border: `1px solid ${BORDER}`, borderBottom: 'none', maxHeight: '85dvh', overflowY: 'auto', transform: visible ? 'translateY(0)' : 'translateY(100%)', transition: visible ? 'transform 300ms cubic-bezier(0.16,1,0.3,1)' : 'transform 240ms ease-in', willChange: 'transform' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px 0', position: 'relative' }}>
           <div style={{ width: 36, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.12)' }} />
+          <button
+            onClick={close}
+            aria-label="Close"
+            style={{ position: 'absolute', right: 14, top: 6, width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`, color: TEXT_MUTED, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'color 160ms ease, background 160ms ease' }}
+            onMouseEnter={e => { e.currentTarget.style.color = TEXT; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
         </div>
         {p?.image_url && (
           <div style={{ position: 'relative', height: 180, margin: '12px 16px 0', borderRadius: 14, overflow: 'hidden', background: '#1a1614' }}>
