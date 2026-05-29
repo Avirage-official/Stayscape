@@ -122,12 +122,6 @@ function L2Slideshow({ items, accentFg }: { items: (DrillPlaceCard | DrillEventC
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    currIdxRef.current = 0;
-    setLayers([{ idx: 0, key: 0, opacity: 1 }]);
-    keyRef.current = 1;
-  }, [images.length]);
-
-  useEffect(() => {
     if (images.length <= 1) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
@@ -909,7 +903,7 @@ export default function ExploreSwiper({
                 {renderL2CardList()}
               </div>
               <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <L2Slideshow items={drillItems} accentFg={catAccent ?? FALLBACK_COLOR} />
+                <L2Slideshow key={`${v2?.region.id}:${v2?.category}`} items={drillItems} accentFg={catAccent ?? FALLBACK_COLOR} />
               </div>
             </div>
           </>
