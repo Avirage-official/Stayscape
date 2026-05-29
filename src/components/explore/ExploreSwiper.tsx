@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ExploreCard, { type ExploreSection, type ExploreItem } from './ExploreCard';
 import ExploreDetailSheet from './ExploreDetailSheet';
@@ -112,6 +112,59 @@ function fmtEventPrice(min: number | null, max: number | null, currency: string 
 
 function pad(n: number) {
   return String(n + 1).padStart(2, '0');
+}
+
+function L2Slideshow({ items, accentFg }: { items: (DrillPlaceCard | DrillEventCard)[]; accentFg: string }) {
+  const images = useMemo(() => items.filter(item => !!item.image_url), [items]);
+  const [layers, setLayers] = useState<{ idx: number; key: number; opacity: number }[]>(() => [{ idx: 0, key: 0, opacity: 1 }]);
+  const keyRef = useRef(1);
+  const currIdxRef = useRef(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    currIdxRef.current = 0;
+    setLayers([{ idx: 0, key: 0, opacity: 1 }]);
+    keyRef.current = 1;
+  }, [images.length]);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      const next = (currIdxRef.current + 1) % images.length;
+      currIdxRef.current = next;
+      const k = keyRef.current++;
+      setLayers(prev => [...prev.slice(-1), { idx: next, key: k, opacity: 0 }]);
+      setTimeout(() => { setLayers(prev => prev.map(l => l.key === k ? { ...l, opacity: 1 } : l)); }, 50);
+      setTimeout(() => { setLayers(prev => prev.length > 1 ? prev.slice(-1) : prev); }, 1100);
+    }, 4200);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [images.length]);
+
+  if (images.length === 0) return <div style={{ width: '100%', height: '100%', background: 'rgba(250,248,245,0.02)' }} />;
+  const currLayer = layers[layers.length - 1];
+  const currItem = images[currLayer.idx];
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#0A0806' }}>
+      {layers.map(layer => (
+        <img key={layer.key} src={images[layer.idx].image_url!} alt=""
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', opacity: layer.opacity, transition: 'opacity 1000ms ease' }} />
+      ))}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(6,4,2,0.90) 0%, transparent 100%)', pointerEvents: 'none', zIndex: 2 }} />
+      <div style={{ position: 'absolute', bottom: '28px', left: '24px', right: '24px', zIndex: 3 }}>
+        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.3rem, 2.2vw, 1.9rem)', fontWeight: 800, color: '#FAF8F5', margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.05, textTransform: 'uppercase' }}>{currItem.name}</h3>
+        {images.length > 1 && (
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            {images.slice(0, Math.min(images.length, 10)).map((_, i) => (
+              <div key={i} style={{ width: i === currLayer.idx ? '18px' : '4px', height: '3px', borderRadius: '2px', background: i === currLayer.idx ? accentFg : 'rgba(250,248,245,0.28)', transition: 'width 320ms cubic-bezier(0.25,0,0,1), background 320ms ease' }} />
+            ))}
+            {images.length > 10 && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 600, color: 'rgba(250,248,245,0.3)', marginLeft: '3px' }}>+{images.length - 10}</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function ExploreSwiper({
@@ -643,8 +696,8 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Desktop 2-column image card grid ───────────────────────────────────
-  function renderL2DesktopGrid() {
+  // ─── L2: Desktop single-column image card list (left panel) ─────────────────
+  function renderL2CardList() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
     const catKey = v2.category?.toLowerCase();
@@ -653,8 +706,8 @@ export default function ExploreSwiper({
 
     if (drillLoading) {
       return (
-        <div style={{ padding: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          {[0,1,2,3,4,5].map(i => (
+        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[0,1,2,3].map(i => (
             <div key={i} style={{ borderRadius: '14px', overflow: 'hidden', animation: `hsSkeleton 1.4s ${i * 0.07}s ease-in-out infinite` }}>
               <div style={{ height: '140px', background: 'rgba(250,248,245,0.05)' }} />
               <div style={{ height: '56px', background: 'rgba(250,248,245,0.03)', borderTop: '1px solid rgba(250,248,245,0.04)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
@@ -687,11 +740,11 @@ export default function ExploreSwiper({
     const noun = isEvent ? 'event' : 'place';
 
     return (
-      <div style={{ padding: '14px 14px 32px' }}>
+      <div style={{ padding: '12px 12px 32px' }}>
         <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.25)', margin: '0 2px 10px' }}>
           {total} {noun}{total !== 1 ? 's' : ''}
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {drillItems.map((item, idx) => {
             const pl = item as DrillPlaceCard;
             const ev = item as DrillEventCard;
@@ -850,9 +903,14 @@ export default function ExploreSwiper({
             <div className="block md:hidden" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y pan-x' } as React.CSSProperties}>
               {renderL2ItemList()}
             </div>
-            {/* Desktop: 2-column image card grid */}
-            <div className="hidden md:block" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' } as React.CSSProperties}>
-              {renderL2DesktopGrid()}
+            {/* Desktop: card list left, slideshow right */}
+            <div className="hidden md:flex" style={{ flex: 1, minHeight: 0, overflow: 'hidden' } as React.CSSProperties}>
+              <div style={{ width: '46%', flexShrink: 0, overflowY: 'auto', scrollbarWidth: 'none', borderRight: '1px solid rgba(250,248,245,0.06)' } as React.CSSProperties}>
+                {renderL2CardList()}
+              </div>
+              <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                <L2Slideshow items={drillItems} accentFg={catAccent ?? FALLBACK_COLOR} />
+              </div>
             </div>
           </>
         )}
