@@ -35,6 +35,8 @@ export interface DbSavedPlaceEnriched extends DbSavedPlace {
     price_level: number | null;
     rating: number | null;
     recommended_duration: string | null;
+    region_id: string | null;
+    regions: { id: string; name: string } | null;
   } | null;
 }
 
@@ -56,7 +58,8 @@ export async function getSavedPlaces(
       places (
         id, name, category, latitude, longitude,
         image_url, address, city, editorial_summary,
-        price_level, rating, recommended_duration
+        price_level, rating, recommended_duration,
+        region_id, regions(id, name)
       )
     `)
     .eq('user_id', userId)

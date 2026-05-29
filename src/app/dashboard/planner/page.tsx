@@ -624,11 +624,21 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
             {places.map((item, i) => {
               const p = item.places;
               const isActive = i === activeIndex;
+              const regionName = p?.regions?.name ?? p?.city ?? null;
+              const prevRegion = i > 0 ? (places[i-1].places?.regions?.name ?? places[i-1].places?.city ?? null) : null;
+              const showDivider = i > 0 && regionName !== prevRegion;
               return (
-                <div
-                  key={item.id}
-                  onClick={() => selectIndex(i)}
-                  style={{
+                <React.Fragment key={item.id}>
+                  {showDivider && regionName && (
+                    <div style={{ flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,padding:'0 5px',alignSelf:'stretch' }}>
+                      <div style={{ flex:1,width:1,background:'rgba(200,150,90,0.18)',minHeight:16 }} />
+                      <span style={{ fontSize:7,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(200,150,90,0.45)',fontFamily:"'DM Sans',sans-serif",writingMode:'vertical-rl',transform:'rotate(180deg)',whiteSpace:'nowrap' }}>{regionName}</span>
+                      <div style={{ flex:1,width:1,background:'rgba(200,150,90,0.18)',minHeight:16 }} />
+                    </div>
+                  )}
+                  <div
+                    onClick={() => selectIndex(i)}
+                    style={{
                     flexShrink: 0,
                     width: 148,
                     height: 150,
@@ -726,7 +736,8 @@ function SavedTab({ savedPlaces, isLoading, error, onRetry, onUnsave }: SavedTab
                       </p>
                     )}
                   </div>
-                </div>
+                  </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -875,45 +886,59 @@ function SavedMobileTab({
         </div>
       </div>
 
-      {/* Portrait card list */}
+      {/* Portrait card list — grouped by region */}
       <div style={{ flex:1,minHeight:0,overflowY:'auto',scrollbarWidth:'none' }}>
-        {places.map((item, i) => {
-          const p = item.places;
-          const isActive = i === activeIndex;
-          return (
-            <button key={item.id} onClick={() => setActiveIndex(i)}
-              style={{ width:'100%',height:110,display:'flex',alignItems:'stretch',background:isActive?'rgba(200,150,90,0.06)':'transparent',border:'none',borderBottom:`1px solid ${BORDER}`,borderLeft:isActive?`3px solid ${GOLD}`:'3px solid transparent',cursor:'pointer',padding:0,transition:'background 180ms ease,border-color 180ms ease',textAlign:'left' }}
-            >
-              {/* Image */}
-              <div style={{ flexShrink:0,width:90,position:'relative',background:'#1a1614',overflow:'hidden' }}>
-                {p?.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image_url} alt={p.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover' }} />
-                ) : (<div style={{ position:'absolute',inset:0,background:'#2a2018' }} />)}
-              </div>
-              {/* Text */}
-              <div style={{ flex:1,minWidth:0,padding:'14px 14px 14px 12px',display:'flex',flexDirection:'column',justifyContent:'center',gap:3 }}>
-                {p?.category && <p style={{ margin:0,fontSize:9,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:isActive?GOLD:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.category}</p>}
-                <p style={{ margin:0,fontSize:13,fontWeight:500,color:TEXT,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif" }}>{p?.name??'—'}</p>
-                {p?.city && <p style={{ margin:0,fontSize:11,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.city}</p>}
-                {p?.rating != null && (
-                  <span style={{ display:'flex',alignItems:'center',gap:3,fontSize:11,color:GOLD,fontFamily:"'DM Sans',sans-serif" }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    {p.rating.toFixed(1)}
-                  </span>
-                )}
-              </div>
-              {/* Expand icon */}
-              <button
-                onClick={e => { e.stopPropagation(); setExpandPlace(item); }}
-                aria-label="View details"
-                style={{ flexShrink:0,width:40,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'none',color:TEXT_FAINT,cursor:'pointer' }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-              </button>
-            </button>
-          );
-        })}
+        {(() => {
+          const groups: { regionName: string; items: { sp: typeof places[0]; idx: number }[] }[] = [];
+          places.forEach((sp, idx) => {
+            const rn = sp.places?.regions?.name ?? sp.places?.city ?? 'Other';
+            const last = groups[groups.length - 1];
+            if (!last || last.regionName !== rn) groups.push({ regionName: rn, items: [{ sp, idx }] });
+            else last.items.push({ sp, idx });
+          });
+          return groups.flatMap(group => [
+            <div key={`rh-${group.regionName}`} style={{ padding:'8px 14px 6px',background:'rgba(0,0,0,0.28)',borderBottom:`1px solid ${BORDER}` }}>
+              <p style={{ margin:0,fontSize:9,fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(200,150,90,0.6)',fontFamily:"'DM Sans',sans-serif" }}>{group.regionName}</p>
+            </div>,
+            ...group.items.map(({ sp: item, idx: i }) => {
+              const p = item.places;
+              const isActive = i === activeIndex;
+              return (
+                <button key={item.id} onClick={() => setActiveIndex(i)}
+                  style={{ width:'100%',height:110,display:'flex',alignItems:'stretch',background:isActive?'rgba(200,150,90,0.06)':'transparent',border:'none',borderBottom:`1px solid ${BORDER}`,borderLeft:isActive?`3px solid ${GOLD}`:'3px solid transparent',cursor:'pointer',padding:0,transition:'background 180ms ease,border-color 180ms ease',textAlign:'left' }}
+                >
+                  {/* Image */}
+                  <div style={{ flexShrink:0,width:90,position:'relative',background:'#1a1614',overflow:'hidden' }}>
+                    {p?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt={p.name??''} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover' }} />
+                    ) : (<div style={{ position:'absolute',inset:0,background:'#2a2018' }} />)}
+                  </div>
+                  {/* Text */}
+                  <div style={{ flex:1,minWidth:0,padding:'14px 14px 14px 12px',display:'flex',flexDirection:'column',justifyContent:'center',gap:3 }}>
+                    {p?.category && <p style={{ margin:0,fontSize:9,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:isActive?GOLD:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.category}</p>}
+                    <p style={{ margin:0,fontSize:13,fontWeight:500,color:TEXT,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif" }}>{p?.name??'—'}</p>
+                    {p?.city && <p style={{ margin:0,fontSize:11,color:TEXT_MUTED,fontFamily:"'DM Sans',sans-serif" }}>{p.city}</p>}
+                    {p?.rating != null && (
+                      <span style={{ display:'flex',alignItems:'center',gap:3,fontSize:11,color:GOLD,fontFamily:"'DM Sans',sans-serif" }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill={GOLD} stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        {p.rating.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+                  {/* Expand icon */}
+                  <button
+                    onClick={e => { e.stopPropagation(); setExpandPlace(item); }}
+                    aria-label="View details"
+                    style={{ flexShrink:0,width:40,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'none',color:TEXT_FAINT,cursor:'pointer' }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                  </button>
+                </button>
+              );
+            }),
+          ]);
+        })()}
       </div>
 
       {pickerPlace && (
