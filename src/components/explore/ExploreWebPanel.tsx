@@ -134,7 +134,7 @@ export default function ExploreWebPanel({
               <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', padding: '12px 0', margin: 0 }}>
                 No cities available.
               </p>
-            ) : regions.map(region => {
+            ) : regions.filter(r => r.is_active !== false).map(region => {
               const isSel = region.id === selectedRegionId;
               return (
                 <button
@@ -295,6 +295,7 @@ export default function ExploreWebPanel({
               )}
               {regions.map(region => {
                 const isSelected = activeRegion?.id === region.id;
+                const isInactive = region.is_active === false;
                 return (
                   <button
                     key={region.id}
@@ -307,28 +308,32 @@ export default function ExploreWebPanel({
                       borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
                       transition: 'background 160ms ease, border-color 160ms ease',
                       boxSizing: 'border-box',
+                      opacity: isInactive ? 0.7 : 1,
                     } as React.CSSProperties}
-                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(250,248,245,0.11)'; } }}
+                    onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(250,248,245,0.09)'; } }}
                     onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'rgba(250,248,245,0.05)'; } }}
                   >
                     <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {region.image_url
-                        ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                        ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isInactive ? 'saturate(0.45)' : 'none' }} loading="lazy" />
                         : <span style={{ color: 'rgba(250,248,245,0.35)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>{region.country_code ?? '—'}</span>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#FAF8F5' : 'rgba(250,248,245,0.8)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#FAF8F5' : isInactive ? 'rgba(250,248,245,0.48)' : 'rgba(250,248,245,0.8)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {region.name}
                       </p>
                       {region.country_code && (
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: isSelected ? 'rgba(193,127,58,0.7)' : 'rgba(250,248,245,0.32)', margin: '2px 0 0' }}>
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: isSelected ? 'rgba(193,127,58,0.7)' : 'rgba(250,248,245,0.28)', margin: '2px 0 0' }}>
                           {region.country_code}
                         </p>
                       )}
                     </div>
-                    {isSelected
-                      ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>}
+                    {isInactive
+                      ? <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(193,127,58,0.65)', background: 'rgba(193,127,58,0.1)', border: '1px solid rgba(193,127,58,0.18)', borderRadius: '20px', padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>Soon</span>
+                      : isSelected
+                        ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    }
                   </button>
                 );
               })}

@@ -107,8 +107,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle(),
       supabase
         .from('regions')
-        .select('id, name, slug, country_code, image_path')
-        .eq('is_active', true)
+        .select('id, name, slug, country_code, image_path, is_active')
         .order('name', { ascending: true }),
       supabase
         .from('users')
