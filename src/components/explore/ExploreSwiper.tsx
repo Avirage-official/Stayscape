@@ -332,7 +332,7 @@ export default function ExploreSwiper({
     const active = sections[activeIndex];
     if (!active || !AUTO_DRILL_SECTIONS.has(active.id)) return;
     const region = regions.find(r => r.id === selectedRegionId);
-    if (!region) return;
+    if (!region || region.is_active === false) return;
     lastDrilledCityRef.current = selectedRegionId;
     cacheRef.current.clear();
     setDrillItems([]); setDrillCategories([]);
@@ -425,6 +425,7 @@ export default function ExploreSwiper({
   }
 
   const active = sections[activeIndex];
+  const selectedRegion = regions.find(r => r.id === selectedRegionId) ?? null;
   const greeting = firstName ? `for ${firstName}` : 'for you';
   const displayHeroUrl = heroImageUrl ?? active?.image_url ?? null;
   const panelStyle: React.CSSProperties =
@@ -536,17 +537,18 @@ export default function ExploreSwiper({
   }
 
   // ─── Coming soon screen (inactive region drilled) ───────────────────────────
-  function renderComingSoon() {
+  function renderComingSoon(region?: RegionOption) {
+    const r = region ?? activeRegion;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', gap: '18px', height: '100%', boxSizing: 'border-box' } as React.CSSProperties}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
           <div style={{ height: '1px', background: 'rgba(193,127,58,0.5)', animation: 'csSweep 700ms cubic-bezier(0.16,1,0.3,1) both' }} />
           <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 500, color: '#FAF8F5', margin: 0, lineHeight: 1, letterSpacing: '-0.01em', animation: 'csRise 600ms 100ms cubic-bezier(0.16,1,0.3,1) both' }}>
-            {activeRegion?.name}
+            {r?.name}
           </h2>
-          {activeRegion?.country_code && (
+          {r?.country_code && (
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(193,127,58,0.65)', margin: 0, animation: 'csRise 600ms 160ms cubic-bezier(0.16,1,0.3,1) both' }}>
-              {activeRegion.country_code}
+              {r.country_code}
             </p>
           )}
           <div style={{ height: '1px', background: 'rgba(193,127,58,0.5)', animation: 'csSweep 700ms 60ms cubic-bezier(0.16,1,0.3,1) both' }} />
@@ -981,7 +983,13 @@ export default function ExploreSwiper({
                 </svg>
               </button>
             </div>
-            <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
+            {selectedRegion?.is_active === false ? (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(12,9,6,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {renderComingSoon(selectedRegion)}
+              </div>
+            ) : (
+              <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
+            )}
           </>
         ) : renderLeftDrillCanvas()}
 
@@ -1004,26 +1012,29 @@ export default function ExploreSwiper({
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>Where are you exploring first?</p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px', touchAction: 'pan-y' } as React.CSSProperties}>
-              {regions.filter(r => r.is_active !== false).map(region => {
+              {regions.map(region => {
                 const isSelected = region.id === selectedRegionId;
+                const isInactive = region.is_active === false;
                 return (
                   <button
                     key={region.id}
                     onClick={() => { onRegionChange?.(region.id); setShowRegionSheet(false); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box', touchAction: 'manipulation' } as React.CSSProperties}
+                    style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 10px', marginBottom: '5px', width: '100%', background: isSelected ? 'rgba(193,127,58,0.14)' : 'rgba(250,248,245,0.05)', border: `1px solid ${isSelected ? 'rgba(193,127,58,0.5)' : 'rgba(250,248,245,0.08)'}`, borderRadius: '12px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box', touchAction: 'manipulation', opacity: isInactive ? 0.65 : 1 } as React.CSSProperties}
                     >
                     <div style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {region.image_url
-                        ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                        ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isInactive ? 'saturate(0.45)' : 'none' }} loading="lazy" />
                         : <span style={{ color: 'rgba(250,248,245,0.35)', fontSize: '11px', fontFamily: "'DM Sans', sans-serif" }}>{region.country_code ?? '—'}</span>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#FAF8F5' : 'rgba(250,248,245,0.8)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{region.name}</p>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '14px', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#FAF8F5' : isInactive ? 'rgba(250,248,245,0.48)' : 'rgba(250,248,245,0.8)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{region.name}</p>
                       {region.country_code && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: isSelected ? 'rgba(193,127,58,0.7)' : 'rgba(250,248,245,0.32)', margin: '2px 0 0' }}>{region.country_code}</p>}
                     </div>
-                    {isSelected
-                      ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>}
+                    {isInactive
+                      ? <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(193,127,58,0.65)', background: 'rgba(193,127,58,0.1)', border: '1px solid rgba(193,127,58,0.18)', borderRadius: '20px', padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>Soon</span>
+                      : isSelected
+                        ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>}
                   </button>
                 );
               })}
@@ -1036,10 +1047,16 @@ export default function ExploreSwiper({
       <div className="hidden md:flex" style={{ position: 'absolute', inset: 0, zIndex: 10, padding: '12px', gap: '12px' }}>
         <div style={{ flex: 1, position: 'relative', borderRadius: '20px', overflow: 'hidden' }}>
           {view.level === 0 ? (
-            <>
-              <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
-              <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>Explore {greeting}</p>
-            </>
+            selectedRegion?.is_active === false ? (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(12,9,6,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {renderComingSoon(selectedRegion)}
+              </div>
+            ) : (
+              <>
+                <ExploreCard key={active.id} section={active} sections={sections} activeIndex={activeIndex} onSectionChange={goTo} onExplore={handleExplore} />
+                <p style={{ position: 'absolute', top: '16px', left: '20px', zIndex: 20, fontFamily: "'DM Sans', sans-serif", fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.45)', margin: 0, pointerEvents: 'none' }}>Explore {greeting}</p>
+              </>
+            )
           ) : renderLeftDrillCanvas()}
 
           {isRefreshing && (
