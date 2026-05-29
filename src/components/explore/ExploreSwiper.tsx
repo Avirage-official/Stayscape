@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ExploreCard, { type ExploreSection, type ExploreItem } from './ExploreCard';
 import ExploreDetailSheet from './ExploreDetailSheet';
@@ -112,59 +112,6 @@ function fmtEventPrice(min: number | null, max: number | null, currency: string 
 
 function pad(n: number) {
   return String(n + 1).padStart(2, '0');
-}
-
-function L2Slideshow({ items, accentFg }: { items: (DrillPlaceCard | DrillEventCard)[]; accentFg: string }) {
-  const images = useMemo(() => items.filter(item => !!item.image_url), [items]);
-  const [layers, setLayers] = useState<{ idx: number; key: number; opacity: number }[]>(() => [{ idx: 0, key: 0, opacity: 1 }]);
-  const keyRef = useRef(1);
-  const currIdxRef = useRef(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    currIdxRef.current = 0;
-    setLayers([{ idx: 0, key: 0, opacity: 1 }]);
-    keyRef.current = 1;
-  }, [images.length]);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      const next = (currIdxRef.current + 1) % images.length;
-      currIdxRef.current = next;
-      const k = keyRef.current++;
-      setLayers(prev => [...prev.slice(-1), { idx: next, key: k, opacity: 0 }]);
-      setTimeout(() => { setLayers(prev => prev.map(l => l.key === k ? { ...l, opacity: 1 } : l)); }, 50);
-      setTimeout(() => { setLayers(prev => prev.length > 1 ? prev.slice(-1) : prev); }, 1100);
-    }, 4200);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [images.length]);
-
-  if (images.length === 0) return <div style={{ width: '100%', height: '100%', background: 'rgba(250,248,245,0.02)' }} />;
-  const currLayer = layers[layers.length - 1];
-  const currItem = images[currLayer.idx];
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#0A0806' }}>
-      {layers.map(layer => (
-        <img key={layer.key} src={images[layer.idx].image_url!} alt=""
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', opacity: layer.opacity, transition: 'opacity 1000ms ease' }} />
-      ))}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(6,4,2,0.90) 0%, transparent 100%)', pointerEvents: 'none', zIndex: 2 }} />
-      <div style={{ position: 'absolute', bottom: '28px', left: '24px', right: '24px', zIndex: 3 }}>
-        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.3rem, 2.2vw, 1.9rem)', fontWeight: 800, color: '#FAF8F5', margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.05, textTransform: 'uppercase' }}>{currItem.name}</h3>
-        {images.length > 1 && (
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            {images.slice(0, Math.min(images.length, 10)).map((_, i) => (
-              <div key={i} style={{ width: i === currLayer.idx ? '18px' : '4px', height: '3px', borderRadius: '2px', background: i === currLayer.idx ? accentFg : 'rgba(250,248,245,0.28)', transition: 'width 320ms cubic-bezier(0.25,0,0,1), background 320ms ease' }} />
-            ))}
-            {images.length > 10 && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 600, color: 'rgba(250,248,245,0.3)', marginLeft: '3px' }}>+{images.length - 10}</span>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 export default function ExploreSwiper({
@@ -696,24 +643,37 @@ export default function ExploreSwiper({
     );
   }
 
-  // ─── L2: Desktop text-only list (left column) ───────────────────────────────
-  function renderL2TextList() {
+  // ─── L2: Desktop 2-column image card grid ───────────────────────────────────
+  function renderL2DesktopGrid() {
     const v2 = view as Extract<ExploreView, { level: 2 }>;
     const isEvent = active?.id === 'happening_now';
     const catKey = v2.category?.toLowerCase();
     const accentFg = CAT_COLOR[catKey] ?? FALLBACK_COLOR;
+    const catGradient = CAT_GRADIENT[catKey] ?? FALLBACK_GRADIENT;
 
     if (drillLoading) {
       return (
-        <div style={{ padding: '14px 14px 32px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[0, 1, 2, 3, 4].map(i => (
-            <div key={i} style={{ height: '58px', borderRadius: '12px', background: 'rgba(250,248,245,0.04)', animation: `hsSkeleton 1.4s ${i * 0.08}s ease-in-out infinite` }} />
+        <div style={{ padding: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {[0,1,2,3,4,5].map(i => (
+            <div key={i} style={{ borderRadius: '14px', overflow: 'hidden', animation: `hsSkeleton 1.4s ${i * 0.07}s ease-in-out infinite` }}>
+              <div style={{ height: '140px', background: 'rgba(250,248,245,0.05)' }} />
+              <div style={{ height: '56px', background: 'rgba(250,248,245,0.03)', borderTop: '1px solid rgba(250,248,245,0.04)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <div style={{ height: '11px', width: '65%', borderRadius: '4px', background: 'rgba(250,248,245,0.07)' }} />
+                <div style={{ height: '9px', width: '40%', borderRadius: '4px', background: 'rgba(250,248,245,0.04)' }} />
+              </div>
+            </div>
           ))}
         </div>
       );
     }
 
-    if (drillItems.length === 0) return null;
+    if (drillItems.length === 0) {
+      return (
+        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', color: 'rgba(250,248,245,0.32)', textAlign: 'center', paddingTop: '60px', margin: '0 24px', lineHeight: 1.6 }}>
+          Nothing on the books just yet — our concierge is working on it.
+        </p>
+      );
+    }
 
     function buildPrice(item: DrillPlaceCard | DrillEventCard): string | null {
       if (isEvent) {
@@ -727,72 +687,104 @@ export default function ExploreSwiper({
     const noun = isEvent ? 'event' : 'place';
 
     return (
-      <div style={{ padding: '14px 14px 32px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.25)', margin: '0 2px 8px' }}>
+      <div style={{ padding: '14px 14px 32px' }}>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.25)', margin: '0 2px 10px' }}>
           {total} {noun}{total !== 1 ? 's' : ''}
         </p>
-        {drillItems.map((item, idx) => {
-          const pl = item as DrillPlaceCard;
-          const ev = item as DrillEventCard;
-          const price = buildPrice(item);
-          const secondaryText = isEvent ? fmtDate(ev.start_date) : (pl.address ?? pl.vibes?.[1] ?? null);
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {drillItems.map((item, idx) => {
+            const pl = item as DrillPlaceCard;
+            const ev = item as DrillEventCard;
+            const price = buildPrice(item);
+            const vibeTag = !isEvent && pl.vibes?.[0] ? pl.vibes[0] : null;
+            const metaLine = isEvent ? fmtDate(ev.start_date) : null;
+            const hasImage = !!item.image_url;
+            const secondaryText = isEvent
+              ? fmtDate(ev.start_date)
+              : (pl.address ?? pl.vibes?.[1] ?? null);
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => drillToItem(item, active?.id ?? '')}
-              style={{
-                width: '100%',
-                borderRadius: '12px',
-                border: '1px solid rgba(250,248,245,0.06)',
-                cursor: 'pointer',
-                background: 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                textAlign: 'left',
-                padding: '11px 12px',
-                animation: `hsItemIn 360ms ${idx * 35}ms cubic-bezier(0.16,1,0.3,1) both`,
-                transition: 'background 180ms ease, border-color 180ms ease',
-                touchAction: 'manipulation',
-                boxSizing: 'border-box',
-              } as React.CSSProperties}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(250,248,245,0.05)';
-                e.currentTarget.style.borderColor = 'rgba(250,248,245,0.1)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = 'rgba(250,248,245,0.06)';
-              }}
-            >
-              <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: accentFg, flexShrink: 0, opacity: 0.65 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F5', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                  {item.name}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {!isEvent && pl.rating && (
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '4px', padding: '1px 5px', lineHeight: 1.6, flexShrink: 0 }}>
-                      ★ {pl.rating.toFixed(1)}
-                    </span>
+            return (
+              <button
+                key={item.id}
+                onClick={() => drillToItem(item, active?.id ?? '')}
+                style={{
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  border: '1px solid rgba(250,248,245,0.06)',
+                  cursor: 'pointer',
+                  background: 'rgba(250,248,245,0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  textAlign: 'left',
+                  padding: 0,
+                  animation: `hsItemIn 360ms ${idx * 35}ms cubic-bezier(0.16,1,0.3,1) both`,
+                  transition: 'background 180ms ease, border-color 180ms ease, transform 200ms ease',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.28)',
+                  touchAction: 'manipulation',
+                } as React.CSSProperties}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(250,248,245,0.06)';
+                  e.currentTarget.style.borderColor = 'rgba(250,248,245,0.1)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(250,248,245,0.03)';
+                  e.currentTarget.style.borderColor = 'rgba(250,248,245,0.06)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {/* Image */}
+                <div style={{ position: 'relative', height: '140px', overflow: 'hidden', background: hasImage ? '#0A0806' : catGradient, flexShrink: 0 }}>
+                  {hasImage && (
+                    <img
+                      src={item.image_url!}
+                      alt={item.name}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+                      loading={idx < 4 ? 'eager' : 'lazy'}
+                    />
                   )}
-                  {secondaryText && (
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.32)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {secondaryText}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to top, rgba(6,4,2,0.65) 0%, transparent 100%)', pointerEvents: 'none' }} />
+                  {(vibeTag ?? metaLine) && (
+                    <div style={{ position: 'absolute', top: '8px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: accentFg, flexShrink: 0 }} />
+                      <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '10px', fontWeight: 500, color: 'rgba(250,248,245,0.78)', background: 'rgba(0,0,0,0.36)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: '20px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                        {vibeTag ?? metaLine}
+                      </span>
+                    </div>
+                  )}
+                  {price && (
+                    <span style={{ position: 'absolute', top: '8px', right: '8px', fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, color: 'rgba(250,248,245,0.7)', background: 'rgba(0,0,0,0.36)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: '7px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                      {price}
                     </span>
                   )}
                 </div>
-              </div>
-              {price && (
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', fontWeight: 500, color: 'rgba(250,248,245,0.4)', flexShrink: 0 }}>{price}</span>
-              )}
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          );
-        })}
+                {/* Info */}
+                <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F5', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                    {item.name}
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {!isEvent && pl.rating && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, color: '#0A0806', background: accentFg, borderRadius: '4px', padding: '1px 5px', lineHeight: 1.6, flexShrink: 0 }}>
+                        ★ {pl.rating.toFixed(1)}
+                      </span>
+                    )}
+                    {isEvent && ev.is_featured && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: accentFg, flexShrink: 0 }}>
+                        Featured
+                      </span>
+                    )}
+                    {secondaryText && (
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '11px', color: 'rgba(250,248,245,0.36)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {secondaryText}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -858,14 +850,9 @@ export default function ExploreSwiper({
             <div className="block md:hidden" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y pan-x' } as React.CSSProperties}>
               {renderL2ItemList()}
             </div>
-            {/* Desktop: text list left, image slideshow right */}
-            <div className="hidden md:flex" style={{ flex: 1, minHeight: 0, overflow: 'hidden' } as React.CSSProperties}>
-              <div style={{ width: '44%', flexShrink: 0, overflowY: 'auto', scrollbarWidth: 'none', borderRight: '1px solid rgba(250,248,245,0.06)' } as React.CSSProperties}>
-                {renderL2TextList()}
-              </div>
-              <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <L2Slideshow items={drillItems} accentFg={catAccent ?? FALLBACK_COLOR} />
-              </div>
+            {/* Desktop: 2-column image card grid */}
+            <div className="hidden md:block" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' } as React.CSSProperties}>
+              {renderL2DesktopGrid()}
             </div>
           </>
         )}
