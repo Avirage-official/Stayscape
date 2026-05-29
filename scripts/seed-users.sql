@@ -176,7 +176,6 @@ new_auth as (
     false,
     false
   from seed s, pwd p
-  on conflict (email) do nothing
   returning id, email
 ),
 
@@ -192,7 +191,6 @@ new_users as (
     'guest'
   from new_auth na
   join seed s using (email)
-  on conflict (id) do nothing
   returning id, email
 )
 
@@ -223,5 +221,4 @@ select
   -- randomly assign an active region
   (select id from public.regions where is_active = true order by random() limit 1)
 from new_users nu
-join seed s using (email)
-on conflict (user_id) do nothing;
+join seed s using (email);
