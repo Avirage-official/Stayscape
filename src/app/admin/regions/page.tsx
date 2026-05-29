@@ -15,6 +15,7 @@ interface RegionCardData {
   lastSyncAt: string | null;
   healthStatus: string;
   imagePath: string | null;
+  isActive: boolean;
 }
 
 type ActionKey = 'seed' | 'enrich' | 'reverify' | 'images';
@@ -64,6 +65,7 @@ function defaultActions(): Record<ActionKey, RegionAction> {
 export default function AdminRegionsPage() {
   const [regions, setRegions] = useState<RegionCardData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadMsg, setUploadMsg] = useState<Record<string, string>>({});
   const [actions, setActions] = useState<ActionsMap>({});
@@ -182,6 +184,27 @@ export default function AdminRegionsPage() {
     }
   }
 
+  async function handleToggle(regionId: string, currentIsActive: boolean) {
+    setToggling(regionId);
+    setRegions((prev) =>
+      prev.map((r) => (r.id === regionId ? { ...r, isActive: !currentIsActive } : r)),
+    );
+    try {
+      const res = await fetch('/api/admin/regions', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ regionId, is_active: !currentIsActive }),
+      });
+      if (!res.ok) throw new Error('Failed');
+    } catch {
+      setRegions((prev) =>
+        prev.map((r) => (r.id === regionId ? { ...r, isActive: currentIsActive } : r)),
+      );
+    } finally {
+      setToggling(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-5">
@@ -215,9 +238,23 @@ export default function AdminRegionsPage() {
                     <h2 className="font-serif text-2xl text-white">{region.name}</h2>
                     <p className="text-xs uppercase tracking-[0.16em] text-white/55">{region.countryCode}</p>
                   </div>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${getHealthClass(region.healthStatus)}`}>
-                    {region.healthStatus.replaceAll('_', ' ')}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${getHealthClass(region.healthStatus)}`}>
+                      {region.healthStatus.replaceAll('_', ' ')}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={toggling === region.id}
+                      onClick={() => void handleToggle(region.id, region.isActive)}
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40 ${
+                        region.isActive
+                          ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300 hover:border-red-400/30 hover:bg-red-400/10 hover:text-red-300'
+                          : 'border-amber-400/30 bg-amber-400/10 text-amber-300 hover:border-emerald-400/40 hover:bg-emerald-400/10 hover:text-emerald-300'
+                      }`}
+                    >
+                      {toggling === region.id ? '…' : region.isActive ? 'Open' : 'Closed'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Region image upload */}
