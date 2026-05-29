@@ -79,6 +79,7 @@ export async function GET() {
           Boolean(region.is_active),
         ),
         imagePath: (region.image_path as string | null) ?? null,
+        isActive: Boolean(region.is_active),
       };
     });
 
@@ -86,5 +87,24 @@ export async function GET() {
   } catch (err) {
     console.error('Admin regions fetch error', err);
     return NextResponse.json({ regions: [] });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { regionId, is_active } = await request.json() as { regionId: string; is_active: boolean };
+    if (!regionId || typeof is_active !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from('regions')
+      .update({ is_active, updated_at: new Date().toISOString() })
+      .eq('id', regionId);
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Admin regions patch error', err);
+    return NextResponse.json({ error: 'Failed to update region' }, { status: 500 });
   }
 }
