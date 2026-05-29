@@ -15,6 +15,7 @@ export interface RegionOption {
   country_code: string | null;
   /** Populated on section items by the API — may be absent on dropdown-only region objects */
   image_url?: string | null;
+  is_active?: boolean;
 }
 
 interface ExploreResponse {
@@ -83,6 +84,8 @@ export default function ExplorePage() {
 
   async function handleRegionChange(regionId: string) {
     setSelectedRegionId(regionId);
+    const region = data?.regions.find(r => r.id === regionId);
+    if (region?.is_active === false) return;
     setIsRefreshing(true);
     await fetchExplore(regionId);
     setIsRefreshing(false);

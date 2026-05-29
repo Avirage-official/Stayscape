@@ -222,10 +222,10 @@ export default function ExploreSwiper({
     lastDrilledCityRef.current = region.id;
     if (!c) {
       setView({ level: 1, sectionId: section.id });
-      void fetchDrillData(section.id, region, null);
+      if (region.is_active !== false) void fetchDrillData(section.id, region, null);
     } else {
       setView({ level: 2, sectionId: section.id, region, category: c });
-      void fetchDrillData(section.id, region, c);
+      if (region.is_active !== false) void fetchDrillData(section.id, region, c);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections.length]);
@@ -347,7 +347,10 @@ export default function ExploreSwiper({
     setActiveRegion(region);
     setNextHeroImageUrl(region.image_url ?? null);
     setTimeout(() => { setHeroImageUrl(region.image_url ?? null); setNextHeroImageUrl(null); }, 680);
-    transitionPanel(() => { setView({ level: 1, sectionId: active.id }); fetchDrillData(active.id, region, null); });
+    transitionPanel(() => {
+      setView({ level: 1, sectionId: active.id });
+      if (region.is_active !== false) void fetchDrillData(active.id, region, null);
+    });
     updateUrl(active.id, region.id);
   }, [sections, activeIndex, transitionPanel, fetchDrillData, updateUrl]);
 
@@ -528,6 +531,30 @@ export default function ExploreSwiper({
             );
           })}
         </div>
+      </div>
+    );
+  }
+
+  // ─── Coming soon screen (inactive region drilled) ───────────────────────────
+  function renderComingSoon() {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', gap: '18px', height: '100%', boxSizing: 'border-box' } as React.CSSProperties}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{ height: '1px', background: 'rgba(193,127,58,0.5)', animation: 'csSweep 700ms cubic-bezier(0.16,1,0.3,1) both' }} />
+          <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 500, color: '#FAF8F5', margin: 0, lineHeight: 1, letterSpacing: '-0.01em', animation: 'csRise 600ms 100ms cubic-bezier(0.16,1,0.3,1) both' }}>
+            {activeRegion?.name}
+          </h2>
+          {activeRegion?.country_code && (
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(193,127,58,0.65)', margin: 0, animation: 'csRise 600ms 160ms cubic-bezier(0.16,1,0.3,1) both' }}>
+              {activeRegion.country_code}
+            </p>
+          )}
+          <div style={{ height: '1px', background: 'rgba(193,127,58,0.5)', animation: 'csSweep 700ms 60ms cubic-bezier(0.16,1,0.3,1) both' }} />
+        </div>
+        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '15px', fontWeight: 400, color: 'rgba(250,248,245,0.36)', margin: 0, lineHeight: 1.75, maxWidth: '240px', animation: 'csRise 600ms 300ms cubic-bezier(0.16,1,0.3,1) both' }}>
+          We&rsquo;re mapping this city.<br />Something worth finding<br />is on its way.
+        </p>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(193,127,58,0.42)', animation: 'csBreath 2.8s 500ms ease-in-out infinite', marginTop: '4px' }} />
       </div>
     );
   }
@@ -888,7 +915,7 @@ export default function ExploreSwiper({
 
         {view.level === 1 && (
           <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', touchAction: 'pan-y pan-x' } as React.CSSProperties}>
-            {renderL1CategoryGrid()}
+            {activeRegion?.is_active === false ? renderComingSoon() : renderL1CategoryGrid()}
           </div>
         )}
         {view.level === 2 && (
@@ -977,7 +1004,7 @@ export default function ExploreSwiper({
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,248,245,0.38)', margin: 0 }}>Where are you exploring first?</p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '12px 16px 32px', touchAction: 'pan-y' } as React.CSSProperties}>
-              {regions.map(region => {
+              {regions.filter(r => r.is_active !== false).map(region => {
                 const isSelected = region.id === selectedRegionId;
                 return (
                   <button
@@ -1055,6 +1082,9 @@ export default function ExploreSwiper({
         @keyframes hsCatIn { from { opacity:0; transform:translateY(10px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
         @keyframes hsNudge { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px rgba(193,127,58,0.55), 0 4px 16px rgba(193,127,58,0.25); } }
         @keyframes hsFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes csSweep { from { width:0; opacity:0; } to { width:44px; opacity:1; } }
+        @keyframes csRise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes csBreath { 0%,100% { transform:scale(0.75); opacity:0.22; } 50% { transform:scale(1.25); opacity:0.58; } }
         div::-webkit-scrollbar { display:none; }
       `}</style>
     </div>
