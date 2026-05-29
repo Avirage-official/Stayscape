@@ -55,7 +55,7 @@ type ProfileJoin = {
   completed: boolean | null;
   location_city: string | null;
   location_country: string | null;
-  regions: { name: string | null }[] | null;
+  regions: { name: string | null } | null;
 };
 
 function resolveTab(raw: string | undefined): Tab {
@@ -207,8 +207,8 @@ async function getUsersData(rawParams: UsersSearchParams): Promise<UsersPageData
 
     // Map rows
     const rows: UserRow[] = (paginatedRes.data ?? []).map((u) => {
-      const profiles = u.user_profiles as unknown as ProfileJoin[] | null;
-      const profile = Array.isArray(profiles) ? (profiles[0] ?? null) : null;
+      const profiles = u.user_profiles as unknown as ProfileJoin[] | ProfileJoin | null;
+      const profile = Array.isArray(profiles) ? (profiles[0] ?? null) : (profiles ?? null);
 
       const first = (u.firstname as string | null) ?? '';
       const last = (u.lastname as string | null) ?? '';
@@ -217,7 +217,7 @@ async function getUsersData(rawParams: UsersSearchParams): Promise<UsersPageData
       const city = profile?.location_city ?? null;
       const country = profile?.location_country ?? null;
       const location = [city, country].filter(Boolean).join(', ') || '—';
-      const region = profile?.regions?.[0]?.name ?? '—';
+      const region = profile?.regions?.name ?? '—';
 
       return {
         id: u.id as string,
