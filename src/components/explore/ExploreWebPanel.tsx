@@ -134,8 +134,9 @@ export default function ExploreWebPanel({
               <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '14px', color: 'rgba(250,248,245,0.22)', textAlign: 'center', padding: '12px 0', margin: 0 }}>
                 No cities available.
               </p>
-            ) : regions.filter(r => r.is_active !== false).map(region => {
+            ) : regions.map(region => {
               const isSel = region.id === selectedRegionId;
+              const isInactive = region.is_active === false;
               return (
                 <button
                   key={region.id}
@@ -148,22 +149,24 @@ export default function ExploreWebPanel({
                     borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
                     transition: 'background 140ms ease',
                     boxSizing: 'border-box',
+                    opacity: isInactive ? 0.65 : 1,
                   } as React.CSSProperties}
                   onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(250,248,245,0.07)'; }}
                   onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
                 >
                   <div style={{ width: '28px', height: '28px', borderRadius: '7px', overflow: 'hidden', flexShrink: 0, background: 'rgba(250,248,245,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {region.image_url
-                      ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                      ? <img src={region.image_url} alt={region.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isInactive ? 'saturate(0.45)' : 'none' }} loading="lazy" />
                       : <span style={{ color: 'rgba(250,248,245,0.35)', fontSize: '10px', fontFamily: "'DM Sans', sans-serif" }}>{region.country_code ?? '—'}</span>}
                   </div>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: isSel ? 600 : 400, color: isSel ? '#FAF8F5' : 'rgba(250,248,245,0.78)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: isSel ? 600 : 400, color: isSel ? '#FAF8F5' : isInactive ? 'rgba(250,248,245,0.48)' : 'rgba(250,248,245,0.78)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                     {region.name}
                   </p>
-                  {isSel && (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                  )}
+                  {isInactive
+                    ? <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(193,127,58,0.65)', background: 'rgba(193,127,58,0.1)', border: '1px solid rgba(193,127,58,0.18)', borderRadius: '20px', padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>Soon</span>
+                    : isSel
+                      ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(193,127,58,0.9)" strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      : null}
                 </button>
               );
             })}
