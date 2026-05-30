@@ -33,6 +33,7 @@ export interface PlaceCard {
   distance: string;
   gradient: string;
   image: string;
+  images?: string[];
   bookingUrl: string;
 }
 
