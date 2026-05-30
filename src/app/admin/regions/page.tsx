@@ -18,7 +18,7 @@ interface RegionCardData {
   isActive: boolean;
 }
 
-type ActionKey = 'seed' | 'enrich' | 'reverify' | 'images';
+type ActionKey = 'seed' | 'enrich' | 'reverify' | 'images'; // reverify kept for type compat, not shown in UI
 type ActionState = 'idle' | 'loading' | 'done' | 'error';
 
 interface RegionAction {
@@ -326,13 +326,13 @@ export default function AdminRegionsPage() {
                   <div className="flex flex-col gap-1">
                     {seedExpanded === region.id ? (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] uppercase tracking-[0.12em] text-[#C9A84C]/70">Radius:</span>
+                        <span className="text-[11px] uppercase tracking-[0.12em] text-blue-400/70">Radius:</span>
                         {[25, 50, 100].map((km) => (
                           <button
                             key={km}
                             type="button"
                             onClick={() => void handleAction(region.id, 'seed', region, km)}
-                            className="rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#C9A84C] hover:bg-[#C9A84C]/25 transition-colors"
+                            className="rounded-lg border border-blue-400/40 bg-blue-400/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-blue-300 hover:bg-blue-400/25 transition-colors"
                           >
                             {km} km
                           </button>
@@ -350,9 +350,9 @@ export default function AdminRegionsPage() {
                         type="button"
                         disabled={regionActions.seed.state === 'loading'}
                         onClick={() => setSeedExpanded(region.id)}
-                        className="self-start rounded-lg border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#C9A84C] disabled:opacity-40"
+                        className="self-start rounded-lg border border-blue-400/40 bg-blue-400/15 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-blue-300 disabled:opacity-40"
                       >
-                        {regionActions.seed.state === 'loading' ? 'Seeding…' : 'Seed from Foursquare'}
+                        {regionActions.seed.state === 'loading' ? 'Seeding…' : '⬡ Seed from Google Places'}
                       </button>
                     )}
                     {regionActions.seed.message && (
@@ -362,7 +362,7 @@ export default function AdminRegionsPage() {
                     )}
                   </div>
 
-                  {/* Enrich + Re-verify + Fetch Images */}
+                  {/* Enrich + Fetch Images */}
                   <div className="flex flex-wrap gap-2">
                     {(
                       [
@@ -370,19 +370,16 @@ export default function AdminRegionsPage() {
                           key: 'enrich' as ActionKey,
                           label: 'Enrich with AI',
                           loadingLabel: 'Enriching…',
-                        },
-                        {
-                          key: 'reverify' as ActionKey,
-                          label: 'Re-verify Places',
-                          loadingLabel: 'Verifying…',
+                          google: false,
                         },
                         {
                           key: 'images' as ActionKey,
-                          label: 'Fetch Google Images',
+                          label: '⬡ Fetch Google Images',
                           loadingLabel: 'Fetching images…',
+                          google: true,
                         },
                       ] as const
-                    ).map(({ key, label, loadingLabel }) => {
+                    ).map(({ key, label, loadingLabel, google }) => {
                       const action = regionActions[key];
                       const isLoading = action.state === 'loading';
                       return (
@@ -391,7 +388,11 @@ export default function AdminRegionsPage() {
                             type="button"
                             disabled={isLoading}
                             onClick={() => void handleAction(region.id, key, region)}
-                            className="rounded-lg border border-white/20 bg-white/[0.03] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-white/75 disabled:opacity-40"
+                            className={`rounded-lg border px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] disabled:opacity-40 ${
+                              google
+                                ? 'border-blue-400/40 bg-blue-400/15 text-blue-300'
+                                : 'border-white/20 bg-white/[0.03] text-white/75'
+                            }`}
                           >
                             {isLoading ? loadingLabel : label}
                           </button>
