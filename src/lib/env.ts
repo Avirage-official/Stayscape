@@ -35,6 +35,11 @@ export function getGeoapifyApiKey(): string {
   return getServerEnv('GEOAPIFY_API_KEY');
 }
 
+/** Google Places API key (backend only). Shared by sync and image fetch. */
+export function getGooglePlacesApiKey(): string {
+  return getServerEnv('GOOGLE_PLACES_API_KEY');
+}
+
 /** Foursquare Places API key (backend only). */
 export function getFoursquareApiKey(): string {
   return getServerEnv('FOURSQUARE_PLACES_API_KEY');

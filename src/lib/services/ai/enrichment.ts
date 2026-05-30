@@ -26,7 +26,7 @@ import type {
   PlaceTag,
   EventTag,
 } from '@/types/database';
-import { getPlaceDetails } from '@/lib/services/foursquare';
+import { getPlaceDetails } from '@/lib/services/google-places';
 import { fetchAndStoreGooglePlaceImage } from '@/lib/services/google-places-image';
 import { ClaudeProvider } from './claude-provider';
 
@@ -123,7 +123,7 @@ export async function enrichPlace(
 ): Promise<void> {
   // Step 1 – Fetch provider Place Details + better image
   let enrichedPlace = place;
-  if (place.external_source === 'foursquare' && place.external_id) {
+  if (place.external_source === 'google_places' && place.external_id) {
     try {
       const details = await getPlaceDetails(place.external_id);
       if (details) {
