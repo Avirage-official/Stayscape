@@ -1,18 +1,62 @@
 'use client';
 
+import { useRef, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { PlaceDetail } from '@/components/PlaceDetailDialog';
 
 export default function PlaceDetailHeader({ detail }: { detail: PlaceDetail }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const images = detail.images && detail.images.length > 0 ? detail.images : [detail.image];
+  const isCarousel = images.length > 1;
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const idx = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
+    setActiveIdx(idx);
+  }, []);
+
   return (
     <div className="relative h-[200px] sm:h-[240px] overflow-hidden flex-shrink-0">
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out"
-        style={{ backgroundImage: `url(${detail.image})` }}
-      />
-      <div className={`absolute inset-0 bg-gradient-to-t ${detail.gradient}`} />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent" />
+      {isCarousel ? (
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex w-full h-full overflow-x-auto snap-x snap-mandatory"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {images.map((url, i) => (
+            <div
+              key={i}
+              className="flex-shrink-0 w-full h-full snap-center bg-cover bg-center"
+              style={{ backgroundImage: `url(${url})` }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${images[0]})` }}
+        />
+      )}
+
+      {/* Gradient overlays */}
+      <div className={`absolute inset-0 bg-gradient-to-t ${detail.gradient} pointer-events-none`} />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none" />
+
+      {/* Dot indicators */}
+      {isCarousel && (
+        <div className="absolute bottom-[68px] left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+          {images.map((_, i) => (
+            <div
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-white transition-opacity duration-200"
+              style={{ opacity: i === activeIdx ? 0.9 : 0.35 }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Overlaid title area */}
       <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">

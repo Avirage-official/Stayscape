@@ -152,7 +152,7 @@ export async function fetchPlacesAsDiscoverItems(
 
   let query = sb
     .from('places')
-    .select('id, name, category, description, rating, image_url, booking_url')
+    .select('id, name, category, description, rating, image_url, image_urls, booking_url')
     .eq('is_active', true)
     .order('is_featured', { ascending: false })
     .order('rating', { ascending: false })
@@ -172,6 +172,7 @@ export async function fetchPlacesAsDiscoverItems(
     description: string;
     rating: number | null;
     image_url: string | null;
+    image_urls: string[] | null;
     booking_url: string | null;
   }>).map((row) => ({
     id: row.id,
@@ -182,6 +183,7 @@ export async function fetchPlacesAsDiscoverItems(
     distance: '',
     gradient: gradientForCategory(row.category),
     image: row.image_url ?? '',
+    images: row.image_urls ?? [],
     bookingUrl: row.booking_url ?? '#',
   }));
 }

@@ -26,6 +26,7 @@ interface PlaceDetail {
   distance: string;
   gradient: string;
   image: string;
+  images: string[];
   bookingUrl: string;
   /* editorial detail fields */
   locationLine: string;
@@ -42,13 +43,15 @@ interface PlaceDetail {
 const placeDetails = FALLBACK_PLACE_DETAILS;
 
 /* ─── Fallback detail generator ─── */
-function getPlaceDetail(place: { id: string; name: string; category: string; description: string; rating: number; distance: string; gradient: string; image: string; bookingUrl: string }): PlaceDetail {
+function getPlaceDetail(place: { id: string; name: string; category: string; description: string; rating: number; distance: string; gradient: string; image: string; images?: string[]; bookingUrl: string }): PlaceDetail {
   const extra = placeDetails[place.id];
+  const images = place.images && place.images.length > 0 ? place.images : (place.image ? [place.image] : []);
   if (extra) {
-    return { ...place, ...extra };
+    return { ...place, images, ...extra };
   }
   return {
     ...place,
+    images,
     locationLine: place.category,
     editorialDescription: place.description,
     thingsToDo: ['Explore the surroundings', 'Take in the atmosphere', 'Capture the moment'],
@@ -250,6 +253,7 @@ interface PlaceDetailDialogProps {
     distance: string;
     gradient: string;
     image: string;
+    images?: string[];
     bookingUrl: string;
   } | null;
 }
