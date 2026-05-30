@@ -61,6 +61,16 @@ function indexTagsByPlace(rows: PlaceTag[]): Record<string, PlaceTag[]> {
   }, {});
 }
 
+/** Haversine great-circle distance in km between two lat/lng points. */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 /** Build an event_id → EventTag[] map from a flat tag list. */
 function indexTagsByEvent(rows: EventTag[]): Record<string, EventTag[]> {
   return rows.reduce<Record<string, EventTag[]>>((acc, tag) => {
@@ -107,7 +117,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle(),
       supabase
         .from('regions')
-        .select('id, name, slug, country_code, image_path, is_active')
+        .select('id, name, slug, country_code, image_path, is_active, latitude, longitude')
         .order('name', { ascending: true }),
       supabase
         .from('users')
@@ -164,8 +174,29 @@ export async function GET(request: NextRequest) {
     const heroPlace = scoredPlaces[0] ?? null;
 
     // ── 2. In your world — regions ───────────────────────────────────────────
+    // Sort by distance from the active region; fall back to alphabetical when
+    // either the active region or a candidate region has no coordinates.
+    const activeRegionData = regions.find(r => r.id === regionId);
+    const activeLat = (activeRegionData?.latitude as number | null) ?? null;
+    const activeLng = (activeRegionData?.longitude as number | null) ?? null;
+
     const otherRegions = regions
       .filter(r => r.id !== stayRegionId)
+      .sort((a, b) => {
+        const aLat = (a.latitude as number | null) ?? null;
+        const aLng = (a.longitude as number | null) ?? null;
+        const bLat = (b.latitude as number | null) ?? null;
+        const bLng = (b.longitude as number | null) ?? null;
+        if (activeLat !== null && activeLng !== null && aLat !== null && aLng !== null && bLat !== null && bLng !== null) {
+          return haversineKm(activeLat, activeLng, aLat, aLng) - haversineKm(activeLat, activeLng, bLat, bLng);
+        }
+        // regions with coordinates sort before those without
+        if (activeLat !== null && activeLng !== null) {
+          if (aLat !== null && aLng !== null) return -1;
+          if (bLat !== null && bLng !== null) return 1;
+        }
+        return a.name.localeCompare(b.name);
+      })
       .slice(0, 6)
       .map(r => ({
         id: r.id,
