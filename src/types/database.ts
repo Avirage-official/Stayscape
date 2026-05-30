@@ -383,7 +383,8 @@ export type ExternalSource =
   | 'eventbrite'
   | 'manual'
   | 'editorial'
-  | 'foursquare';
+  | 'foursquare'
+  | 'google_places';
 
 /** Vibe / best-for labels used by the AI enrichment layer. */
 export const VIBE_LABELS = [

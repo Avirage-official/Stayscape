@@ -3,7 +3,7 @@
  *
  * Coordinates the full sync pipeline:
  * 1. Create a sync_run record
- * 2. Fetch places from Foursquare
+ * 2. Fetch places from Google Places API
  * 3. Upsert into Supabase
  * 4. Queue AI enrichment for new records
  * 5. Complete the sync_run
@@ -23,7 +23,7 @@ import {
   completeSyncRun,
   failSyncRun,
 } from '@/lib/supabase';
-import { searchPlaces, type FoursquareSearchParams } from '@/lib/services/foursquare';
+import { searchPlaces, type GooglePlacesSearchParams } from '@/lib/services/google-places';
 import { enrichNewPlaces } from '@/lib/services/ai/enrichment';
 
 const DEFAULT_SYNC_RADIUS_METERS = 5000;
@@ -56,20 +56,21 @@ export async function syncPlaces(
   // 1. Create sync_run
   const syncRun = await createSyncRun(supabase, {
     sync_type: 'places',
-    provider: 'foursquare',
+    provider: 'google_places',
     region_id: options.region_id,
   });
 
   try {
-    // 2. Fetch from Foursquare
+    // 2. Fetch from Google Places
     const syncStartedAt = new Date().toISOString();
     const radiusMeters = options.radius_meters ?? DEFAULT_SYNC_RADIUS_METERS;
 
-    const searchParams: FoursquareSearchParams = {
+    const searchParams: GooglePlacesSearchParams = {
       latitude: options.latitude,
       longitude: options.longitude,
       radius_meters: radiusMeters,
-      limit: options.limit ?? 100,
+      limit: options.limit ?? 60,
+      country_code: options.country_code,
     };
 
     const rawPlaces = await searchPlaces(searchParams);
@@ -95,7 +96,7 @@ export async function syncPlaces(
     // 4. Deactivate places from this region+source that weren't seen in this sync
     const deactivated = await deactivateStalePlaces(
       supabase,
-      'foursquare',
+      'google_places',
       options.region_id,
       syncStartedAt,
       {
