@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     for (const place of places) {
       try {
-        const imageUrl = await fetchAndStoreGooglePlaceImage(
+        const imageUrls = await fetchAndStoreGooglePlaceImage(
           supabase,
           place.id as string,
           place.name as string,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
           (place.country_code as string | null) ?? '',
         );
 
-        if (!imageUrl) {
+        if (imageUrls.length === 0) {
           skipped++;
           continue;
         }
@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
         const { error: updateError } = await supabase
           .from('places')
           .update({
-            image_url: imageUrl,
-            image_urls: [imageUrl],
+            image_url: imageUrls[0],
+            image_urls: imageUrls,
             updated_at: new Date().toISOString(),
           })
           .eq('id', place.id);

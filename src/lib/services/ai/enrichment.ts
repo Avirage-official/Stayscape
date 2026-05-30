@@ -387,9 +387,9 @@ async function fetchPlaceImage(
   city: string,
   countryCode: string,
 ): Promise<string | null> {
-  // Primary: Google Places — image stored in Supabase, URL is permanent
-  const googleImage = await fetchAndStoreGooglePlaceImage(supabase, placeId, name, city, countryCode);
-  if (googleImage) return googleImage;
+  // Primary: Google Places — images stored in Supabase, URLs are permanent
+  const googleImages = await fetchAndStoreGooglePlaceImage(supabase, placeId, name, city, countryCode);
+  if (googleImages.length > 0) return googleImages[0];
 
   // Fallback: Unsplash — must hotlink per their API terms, URL is stable
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
