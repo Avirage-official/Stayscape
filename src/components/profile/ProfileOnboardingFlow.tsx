@@ -967,6 +967,19 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
     }
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    // Look up the region_id matching the chosen city name
+    let region_id: string | undefined;
+    if (supabase && locCity) {
+      const { data: regionRow } = await supabase
+        .from('regions')
+        .select('id')
+        .ilike('name', locCity)
+        .limit(1)
+        .maybeSingle();
+      if (regionRow?.id) region_id = regionRow.id as string;
+    }
+
     try {
       const res = await fetch('/api/customer/profile', {
         method: 'POST', headers,
@@ -982,6 +995,7 @@ export default function ProfileOnboardingFlow({ userId: _userId, onCompleted }: 
           planning:         planning    || undefined,
           spend:            spend       || undefined,
           dealbreakers:     dealbreakers.length ? dealbreakers : undefined,
+          region_id,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
