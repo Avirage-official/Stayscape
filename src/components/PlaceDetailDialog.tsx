@@ -260,11 +260,12 @@ interface PlaceDetailDialogProps {
 
 export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDetailDialogProps) {
   const [view, setView] = useState<'detail' | 'schedule'>('detail');
+  const [selectedImgIdx, setSelectedImgIdx] = useState(0);
 
   const handleOpenChange = useCallback((value: boolean) => {
     if (!value) {
       // Reset to detail view on close
-      setTimeout(() => setView('detail'), 200);
+      setTimeout(() => { setView('detail'); setSelectedImgIdx(0); }, 200);
     }
     onOpenChange(value);
   }, [onOpenChange]);
@@ -287,7 +288,33 @@ export default function PlaceDetailDialog({ open, onOpenChange, place }: PlaceDe
 
         {view === 'detail' ? (
           <div className="flex flex-col flex-1 min-h-0">
-            <PlaceDetailHeader detail={detail} />
+            <PlaceDetailHeader detail={detail} selectedIdx={selectedImgIdx} />
+
+            {/* Thumbnail strip — only shown when place has 2+ images */}
+            {detail.images.length > 1 && (
+              <div
+                className="flex gap-2 px-4 py-2.5 overflow-x-auto flex-shrink-0 bg-[var(--discover-surface)]"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {detail.images.map((url, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedImgIdx(i)}
+                    className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden transition-opacity duration-150"
+                    style={{
+                      outline: i === selectedImgIdx ? '2px solid var(--discover-gold)' : '2px solid transparent',
+                      outlineOffset: '2px',
+                      opacity: i === selectedImgIdx ? 1 : 0.5,
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
             <PlaceDetailContent detail={detail} onAddToItinerary={() => setView('schedule')} />
           </div>
         ) : (
