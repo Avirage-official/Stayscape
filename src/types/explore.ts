@@ -62,6 +62,7 @@ export interface DrillPlaceCard {
   category: string;
   subcategory: string | null;
   image_url: string | null;
+  image_urls: string[];
   rating: number | null;
   vibes: string[] | null;
   address: string | null;

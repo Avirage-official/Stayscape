@@ -152,6 +152,7 @@ export async function getPlacesByRegionAndCategory(
     category: row.category as string,
     subcategory: (row.subcategory as string | null) ?? null,
     image_url: (row.image_url as string | null) ?? ((row.image_urls as string[] | null)?.[0] ?? null),
+    image_urls: (row.image_urls as string[] | null) ?? [],
     rating: (row.rating as number | null) ?? null,
     vibes: null, // vibes come from place_tags; not fetched here for performance
     address: (row.address as string | null) ?? null,

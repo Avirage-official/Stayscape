@@ -66,6 +66,8 @@ export default function ExploreDetailSheet({
   item, contentType, onClose, onAddToItinerary,
 }: ExploreDetailSheetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const imgScrollRef = useRef<HTMLDivElement>(null);
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [saved, setSaved] = useState(false);
   const [added, setAdded] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -75,7 +77,7 @@ export default function ExploreDetailSheet({
 
   useEffect(() => {
     if (item) {
-      setSaved(false); setAdded(false);
+      setSaved(false); setAdded(false); setActiveImgIdx(0);
       setMounted(true);
       requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
     } else {
@@ -131,6 +133,9 @@ export default function ExploreDetailSheet({
   const region   = isRegion   ? (item as RegionOption)                        : null;
 
   const imageUrl     = (item as DrillPlaceCard).image_url ?? null;
+  const imageUrls    = isPlace && (item as DrillPlaceCard).image_urls?.length > 1
+    ? (item as DrillPlaceCard).image_urls
+    : (imageUrl ? [imageUrl] : []);
   const itemName     = item.name ?? '';
   const rawCat       = (item as DrillPlaceCard).category ?? '';
   const accentFg     = CAT_COLOR[rawCat.toLowerCase()] ?? FALLBACK_ACCENT;
@@ -220,20 +225,74 @@ export default function ExploreDetailSheet({
           transition: 'transform 500ms cubic-bezier(0.16,1,0.3,1)',
         }}
       >
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt=""
-            aria-hidden="true"
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center 25%',
-            }}
-            loading="eager"
-          />
+        {imageUrls.length > 0 && (
+          imageUrls.length > 1 ? (
+            <div
+              ref={imgScrollRef}
+              onScroll={() => {
+                if (!imgScrollRef.current) return;
+                const idx = Math.round(imgScrollRef.current.scrollLeft / imgScrollRef.current.clientWidth);
+                setActiveImgIdx(idx);
+              }}
+              style={{
+                position: 'absolute', inset: 0,
+                display: 'flex',
+                overflowX: 'auto',
+                scrollSnapType: 'x mandatory',
+                scrollbarWidth: 'none',
+              }}
+            >
+              {imageUrls.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    width: '100%', height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center 25%',
+                    scrollSnapAlign: 'center',
+                  }}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                />
+              ))}
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrls[0]}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center 25%',
+              }}
+              loading="eager"
+            />
+          )
+        )}
+
+        {/* Dot indicators — only when carousel is active */}
+        {imageUrls.length > 1 && (
+          <div style={{
+            position: 'absolute', top: '72px', left: 0, right: 0,
+            display: 'flex', justifyContent: 'center', gap: '6px',
+            pointerEvents: 'none', zIndex: 2,
+          }}>
+            {imageUrls.map((_, i) => (
+              <div key={i} style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: 'rgba(250,248,245,0.9)',
+                opacity: i === activeImgIdx ? 0.9 : 0.3,
+                transition: 'opacity 200ms ease',
+              }} />
+            ))}
+          </div>
         )}
 
         {/* left veil — keeps left-side text readable */}
