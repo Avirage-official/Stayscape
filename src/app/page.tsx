@@ -33,7 +33,7 @@ export default function SplashPage() {
         <div className="sc-vid-wrap">
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video
-            autoPlay muted loop playsInline preload="metadata"
+            autoPlay muted loop playsInline preload="auto"
             aria-hidden="true"
             className="sc-vid"
           >
@@ -178,7 +178,7 @@ export default function SplashPage() {
                   e.currentTarget.style.background = 'transparent'
                 }}
               >
-                Manage a Property
+                For Hotel Staff
               </button>
             </div>
           </div>
@@ -276,12 +276,23 @@ export default function SplashPage() {
           .sc-vid-wrap {
             /* Horizontal diagonal: full-width video, angled bottom edge */
             bottom: auto;
+            height: 50vh; /* vh fallback for older iOS */
             height: 50dvh;
+            width: 100%;
             clip-path: polygon(0 0, 100% 0, 100% 88%, 0 100%);
+          }
+          .sc-vid {
+            /* Force visible on mobile — some browsers need explicit dims */
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 50vh;
           }
           .sc-seam { display: none; }
           .sc-layout { flex-direction: column; }
-          .sc-layout-gap { flex: 0 0 50dvh; }
+          .sc-layout-gap {
+            flex: 0 0 50vh; /* vh fallback */
+            flex: 0 0 50dvh;
+          }
           .sc-layout-content {
             flex: 1;
             padding: 28px 32px 32px;
