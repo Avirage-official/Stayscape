@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { CustomerStay } from '@/types/customer';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
-import NoBookingDashboard from './NoBookingDashboard';
+import GuestHome from './GuestHome';
 
 const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -366,7 +366,7 @@ function HotelCard({ hotel }: { hotel: HotelData }) {
   );
 }
 
-function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
+function NoBookingState({ onAddStay, firstName }: { onAddStay: () => void; firstName?: string }) {
   const [hotels, setHotels] = useState<HotelData[]>([]);
   const [hotelsLoading, setHotelsLoading] = useState(true);
   const [regions, setRegions] = useState<RegionData[]>([]);
@@ -436,7 +436,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
   };
 
   return (
-    <NoBookingDashboard
+    <GuestHome
       onAddStay={onAddStay}
       hotels={hotels}
       hotelsLoading={hotelsLoading}
@@ -450,6 +450,7 @@ function NoBookingState({ onAddStay }: { onAddStay: () => void }) {
       setBookingRef={setBookingRef}
       filteredHotels={filteredHotels}
       countryFlag={countryFlag}
+      firstName={firstName}
     />
   );
 }
@@ -544,14 +545,16 @@ function CalendarIcon() {
 interface CurrentBookingViewProps {
   stay: CustomerStay | null;
   onAddStay: () => void;
+  firstName?: string;
 }
 
 export default function CurrentBookingView({
   stay,
   onAddStay,
+  firstName,
 }: CurrentBookingViewProps) {
   if (stay) {
     return <BookedState stay={stay} onAddStay={onAddStay} />;
   }
-  return <NoBookingState onAddStay={onAddStay} />;
+  return <NoBookingState onAddStay={onAddStay} firstName={firstName} />;
 }

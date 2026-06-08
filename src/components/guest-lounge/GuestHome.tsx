@@ -24,7 +24,7 @@ type FeaturedPlace = {
   rating?: number | null;
 };
 
-export interface NoBookingDashboardProps {
+export interface GuestHomeProps {
   onAddStay: () => void;
   hotels: HotelData[];
   hotelsLoading: boolean;
@@ -38,6 +38,7 @@ export interface NoBookingDashboardProps {
   setBookingRef: (ref: string) => void;
   filteredHotels: HotelData[];
   countryFlag: (code: string) => string;
+  firstName?: string;
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -148,7 +149,7 @@ function getNavIcon(icon: string) {
 
 /* ─── Main Component ─── */
 
-export default function NoBookingDashboard({
+export default function GuestHome({
   onAddStay,
   hotels: _hotels,
   hotelsLoading,
@@ -162,7 +163,8 @@ export default function NoBookingDashboard({
   setBookingRef,
   filteredHotels,
   countryFlag,
-}: NoBookingDashboardProps) {
+  firstName,
+}: GuestHomeProps) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
 
@@ -193,7 +195,7 @@ export default function NoBookingDashboard({
       })
       .catch((err: unknown) => {
         console.error(
-          `[NoBookingDashboard] Failed to fetch featured places for region ${regions[0].id}:`,
+          `[GuestHome] Failed to fetch featured places for region ${regions[0].id}:`,
           err,
         );
         setFeaturedPlaces([]);
@@ -749,7 +751,7 @@ export default function NoBookingDashboard({
                 marginTop: '2px',
               }}
             >
-              Traveller
+              {firstName ?? 'Traveller'}
             </p>
           </div>
 
