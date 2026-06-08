@@ -27,67 +27,36 @@ export default function SplashPage() {
         />
       )}
 
-      {/* Root */}
       <div style={{ position: 'fixed', inset: 0, background: '#FAF8F5', overflow: 'hidden' }}>
 
-        {/* ── Background layers ──────────────────────────── */}
+        {/* ── Background layers ──────────────────────────────── */}
         <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
 
-          {/* Primary gold orb — large warm glow above logo */}
-          <div style={{
-            position: 'absolute',
-            top: '-28%', left: '50%', transform: 'translateX(-50%)',
-            width: '88vmax', height: '78vmax',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 50% 40%, rgba(200,168,90,0.24) 0%, rgba(200,168,90,0.10) 38%, transparent 68%)',
-          }} />
+          {/*
+           * Aurora blobs: solid colour + filter:blur() creates an organic Gaussian
+           * spread (how Stripe/Vercel/Linear do it) vs. mathematical gradient falloff.
+           * will-change:transform promotes each blob to its own GPU compositing layer.
+           */}
+          <div className="sc-blob sc-blob-top" />
+          <div className="sc-blob sc-blob-bl" />
+          <div className="sc-blob sc-blob-tr" />
 
-          {/* Secondary amber orb — bottom-left, asymmetric depth */}
-          <div style={{
-            position: 'absolute',
-            bottom: '-22%', left: '-12%',
-            width: '58vmax', height: '58vmax',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at center, rgba(180,110,42,0.14) 0%, transparent 62%)',
-          }} />
-
-          {/* Tertiary accent — top-right whisper */}
-          <div style={{
-            position: 'absolute',
-            top: '-8%', right: '-8%',
-            width: '42vmax', height: '42vmax',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at center, rgba(200,168,90,0.10) 0%, transparent 60%)',
-          }} />
-
-          {/* Edge vignette — frames content, adds luxury depth */}
+          {/* Edge vignette — frames content, draws eye inward */}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'radial-gradient(ellipse 96% 92% at 50% 48%, transparent 36%, rgba(30,16,4,0.07) 100%)',
           }} />
 
-          {/* Film grain — SVG feTurbulence; tactile premium texture */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          >
-            <defs>
-              <filter id="sc-grain" x="0%" y="0%" width="100%" height="100%">
-                <feTurbulence
-                  type="fractalNoise"
-                  baseFrequency="0.72"
-                  numOctaves="4"
-                  stitchTiles="stitch"
-                />
-                <feColorMatrix type="saturate" values="0" />
-              </filter>
-            </defs>
-            <rect width="100%" height="100%" filter="url(#sc-grain)" opacity="0.048" />
-          </svg>
+          {/*
+           * Film grain: tiled SVG feTurbulence as CSS background-image (300×300,
+           * seamless via stitchTiles="stitch"). mix-blend-mode:soft-light merges
+           * the grayscale noise into the cream surface — looks like paper/linen
+           * rather than a static overlay. This is the CSS-Tricks canonical technique.
+           */}
+          <div className="sc-grain" />
         </div>
 
-        {/* ── Content ────────────────────────────────────── */}
+        {/* ── Content ──────────────────────────────────────────── */}
         <div style={{
           position: 'relative', zIndex: 1, height: '100%',
           display: 'flex', flexDirection: 'column',
@@ -97,7 +66,7 @@ export default function SplashPage() {
 
           {/* Outer: opacity + scale appear once */}
           <div className="sc-appear">
-            {/* Inner: infinite float (translateY — separate property, no conflict) */}
+            {/* Inner: infinite float — separate div keeps translateY off the appear's scale */}
             <div className="sc-float">
 
               {/* SC monogram */}
@@ -151,7 +120,12 @@ export default function SplashPage() {
             </div>
           </div>
 
-          {/* Choice buttons */}
+          {/*
+           * Activity-based labels (NN/G research: identity labels — "I'm a Guest" —
+           * cause friction; task labels — "Find a Stay" — resolve intent immediately).
+           * Primary filled button = guest (majority user type, guest-first per Airbnb model).
+           * Ghost outline = hotel managers (secondary path, subordinate visual weight).
+           */}
           <div
             className="sc-buttons"
             style={{
@@ -182,7 +156,7 @@ export default function SplashPage() {
               onMouseEnter={e => (e.currentTarget.style.opacity = '0.80')}
               onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
             >
-              I'm a Guest
+              Find a Stay
             </button>
             <button
               onClick={() => navigate('hotels')}
@@ -209,13 +183,63 @@ export default function SplashPage() {
                 e.currentTarget.style.background = 'transparent'
               }}
             >
-              For Hotels
+              Manage a Property
             </button>
           </div>
         </div>
       </div>
 
       <style>{`
+        /* ── Aurora blobs ─────────────────────────────────────────
+         * Solid colour + filter:blur() = organic Gaussian spread.
+         * Pure radial-gradient has a mathematical falloff that looks
+         * synthetic by comparison.
+         * ──────────────────────────────────────────────────────── */
+        .sc-blob {
+          position: absolute;
+          border-radius: 50%;
+          will-change: transform;
+        }
+        .sc-blob-top {
+          top: -15%; left: 50%; transform: translateX(-50%);
+          width: clamp(280px, 68vmax, 860px);
+          height: clamp(240px, 58vmax, 720px);
+          background: rgba(200,168,90,0.52);
+          filter: blur(100px);
+        }
+        .sc-blob-bl {
+          bottom: -20%; left: -10%;
+          width: clamp(180px, 48vmax, 580px);
+          height: clamp(180px, 48vmax, 580px);
+          background: rgba(180,110,42,0.38);
+          filter: blur(90px);
+        }
+        .sc-blob-tr {
+          top: -8%; right: -8%;
+          width: clamp(140px, 36vmax, 460px);
+          height: clamp(140px, 36vmax, 460px);
+          background: rgba(200,168,90,0.28);
+          filter: blur(85px);
+        }
+
+        /* ── Film grain ───────────────────────────────────────────
+         * Tiled SVG feTurbulence (300×300, seamless via stitchTiles).
+         * mix-blend-mode:soft-light merges grain into the cream
+         * surface optically — unlike plain opacity which just layers
+         * transparent static on top. (CSS-Tricks canonical technique.)
+         * ──────────────────────────────────────────────────────── */
+        .sc-grain {
+          position: absolute;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+          background-size: 300px 300px;
+          background-repeat: repeat;
+          mix-blend-mode: soft-light;
+          opacity: 0.72;
+          pointer-events: none;
+        }
+
+        /* ── Monogram animations ──────────────────────────────── */
         @keyframes sc-appear-anim {
           from { opacity: 0; transform: scale(0.88); }
           to   { opacity: 1; transform: scale(1); }
