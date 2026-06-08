@@ -6,6 +6,8 @@ import ThemeProvider from "@/components/ThemeProvider";
 import { RegionProvider } from "@/lib/context/region-context";
 import { AuthProvider } from "@/lib/context/auth-context";
 import CookieConsent from "@/components/CookieConsent";
+import NextTopLoader from "nextjs-toploader";
+import PageTransition from "@/components/PageTransition";
 
 /*
   TYPOGRAPHY RATIONALE
@@ -100,10 +102,23 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body className={`${instrumentSans.variable} ${fraunces.variable} ${spectral.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
+        {/* Gold progress bar — intercepts pushState so it shows during navigation */}
+        <NextTopLoader
+          color="#C8A85A"
+          initialPosition={0.18}
+          crawlSpeed={200}
+          height={2}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+          zIndex={9999}
+        />
         <ThemeProvider>
           <AuthProvider>
             <RegionProvider>
-              {children}
+              <PageTransition>
+                {children}
+              </PageTransition>
             </RegionProvider>
           </AuthProvider>
         </ThemeProvider>
