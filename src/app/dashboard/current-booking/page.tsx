@@ -311,6 +311,7 @@ function CurrentBookingContent({ userId }: { userId: string }) {
               <CurrentBookingView
                 stay={primaryStay}
                 onAddStay={() => setAddStayOpen(true)}
+                firstName={data?.profile?.full_name?.split(' ')?.[0]}
               />
             )}
           </>
