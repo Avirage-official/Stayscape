@@ -336,11 +336,6 @@ export default function HomeDashboard() {
           overflowY: 'auto',
           padding: '8px 0 48px',
         }}>
-          {/*
-           * Layout:
-           *   Mobile  — single column, stacked
-           *   Desktop — two columns: left = greeting + region grid, right = trips + aria
-           */}
           <div className="lg:flex lg:items-start lg:gap-8 lg:px-10 lg:max-w-screen-xl lg:mx-auto">
 
             {/* ── LEFT COLUMN: Greeting + Where to next ── */}
@@ -617,12 +612,12 @@ export default function HomeDashboard() {
                 </div>
               </MountSection>
 
-            </div>{/* end right column */}
-          </div>{/* end two-col wrapper */}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── ADD STAY DIALOG — preserved for hotel concierge launch ── */}
+      {/* ── ADD STAY DIALOG ── */}
       <AddStayDialog
         open={addStayOpen}
         onOpenChange={setAddStayOpen}
@@ -675,7 +670,6 @@ function RegionCard({
             transition: 'transform 400ms cubic-bezier(0.4,0,0.2,1)',
           }}
         >
-          {/* Plain img avoids next/image domain restrictions for Supabase storage */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={region.image_url}
