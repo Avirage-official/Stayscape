@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
 import { useAuth } from '@/lib/context/auth-context';
@@ -336,282 +335,290 @@ export default function HomeDashboard() {
           flex: 1,
           overflowY: 'auto',
           padding: '8px 0 48px',
-          display: 'flex', flexDirection: 'column', gap: 0,
         }}>
+          {/*
+           * Layout:
+           *   Mobile  — single column, stacked
+           *   Desktop — two columns: left = greeting + region grid, right = trips + aria
+           */}
+          <div className="lg:flex lg:items-start lg:gap-8 lg:px-10 lg:max-w-screen-xl lg:mx-auto">
 
-          {/* ── SECTION 1: Greeting + Where to next ── */}
-          <div style={{ padding: '0 28px', marginBottom: 36 }}>
-            <MountSection mounted={mounted} delay={80}>
-              <p style={{
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: 12, fontWeight: 500,
-                letterSpacing: '0.16em', textTransform: 'uppercase',
-                color: 'rgba(253,249,242,0.45)',
-                margin: '0 0 8px',
-              }}>
-                {greeting}
-              </p>
-
-              {loadState === 'loading' ? (
-                <Shimmer style={{ height: 56, width: '45%', marginBottom: 6 }} />
-              ) : (
-                <h1 className={cormorant.className} style={{
-                  fontSize: 'clamp(2.6rem, 5vw, 4.2rem)',
-                  fontWeight: 300, fontStyle: 'italic',
-                  lineHeight: 1, letterSpacing: '-0.01em',
-                  color: '#FAF8F5', margin: '0 0 6px',
-                }}>
-                  {firstName ? `${firstName}.` : 'Welcome.'}
-                </h1>
-              )}
-
-              <p style={{
-                fontSize: 15, fontWeight: 300,
-                color: 'rgba(253,249,242,0.55)',
-                margin: 0, lineHeight: 1.5,
-              }}>
-                Where to next?
-              </p>
-            </MountSection>
-
-            {/* Region cards */}
-            <MountSection mounted={mounted} delay={160}>
-              <div style={{ marginTop: 20 }}>
-                {regionsLoading ? (
-                  /* Skeleton strip */
-                  <div style={{ display: 'flex', gap: 12, overflowX: 'hidden' }}>
-                    {[0, 1, 2, 3].map(i => (
-                      <div key={i} style={{ flexShrink: 0, width: 140, height: 180, borderRadius: 16 }}>
-                        <Shimmer style={{ width: '100%', height: '100%', borderRadius: 16 }} />
-                      </div>
-                    ))}
-                  </div>
-                ) : regions.length === 0 ? (
-                  <p style={{ fontSize: 13, color: 'rgba(253,249,242,0.35)', fontWeight: 300 }}>
-                    No destinations available yet.
-                  </p>
-                ) : (
-                  /* Scrollable strip on mobile, grid on desktop */
-                  <>
-                    {/* Mobile: horizontal scroll */}
-                    <div
-                      className="hd-region-strip lg:hidden"
-                      style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}
-                    >
-                      {regions.map((region, i) => (
-                        <RegionCard
-                          key={region.id}
-                          region={region}
-                          index={i}
-                          isActive={region.id === savedRegionId}
-                          onClick={() => handleRegionClick(region)}
-                        />
-                      ))}
-                    </div>
-                    {/* Desktop: grid */}
-                    <div
-                      className="hidden lg:grid"
-                      style={{
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                        gap: 12,
-                        maxWidth: 800,
-                      }}
-                    >
-                      {regions.map((region, i) => (
-                        <RegionCard
-                          key={region.id}
-                          region={region}
-                          index={i}
-                          isActive={region.id === savedRegionId}
-                          onClick={() => handleRegionClick(region)}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </MountSection>
-          </div>
-
-          {/* ── SECTION 2: Your Trips ── */}
-          <div style={{
-            margin: '0 20px 28px',
-            borderRadius: 20,
-            border: '1px solid rgba(253,249,242,0.09)',
-            background: 'rgba(10,8,6,0.55)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            overflow: 'hidden',
-          }}>
-            <MountSection mounted={mounted} delay={240}>
-              {/* Header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '18px 20px 14px',
-                borderBottom: '1px solid rgba(253,249,242,0.07)',
-              }}>
+            {/* ── LEFT COLUMN: Greeting + Where to next ── */}
+            <div className="lg:flex-1 lg:min-w-0" style={{ padding: '0 28px 36px', marginBottom: 0 }}>
+              <MountSection mounted={mounted} delay={80}>
                 <p style={{
-                  fontSize: 10, fontWeight: 600,
-                  letterSpacing: '0.18em', textTransform: 'uppercase',
-                  color: 'rgba(253,249,242,0.45)', margin: 0,
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: 12, fontWeight: 500,
+                  letterSpacing: '0.16em', textTransform: 'uppercase',
+                  color: 'rgba(253,249,242,0.45)',
+                  margin: '0 0 8px',
                 }}>
-                  Your Trips
+                  {greeting}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/dashboard/planner')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    background: 'rgba(193,127,58,0.15)',
-                    border: '1px solid rgba(193,127,58,0.30)',
-                    borderRadius: 999, padding: '5px 12px',
-                    fontSize: 11, fontWeight: 600,
-                    color: '#C17F3A', cursor: 'pointer',
-                    letterSpacing: '0.04em',
-                    transition: 'background 180ms ease',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.25)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.15)'; }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add
-                </button>
-              </div>
 
-              {/* Trip list */}
-              <div>
-                {itinLoading ? (
-                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <Shimmer style={{ height: 44, borderRadius: 8 }} />
-                    <Shimmer style={{ height: 44, borderRadius: 8 }} />
-                  </div>
-                ) : itineraries && itineraries.length > 0 ? (
-                  itineraries.slice(0, 5).map((itin, i) => {
-                    const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled trip';
-                    const start = itin.stays?.checkindate ?? itin.startdate;
-                    const end = itin.stays?.checkoutdate ?? itin.enddate;
-                    const isLast = i === Math.min(itineraries.length, 5) - 1;
-                    return (
+                {loadState === 'loading' ? (
+                  <Shimmer style={{ height: 56, width: '45%', marginBottom: 6 }} />
+                ) : (
+                  <h1 className={cormorant.className} style={{
+                    fontSize: 'clamp(2.6rem, 5vw, 4.2rem)',
+                    fontWeight: 300, fontStyle: 'italic',
+                    lineHeight: 1, letterSpacing: '-0.01em',
+                    color: '#FAF8F5', margin: '0 0 6px',
+                  }}>
+                    {firstName ? `${firstName}.` : 'Welcome.'}
+                  </h1>
+                )}
+
+                <p style={{
+                  fontSize: 15, fontWeight: 300,
+                  color: 'rgba(253,249,242,0.55)',
+                  margin: 0, lineHeight: 1.5,
+                }}>
+                  Where to next?
+                </p>
+              </MountSection>
+
+              {/* Region cards */}
+              <MountSection mounted={mounted} delay={160}>
+                <div style={{ marginTop: 20 }}>
+                  {regionsLoading ? (
+                    <div style={{ display: 'flex', gap: 12, overflowX: 'hidden' }}>
+                      {[0, 1, 2, 3].map(i => (
+                        <div key={i} style={{ flexShrink: 0, width: 140, height: 180, borderRadius: 16 }}>
+                          <Shimmer style={{ width: '100%', height: '100%', borderRadius: 16 }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : regions.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'rgba(253,249,242,0.35)', fontWeight: 300 }}>
+                      No destinations available yet.
+                    </p>
+                  ) : (
+                    <>
+                      {/* Mobile: horizontal scroll strip */}
                       <div
-                        key={itin.id}
-                        className="hd-trip-row"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => router.push('/dashboard/planner')}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push('/dashboard/planner'); } }}
+                        className="hd-region-strip lg:hidden"
+                        style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}
+                      >
+                        {regions.map((region: Region, i: number) => (
+                          <RegionCard
+                            key={region.id}
+                            region={region}
+                            index={i}
+                            isActive={region.id === savedRegionId}
+                            onClick={() => handleRegionClick(region)}
+                          />
+                        ))}
+                      </div>
+                      {/* Desktop: wrapped grid that fills the left column */}
+                      <div
+                        className="hidden lg:grid"
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 14,
-                          padding: '14px 20px',
-                          borderBottom: isLast ? 'none' : '1px solid rgba(253,249,242,0.06)',
-                          cursor: 'pointer',
-                          transition: 'background 150ms ease',
-                          borderRadius: isLast ? '0 0 20px 20px' : 0,
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))',
+                          gap: 12,
                         }}
                       >
-                        <div style={{
-                          width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                          background: 'rgba(193,127,58,0.12)',
-                          border: '1px solid rgba(193,127,58,0.20)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-                          </svg>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: '#FAF8F5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {title}
-                          </p>
-                          <p style={{ margin: '3px 0 0', fontSize: 11, fontWeight: 300, color: 'rgba(253,249,242,0.45)' }}>
-                            {start && end ? `${formatDayMonth(start)} – ${formatDayMonth(end)}` : 'No dates set'}
-                          </p>
-                        </div>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(253,249,242,0.25)', flexShrink: 0 }} aria-hidden="true">
-                          <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-                        </svg>
+                        {regions.map((region: Region, i: number) => (
+                          <RegionCard
+                            key={region.id}
+                            region={region}
+                            index={i}
+                            isActive={region.id === savedRegionId}
+                            onClick={() => handleRegionClick(region)}
+                          />
+                        ))}
                       </div>
-                    );
-                  })
-                ) : (
-                  <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <p className={cormorant.className} style={{
-                      margin: 0, fontSize: 17, fontStyle: 'italic',
-                      fontWeight: 400, color: 'rgba(253,249,242,0.38)',
+                    </>
+                  )}
+                </div>
+              </MountSection>
+            </div>
+
+            {/* ── RIGHT COLUMN: Trips + Aria ── */}
+            <div
+              className="lg:w-80 xl:w-96 lg:flex-shrink-0 lg:sticky lg:top-0"
+              style={{ padding: '0 20px 28px' }}
+            >
+
+              {/* ── Your Trips ── */}
+              <MountSection mounted={mounted} delay={240}>
+                <div style={{
+                  borderRadius: 20,
+                  border: '1px solid rgba(253,249,242,0.09)',
+                  background: 'rgba(10,8,6,0.55)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  overflow: 'hidden',
+                  marginBottom: 16,
+                }}>
+                  {/* Header */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '18px 20px 14px',
+                    borderBottom: '1px solid rgba(253,249,242,0.07)',
+                  }}>
+                    <p style={{
+                      fontSize: 10, fontWeight: 600,
+                      letterSpacing: '0.18em', textTransform: 'uppercase',
+                      color: 'rgba(253,249,242,0.45)', margin: 0,
                     }}>
-                      Nothing planned yet.
+                      Your Trips
                     </p>
                     <button
                       type="button"
                       onClick={() => router.push('/dashboard/planner')}
                       style={{
-                        background: 'none', border: 'none', padding: 0,
-                        fontSize: 12, color: '#C17F3A', cursor: 'pointer',
-                        fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
-                        letterSpacing: '0.02em',
-                        transition: 'color 180ms ease',
-                        flexShrink: 0,
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        background: 'rgba(193,127,58,0.15)',
+                        border: '1px solid rgba(193,127,58,0.30)',
+                        borderRadius: 999, padding: '5px 12px',
+                        fontSize: 11, fontWeight: 600,
+                        color: '#C17F3A', cursor: 'pointer',
+                        letterSpacing: '0.04em',
+                        transition: 'background 180ms ease',
+                        fontFamily: 'DM Sans, sans-serif',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#D6A252'; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#C17F3A'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.25)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.15)'; }}
                     >
-                      Start planning →
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add
                     </button>
                   </div>
-                )}
-              </div>
-            </MountSection>
-          </div>
 
-          {/* ── SECTION 3: Aria ── */}
-          <MountSection mounted={mounted} delay={320}>
-            <div style={{ margin: '0 20px' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '17px 20px',
-                borderRadius: 20,
-                border: '1px solid rgba(193,127,58,0.18)',
-                background: 'rgba(193,127,58,0.06)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                opacity: 0.65,
-                cursor: 'default',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 9,
-                    background: 'rgba(193,127,58,0.15)',
-                    border: '1px solid rgba(193,127,58,0.25)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#C17F3A', fontSize: 16,
-                  }}>
-                    ✦
-                  </div>
+                  {/* Trip list */}
                   <div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#FAF8F5' }}>
-                      Chat with Aria
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 300, color: 'rgba(253,249,242,0.40)' }}>
-                      Your AI travel concierge
-                    </p>
+                    {itinLoading ? (
+                      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <Shimmer style={{ height: 44, borderRadius: 8 }} />
+                        <Shimmer style={{ height: 44, borderRadius: 8 }} />
+                      </div>
+                    ) : itineraries && itineraries.length > 0 ? (
+                      itineraries.slice(0, 5).map((itin: DbItineraryListed, i: number) => {
+                        const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled trip';
+                        const start = itin.stays?.checkindate ?? itin.startdate;
+                        const end = itin.stays?.checkoutdate ?? itin.enddate;
+                        const isLast = i === Math.min(itineraries.length, 5) - 1;
+                        return (
+                          <div
+                            key={itin.id}
+                            className="hd-trip-row"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => router.push('/dashboard/planner')}
+                            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push('/dashboard/planner'); } }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 14,
+                              padding: '14px 20px',
+                              borderBottom: isLast ? 'none' : '1px solid rgba(253,249,242,0.06)',
+                              cursor: 'pointer',
+                              transition: 'background 150ms ease',
+                              borderRadius: isLast ? '0 0 20px 20px' : 0,
+                            }}
+                          >
+                            <div style={{
+                              width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                              background: 'rgba(193,127,58,0.12)',
+                              border: '1px solid rgba(193,127,58,0.20)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+                              </svg>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: '#FAF8F5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {title}
+                              </p>
+                              <p style={{ margin: '3px 0 0', fontSize: 11, fontWeight: 300, color: 'rgba(253,249,242,0.45)' }}>
+                                {start && end ? `${formatDayMonth(start)} – ${formatDayMonth(end)}` : 'No dates set'}
+                              </p>
+                            </div>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(253,249,242,0.25)', flexShrink: 0 }} aria-hidden="true">
+                              <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+                            </svg>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <p className={cormorant.className} style={{
+                          margin: 0, fontSize: 17, fontStyle: 'italic',
+                          fontWeight: 400, color: 'rgba(253,249,242,0.38)',
+                        }}>
+                          Nothing planned yet.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => router.push('/dashboard/planner')}
+                          style={{
+                            background: 'none', border: 'none', padding: 0,
+                            fontSize: 12, color: '#C17F3A', cursor: 'pointer',
+                            fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                            letterSpacing: '0.02em',
+                            transition: 'color 180ms ease',
+                            flexShrink: 0,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.color = '#D6A252'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = '#C17F3A'; }}
+                        >
+                          Start planning →
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span style={{
-                  fontSize: 9, fontWeight: 700,
-                  letterSpacing: '0.14em', textTransform: 'uppercase',
-                  color: 'rgba(193,127,58,0.70)',
-                  border: '1px solid rgba(193,127,58,0.25)',
-                  borderRadius: 999, padding: '4px 9px',
-                  fontFamily: 'DM Sans, sans-serif',
-                }}>
-                  Coming Soon
-                </span>
-              </div>
-            </div>
-          </MountSection>
+              </MountSection>
 
+              {/* ── Aria ── */}
+              <MountSection mounted={mounted} delay={320}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '17px 20px',
+                  borderRadius: 20,
+                  border: '1px solid rgba(193,127,58,0.18)',
+                  background: 'rgba(193,127,58,0.06)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  opacity: 0.65,
+                  cursor: 'default',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 9,
+                      background: 'rgba(193,127,58,0.15)',
+                      border: '1px solid rgba(193,127,58,0.25)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#C17F3A', fontSize: 16,
+                    }}>
+                      ✦
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#FAF8F5' }}>
+                        Chat with Aria
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 300, color: 'rgba(253,249,242,0.40)' }}>
+                        Your AI travel concierge
+                      </p>
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700,
+                    letterSpacing: '0.14em', textTransform: 'uppercase',
+                    color: 'rgba(193,127,58,0.70)',
+                    border: '1px solid rgba(193,127,58,0.25)',
+                    borderRadius: 999, padding: '4px 9px',
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}>
+                    Coming Soon
+                  </span>
+                </div>
+              </MountSection>
+
+            </div>{/* end right column */}
+          </div>{/* end two-col wrapper */}
         </div>
       </div>
 
@@ -668,12 +675,12 @@ function RegionCard({
             transition: 'transform 400ms cubic-bezier(0.4,0,0.2,1)',
           }}
         >
-          <Image
+          {/* Plain img avoids next/image domain restrictions for Supabase storage */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={region.image_url}
             alt={region.name}
-            fill
-            sizes="140px"
-            style={{ objectFit: 'cover' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </div>
       ) : (
