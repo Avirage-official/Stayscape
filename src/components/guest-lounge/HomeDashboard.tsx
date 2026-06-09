@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 
 import { useAuth } from '@/lib/context/auth-context';
@@ -21,13 +22,24 @@ const cormorant = Cormorant_Garamond({
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
+  weight: ['300', '400', '500', '600'],
   display: 'swap',
 });
 
 /* ─── Constants ─── */
 
 const VIDEO_SRC = '/videos/postlogin.mp4';
+const EXPLORE_REGION_KEY = 'stayscape_explore_region';
+
+/* ─── Types ─── */
+
+type Region = {
+  id: string;
+  name: string;
+  slug: string;
+  country_code: string | null;
+  image_url: string | null;
+};
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -38,6 +50,15 @@ async function getBearerToken(): Promise<string | null> {
   if (!supabase) return null;
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ?? null;
+}
+
+function regionImageUrl(imagePath: string | null): string | null {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  const clean = imagePath.replace(/^region-images\//, '');
+  return `${base}/storage/v1/object/public/region-images/${clean}`;
 }
 
 function parseLocalDate(dateStr: string): Date {
@@ -51,33 +72,44 @@ function formatDayMonth(dateStr: string | null): string {
     .toUpperCase();
 }
 
-function getGreeting(): 'Good morning' | 'Good afternoon' | 'Good evening' {
+function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
 
-/* ─── Inline SVG icons ─── */
-
-function IconArrow() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <polyline points="12 5 19 12 12 19" />
-    </svg>
-  );
+function regionInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
-/* ─── Shimmer & section wrapper ─── */
+/* ─── Gradient placeholders for regions without images ─── */
+const PLACEHOLDER_GRADIENTS = [
+  'linear-gradient(135deg, #2C1A08 0%, #C17F3A 100%)',
+  'linear-gradient(135deg, #1A1208 0%, #8B5E2A 100%)',
+  'linear-gradient(135deg, #0E1A18 0%, #2A6B5E 100%)',
+  'linear-gradient(135deg, #0E0B18 0%, #3A2A6B 100%)',
+  'linear-gradient(135deg, #18100E 0%, #6B2A2A 100%)',
+];
 
-function Shimmer({ style }: { style?: CSSProperties }) {
+function placeholderGradient(index: number): string {
+  return PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length];
+}
+
+/* ─── Sub-components ─── */
+
+function Shimmer({ style }: { style?: React.CSSProperties }) {
   return (
     <div
       style={{
-        background: 'rgba(255, 255, 255, 0.18)',
+        background: 'rgba(255,255,255,0.08)',
         animation: 'hd-shimmer 1.6s ease-in-out infinite',
-        borderRadius: 8,
+        borderRadius: 10,
         ...style,
       }}
     />
@@ -88,21 +120,17 @@ function MountSection({
   mounted,
   delay,
   children,
-  style,
 }: {
   mounted: boolean;
   delay: number;
   children: ReactNode;
-  style?: CSSProperties;
 }) {
   return (
     <div
       style={{
         opacity: mounted ? 1 : 0,
-        transform: mounted ? 'translateY(0)' : 'translateY(14px)',
-        transition: 'opacity 0.6s ease, transform 0.6s ease',
-        transitionDelay: `${delay}ms`,
-        ...style,
+        transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+        transition: `opacity 0.55s ease ${delay}ms, transform 0.55s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
       }}
     >
       {children}
@@ -124,6 +152,15 @@ export default function HomeDashboard() {
   const [itineraries, setItineraries] = useState<DbItineraryListed[] | null>(null);
   const [itinLoading, setItinLoading] = useState(true);
 
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [regionsLoading, setRegionsLoading] = useState(true);
+
+  // Last region the user picked on explore page
+  const [savedRegionId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try { return localStorage.getItem(EXPLORE_REGION_KEY); } catch { return null; }
+  });
+
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
@@ -141,10 +178,9 @@ export default function HomeDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
 
+  /* Fetch itineraries */
   useEffect(() => {
     async function loadItineraries() {
       const token = await getBearerToken();
@@ -165,324 +201,129 @@ export default function HomeDashboard() {
     void loadItineraries();
   }, []);
 
-  // Preserved: stays data still fetched for AddStayDialog activation flow
-  const allStays = useMemo(() => {
-    const current = data?.currentStays ?? [];
-    const upcoming = data?.upcomingStays ?? [];
-    return [...current, ...upcoming];
-  }, [data]);
-  // allStays intentionally kept for future hotel concierge feature
-  void allStays;
+  /* Fetch regions from Supabase directly */
+  useEffect(() => {
+    async function loadRegions() {
+      const supabase = getSupabaseBrowser();
+      if (!supabase) { setRegionsLoading(false); return; }
+      try {
+        const { data: rows } = await supabase
+          .from('regions')
+          .select('id, name, slug, country_code, image_path, is_active')
+          .eq('is_active', true)
+          .order('name');
 
-  const firstName = data?.profile?.full_name?.split(' ')?.[0] ?? 'Guest';
+        if (!rows) { setRegionsLoading(false); return; }
+
+        // Put last-picked region first
+        const mapped: Region[] = rows.map(r => ({
+          id: r.id as string,
+          name: r.name as string,
+          slug: r.slug as string,
+          country_code: (r.country_code as string | null) ?? null,
+          image_url: regionImageUrl((r.image_path as string | null) ?? null),
+        }));
+
+        if (savedRegionId) {
+          const idx = mapped.findIndex(r => r.id === savedRegionId);
+          if (idx > 0) {
+            const [saved] = mapped.splice(idx, 1);
+            mapped.unshift(saved);
+          }
+        }
+
+        setRegions(mapped);
+      } catch {
+        setRegions([]);
+      } finally {
+        setRegionsLoading(false);
+      }
+    }
+    void loadRegions();
+  }, [savedRegionId]);
+
+  function handleRegionClick(region: Region) {
+    try { localStorage.setItem(EXPLORE_REGION_KEY, region.id); } catch { /* ignore */ }
+    router.push('/dashboard/explore');
+  }
+
+  const firstName = data?.profile?.full_name?.split(' ')?.[0] ?? null;
   const greeting = getGreeting();
-  const isNewUser = !itinLoading && loadState === 'ready' && (!itineraries || itineraries.length === 0);
 
   /* ─── Render ─── */
 
   return (
     <div
-      className={`${dmSans.className} hd-body`}
+      className={dmSans.className}
       style={{
         position: 'relative',
         minHeight: '100dvh',
         width: '100%',
         overflowX: 'hidden',
-        color: 'var(--text-primary)',
+        background: '#0A0806',
       }}
     >
       <style>{`
         @keyframes hd-shimmer {
-          0% { opacity: 0.5 }
-          50% { opacity: 1 }
-          100% { opacity: 0.5 }
+          0%   { opacity: 0.4; }
+          50%  { opacity: 0.8; }
+          100% { opacity: 0.4; }
         }
-
-        .hd-body { max-width: 100%; }
-
-        .hd-video-wrap {
-          position: fixed;
-          inset: 0;
-          z-index: 0;
-          overflow: hidden;
+        .hd-region-card:hover .hd-region-img {
+          transform: scale(1.06);
         }
-        .hd-video-wrap video {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+        .hd-trip-row:hover {
+          background: rgba(253,249,242,0.06) !important;
         }
-        .hd-video-overlay {
-          position: absolute;
-          inset: 0;
-          background:
-            linear-gradient(180deg, rgba(28, 22, 16, 0.35) 0%, rgba(28, 22, 16, 0.55) 100%),
-            rgba(245, 236, 224, 0.18);
-          backdrop-filter: blur(0.5px);
-        }
-
-        .hd-content {
-          position: relative;
-          z-index: 1;
-          min-height: 100dvh;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .hd-topbar {
-          padding: 22px 36px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .hd-grid {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 24px;
-          padding: 0 24px 32px;
-          min-height: 0;
-        }
-
-        @media (min-width: 900px) {
-          .hd-grid {
-            grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-            gap: 28px;
-            padding: 8px 36px 36px;
-          }
-        }
-
-        @media (min-width: 1280px) {
-          .hd-grid {
-            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-            padding: 8px 48px 48px;
-          }
-        }
-
-        /* Left zone */
-        .hd-left {
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          gap: 32px;
-          color: #fdf9f2;
-        }
-
-        .hd-greeting-eyebrow {
-          font-size: 13px;
-          font-weight: 400;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.65);
-          margin: 0 0 10px;
-        }
-
-        .hd-greeting-name {
-          font-size: clamp(3rem, 6vw, 5.5rem);
-          font-weight: 300;
-          line-height: 0.95;
-          letter-spacing: -0.01em;
-          color: #fdf9f2;
-          margin: 0 0 14px;
-        }
-
-        .hd-greeting-sub {
-          font-size: 15px;
-          font-weight: 300;
-          color: rgba(253, 249, 242, 0.75);
-          margin: 0;
-          line-height: 1.5;
-        }
-
-        /* Welcome cards — shown for brand new users */
-        .hd-welcome-cards {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-
-        .hd-welcome-card {
-          border-radius: 14px;
-          border: 1px solid rgba(253, 249, 242, 0.1);
-          background: rgba(253, 249, 242, 0.06);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          padding: 14px 16px;
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          cursor: pointer;
-          color: #fdf9f2;
-          transition: background 0.2s ease, border-color 0.2s ease;
-          text-align: left;
-        }
-
-        .hd-welcome-card:hover {
-          background: rgba(253, 249, 242, 0.1);
-          border-color: rgba(253, 249, 242, 0.18);
-        }
-
-        /* Shortcut row — shown when user has trips */
-        .hd-shortcuts {
-          display: flex;
-          gap: 12px;
-        }
-
-        .hd-shortcut {
-          flex: 1;
-          border-radius: 14px;
-          border: 1px solid rgba(253, 249, 242, 0.1);
-          background: rgba(253, 249, 242, 0.06);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          padding: 16px;
-          cursor: pointer;
-          color: #fdf9f2;
-          transition: background 0.2s ease, border-color 0.2s ease;
-          text-align: left;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .hd-shortcut:hover {
-          background: rgba(253, 249, 242, 0.11);
-          border-color: rgba(253, 249, 242, 0.2);
-        }
-
-        .hd-shortcut-eyebrow {
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.5);
-          margin: 0;
-        }
-
-        .hd-shortcut-title {
-          font-size: 15px;
-          font-weight: 300;
-          color: #fdf9f2;
-          margin: 0;
-        }
-
-        /* Right panel */
-        .hd-right {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          border-radius: 24px;
-          border: 1px solid rgba(253, 249, 242, 0.1);
-          background: rgba(14, 10, 6, 0.72);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          padding: 28px;
-          color: #fdf9f2;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .hd-section-label {
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: rgba(253, 249, 242, 0.5);
-          margin: 0;
-        }
-
-        /* Itinerary list items */
-        .hd-itin-item {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 13px 0;
-          border-bottom: 1px solid rgba(253, 249, 242, 0.07);
-          cursor: pointer;
-          transition: opacity 0.18s ease;
-        }
-
-        .hd-itin-item:last-child {
-          border-bottom: none;
-          padding-bottom: 0;
-        }
-
-        .hd-itin-item:hover {
-          opacity: 0.75;
-        }
-
-        /* Divider */
-        .hd-divider {
-          height: 1px;
-          background: rgba(253, 249, 242, 0.1);
-          margin: 0;
-        }
-
-        /* Coming soon badge */
-        .hd-coming-soon {
-          display: inline-flex;
-          align-items: center;
-          padding: 3px 9px;
-          border-radius: 999px;
-          border: 1px solid rgba(200, 150, 90, 0.35);
-          background: rgba(200, 150, 90, 0.08);
-          color: rgba(200, 150, 90, 0.8);
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-        }
-
-        /* Notification bell button */
-        .hd-bell-btn {
-          width: 38px;
-          height: 38px;
-          border-radius: 12px;
-          border: 1px solid rgba(253, 249, 242, 0.14);
-          background: rgba(253, 249, 242, 0.07);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          color: rgba(253, 249, 242, 0.75);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: background 0.2s ease, border-color 0.2s ease;
-        }
-
-        .hd-bell-btn:hover {
-          background: rgba(253, 249, 242, 0.12);
-          border-color: rgba(253, 249, 242, 0.24);
-        }
-
-        @media (max-width: 899px) {
-          .hd-topbar { padding: 18px 24px; }
-          .hd-right { border-radius: 20px; padding: 22px; }
-        }
+        /* Hide scrollbar on region strip */
+        .hd-region-strip::-webkit-scrollbar { display: none; }
+        .hd-region-strip { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {/* ── VIDEO BACKGROUND ── */}
-      <div className="hd-video-wrap" aria-hidden="true">
-        <video src={VIDEO_SRC} autoPlay muted loop playsInline preload="auto" />
-        <div className="hd-video-overlay" />
+      <div
+        aria-hidden="true"
+        style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}
+      >
+        <video src={VIDEO_SRC} autoPlay muted loop playsInline preload="auto"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.70) 100%)',
+        }} />
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="hd-content">
+      <div style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Top bar */}
-        <div className="hd-topbar">
+        <div style={{
+          padding: '20px 28px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexShrink: 0,
+        }}>
           <MountSection mounted={mounted} delay={0}>
-            <div
-              className={cormorant.className}
-              style={{ fontSize: 22, fontWeight: 400, fontStyle: 'italic', color: 'rgba(253, 249, 242, 0.9)', letterSpacing: '0.02em' }}
-            >
+            <span className={cormorant.className} style={{
+              fontSize: 20, fontWeight: 400, fontStyle: 'italic',
+              color: 'rgba(253,249,242,0.85)', letterSpacing: '0.02em',
+            }}>
               Stayscape
-            </div>
+            </span>
           </MountSection>
           <MountSection mounted={mounted} delay={60}>
-            <button type="button" aria-label="Open notifications" className="hd-bell-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <button
+              type="button"
+              aria-label="Open notifications"
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                border: '1px solid rgba(253,249,242,0.12)',
+                background: 'rgba(253,249,242,0.06)',
+                color: 'rgba(253,249,242,0.6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
@@ -490,219 +331,284 @@ export default function HomeDashboard() {
           </MountSection>
         </div>
 
-        {/* Main grid */}
-        <div className="hd-grid">
+        {/* Main scroll area */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '8px 0 48px',
+          display: 'flex', flexDirection: 'column', gap: 0,
+        }}>
 
-          {/* ── LEFT ZONE ── */}
-          <div className="hd-left">
+          {/* ── SECTION 1: Greeting + Where to next ── */}
+          <div style={{ padding: '0 28px', marginBottom: 36 }}>
+            <MountSection mounted={mounted} delay={80}>
+              <p style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: 12, fontWeight: 500,
+                letterSpacing: '0.16em', textTransform: 'uppercase',
+                color: 'rgba(253,249,242,0.45)',
+                margin: '0 0 8px',
+              }}>
+                {greeting}
+              </p>
 
-            {/* Greeting */}
-            <MountSection mounted={mounted} delay={100}>
-              <div>
-                <p className={`${dmSans.className} hd-greeting-eyebrow`}>{greeting}</p>
-                {loadState === 'loading' ? (
-                  <Shimmer style={{ height: 96, width: '60%', borderRadius: 12 }} />
-                ) : (
-                  <h1 className={`${cormorant.className} hd-greeting-name`}>{firstName}.</h1>
-                )}
-                <p className={`${dmSans.className} hd-greeting-sub`}>
-                  {itinLoading
-                    ? ''
-                    : itineraries && itineraries.length > 0
-                    ? `${itineraries.length} trip${itineraries.length !== 1 ? 's' : ''} in your planner.`
-                    : loadState === 'ready'
-                    ? 'Welcome to Stayscape — your travel journal starts here.'
-                    : ''}
-                </p>
-              </div>
+              {loadState === 'loading' ? (
+                <Shimmer style={{ height: 56, width: '45%', marginBottom: 6 }} />
+              ) : (
+                <h1 className={cormorant.className} style={{
+                  fontSize: 'clamp(2.6rem, 5vw, 4.2rem)',
+                  fontWeight: 300, fontStyle: 'italic',
+                  lineHeight: 1, letterSpacing: '-0.01em',
+                  color: '#FAF8F5', margin: '0 0 6px',
+                }}>
+                  {firstName ? `${firstName}.` : 'Welcome.'}
+                </h1>
+              )}
+
+              <p style={{
+                fontSize: 15, fontWeight: 300,
+                color: 'rgba(253,249,242,0.55)',
+                margin: 0, lineHeight: 1.5,
+              }}>
+                Where to next?
+              </p>
             </MountSection>
 
-            {/* New user — tab introduction cards */}
-            {isNewUser && (
-              <MountSection mounted={mounted} delay={200}>
-                <div className="hd-welcome-cards">
-                  {[
-                    {
-                      title: 'Explore',
-                      desc: 'Browse and save places wherever you are headed.',
-                      href: '/dashboard/explore',
-                      icon: (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <circle cx="12" cy="12" r="10" />
-                          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      title: 'Planner',
-                      desc: 'Build itineraries for trips, weekends, or just things to do.',
-                      href: '/dashboard/planner',
-                      icon: (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      title: 'Profile',
-                      desc: 'Your preferences help us tailor your experience.',
-                      href: '/dashboard/profile',
-                      icon: (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                          <circle cx="12" cy="7" r="4" />
-                        </svg>
-                      ),
-                    },
-                  ].map((card) => (
+            {/* Region cards */}
+            <MountSection mounted={mounted} delay={160}>
+              <div style={{ marginTop: 20 }}>
+                {regionsLoading ? (
+                  /* Skeleton strip */
+                  <div style={{ display: 'flex', gap: 12, overflowX: 'hidden' }}>
+                    {[0, 1, 2, 3].map(i => (
+                      <div key={i} style={{ flexShrink: 0, width: 140, height: 180, borderRadius: 16 }}>
+                        <Shimmer style={{ width: '100%', height: '100%', borderRadius: 16 }} />
+                      </div>
+                    ))}
+                  </div>
+                ) : regions.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'rgba(253,249,242,0.35)', fontWeight: 300 }}>
+                    No destinations available yet.
+                  </p>
+                ) : (
+                  /* Scrollable strip on mobile, grid on desktop */
+                  <>
+                    {/* Mobile: horizontal scroll */}
                     <div
-                      key={card.title}
-                      className="hd-welcome-card"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => router.push(card.href)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(card.href); } }}
+                      className="hd-region-strip lg:hidden"
+                      style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}
                     >
-                      <div style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(253,249,242,0.08)', border: '1px solid rgba(253,249,242,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'rgba(253,249,242,0.7)' }}>
-                        {card.icon}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p className={dmSans.className} style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#fdf9f2' }}>{card.title}</p>
-                        <p className={dmSans.className} style={{ margin: '2px 0 0', fontSize: 12, color: 'rgba(253,249,242,0.55)', fontWeight: 300 }}>{card.desc}</p>
-                      </div>
-                      <div style={{ color: 'rgba(253,249,242,0.3)', flexShrink: 0 }}>
-                        <IconArrow />
-                      </div>
+                      {regions.map((region, i) => (
+                        <RegionCard
+                          key={region.id}
+                          region={region}
+                          index={i}
+                          isActive={region.id === savedRegionId}
+                          onClick={() => handleRegionClick(region)}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </MountSection>
-            )}
-
-            {/* Returning user — quick shortcut buttons */}
-            {!isNewUser && !itinLoading && (
-              <MountSection mounted={mounted} delay={220}>
-                <div className="hd-shortcuts">
-                  {[
-                    { eyebrow: 'Discover', title: 'Explore Places', href: '/dashboard/explore' },
-                    { eyebrow: 'Planner', title: 'My Trips', href: '/dashboard/planner' },
-                  ].map((s) => (
-                    <button
-                      key={s.eyebrow}
-                      type="button"
-                      className={`${dmSans.className} hd-shortcut`}
-                      onClick={() => router.push(s.href)}
+                    {/* Desktop: grid */}
+                    <div
+                      className="hidden lg:grid"
+                      style={{
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                        gap: 12,
+                        maxWidth: 800,
+                      }}
                     >
-                      <p className="hd-shortcut-eyebrow">{s.eyebrow}</p>
-                      <p className="hd-shortcut-title">{s.title}</p>
-                    </button>
-                  ))}
-                </div>
-              </MountSection>
-            )}
+                      {regions.map((region, i) => (
+                        <RegionCard
+                          key={region.id}
+                          region={region}
+                          index={i}
+                          isActive={region.id === savedRegionId}
+                          onClick={() => handleRegionClick(region)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </MountSection>
           </div>
 
-          {/* ── RIGHT ZONE — dark panel ── */}
-          <MountSection mounted={mounted} delay={200}>
-            <div className="hd-right">
-
-              {/* Your Trips header */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                <div>
-                  <p className={`${dmSans.className} hd-section-label`} style={{ marginBottom: 8 }}>Your Trips</p>
-                  {itinLoading ? (
-                    <Shimmer style={{ height: 52, width: 60, borderRadius: 8 }} />
-                  ) : (
-                    <p className={cormorant.className} style={{ margin: 0, fontSize: 'clamp(2.6rem, 4.5vw, 3.8rem)', fontWeight: 300, lineHeight: 0.9, color: '#fdf9f2' }}>
-                      {itineraries?.length ?? 0}
-                    </p>
-                  )}
-                </div>
+          {/* ── SECTION 2: Your Trips ── */}
+          <div style={{
+            margin: '0 20px 28px',
+            borderRadius: 20,
+            border: '1px solid rgba(253,249,242,0.09)',
+            background: 'rgba(10,8,6,0.55)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            overflow: 'hidden',
+          }}>
+            <MountSection mounted={mounted} delay={240}>
+              {/* Header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '18px 20px 14px',
+                borderBottom: '1px solid rgba(253,249,242,0.07)',
+              }}>
+                <p style={{
+                  fontSize: 10, fontWeight: 600,
+                  letterSpacing: '0.18em', textTransform: 'uppercase',
+                  color: 'rgba(253,249,242,0.45)', margin: 0,
+                }}>
+                  Your Trips
+                </p>
                 <button
                   type="button"
-                  aria-label="Open planner"
                   onClick={() => router.push('/dashboard/planner')}
-                  style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid rgba(253,249,242,0.15)', background: 'rgba(253,249,242,0.07)', color: 'rgba(253,249,242,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease', flexShrink: 0 }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.14)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.28)'; e.currentTarget.style.color = '#fdf9f2'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.07)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.15)'; e.currentTarget.style.color = 'rgba(253,249,242,0.7)'; }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    background: 'rgba(193,127,58,0.15)',
+                    border: '1px solid rgba(193,127,58,0.30)',
+                    borderRadius: 999, padding: '5px 12px',
+                    fontSize: 11, fontWeight: 600,
+                    color: '#C17F3A', cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                    transition: 'background 180ms ease',
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.25)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(193,127,58,0.15)'; }}
                 >
-                  <IconArrow />
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add
                 </button>
               </div>
 
-              {/* Itinerary list */}
-              {itinLoading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Shimmer style={{ height: 50, borderRadius: 8 }} />
-                  <Shimmer style={{ height: 50, borderRadius: 8 }} />
-                </div>
-              ) : itineraries && itineraries.length > 0 ? (
-                <div>
-                  {itineraries.slice(0, 4).map((itin) => {
+              {/* Trip list */}
+              <div>
+                {itinLoading ? (
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Shimmer style={{ height: 44, borderRadius: 8 }} />
+                    <Shimmer style={{ height: 44, borderRadius: 8 }} />
+                  </div>
+                ) : itineraries && itineraries.length > 0 ? (
+                  itineraries.slice(0, 5).map((itin, i) => {
                     const title = itin.title ?? itin.stays?.properties?.name ?? 'Untitled trip';
                     const start = itin.stays?.checkindate ?? itin.startdate;
                     const end = itin.stays?.checkoutdate ?? itin.enddate;
+                    const isLast = i === Math.min(itineraries.length, 5) - 1;
                     return (
                       <div
                         key={itin.id}
-                        className="hd-itin-item"
+                        className="hd-trip-row"
                         role="button"
                         tabIndex={0}
                         onClick={() => router.push('/dashboard/planner')}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push('/dashboard/planner'); } }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push('/dashboard/planner'); } }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 14,
+                          padding: '14px 20px',
+                          borderBottom: isLast ? 'none' : '1px solid rgba(253,249,242,0.06)',
+                          cursor: 'pointer',
+                          transition: 'background 150ms ease',
+                          borderRadius: isLast ? '0 0 20px 20px' : 0,
+                        }}
                       >
+                        <div style={{
+                          width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                          background: 'rgba(193,127,58,0.12)',
+                          border: '1px solid rgba(193,127,58,0.20)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C17F3A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+                          </svg>
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p className={dmSans.className} style={{ margin: 0, fontSize: 14, fontWeight: 400, color: '#fdf9f2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: '#FAF8F5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {title}
                           </p>
-                          {start && end ? (
-                            <p className={dmSans.className} style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(253,249,242,0.5)', fontWeight: 300 }}>
-                              {formatDayMonth(start)} – {formatDayMonth(end)}
-                            </p>
-                          ) : (
-                            <p className={dmSans.className} style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(253,249,242,0.35)', fontWeight: 300 }}>
-                              No dates set
-                            </p>
-                          )}
+                          <p style={{ margin: '3px 0 0', fontSize: 11, fontWeight: 300, color: 'rgba(253,249,242,0.45)' }}>
+                            {start && end ? `${formatDayMonth(start)} – ${formatDayMonth(end)}` : 'No dates set'}
+                          </p>
                         </div>
-                        <div style={{ color: 'rgba(253,249,242,0.3)', flexShrink: 0 }}>
-                          <IconArrow />
-                        </div>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(253,249,242,0.25)', flexShrink: 0 }} aria-hidden="true">
+                          <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+                        </svg>
                       </div>
                     );
-                  })}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <p className={dmSans.className} style={{ margin: 0, fontSize: 13, color: 'rgba(253,249,242,0.5)', fontWeight: 300, lineHeight: 1.65 }}>
-                    Nothing planned yet. Head to the Planner to start building your first trip.
-                  </p>
-                  <button
-                    type="button"
-                    className={dmSans.className}
-                    onClick={() => router.push('/dashboard/planner')}
-                    style={{ alignSelf: 'flex-start', height: 36, padding: '0 16px', borderRadius: 10, border: '1px solid rgba(253,249,242,0.2)', background: 'rgba(253,249,242,0.07)', color: 'rgba(253,249,242,0.85)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s ease, border-color 0.2s ease' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.12)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.3)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(253,249,242,0.07)'; e.currentTarget.style.borderColor = 'rgba(253,249,242,0.2)'; }}
-                  >
-                    Open Planner
-                  </button>
-                </div>
-              )}
-
-              <div className="hd-divider" />
-
-              {/* Hotel Concierge — Coming Soon */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <p className={`${dmSans.className} hd-section-label`} style={{ margin: 0 }}>Hotel Concierge</p>
-                  <span className="hd-coming-soon">Coming Soon</span>
-                </div>
-                <p className={dmSans.className} style={{ margin: 0, fontSize: 12, color: 'rgba(253,249,242,0.38)', fontWeight: 300, lineHeight: 1.6 }}>
-                  Link your hotel stay to unlock concierge services, in-room requests, and a curated local experience.
-                </p>
+                  })
+                ) : (
+                  <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <p className={cormorant.className} style={{
+                      margin: 0, fontSize: 17, fontStyle: 'italic',
+                      fontWeight: 400, color: 'rgba(253,249,242,0.38)',
+                    }}>
+                      Nothing planned yet.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/dashboard/planner')}
+                      style={{
+                        background: 'none', border: 'none', padding: 0,
+                        fontSize: 12, color: '#C17F3A', cursor: 'pointer',
+                        fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                        letterSpacing: '0.02em',
+                        transition: 'color 180ms ease',
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#D6A252'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#C17F3A'; }}
+                    >
+                      Start planning →
+                    </button>
+                  </div>
+                )}
               </div>
+            </MountSection>
+          </div>
 
+          {/* ── SECTION 3: Aria ── */}
+          <MountSection mounted={mounted} delay={320}>
+            <div style={{ margin: '0 20px' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '17px 20px',
+                borderRadius: 20,
+                border: '1px solid rgba(193,127,58,0.18)',
+                background: 'rgba(193,127,58,0.06)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                opacity: 0.65,
+                cursor: 'default',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 9,
+                    background: 'rgba(193,127,58,0.15)',
+                    border: '1px solid rgba(193,127,58,0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#C17F3A', fontSize: 16,
+                  }}>
+                    ✦
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#FAF8F5' }}>
+                      Chat with Aria
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 300, color: 'rgba(253,249,242,0.40)' }}>
+                      Your AI travel concierge
+                    </p>
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 9, fontWeight: 700,
+                  letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: 'rgba(193,127,58,0.70)',
+                  border: '1px solid rgba(193,127,58,0.25)',
+                  borderRadius: 999, padding: '4px 9px',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}>
+                  Coming Soon
+                </span>
+              </div>
             </div>
           </MountSection>
 
@@ -717,5 +623,105 @@ export default function HomeDashboard() {
         onActivated={loadDashboard}
       />
     </div>
+  );
+}
+
+/* ─── Region Card ─── */
+
+function RegionCard({
+  region,
+  index,
+  isActive,
+  onClick,
+}: {
+  region: Region;
+  index: number;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hd-region-card"
+      style={{
+        flexShrink: 0,
+        width: 140,
+        height: 180,
+        borderRadius: 16,
+        overflow: 'hidden',
+        position: 'relative',
+        cursor: 'pointer',
+        border: isActive ? '2px solid #C17F3A' : '2px solid transparent',
+        background: 'transparent',
+        padding: 0,
+        transition: 'border-color 180ms ease, box-shadow 180ms ease',
+        boxShadow: isActive ? '0 0 0 1px rgba(193,127,58,0.40)' : 'none',
+      }}
+    >
+      {/* Image or gradient placeholder */}
+      {region.image_url ? (
+        <div
+          className="hd-region-img"
+          style={{
+            position: 'absolute', inset: 0,
+            transition: 'transform 400ms cubic-bezier(0.4,0,0.2,1)',
+          }}
+        >
+          <Image
+            src={region.image_url}
+            alt={region.name}
+            fill
+            sizes="140px"
+            style={{ objectFit: 'cover' }}
+          />
+        </div>
+      ) : (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: placeholderGradient(index),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{
+            fontSize: 28, fontWeight: 300,
+            color: 'rgba(253,249,242,0.35)',
+            fontFamily: 'Cormorant Garamond, Georgia, serif',
+            fontStyle: 'italic',
+          }}>
+            {regionInitials(region.name)}
+          </span>
+        </div>
+      )}
+
+      {/* Dark overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(to top, rgba(8,5,2,0.82) 0%, rgba(8,5,2,0.20) 55%, transparent 100%)',
+      }} />
+
+      {/* City name */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        padding: '12px 12px 13px',
+        textAlign: 'left',
+      }}>
+        <p style={{
+          margin: 0, fontSize: 13, fontWeight: 600,
+          color: '#FAF8F5', lineHeight: 1.2,
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          {region.name}
+        </p>
+        {isActive && (
+          <p style={{
+            margin: '3px 0 0', fontSize: 10, fontWeight: 500,
+            color: '#C17F3A', letterSpacing: '0.08em',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            Last visited
+          </p>
+        )}
+      </div>
+    </button>
   );
 }
