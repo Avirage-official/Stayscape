@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
 import ExploreSwiper from '@/components/explore/ExploreSwiper';
 import type { ExploreSection } from '@/components/explore/ExploreCard';
+
+const EXPLORE_REGION_KEY = 'stayscape_explore_region';
 
 export interface RegionOption {
   id: string;
@@ -43,7 +45,12 @@ export default function ExplorePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPersonalising, setIsPersonalising] = useState(false);
-  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try { return localStorage.getItem(EXPLORE_REGION_KEY); } catch { return null; }
+  });
+  // Capture the initial saved value so the fetch effect doesn't re-run on every region change
+  const initialRegionRef = useRef(selectedRegionId);
 
   // Redirect unauthenticated visitors
   useEffect(() => {
@@ -66,8 +73,8 @@ export default function ExplorePage() {
         if (!res.ok) throw new Error('Failed to load explore data');
         const json = (await res.json()) as ExploreResponse;
         setData(json);
-        // Sync selected region with what the API resolved
-        if (!regionId) setSelectedRegionId(json.activeRegionId);
+        // Always sync the UI with the region the API resolved
+        setSelectedRegionId(json.activeRegionId);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       } finally {
@@ -79,11 +86,13 @@ export default function ExplorePage() {
 
   useEffect(() => {
     if (!user) return;
-    void fetchExplore();
+    // Option A: use the user's last manually-picked region if one was saved
+    void fetchExplore(initialRegionRef.current);
   }, [user, fetchExplore]);
 
   async function handleRegionChange(regionId: string) {
     setSelectedRegionId(regionId);
+    try { localStorage.setItem(EXPLORE_REGION_KEY, regionId); } catch { /* ignore */ }
     const region = data?.regions.find(r => r.id === regionId);
     if (region?.is_active === false) return;
     setIsRefreshing(true);
