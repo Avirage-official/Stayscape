@@ -151,6 +151,13 @@ export default function HomeDashboard() {
   const [itineraries, setItineraries] = useState<DbItineraryListed[] | null>(null);
   const [itinLoading, setItinLoading] = useState(true);
 
+  const [historyStats, setHistoryStats] = useState<{
+    total_trips: number;
+    cities: number;
+    countries: number;
+    countries_list: Array<{ country_code: string; flag_emoji: string | null }>;
+  } | null>(null);
+
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionsLoading, setRegionsLoading] = useState(true);
 
@@ -198,6 +205,31 @@ export default function HomeDashboard() {
       }
     }
     void loadItineraries();
+  }, []);
+
+  /* Fetch history stats for passport mini card */
+  useEffect(() => {
+    async function loadHistory() {
+      const token = await getBearerToken();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/customer/history', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json() as {
+          stats: { total_trips: number; cities: number; countries: number };
+          countries: Array<{ country_code: string; flag_emoji: string | null }>;
+        };
+        setHistoryStats({
+          total_trips: json.stats.total_trips,
+          cities: json.stats.cities,
+          countries: json.stats.countries,
+          countries_list: json.countries,
+        });
+      } catch { /* ignore */ }
+    }
+    void loadHistory();
   }, []);
 
   /* Fetch regions from Supabase directly */
@@ -580,6 +612,103 @@ export default function HomeDashboard() {
                   </div>
                 </div>
               </MountSection>
+
+              {/* ── Passport mini card ── */}
+              {historyStats && historyStats.total_trips > 0 && (
+                <MountSection mounted={mounted} delay={280}>
+                  <div style={{
+                    borderRadius: 20,
+                    border: '1px solid rgba(253,249,242,0.09)',
+                    background: 'rgba(10,8,6,0.55)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    marginBottom: 16,
+                    padding: '16px 20px',
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                      <p style={{
+                        fontSize: 10, fontWeight: 600,
+                        letterSpacing: '0.18em', textTransform: 'uppercase',
+                        color: 'rgba(253,249,242,0.45)', margin: 0,
+                      }}>
+                        Passport
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/dashboard/history')}
+                        style={{
+                          background: 'none', border: 'none', padding: 0,
+                          fontSize: 10, color: 'rgba(193,127,58,0.70)', cursor: 'pointer',
+                          fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                          letterSpacing: '0.06em', textTransform: 'uppercase',
+                        }}
+                      >
+                        View all →
+                      </button>
+                    </div>
+
+                    {/* Stats row */}
+                    <div style={{
+                      display: 'flex',
+                      marginBottom: historyStats.countries_list.length > 0 ? 14 : 0,
+                    }}>
+                      {([
+                        { value: historyStats.total_trips, label: 'Trips' },
+                        { value: historyStats.cities, label: 'Cities' },
+                        { value: historyStats.countries, label: 'Countries' },
+                      ] as { value: number; label: string }[]).map((s, i) => (
+                        <div key={s.label} style={{
+                          flex: 1,
+                          textAlign: 'center',
+                          borderRight: i < 2 ? '1px solid rgba(253,249,242,0.08)' : 'none',
+                        }}>
+                          <p className={cormorant.className} style={{
+                            margin: 0, fontSize: 26, fontWeight: 400, fontStyle: 'italic',
+                            color: '#FAF8F5', lineHeight: 1,
+                          }}>
+                            {s.value}
+                          </p>
+                          <p style={{
+                            margin: '4px 0 0', fontSize: 9, fontWeight: 600,
+                            letterSpacing: '0.16em', textTransform: 'uppercase',
+                            color: 'rgba(253,249,242,0.35)',
+                          }}>
+                            {s.label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Flag chips */}
+                    {historyStats.countries_list.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {historyStats.countries_list.slice(0, 8).map(c => (
+                          <span key={c.country_code} style={{
+                            fontSize: 16, lineHeight: 1,
+                            width: 28, height: 28, borderRadius: 8,
+                            background: 'rgba(253,249,242,0.06)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {c.flag_emoji ?? c.country_code}
+                          </span>
+                        ))}
+                        {historyStats.countries_list.length > 8 && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600,
+                            color: 'rgba(253,249,242,0.38)',
+                            width: 28, height: 28, borderRadius: 8,
+                            background: 'rgba(253,249,242,0.06)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            +{historyStats.countries_list.length - 8}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </MountSection>
+              )}
 
               {/* ── Aria ── */}
               <MountSection mounted={mounted} delay={320}>
