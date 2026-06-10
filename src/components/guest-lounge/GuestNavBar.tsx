@@ -57,6 +57,19 @@ const tabs = [
     ),
   },
   {
+    label: 'History',
+    href: '/dashboard/history',
+    match: (p: string) => p.startsWith('/dashboard/history'),
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polyline points="12 8 12 12 14 14" />
+        <path d="M3.05 11a9 9 0 1 0 .5-4" />
+        <polyline points="3 3 3 7 7 7" />
+      </svg>
+    ),
+  },
+  {
     label: 'Profile',
     href: '/dashboard/profile',
     match: (p: string) => p.startsWith('/dashboard/profile'),

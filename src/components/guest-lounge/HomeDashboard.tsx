@@ -452,13 +452,27 @@ export default function HomeDashboard() {
                     padding: '18px 20px 14px',
                     borderBottom: '1px solid rgba(253,249,242,0.07)',
                   }}>
-                    <p style={{
-                      fontSize: 10, fontWeight: 600,
-                      letterSpacing: '0.18em', textTransform: 'uppercase',
-                      color: 'rgba(253,249,242,0.45)', margin: 0,
-                    }}>
-                      Your Trips
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <p style={{
+                        fontSize: 10, fontWeight: 600,
+                        letterSpacing: '0.18em', textTransform: 'uppercase',
+                        color: 'rgba(253,249,242,0.45)', margin: 0,
+                      }}>
+                        Your Trips
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/dashboard/history')}
+                        style={{
+                          background: 'none', border: 'none', padding: 0,
+                          fontSize: 10, color: 'rgba(193,127,58,0.70)', cursor: 'pointer',
+                          fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+                          letterSpacing: '0.06em', textTransform: 'uppercase',
+                        }}
+                      >
+                        See all →
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => router.push('/dashboard/planner')}
