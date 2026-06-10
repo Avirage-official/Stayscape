@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
         is_upcoming: isUpcoming,
         is_active: !isPast && !isUpcoming,
         region: region ? {
-          id: effectiveRegionId,
+          id: effectiveRegionId as string,
           name: region.name,
           slug: region.slug,
           country_code: region.country_code,
