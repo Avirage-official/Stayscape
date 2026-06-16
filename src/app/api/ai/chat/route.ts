@@ -317,12 +317,12 @@ async function buildSystemPrompt(
   }
 
   // Layer 4 — Region places
-  const regionId = prop?.region_id ?? null;
-  if (regionId) {
+  const stayRegionId = prop?.region_id ?? null;
+  if (stayRegionId) {
     const { data: places } = await supabase
       .from('places')
       .select('id, name, category, description, editorial_summary, rating, address, booking_url')
-      .eq('region_id', regionId)
+      .eq('region_id', stayRegionId)
       .eq('is_active', true)
       .order('is_featured', { ascending: false })
       .order('rating', { ascending: false })
