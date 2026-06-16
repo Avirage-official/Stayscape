@@ -192,13 +192,32 @@ async function buildSystemPrompt(
   stayId: string | null | undefined,
   authenticatedUserId: string,
   mode?: 'discovery' | 'itinerary' | 'concierge',
+  regionId?: string | null,
 ): Promise<PromptBuildResult> {
   // Layer 1 — Identity (defaults used when there is no stay context)
   if (!stayId) {
-    return {
-      systemPrompt: buildIdentityBlock('Aria', 'warm', 'your hotel', mode) + AUTO_DETECT_LANGUAGE,
-      propertyId: null,
-    };
+    let systemPrompt = buildIdentityBlock('Aria', 'warm', 'Stayscape', mode) + AUTO_DETECT_LANGUAGE;
+    systemPrompt += '\n\nYou are a personal travel concierge — not tied to any specific hotel. Help users discover places, plan trips, and create itineraries.';
+
+    if (regionId) {
+      const supabaseStandalone = getSupabaseAdmin();
+      const { data: standalonePlaces } = await supabaseStandalone
+        .from('places')
+        .select('id, name, category, description, editorial_summary, rating, address, booking_url')
+        .eq('region_id', regionId)
+        .eq('is_active', true)
+        .order('is_featured', { ascending: false })
+        .order('rating', { ascending: false })
+        .limit(30)
+        .returns<PlaceRow[]>();
+
+      if (standalonePlaces && standalonePlaces.length > 0) {
+        systemPrompt += '\n\nPlaces in the selected region that you can recommend (reference them by name):\n' +
+          JSON.stringify(standalonePlaces, null, 2);
+      }
+    }
+
+    return { systemPrompt, propertyId: null };
   }
 
   const supabase = getSupabaseAdmin();
@@ -424,6 +443,7 @@ export async function POST(request: NextRequest) {
   let body: {
     message?: string;
     stayId?: string | null;
+    regionId?: string | null;
     history?: Array<{ role: 'user' | 'assistant'; text: string }>;
     mode?: 'discovery' | 'itinerary' | 'concierge';
   };
@@ -453,12 +473,35 @@ export async function POST(request: NextRequest) {
   const authenticatedUserId = user.id;
 
   const stayId = body.stayId ?? null;
+  const regionId = typeof body.regionId === 'string' ? body.regionId : null;
   const mode = body.mode;
+
+  // Standalone-only: gate on aria_credits
+  if (!stayId) {
+    const { data: creditRow } = await getSupabaseAdmin()
+      .from('users')
+      .select('aria_credits')
+      .eq('id', authenticatedUserId)
+      .single<{ aria_credits: number }>();
+    if (creditRow && creditRow.aria_credits === 0) {
+      return NextResponse.json(
+        { error: 'Aria is locked. Unlock Aria to continue.' },
+        { status: 403, headers: rateLimit.headers },
+      );
+    }
+    // Decrement credits (skip if unlimited = -1)
+    if (creditRow && creditRow.aria_credits > 0) {
+      void getSupabaseAdmin()
+        .from('users')
+        .update({ aria_credits: creditRow.aria_credits - 1 })
+        .eq('id', authenticatedUserId);
+    }
+  }
 
   let systemPrompt: string;
   let propertyId: string | null = null;
   try {
-    ({ systemPrompt, propertyId } = await buildSystemPrompt(stayId, authenticatedUserId, mode));
+    ({ systemPrompt, propertyId } = await buildSystemPrompt(stayId, authenticatedUserId, mode, regionId));
   } catch {
     // Fallback uses Aria identity with a warm tone (includes STRICT BOUNDARIES)
     systemPrompt = buildIdentityBlock('Aria', 'warm', 'this hotel', mode);
@@ -468,6 +511,8 @@ export async function POST(request: NextRequest) {
   let conversationHistory: ConversationMessage[] = [];
   if (stayId) {
     conversationHistory = await loadConversation(stayId);
+  } else if (Array.isArray(body.history) && body.history.length > 0) {
+    conversationHistory = body.history.map(h => ({ role: h.role, content: h.text, timestamp: new Date().toISOString() }));
   }
 
   // Cap to last 40 messages (≈20 exchanges) for the Claude context window
