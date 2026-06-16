@@ -155,7 +155,7 @@ export default function AriaPage() {
       if (!supabase) return;
       const { data } = await supabase
         .from('regions')
-        .select('id, name, slug, country_code, image_path')
+        .select('id, name, country_code')
         .eq('is_active', true)
         .order('name');
       if (data) setPickerRegions(data as PickerRegion[]);
@@ -276,7 +276,7 @@ export default function AriaPage() {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
 
-    const isItineraryMode = /\b(plan|itinerary|days? in|trip to|schedule|day.by.day|days? of)\b/i.test(userMessage);
+    const isItineraryMode = /\b(create|build|make|plan me|plan a|plan my|generate)\b.*\b(itinerary|trip|days?)\b|\b\d+[\s-]day\s+(trip|itinerary|plan)\b/i.test(userMessage);
 
     if (isItineraryMode) {
       // Kick off the structured 4-question picker flow instead of free chat.
