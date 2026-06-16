@@ -57,6 +57,17 @@ const tabs = [
     ),
   },
   {
+    label: 'Aria',
+    href: '/dashboard/aria',
+    match: (p: string) => p.startsWith('/dashboard/aria'),
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" />
+      </svg>
+    ),
+  },
+  {
     label: 'History',
     href: '/dashboard/history',
     match: (p: string) => p.startsWith('/dashboard/history'),
