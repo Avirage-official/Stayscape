@@ -23,6 +23,60 @@ interface Place {
   latitude: number; longitude: number;
   rating: number | null; image_url: string | null;
 }
+interface PickerRegion {
+  id: string; name: string; country_code: string | null;
+}
+type Duration = '2-3' | '4-5' | '7' | '14';
+type Vibe = 'relaxed' | 'adventure' | 'food_culture' | 'mixed';
+type Companions = 'solo' | 'couple' | 'family' | 'friends';
+
+interface BuilderState {
+  active: boolean;
+  step: 1 | 2 | 3 | 4;
+  generating: boolean;
+  regionId?: string;
+  regionName?: string;
+  duration?: Duration;
+  vibe?: Vibe;
+  companions?: Companions;
+}
+
+interface ItineraryDataItem {
+  place_id: string; name: string; category: string; image: string | null;
+  start_time: string; duration_hours: number; notes: string;
+}
+interface ItineraryDataDay {
+  day: number; date: string; items: ItineraryDataItem[];
+}
+interface ItineraryData {
+  itineraryId: string; title: string; startdate: string; enddate: string;
+  days: ItineraryDataDay[];
+}
+
+const DURATION_OPTIONS: Array<{ label: string; value: Duration }> = [
+  { label: '2-3 days', value: '2-3' },
+  { label: '4-5 days', value: '4-5' },
+  { label: '1 week', value: '7' },
+  { label: '2 weeks', value: '14' },
+];
+const VIBE_OPTIONS: Array<{ label: string; value: Vibe }> = [
+  { label: 'Relaxed & slow', value: 'relaxed' },
+  { label: 'Adventure packed', value: 'adventure' },
+  { label: 'Food & culture', value: 'food_culture' },
+  { label: 'Mix of everything', value: 'mixed' },
+];
+const COMPANIONS_OPTIONS: Array<{ label: string; value: Companions }> = [
+  { label: 'Solo', value: 'solo' },
+  { label: 'Couple', value: 'couple' },
+  { label: 'Family', value: 'family' },
+  { label: 'Friends', value: 'friends' },
+];
+
+function formatDateNice(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
 const SUGGESTIONS = [
   'What are the best restaurants nearby?',
@@ -52,7 +106,13 @@ export default function AriaPage() {
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
   const [showItinerary, setShowItinerary] = useState(false);
   const [itineraryText, setItineraryText] = useState('');
+  const [itineraryData, setItineraryData] = useState<ItineraryData | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+
+  const [builderState, setBuilderState] = useState<BuilderState | null>(null);
+  const [pickerRegions, setPickerRegions] = useState<PickerRegion[]>([]);
+  const [pickerRegionInput, setPickerRegionInput] = useState('');
+  const [pickerRegionWarning, setPickerRegionWarning] = useState('');
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
@@ -85,6 +145,22 @@ export default function AriaPage() {
       }
     }
     void checkCredits();
+  }, [user]);
+
+  // Load active regions for the itinerary picker
+  useEffect(() => {
+    if (!user) return;
+    async function loadRegions() {
+      const supabase = getSupabaseBrowser();
+      if (!supabase) return;
+      const { data } = await supabase
+        .from('regions')
+        .select('id, name, slug, country_code, image_path')
+        .eq('is_active', true)
+        .order('name');
+      if (data) setPickerRegions(data as PickerRegion[]);
+    }
+    void loadRegions();
   }, [user]);
 
   // Load places for map
@@ -199,9 +275,19 @@ export default function AriaPage() {
     if (!userMessage || sending || locked) return;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
-    setSending(true);
 
     const isItineraryMode = /\b(plan|itinerary|days? in|trip to|schedule|day.by.day|days? of)\b/i.test(userMessage);
+
+    if (isItineraryMode) {
+      // Kick off the structured 4-question picker flow instead of free chat.
+      setMessages(prev => [...prev, { role: 'assistant', text: "Let's plan your trip! A few quick questions:" }]);
+      setPickerRegionInput('');
+      setPickerRegionWarning('');
+      setBuilderState({ active: true, step: 1, generating: false });
+      return;
+    }
+
+    setSending(true);
 
     try {
       const token = await getBearerToken();
@@ -214,7 +300,7 @@ export default function AriaPage() {
           message: userMessage,
           stayId: null,
           regionId,
-          mode: isItineraryMode ? 'itinerary' : 'discovery',
+          mode: 'discovery',
           history: messages,
         }),
       });
@@ -238,11 +324,6 @@ export default function AriaPage() {
         });
         if (matched.size > 0) setHighlightedIds(matched);
 
-        if (isItineraryMode) {
-          setItineraryText(json.reply);
-          setShowItinerary(true);
-        }
-
         if (credits !== null && credits > 0) {
           setCredits(c => (c !== null ? Math.max(0, c - 1) : null));
         }
@@ -253,6 +334,99 @@ export default function AriaPage() {
       setSending(false);
     }
   }, [input, sending, locked, messages, regionId, places, credits]);
+
+  /* ── Itinerary builder picker flow ── */
+
+  const runItineraryGeneration = useCallback(async (final: BuilderState) => {
+    setBuilderState(prev => prev ? { ...prev, generating: true } : prev);
+    try {
+      const token = await getBearerToken();
+      if (!token) {
+        setBuilderState(null);
+        setMessages(prev => [...prev, { role: 'assistant', text: "Sorry, I couldn't put that together. Want to try again?" }]);
+        return;
+      }
+
+      const res = await fetch('/api/ai/itinerary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          regionId: final.regionId,
+          duration: final.duration,
+          vibe: final.vibe,
+          companions: final.companions,
+        }),
+      });
+
+      if (res.status === 403) {
+        setBuilderState(null);
+        setLocked(true);
+        setCredits(0);
+        return;
+      }
+
+      if (!res.ok) {
+        setBuilderState(null);
+        setMessages(prev => [...prev, { role: 'assistant', text: "Sorry, I couldn't put that together. Want to try again?" }]);
+        return;
+      }
+
+      const data = await res.json() as ItineraryData;
+
+      const days = data.days.length;
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: `Done! I've planned your ${days}-day trip to ${final.regionName ?? 'your destination'}.`,
+      }]);
+      setItineraryData(data);
+      setShowItinerary(true);
+      setBuilderState(null);
+
+      if (credits !== null && credits > 0) {
+        setCredits(c => (c !== null ? Math.max(0, c - 1) : null));
+      }
+    } catch {
+      setBuilderState(null);
+      setMessages(prev => [...prev, { role: 'assistant', text: "Sorry, I couldn't put that together. Want to try again?" }]);
+    }
+  }, [credits]);
+
+  const pickerSelectRegion = useCallback((region: PickerRegion) => {
+    setPickerRegionWarning('');
+    setBuilderState(prev => prev ? { ...prev, step: 2, regionId: region.id, regionName: region.name } : prev);
+  }, []);
+
+  const pickerSubmitRegionText = useCallback(() => {
+    const typed = pickerRegionInput.trim();
+    if (!typed) return;
+    const match = pickerRegions.find(r => r.name.toLowerCase() === typed.toLowerCase());
+    if (!match) {
+      setPickerRegionWarning("We don't have that destination yet — pick from the list above");
+      return;
+    }
+    pickerSelectRegion(match);
+  }, [pickerRegionInput, pickerRegions, pickerSelectRegion]);
+
+  const pickerSelectDuration = useCallback((value: Duration) => {
+    setBuilderState(prev => prev ? { ...prev, step: 3, duration: value } : prev);
+  }, []);
+
+  const pickerSelectVibe = useCallback((value: Vibe) => {
+    setBuilderState(prev => prev ? { ...prev, step: 4, vibe: value } : prev);
+  }, []);
+
+  const pickerSelectCompanions = useCallback((value: Companions) => {
+    setBuilderState(prev => {
+      if (!prev) return prev;
+      const final = { ...prev, companions: value };
+      void runItineraryGeneration(final);
+      return final;
+    });
+  }, [runItineraryGeneration]);
+
+  const cancelBuilder = useCallback(() => {
+    setBuilderState(null);
+  }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -509,6 +683,188 @@ export default function AriaPage() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Itinerary builder picker */}
+          {builderState?.active && (
+            <div style={{
+              padding: '14px 20px',
+              borderTop: '1px solid rgba(253,249,242,0.08)',
+              flexShrink: 0,
+              maxHeight: '50vh',
+              overflowY: 'auto',
+            }}>
+              {builderState.generating ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: 7,
+                    background: 'rgba(200,150,90,0.12)',
+                    border: '1px solid rgba(200,150,90,0.22)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: GOLD, fontSize: 11,
+                  }}>✦</div>
+                  <p className={cormorant.className} style={{
+                    margin: 0, fontSize: 15, fontStyle: 'italic', color: 'rgba(253,249,242,0.6)',
+                  }}>Curating your trip…</p>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: 'rgba(200,150,90,0.5)',
+                        animation: `aria-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <p style={{
+                      margin: 0, fontSize: 10, fontWeight: 600,
+                      letterSpacing: '0.14em', textTransform: 'uppercase',
+                      color: 'rgba(253,249,242,0.4)',
+                    }}>
+                      Step {builderState.step} of 4
+                    </p>
+                    <button onClick={cancelBuilder} style={{
+                      background: 'none', border: 'none', padding: 2, cursor: 'pointer',
+                      color: 'rgba(253,249,242,0.3)', fontSize: 11,
+                    }}>Cancel</button>
+                  </div>
+
+                  {builderState.step === 1 && (
+                    <div>
+                      <p className={cormorant.className} style={{
+                        margin: '0 0 12px', fontSize: 18, fontStyle: 'italic', color: '#FAF8F5',
+                      }}>Where to?</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                        {pickerRegions.map(r => (
+                          <button key={r.id} onClick={() => pickerSelectRegion(r)} style={{
+                            background: 'rgba(253,249,242,0.04)',
+                            border: '1px solid rgba(253,249,242,0.09)',
+                            borderRadius: 999, padding: '8px 14px',
+                            color: 'rgba(253,249,242,0.75)', fontSize: 13,
+                            cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(200,150,90,0.10)';
+                            e.currentTarget.style.borderColor = 'rgba(200,150,90,0.25)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(253,249,242,0.04)';
+                            e.currentTarget.style.borderColor = 'rgba(253,249,242,0.09)';
+                          }}
+                          >{r.name}{r.country_code ? `, ${r.country_code}` : ''}</button>
+                        ))}
+                      </div>
+                      <input
+                        value={pickerRegionInput}
+                        onChange={e => { setPickerRegionInput(e.target.value); setPickerRegionWarning(''); }}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); pickerSubmitRegionText(); } }}
+                        placeholder="Or type a destination…"
+                        style={{
+                          width: '100%', boxSizing: 'border-box',
+                          background: 'rgba(253,249,242,0.05)',
+                          border: '1px solid rgba(253,249,242,0.12)',
+                          borderRadius: 10, padding: '10px 12px',
+                          color: '#FAF8F5', fontSize: 13, outline: 'none',
+                          fontFamily: 'DM Sans, sans-serif',
+                        }}
+                      />
+                      {pickerRegionWarning && (
+                        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'rgba(220,80,60,0.85)' }}>
+                          {pickerRegionWarning}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {builderState.step === 2 && (
+                    <div>
+                      <p className={cormorant.className} style={{
+                        margin: '0 0 12px', fontSize: 18, fontStyle: 'italic', color: '#FAF8F5',
+                      }}>How long?</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {DURATION_OPTIONS.map(opt => (
+                          <button key={opt.value} onClick={() => pickerSelectDuration(opt.value)} style={{
+                            background: 'rgba(253,249,242,0.04)',
+                            border: '1px solid rgba(253,249,242,0.09)',
+                            borderRadius: 999, padding: '8px 14px',
+                            color: 'rgba(253,249,242,0.75)', fontSize: 13,
+                            cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(200,150,90,0.10)';
+                            e.currentTarget.style.borderColor = 'rgba(200,150,90,0.25)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(253,249,242,0.04)';
+                            e.currentTarget.style.borderColor = 'rgba(253,249,242,0.09)';
+                          }}
+                          >{opt.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {builderState.step === 3 && (
+                    <div>
+                      <p className={cormorant.className} style={{
+                        margin: '0 0 12px', fontSize: 18, fontStyle: 'italic', color: '#FAF8F5',
+                      }}>What&apos;s the vibe?</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {VIBE_OPTIONS.map(opt => (
+                          <button key={opt.value} onClick={() => pickerSelectVibe(opt.value)} style={{
+                            background: 'rgba(253,249,242,0.04)',
+                            border: '1px solid rgba(253,249,242,0.09)',
+                            borderRadius: 999, padding: '8px 14px',
+                            color: 'rgba(253,249,242,0.75)', fontSize: 13,
+                            cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(200,150,90,0.10)';
+                            e.currentTarget.style.borderColor = 'rgba(200,150,90,0.25)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(253,249,242,0.04)';
+                            e.currentTarget.style.borderColor = 'rgba(253,249,242,0.09)';
+                          }}
+                          >{opt.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {builderState.step === 4 && (
+                    <div>
+                      <p className={cormorant.className} style={{
+                        margin: '0 0 12px', fontSize: 18, fontStyle: 'italic', color: '#FAF8F5',
+                      }}>Travelling with?</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {COMPANIONS_OPTIONS.map(opt => (
+                          <button key={opt.value} onClick={() => pickerSelectCompanions(opt.value)} style={{
+                            background: 'rgba(253,249,242,0.04)',
+                            border: '1px solid rgba(253,249,242,0.09)',
+                            borderRadius: 999, padding: '8px 14px',
+                            color: 'rgba(253,249,242,0.75)', fontSize: 13,
+                            cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(200,150,90,0.10)';
+                            e.currentTarget.style.borderColor = 'rgba(200,150,90,0.25)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(253,249,242,0.04)';
+                            e.currentTarget.style.borderColor = 'rgba(253,249,242,0.09)';
+                          }}
+                          >{opt.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Input */}
           <div style={{
             padding: '16px 20px',
@@ -622,14 +978,75 @@ export default function AriaPage() {
               </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-              <pre style={{
-                margin: 0, fontSize: 13, lineHeight: 1.7,
-                color: 'rgba(253,249,242,0.75)',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                fontFamily: 'DM Sans, sans-serif',
-              }}>
-                {itineraryText}
-              </pre>
+              {itineraryData ? (
+                <div>
+                  <p className={cormorant.className} style={{
+                    margin: '0 0 4px', fontSize: 20, fontStyle: 'italic', fontWeight: 400, color: '#FAF8F5',
+                  }}>{itineraryData.title}</p>
+                  <p style={{ margin: '0 0 18px', fontSize: 12, color: 'rgba(253,249,242,0.4)' }}>
+                    {formatDateNice(itineraryData.startdate)} — {formatDateNice(itineraryData.enddate)}
+                  </p>
+
+                  {itineraryData.days.map(day => (
+                    <div key={day.day} style={{ marginBottom: 20 }}>
+                      <p style={{
+                        margin: '0 0 10px', fontSize: 11, fontWeight: 600,
+                        letterSpacing: '0.1em', textTransform: 'uppercase',
+                        color: GOLD,
+                      }}>
+                        Day {day.day} — {formatDateNice(day.date)}
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {day.items.map((item, idx) => (
+                          <div key={idx} style={{
+                            display: 'flex', gap: 12, alignItems: 'flex-start',
+                            background: 'rgba(253,249,242,0.05)',
+                            border: '1px solid rgba(253,249,242,0.08)',
+                            borderRadius: 16, padding: '10px 12px',
+                          }}>
+                            <div style={{
+                              width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                              background: item.image ? `url(${item.image}) center/cover` : 'rgba(200,150,90,0.12)',
+                              border: '1px solid rgba(253,249,242,0.08)',
+                            }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#FAF8F5' }}>{item.name}</p>
+                              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(253,249,242,0.4)' }}>
+                                {item.category} · {item.start_time} · {item.duration_hours}h
+                              </p>
+                              {item.notes && (
+                                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'rgba(253,249,242,0.6)', lineHeight: 1.5 }}>
+                                  {item.notes}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button onClick={() => router.push('/dashboard/planner')} style={{
+                    width: '100%', marginTop: 8,
+                    background: 'rgba(200,150,90,0.12)',
+                    border: '1px solid rgba(200,150,90,0.25)',
+                    borderRadius: 12, padding: '12px 16px',
+                    color: GOLD, fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                  }}>
+                    Open in Planner →
+                  </button>
+                </div>
+              ) : (
+                <pre style={{
+                  margin: 0, fontSize: 13, lineHeight: 1.7,
+                  color: 'rgba(253,249,242,0.75)',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}>
+                  {itineraryText}
+                </pre>
+              )}
             </div>
           </div>
 
