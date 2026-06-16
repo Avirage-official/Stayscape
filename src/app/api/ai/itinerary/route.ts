@@ -219,12 +219,6 @@ export async function POST(request: NextRequest) {
       { status: 403, headers: rateLimit.headers },
     );
   }
-  if (creditRow && creditRow.aria_credits > 0) {
-    void supabase
-      .from('users')
-      .update({ aria_credits: creditRow.aria_credits - 1 })
-      .eq('id', authenticatedUserId);
-  }
 
   // Validate region
   const { data: region } = await supabase
@@ -412,7 +406,7 @@ export async function POST(request: NextRequest) {
       const place = placesById.get(item.place_id);
       if (!place) continue;
 
-      void insertItineraryItem(itineraryId, {
+      const savedId = await insertItineraryItem(itineraryId, {
         place_id: item.place_id,
         titleoverride: null,
         scheduleddate: scheduledDate,
@@ -422,6 +416,7 @@ export async function POST(request: NextRequest) {
         category: place.category,
         image: place.image_url,
       });
+      if (!savedId) continue; // skip items that failed to save
 
       responseItems.push({
         place_id: item.place_id,
@@ -444,6 +439,14 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to generate itinerary. Please try again.' },
       { status: 502, headers: rateLimit.headers },
     );
+  }
+
+  // Decrement credits only after successful generation (skip if unlimited = -1)
+  if (creditRow && creditRow.aria_credits > 0) {
+    void supabase
+      .from('users')
+      .update({ aria_credits: creditRow.aria_credits - 1 })
+      .eq('id', authenticatedUserId);
   }
 
   return NextResponse.json(
