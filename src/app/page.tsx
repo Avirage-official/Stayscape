@@ -76,13 +76,12 @@ export default function SplashPage() {
           <div className="sc-layout-gap" />
 
           <div className="sc-layout-content">
-            {/* Outer: opacity + scale appear */}
-            <div className="sc-appear">
-              {/* Inner: translateY float (no property conflict) */}
-              <div className="sc-float">
+            {/* Float wrapper — begins after entrance animations settle */}
+            <div className="sc-float">
                 <svg
                   viewBox="0 0 160 140"
                   aria-hidden="true"
+                  className="sc-logo-enter"
                   style={{
                     display: 'block',
                     width: 'clamp(96px, 12vw, 136px)',
@@ -103,7 +102,7 @@ export default function SplashPage() {
                 </svg>
 
                 <p
-                  className="sc-wordmark"
+                  aria-label="Stayscape"
                   style={{
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: 'clamp(9px, 0.9vw, 12px)',
@@ -116,9 +115,19 @@ export default function SplashPage() {
                     margin: 'clamp(12px, 2vh, 18px) 0 0',
                   }}
                 >
-                  Stayscape
+                  {'Stayscape'.split('').map((char, i) => (
+                    <span
+                      key={i}
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-block',
+                        animation: `sc-letter-appear 560ms cubic-bezier(0.22,1,0.36,1) ${360 + i * 48}ms both`,
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
                 </p>
-              </div>
             </div>
 
             <div
@@ -249,9 +258,13 @@ export default function SplashPage() {
         }
 
         /* ── Animations ─────────────────────────────────────────── */
-        @keyframes sc-appear-anim {
-          from { opacity: 0; transform: scale(0.88); }
-          to   { opacity: 1; transform: scale(1); }
+        @keyframes sc-logo-enter-anim {
+          from { opacity: 0; transform: translateY(-22px); filter: blur(3px); }
+          to   { opacity: 1; transform: translateY(0);     filter: blur(0px); }
+        }
+        @keyframes sc-letter-appear {
+          from { opacity: 0; transform: translateY(6px); filter: blur(5px); }
+          to   { opacity: 1; transform: translateY(0);   filter: blur(0px); }
         }
         @keyframes sc-float-anim {
           0%, 100% { transform: translateY(0px); }
@@ -266,10 +279,9 @@ export default function SplashPage() {
           to   { opacity: 1; }
         }
 
-        .sc-appear   { animation: sc-appear-anim 900ms cubic-bezier(0.34,1.12,0.64,1) both; }
-        .sc-float    { animation: sc-float-anim 4.5s 900ms ease-in-out infinite; }
-        .sc-wordmark { animation: sc-fade-up 600ms 480ms cubic-bezier(0.22,1,0.36,1) both; }
-        .sc-buttons  { animation: sc-fade-up 600ms 750ms cubic-bezier(0.22,1,0.36,1) both; }
+        .sc-logo-enter { animation: sc-logo-enter-anim 700ms cubic-bezier(0.22,1,0.36,1) 80ms both; }
+        .sc-float      { animation: sc-float-anim 4.5s 1400ms ease-in-out infinite; }
+        .sc-buttons    { animation: sc-fade-up 600ms 780ms cubic-bezier(0.22,1,0.36,1) both; }
 
         /* ── Mobile: stack vertically ───────────────────────────── */
         @media (max-width: 767px) {
@@ -301,8 +313,11 @@ export default function SplashPage() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .sc-appear, .sc-float, .sc-wordmark, .sc-buttons {
-            animation: none !important; opacity: 1 !important; transform: none !important;
+          .sc-logo-enter, .sc-float, .sc-buttons {
+            animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important;
+          }
+          .sc-logo-enter span {
+            animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important;
           }
         }
       `}</style>
