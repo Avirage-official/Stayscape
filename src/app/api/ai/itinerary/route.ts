@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
     .eq('id', authenticatedUserId)
     .single<{ aria_credits: number }>();
 
-  if (creditRow && creditRow.aria_credits === 0) {
+  if (!creditRow || creditRow.aria_credits === 0) {
     return NextResponse.json(
       { error: 'Aria is locked. Unlock Aria to continue.' },
       { status: 403, headers: rateLimit.headers },
@@ -307,10 +307,10 @@ export async function POST(request: NextRequest) {
       }),
     });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[ai/itinerary] Failed to reach Anthropic:', err);
     return NextResponse.json(
-      { error: errorMessage },
-      { status: 500, headers: rateLimit.headers },
+      { error: 'Failed to reach Aria. Please try again.' },
+      { status: 502, headers: rateLimit.headers },
     );
   }
 
@@ -435,6 +435,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (responseDays.length === 0) {
+    // Clean up the orphan itinerary row so it doesn't appear in the user's Planner
+    void supabase.from('itineraries').delete().eq('id', itineraryId);
     return NextResponse.json(
       { error: 'Failed to generate itinerary. Please try again.' },
       { status: 502, headers: rateLimit.headers },

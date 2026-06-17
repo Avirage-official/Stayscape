@@ -483,18 +483,11 @@ export async function POST(request: NextRequest) {
       .select('aria_credits')
       .eq('id', authenticatedUserId)
       .single<{ aria_credits: number }>();
-    if (creditRow && creditRow.aria_credits === 0) {
+    if (!creditRow || creditRow.aria_credits === 0) {
       return NextResponse.json(
         { error: 'Aria is locked. Unlock Aria to continue.' },
         { status: 403, headers: rateLimit.headers },
       );
-    }
-    // Decrement credits (skip if unlimited = -1)
-    if (creditRow && creditRow.aria_credits > 0) {
-      void getSupabaseAdmin()
-        .from('users')
-        .update({ aria_credits: creditRow.aria_credits - 1 })
-        .eq('id', authenticatedUserId);
     }
   }
 
@@ -745,6 +738,21 @@ export async function POST(request: NextRequest) {
     } else {
       const textBlock = json.content?.find((b) => b.type === 'text');
       reply = textBlock?.text ?? "I couldn't generate a response. Please try again.";
+    }
+
+    // Decrement standalone credits after successful reply (skip if unlimited = -1)
+    if (!stayId) {
+      const { data: creditRow } = await getSupabaseAdmin()
+        .from('users')
+        .select('aria_credits')
+        .eq('id', authenticatedUserId)
+        .single<{ aria_credits: number }>();
+      if (creditRow && creditRow.aria_credits > 0) {
+        void getSupabaseAdmin()
+          .from('users')
+          .update({ aria_credits: creditRow.aria_credits - 1 })
+          .eq('id', authenticatedUserId);
+      }
     }
 
     // Persist conversation turn to DB (fire-and-forget — never blocks response)
