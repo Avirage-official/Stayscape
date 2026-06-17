@@ -8,6 +8,7 @@ import { AuthProvider } from "@/lib/context/auth-context";
 import CookieConsent from "@/components/CookieConsent";
 import NextTopLoader from "nextjs-toploader";
 import PageTransition from "@/components/PageTransition";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 /*
   TYPOGRAPHY RATIONALE
@@ -63,6 +64,12 @@ export const metadata: Metadata = {
   keywords: ['travel', 'concierge', 'AI', 'itinerary', 'hotel', 'local experiences', 'travel planner', 'Stayscape'],
   authors: [{ name: 'Stayscape' }],
   creator: 'Stayscape',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Stayscape',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -101,6 +108,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#0A0806" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.svg" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.svg" />
+      </head>
       <body className={`${instrumentSans.variable} ${fraunces.variable} ${spectral.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         {/* Gold progress bar — intercepts pushState so it shows during navigation */}
         <NextTopLoader
@@ -123,6 +136,7 @@ export default function RootLayout({
           </AuthProvider>
         </ThemeProvider>
         <CookieConsent />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
