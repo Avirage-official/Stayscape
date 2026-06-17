@@ -601,9 +601,10 @@ export default function AriaPage() {
                   Where to next?
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {SUGGESTIONS.map(s => (
+                  {SUGGESTIONS.map((s, si) => (
                     <button key={s} onClick={() => void sendMessage(s)} style={{
                       background: 'rgba(253,249,242,0.04)',
+                      animation: `aria-suggest-in 380ms cubic-bezier(0.22,1,0.36,1) ${80 + si * 60}ms both`,
                       border: '1px solid rgba(253,249,242,0.09)',
                       borderRadius: 12, padding: '10px 14px',
                       color: 'rgba(253,249,242,0.60)', fontSize: 13, fontWeight: 400,
@@ -629,6 +630,7 @@ export default function AriaPage() {
               <div key={i} style={{
                 display: 'flex',
                 justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                animation: 'aria-msg-in 320ms cubic-bezier(0.34,1.3,0.64,1) both',
               }}>
                 {msg.role === 'assistant' && (
                   <div style={{
@@ -1057,6 +1059,14 @@ export default function AriaPage() {
         @keyframes aria-dot {
           0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
           40% { opacity: 1; transform: scale(1.1); }
+        }
+        @keyframes aria-msg-in {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)    scale(1); }
+        }
+        @keyframes aria-suggest-in {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>
     </div>
