@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cormorant_Garamond } from 'next/font/google';
+import { useAuth } from '@/lib/context/auth-context';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -97,6 +98,7 @@ const tabs = [
 function GuestNavBarInner() {
   const pathname = usePathname() ?? '';
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { logout } = useAuth();
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -198,6 +200,43 @@ function GuestNavBarInner() {
             );
           })}
         </div>
+
+        {/* Logout button */}
+        <button
+          onClick={logout}
+          aria-label="Log out"
+          title="Log out"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: 'transparent',
+            border: '1px solid rgba(253,249,242,0.08)',
+            color: 'rgba(253,249,242,0.28)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 8,
+            transition: 'color 200ms ease, border-color 200ms ease, background 200ms ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'rgba(220,80,60,0.85)';
+            e.currentTarget.style.borderColor = 'rgba(220,80,60,0.30)';
+            e.currentTarget.style.background = 'rgba(220,80,60,0.07)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'rgba(253,249,242,0.28)';
+            e.currentTarget.style.borderColor = 'rgba(253,249,242,0.08)';
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
 
         {/* Collapse button */}
         <button
@@ -334,6 +373,37 @@ function GuestNavBarInner() {
                 </Link>
               );
             })}
+
+            {/* Logout */}
+            <button
+              onClick={logout}
+              aria-label="Log out"
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                color: 'rgba(220,80,60,0.60)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'color 0.2s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(220,80,60,0.85)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(220,80,60,0.60)'; }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.06em' }}>
+                Log out
+              </span>
+            </button>
           </div>
         </nav>
       </div>
