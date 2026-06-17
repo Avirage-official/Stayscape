@@ -316,8 +316,9 @@ export async function POST(request: NextRequest) {
 
   if (!claudeRes.ok) {
     const errText = await claudeRes.text().catch(() => claudeRes.statusText);
+    console.error('[ai/itinerary] Anthropic error:', claudeRes.status, errText);
     return NextResponse.json(
-      { error: `Upstream error: ${errText}` },
+      { error: 'Failed to generate itinerary. Please try again.' },
       { status: 502, headers: rateLimit.headers },
     );
   }
