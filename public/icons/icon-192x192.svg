@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'>
+  <circle cx='96' cy='96' r='96' fill='#1A0F05'/>
+  <g transform='translate(35.65714285714285,43.199999999999996) scale(0.7542857142857143)'>
+    <path d='M 130,44 C 118,22 96,13 70,13 C 40,13 20,36 20,68 C 20,100 40,123 70,123 C 96,123 118,114 130,92'
+      fill='none' stroke='#C8A85A' stroke-width='14' stroke-linecap='round' stroke-linejoin='round'/>
+    <path d='M 100,34 C 100,24 87,16 73,16 C 59,16 49,26 49,39 C 49,54 76,59 86,66 C 96,73 108,83 108,97 C 108,112 93,122 77,122 C 61,122 50,112 46,102'
+      fill='none' stroke='#2C1A08' stroke-width='14' stroke-linecap='round' stroke-linejoin='round'/>
+  </g>
+</svg>
