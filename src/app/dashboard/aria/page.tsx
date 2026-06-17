@@ -257,11 +257,21 @@ export default function AriaPage() {
       const el = m.getElement() as HTMLDivElement;
       const placeId = el.dataset.placeId;
       const isHighlighted = placeId ? highlightedIds.has(placeId) : false;
+      const wasHighlighted = el.dataset.highlighted === '1';
       el.style.width = isHighlighted ? '18px' : '10px';
       el.style.height = isHighlighted ? '18px' : '10px';
       el.style.background = isHighlighted ? GOLD : 'rgba(200,150,90,0.45)';
       el.style.borderColor = isHighlighted ? GOLD : 'rgba(200,150,90,0.7)';
       el.style.zIndex = isHighlighted ? '10' : '1';
+      if (isHighlighted && !wasHighlighted) {
+        el.style.animation = 'none';
+        // Force reflow so removing 'none' restarts the animation
+        void el.offsetWidth;
+        el.style.animation = 'map-pin-pop 480ms cubic-bezier(0.34,1.56,0.64,1) both';
+      } else if (!isHighlighted) {
+        el.style.animation = 'none';
+      }
+      el.dataset.highlighted = isHighlighted ? '1' : '0';
     });
   }, [highlightedIds]);
 
@@ -465,6 +475,11 @@ export default function AriaPage() {
         }
         .aria-itinerary-panel.visible {
           display: block;
+          animation: aria-panel-up 420ms cubic-bezier(0.34,1.18,0.64,1) both;
+        }
+        @keyframes aria-panel-up {
+          from { opacity: 0; transform: translateY(32px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         @media (min-width: 900px) {
           .aria-shell {
@@ -500,6 +515,7 @@ export default function AriaPage() {
           .aria-itinerary-panel.visible {
             display: flex;
             flex-direction: column;
+            animation: aria-panel-up 420ms cubic-bezier(0.34,1.18,0.64,1) both;
           }
         }
       `}</style>
@@ -1067,6 +1083,12 @@ export default function AriaPage() {
         @keyframes aria-suggest-in {
           from { opacity: 0; transform: translateX(-8px); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes map-pin-pop {
+          0%   { transform: scale(0.4); opacity: 0.3; }
+          55%  { transform: scale(1.45); opacity: 1; }
+          80%  { transform: scale(0.9); }
+          100% { transform: scale(1); }
         }
       `}</style>
     </div>
