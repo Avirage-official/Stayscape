@@ -128,8 +128,8 @@ function MountSection({
     <div
       style={{
         opacity: mounted ? 1 : 0,
-        transform: mounted ? 'translateY(0)' : 'translateY(16px)',
-        transition: `opacity 0.55s ease ${delay}ms, transform 0.55s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+        transform: mounted ? 'translateY(0)' : 'translateY(28px)',
+        transition: `opacity 0.6s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.7s cubic-bezier(0.34,1.56,0.64,1) ${delay}ms`,
       }}
     >
       {children}
@@ -406,9 +406,8 @@ export default function HomeDashboard() {
               </MountSection>
 
               {/* Region cards */}
-              <MountSection mounted={mounted} delay={160}>
-                <div style={{ marginTop: 20 }}>
-                  {regionsLoading ? (
+              <div style={{ marginTop: 20, opacity: mounted ? 1 : 0, transition: `opacity 0.4s ease 120ms` }}>
+                {regionsLoading ? (
                     <div style={{ display: 'flex', gap: 12, overflowX: 'hidden' }}>
                       {[0, 1, 2, 3].map(i => (
                         <div key={i} style={{ flexShrink: 0, width: 140, height: 180, borderRadius: 16 }}>
@@ -416,7 +415,7 @@ export default function HomeDashboard() {
                         </div>
                       ))}
                     </div>
-                  ) : regions.length === 0 ? (
+                ) : regions.length === 0 ? (
                     <p style={{ fontSize: 13, color: 'rgba(253,249,242,0.35)', fontWeight: 300 }}>
                       No destinations available yet.
                     </p>
@@ -432,6 +431,7 @@ export default function HomeDashboard() {
                             key={region.id}
                             region={region}
                             index={i}
+                            mounted={mounted}
                             isActive={region.id === savedRegionId}
                             onClick={() => handleRegionClick(region)}
                           />
@@ -450,6 +450,7 @@ export default function HomeDashboard() {
                             key={region.id}
                             region={region}
                             index={i}
+                            mounted={mounted}
                             isActive={region.id === savedRegionId}
                             onClick={() => handleRegionClick(region)}
                           />
@@ -457,8 +458,7 @@ export default function HomeDashboard() {
                       </div>
                     </>
                   )}
-                </div>
-              </MountSection>
+              </div>
             </div>
 
             {/* ── RIGHT COLUMN: Trips + Aria ── */}
@@ -776,14 +776,17 @@ export default function HomeDashboard() {
 function RegionCard({
   region,
   index,
+  mounted,
   isActive,
   onClick,
 }: {
   region: Region;
   index: number;
+  mounted: boolean;
   isActive: boolean;
   onClick: () => void;
 }) {
+  const delay = 160 + index * 55;
   return (
     <button
       type="button"
@@ -794,13 +797,15 @@ function RegionCard({
         width: 140,
         height: 180,
         borderRadius: 16,
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
         overflow: 'hidden',
         position: 'relative',
         cursor: 'pointer',
         border: isActive ? '2px solid #C17F3A' : '2px solid transparent',
         background: 'transparent',
         padding: 0,
-        transition: 'border-color 180ms ease, box-shadow 180ms ease',
+        transition: `opacity 0.55s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.65s cubic-bezier(0.34,1.4,0.64,1) ${delay}ms, border-color 180ms ease, box-shadow 180ms ease`,
         boxShadow: isActive ? '0 0 0 1px rgba(193,127,58,0.40)' : 'none',
       }}
     >
