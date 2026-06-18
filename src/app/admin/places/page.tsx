@@ -3,7 +3,7 @@ import SectionHeader from '@/components/admin/SectionHeader';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import ReviewQueueClient from './ReviewQueueClient';
 import PlacesTableClient from './PlacesTableClient';
-import MaintenanceClient, { type MaintenanceRow } from './MaintenanceClient';
+import MaintenanceClient from './MaintenanceClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,12 +124,14 @@ async function getPlacesData(rawParams: PlacesSearchParams) {
   }
 }
 
-async function getMaintenanceData(): Promise<MaintenanceRow[]> {
+async function getMaintenanceData(): Promise<(PlaceRow & { enrichment_error: string | null; ai_enriched_at: string | null })[]> {
   try {
     const supabase = getSupabaseAdmin();
     const { data } = await supabase
       .from('places')
-      .select('id, name, category, city, image_url, ai_enriched_at, enrichment_error, regions:region_id(id, name)')
+      .select(
+        'id, name, region_id, category, city, address, country_code, phone, website, booking_url, image_url, image_urls, editorial_summary, description, rating, price_level, is_featured, is_active, vibes, best_for, recommended_duration, enrichment_error, ai_enriched_at, regions:region_id(id, name)',
+      )
       .or('image_url.is.null,ai_enriched_at.is.null,enrichment_error.not.is.null')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -137,13 +139,30 @@ async function getMaintenanceData(): Promise<MaintenanceRow[]> {
     return (data ?? []).map((p) => ({
       id: p.id as string,
       name: (p.name as string) ?? '—',
+      region_id: (p.region_id as string) ?? '',
       region: ((p.regions as { name?: string } | null)?.name) ?? '—',
       category: (p.category as string) ?? '—',
       city: (p.city as string) ?? '—',
+      address: (p.address as string) ?? '',
+      country_code: (p.country_code as string) ?? '',
+      phone: (p.phone as string | null) ?? null,
+      website: (p.website as string | null) ?? null,
+      booking_url: (p.booking_url as string | null) ?? null,
       image_url: (p.image_url as string | null) ?? null,
-      ai_enriched_at: (p.ai_enriched_at as string | null) ?? null,
+      image_urls: (p.image_urls as string[]) ?? [],
+      editorial_summary: (p.editorial_summary as string | null) ?? null,
+      description: (p.description as string) ?? '',
+      rating: (p.rating as number | null) ?? null,
+      price_level: (p.price_level as number | null) ?? null,
+      is_featured: Boolean(p.is_featured),
+      is_active: Boolean(p.is_active),
+      vibes: (p.vibes as string[] | null) ?? null,
+      best_for: (p.best_for as string[] | null) ?? null,
+      recommended_duration: (p.recommended_duration as string | null) ?? null,
+      enriched: Boolean((p.editorial_summary as string | null)?.trim()),
       enrichment_error: (p.enrichment_error as string | null) ?? null,
-    })) as MaintenanceRow[];
+      ai_enriched_at: (p.ai_enriched_at as string | null) ?? null,
+    }));
   } catch {
     return [];
   }
