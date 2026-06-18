@@ -56,7 +56,7 @@ const spectral = Spectral({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://stayscape.vercel.app'),
+  metadataBase: new URL('https://www.thestayscape.com'),
   title: {
     default: 'Stayscape — Your AI-Powered Travel Concierge',
     template: '%s | Stayscape',
@@ -115,6 +115,48 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/web-app-manifest-192x192.png" />
       </head>
       <body className={`${instrumentSans.variable} ${fraunces.variable} ${spectral.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@graph': [
+                {
+                  '@type': 'Organization',
+                  '@id': 'https://www.thestayscape.com/#organization',
+                  name: 'Stayscape',
+                  url: 'https://www.thestayscape.com',
+                  logo: {
+                    '@type': 'ImageObject',
+                    url: 'https://www.thestayscape.com/web-app-manifest-192x192.png',
+                  },
+                  sameAs: [],
+                },
+                {
+                  '@type': 'WebSite',
+                  '@id': 'https://www.thestayscape.com/#website',
+                  url: 'https://www.thestayscape.com',
+                  name: 'Stayscape',
+                  publisher: { '@id': 'https://www.thestayscape.com/#organization' },
+                },
+                {
+                  '@type': 'SoftwareApplication',
+                  name: 'Stayscape',
+                  url: 'https://www.thestayscape.com',
+                  applicationCategory: 'TravelApplication',
+                  operatingSystem: 'Web, iOS, Android',
+                  description: 'Discover local gems, plan your perfect stay, and explore curated experiences with Stayscape — the AI concierge for modern travelers.',
+                  offers: {
+                    '@type': 'Offer',
+                    price: '0',
+                    priceCurrency: 'USD',
+                  },
+                  publisher: { '@id': 'https://www.thestayscape.com/#organization' },
+                },
+              ],
+            }),
+          }}
+        />
         {/* Gold progress bar — intercepts pushState so it shows during navigation */}
         <NextTopLoader
           color="#C8A85A"
