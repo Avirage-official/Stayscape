@@ -3,12 +3,13 @@ import SectionHeader from '@/components/admin/SectionHeader';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import ReviewQueueClient from './ReviewQueueClient';
 import PlacesTableClient from './PlacesTableClient';
+import MaintenanceClient, { type MaintenanceRow } from './MaintenanceClient';
 
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 20;
 
-type Tab = 'all' | 'review';
+type Tab = 'all' | 'review' | 'maintenance';
 
 type PlacesSearchParams = {
   page?: string;
@@ -123,6 +124,31 @@ async function getPlacesData(rawParams: PlacesSearchParams) {
   }
 }
 
+async function getMaintenanceData(): Promise<MaintenanceRow[]> {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+      .from('places')
+      .select('id, name, category, city, image_url, ai_enriched_at, enrichment_error, regions:region_id(id, name)')
+      .or('image_url.is.null,ai_enriched_at.is.null,enrichment_error.not.is.null')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    return (data ?? []).map((p) => ({
+      id: p.id as string,
+      name: (p.name as string) ?? '—',
+      region: ((p.regions as { name?: string } | null)?.name) ?? '—',
+      category: (p.category as string) ?? '—',
+      city: (p.city as string) ?? '—',
+      image_url: (p.image_url as string | null) ?? null,
+      ai_enriched_at: (p.ai_enriched_at as string | null) ?? null,
+      enrichment_error: (p.enrichment_error as string | null) ?? null,
+    })) as MaintenanceRow[];
+  } catch {
+    return [];
+  }
+}
+
 async function getReviewQueue() {
   try {
     const supabase = getSupabaseAdmin();
@@ -152,9 +178,13 @@ export default async function AdminPlacesPage({
   searchParams: Promise<PlacesSearchParams>;
 }) {
   const params = await searchParams;
-  const tab: Tab = params.tab === 'review' ? 'review' : 'all';
+  const tab: Tab = params.tab === 'review' ? 'review' : params.tab === 'maintenance' ? 'maintenance' : 'all';
 
-  const [data, reviewQueue] = await Promise.all([getPlacesData(params), getReviewQueue()]);
+  const [data, reviewQueue, maintenanceRows] = await Promise.all([
+    getPlacesData(params),
+    getReviewQueue(),
+    getMaintenanceData(),
+  ]);
 
   const totalPages = Math.max(Math.ceil(data.total / PAGE_SIZE), 1);
   const currentPage = Math.min(data.page, totalPages);
@@ -188,9 +218,28 @@ export default async function AdminPlacesPage({
             </span>
           )}
         </Link>
+        <Link
+          href="/admin/places?tab=maintenance"
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'maintenance' ? 'border-[#C9A84C] text-[#C9A84C]' : 'border-transparent text-white/45 hover:text-white/70'
+          }`}
+        >
+          Maintenance
+          {maintenanceRows.length > 0 && (
+            <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ${
+              maintenanceRows.some(r => r.enrichment_error)
+                ? 'bg-red-500/20 text-red-400'
+                : 'bg-amber-500/20 text-amber-400'
+            }`}>
+              {maintenanceRows.length}
+            </span>
+          )}
+        </Link>
       </div>
 
-      {tab === 'review' ? (
+      {tab === 'maintenance' ? (
+        <MaintenanceClient rows={maintenanceRows} />
+      ) : tab === 'review' ? (
         <ReviewQueueClient rows={reviewQueue} />
       ) : (
         <>
@@ -239,3 +288,4 @@ export default async function AdminPlacesPage({
     </div>
   );
 }
+
