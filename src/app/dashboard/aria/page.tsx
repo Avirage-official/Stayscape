@@ -245,6 +245,15 @@ export default function AriaPage() {
       map.on('load', () => {
         setMapLoaded(true);
         validPlaces.forEach(p => {
+          // Wrapper gives a 44px touch target on mobile while keeping the visual dot small
+          const wrapper = document.createElement('div');
+          wrapper.style.cssText = `
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+          `;
+
           const el = document.createElement('div');
           el.dataset.placeId = p.id;
           el.style.cssText = `
@@ -252,11 +261,14 @@ export default function AriaPage() {
             background: rgba(200,150,90,0.45);
             border: 1.5px solid rgba(200,150,90,0.7);
             border-radius: 50%;
-            cursor: pointer;
+            pointer-events: none;
             transition: all 220ms ease;
           `;
+          wrapper.appendChild(el);
 
-          el.addEventListener('click', (e) => {
+          const isMobile = window.innerWidth < 900;
+
+          wrapper.addEventListener('click', (e) => {
             e.stopPropagation();
 
             // Close existing popup
@@ -266,14 +278,15 @@ export default function AriaPage() {
             const stars = p.rating ? '★'.repeat(Math.round(p.rating)) : '';
             const ratingLabel = p.rating ? `${p.rating.toFixed(1)} ${stars}` : '';
 
+            // Mobile: compact popup (no image) so it fits within the 280px map
             const popupHtml = `
               <div style="
                 background:#16100A;border:1px solid rgba(200,150,90,0.22);
                 border-radius:14px;padding:0;overflow:hidden;
-                min-width:200px;max-width:240px;
+                min-width:180px;max-width:${isMobile ? '220px' : '240px'};
                 box-shadow:0 8px 32px rgba(0,0,0,0.55);
               ">
-                ${p.image_url ? `<div style="width:100%;height:110px;background:url('${p.image_url}') center/cover no-repeat;"></div>` : `<div style="width:100%;height:60px;background:rgba(200,150,90,0.08);display:flex;align-items:center;justify-content:center;font-size:22px;">✦</div>`}
+                ${!isMobile && p.image_url ? `<div style="width:100%;height:110px;background:url('${p.image_url}') center/cover no-repeat;"></div>` : ''}
                 <div style="padding:12px 14px 14px;">
                   <p style="margin:0;font-size:14px;font-weight:600;color:#FAF8F5;font-family:'DM Sans',sans-serif;line-height:1.3;">${p.name}</p>
                   <p style="margin:4px 0 0;font-size:11px;color:rgba(253,249,242,0.45);font-family:'DM Sans',sans-serif;">${p.category}${ratingLabel ? ` · ${ratingLabel}` : ''}</p>
@@ -287,6 +300,7 @@ export default function AriaPage() {
                       font-size:12px;font-weight:600;
                       cursor:pointer;font-family:'DM Sans',sans-serif;
                       letter-spacing:0.04em;
+                      -webkit-tap-highlight-color:transparent;
                     "
                   >Ask Aria about this →</button>
                 </div>
@@ -297,6 +311,7 @@ export default function AriaPage() {
               closeButton: false,
               closeOnClick: true,
               offset: 14,
+              anchor: isMobile ? 'bottom' : undefined,
               className: 'aria-map-popup',
               maxWidth: 'none',
             })
@@ -310,7 +325,10 @@ export default function AriaPage() {
           });
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const marker = new mb.Marker({ element: el }).setLngLat([p.longitude, p.latitude]).addTo(map as any);
+          const marker = new mb.Marker({ element: wrapper }).setLngLat([p.longitude, p.latitude]).addTo(map as any);
+          // Store the visual dot in dataset so highlight effect can find it
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (marker as any)._dotEl = el;
           markersRef.current.push(marker);
         });
       });
@@ -332,24 +350,24 @@ export default function AriaPage() {
     markersRef.current.forEach(marker => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const m = marker as any;
-      const el = m.getElement() as HTMLDivElement;
-      const placeId = el.dataset.placeId;
+      // _dotEl is the small visual circle; getElement() is the 44px touch wrapper
+      const dot: HTMLDivElement = m._dotEl ?? m.getElement();
+      const placeId = dot.dataset.placeId;
       const isHighlighted = placeId ? highlightedIds.has(placeId) : false;
-      const wasHighlighted = el.dataset.highlighted === '1';
-      el.style.width = isHighlighted ? '18px' : '10px';
-      el.style.height = isHighlighted ? '18px' : '10px';
-      el.style.background = isHighlighted ? GOLD : 'rgba(200,150,90,0.45)';
-      el.style.borderColor = isHighlighted ? GOLD : 'rgba(200,150,90,0.7)';
-      el.style.zIndex = isHighlighted ? '10' : '1';
+      const wasHighlighted = dot.dataset.highlighted === '1';
+      dot.style.width = isHighlighted ? '18px' : '10px';
+      dot.style.height = isHighlighted ? '18px' : '10px';
+      dot.style.background = isHighlighted ? GOLD : 'rgba(200,150,90,0.45)';
+      dot.style.borderColor = isHighlighted ? GOLD : 'rgba(200,150,90,0.7)';
+      m.getElement().style.zIndex = isHighlighted ? '10' : '1';
       if (isHighlighted && !wasHighlighted) {
-        el.style.animation = 'none';
-        // Force reflow so removing 'none' restarts the animation
-        void el.offsetWidth;
-        el.style.animation = 'map-pin-pop 480ms cubic-bezier(0.34,1.56,0.64,1) both';
+        dot.style.animation = 'none';
+        void dot.offsetWidth;
+        dot.style.animation = 'map-pin-pop 480ms cubic-bezier(0.34,1.56,0.64,1) both';
       } else if (!isHighlighted) {
-        el.style.animation = 'none';
+        dot.style.animation = 'none';
       }
-      el.dataset.highlighted = isHighlighted ? '1' : '0';
+      dot.dataset.highlighted = isHighlighted ? '1' : '0';
     });
   }, [highlightedIds]);
 
