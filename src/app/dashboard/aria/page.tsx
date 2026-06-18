@@ -117,13 +117,37 @@ export default function AriaPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
+  const popupRef = useRef<unknown>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Stable callback ref so marker click handlers can reach React state
+  const onPinClickRef = useRef<(place: Place) => void>(() => {});
 
   // Auth redirect
   useEffect(() => {
     if (!isLoading && !user) router.replace('/guests');
   }, [isLoading, user, router]);
+
+  // Keep pin-click callback up to date with current React state setters
+  useEffect(() => {
+    onPinClickRef.current = (place: Place) => {
+      setInput(`Tell me about ${place.name}`);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    };
+  }, []);
+
+  // Expose global so popup button HTML can reach React setInput
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__ariaAskPlace = (name: string) => {
+      setInput(`Tell me about ${name}`);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    };
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__ariaAskPlace;
+    };
+  }, []);
 
   // Load region + credits
   useEffect(() => {
@@ -231,6 +255,60 @@ export default function AriaPage() {
             cursor: pointer;
             transition: all 220ms ease;
           `;
+
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            // Close existing popup
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (popupRef.current) (popupRef.current as any).remove();
+
+            const stars = p.rating ? '★'.repeat(Math.round(p.rating)) : '';
+            const ratingLabel = p.rating ? `${p.rating.toFixed(1)} ${stars}` : '';
+
+            const popupHtml = `
+              <div style="
+                background:#16100A;border:1px solid rgba(200,150,90,0.22);
+                border-radius:14px;padding:0;overflow:hidden;
+                min-width:200px;max-width:240px;
+                box-shadow:0 8px 32px rgba(0,0,0,0.55);
+              ">
+                ${p.image_url ? `<div style="width:100%;height:110px;background:url('${p.image_url}') center/cover no-repeat;"></div>` : `<div style="width:100%;height:60px;background:rgba(200,150,90,0.08);display:flex;align-items:center;justify-content:center;font-size:22px;">✦</div>`}
+                <div style="padding:12px 14px 14px;">
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#FAF8F5;font-family:'DM Sans',sans-serif;line-height:1.3;">${p.name}</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:rgba(253,249,242,0.45);font-family:'DM Sans',sans-serif;">${p.category}${ratingLabel ? ` · ${ratingLabel}` : ''}</p>
+                  <button
+                    onclick="window.__ariaAskPlace && window.__ariaAskPlace('${p.name.replace(/'/g, "\\'")}')"
+                    style="
+                      margin-top:10px;width:100%;padding:8px 0;
+                      background:rgba(200,150,90,0.15);
+                      border:1px solid rgba(200,150,90,0.28);
+                      border-radius:8px;color:#C8965A;
+                      font-size:12px;font-weight:600;
+                      cursor:pointer;font-family:'DM Sans',sans-serif;
+                      letter-spacing:0.04em;
+                    "
+                  >Ask Aria about this →</button>
+                </div>
+              </div>`;
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const popup = new mb.Popup({
+              closeButton: false,
+              closeOnClick: true,
+              offset: 14,
+              className: 'aria-map-popup',
+              maxWidth: 'none',
+            })
+              .setLngLat([p.longitude, p.latitude])
+              .setHTML(popupHtml)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .addTo(map as any);
+
+            popupRef.current = popup;
+            onPinClickRef.current(p);
+          });
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const marker = new mb.Marker({ element: el }).setLngLat([p.longitude, p.latitude]).addTo(map as any);
           markersRef.current.push(marker);
@@ -1089,6 +1167,16 @@ export default function AriaPage() {
           55%  { transform: scale(1.45); opacity: 1; }
           80%  { transform: scale(0.9); }
           100% { transform: scale(1); }
+        }
+        /* Strip Mapbox popup chrome — we supply our own styled HTML */
+        .aria-map-popup .mapboxgl-popup-content {
+          background: transparent !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+        .aria-map-popup .mapboxgl-popup-tip {
+          border-top-color: rgba(200,150,90,0.22) !important;
         }
       `}</style>
     </div>
