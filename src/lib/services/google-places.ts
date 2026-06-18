@@ -16,20 +16,25 @@ import { getGooglePlacesApiKey } from '@/lib/env';
 import type { PlaceUpsertInput } from '@/lib/supabase/places-repository';
 
 const GOOGLE_PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
-const PER_CATEGORY_LIMIT = 12;
+const PER_CATEGORY_LIMIT = 20;
 
 // Google type keywords to search per category
 const CATEGORY_TYPE_MAP: Record<string, string> = {
-  dining:     'restaurant',
-  nightlife:  'night_club',
-  shopping:   'shopping_mall',
-  nature:     'park',
-  historical: 'museum',
-  wellness:   'spa',
-  family:     'zoo',
-  fun_places: 'amusement_park',
-  top_places: 'tourist_attraction',
+  dining:      'restaurant',
+  cafe:        'cafe',
+  nightlife:   'night_club',
+  bar:         'bar',
+  shopping:    'shopping_mall',
+  nature:      'park',
+  beach:       'natural_feature',
+  historical:  'museum',
+  art:         'art_gallery',
+  wellness:    'spa',
+  family:      'zoo',
+  fun_places:  'amusement_park',
+  top_places:  'tourist_attraction',
   local_spots: 'point_of_interest',
+  lodging:     'lodging',
 };
 
 export interface GooglePlacesSearchParams {

@@ -11,6 +11,8 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/client';
 import { requireAdminKey } from '@/lib/auth/require-admin-key';
 
+export const maxDuration = 300;
+
 interface SyncPlacesBody {
   mode?: 'single_region' | 'all_active_regions';
   region_id?: string;
