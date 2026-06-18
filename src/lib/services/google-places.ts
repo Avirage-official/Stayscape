@@ -16,8 +16,21 @@ import { getGooglePlacesApiKey } from '@/lib/env';
 import type { PlaceUpsertInput } from '@/lib/supabase/places-repository';
 
 const GOOGLE_PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
-const NEARBY_PAGE_SIZE = 20;
-const NEARBY_MAX_RESULTS = 60; // API cap (3 pages × 20)
+const PER_CATEGORY_LIMIT = 12;
+
+// Google type keywords to search per category
+const CATEGORY_TYPE_MAP: Record<string, string> = {
+  dining:     'restaurant',
+  nightlife:  'night_club',
+  shopping:   'shopping_mall',
+  nature:     'park',
+  historical: 'museum',
+  wellness:   'spa',
+  family:     'zoo',
+  fun_places: 'amusement_park',
+  top_places: 'tourist_attraction',
+  local_spots: 'point_of_interest',
+};
 
 export interface GooglePlacesSearchParams {
   latitude: number;
@@ -73,46 +86,62 @@ export async function searchPlaces(
   params: GooglePlacesSearchParams,
 ): Promise<PlaceUpsertInput[]> {
   const key = getGooglePlacesApiKey();
-  const { latitude, longitude, radius_meters = 5000, limit = 50, country_code = '' } = params;
-  const cap = Math.min(limit, NEARBY_MAX_RESULTS);
+  const { latitude, longitude, radius_meters = 5000, country_code = '' } = params;
 
+  const seen = new Map<string, PlaceUpsertInput>(); // dedup by place_id
+
+  for (const [, googleType] of Object.entries(CATEGORY_TYPE_MAP)) {
+    const results = await fetchCategoryPlaces({
+      key, latitude, longitude, radius_meters, country_code,
+      googleType, limit: PER_CATEGORY_LIMIT,
+    });
+    for (const p of results) {
+      if (!seen.has(p.external_id!)) seen.set(p.external_id!, p);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+async function fetchCategoryPlaces({
+  key, latitude, longitude, radius_meters, country_code, googleType, limit,
+}: {
+  key: string; latitude: number; longitude: number; radius_meters: number;
+  country_code: string; googleType: string; limit: number;
+}): Promise<PlaceUpsertInput[]> {
   const baseUrl = new URL(`${GOOGLE_PLACES_BASE}/nearbysearch/json`);
   baseUrl.searchParams.set('location', `${latitude},${longitude}`);
   baseUrl.searchParams.set('radius', String(radius_meters));
+  baseUrl.searchParams.set('type', googleType);
   baseUrl.searchParams.set('key', key);
 
   const places: PlaceUpsertInput[] = [];
   let pageToken: string | undefined;
 
-  while (places.length < cap) {
+  while (places.length < limit) {
     const pageUrl = new URL(baseUrl.toString());
     if (pageToken) pageUrl.searchParams.set('pagetoken', pageToken);
 
     const res = await fetch(pageUrl.toString(), { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Google Places API error: ${res.status} ${res.statusText} — ${body}`);
-    }
+    if (!res.ok) break; // skip category on error, don't abort whole sync
 
     const json = (await res.json()) as GoogleNearbyResponse;
-    if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
-      throw new Error(`Google Places API status: ${json.status}`);
-    }
+    if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') break;
 
     for (const p of json.results ?? []) {
-      if (p.name && p.geometry?.location) {
+      if (p.name && p.geometry?.location && places.length < limit) {
         places.push(normalizePlaceBasic(p, country_code));
       }
     }
 
     pageToken = json.next_page_token;
-    if (!pageToken || places.length >= cap) break;
+    if (!pageToken || places.length >= limit) break;
 
-    // Google requires a delay before the next_page_token becomes valid
+    // Google requires a short delay before next_page_token becomes valid
     await new Promise(r => setTimeout(r, 2000));
   }
 
-  return places.slice(0, cap);
+  return places;
 }
 
 export async function getPlaceDetails(googlePlaceId: string): Promise<PlaceUpsertInput | null> {
