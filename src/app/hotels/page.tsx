@@ -1,3 +1,19 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'For Hotels — Elevate Your Guest Experience',
+  description: 'Give your guests a smarter stay. Stayscape connects hotels with travellers through an AI-powered concierge — requests, recommendations, and real-time communication in one place.',
+  openGraph: {
+    title: 'For Hotels — Elevate Your Guest Experience | Stayscape',
+    description: 'Give your guests a smarter stay. Stayscape connects hotels with travellers through an AI-powered concierge.',
+    url: 'https://www.thestayscape.com/hotels',
+  },
+  twitter: {
+    title: 'For Hotels — Elevate Your Guest Experience | Stayscape',
+    description: 'Give your guests a smarter stay. Stayscape connects hotels with travellers through an AI-powered concierge.',
+  },
+}
+
 import LandingNav from '@/components/landing/LandingNav'
 import HeroSection from '@/components/landing/HeroSection'
 import PitchStory from '@/components/landing/PitchStory'
