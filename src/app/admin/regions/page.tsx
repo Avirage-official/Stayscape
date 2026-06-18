@@ -116,6 +116,7 @@ export default function AdminRegionsPage() {
       const km = radiusKm ?? region.radius_km;
       if (km != null) body.radius_meters = Math.round(km * 1000);
       if (region.countryCode) body.country_code = region.countryCode;
+      body.skip_enrichment = true;
     }
 
     try {
