@@ -323,8 +323,10 @@ export async function enrichNewPlaces(
         await enrichPlace(supabase, data as InternalPlace);
         enriched++;
       }
-    } catch {
+    } catch (err) {
       failed++;
+      const message = err instanceof Error ? err.message : 'Unknown enrichment error';
+      await supabase.from('places').update({ enrichment_error: message }).eq('id', id);
     }
 
     // Small delay to avoid hitting API rate limits
