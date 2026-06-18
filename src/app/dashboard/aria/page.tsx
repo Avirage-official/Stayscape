@@ -6,6 +6,7 @@ import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import { useAuth } from '@/lib/context/auth-context';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import GuestArrivalSkeleton from '@/components/guest-lounge/GuestArrivalSkeleton';
+import { CATEGORY_COLORS } from '@/lib/mapbox/config';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'], weight: ['300', '400', '600'], style: ['normal', 'italic'], display: 'swap',
@@ -254,12 +255,14 @@ export default function AriaPage() {
             -webkit-tap-highlight-color: transparent;
           `;
 
+          const catColor = CATEGORY_COLORS[p.category] ?? '#C8965A';
           const el = document.createElement('div');
           el.dataset.placeId = p.id;
+          el.dataset.catColor = catColor;
           el.style.cssText = `
             width: 10px; height: 10px;
-            background: rgba(200,150,90,0.45);
-            border: 1.5px solid rgba(200,150,90,0.7);
+            background: ${catColor}99;
+            border: 1.5px solid ${catColor};
             border-radius: 50%;
             pointer-events: none;
             transition: all 220ms ease;
@@ -289,7 +292,10 @@ export default function AriaPage() {
                 ${!isMobile && p.image_url ? `<div style="width:100%;height:110px;background:url('${p.image_url}') center/cover no-repeat;"></div>` : ''}
                 <div style="padding:12px 14px 14px;">
                   <p style="margin:0;font-size:14px;font-weight:600;color:#FAF8F5;font-family:'DM Sans',sans-serif;line-height:1.3;">${p.name}</p>
-                  <p style="margin:4px 0 0;font-size:11px;color:rgba(253,249,242,0.45);font-family:'DM Sans',sans-serif;">${p.category}${ratingLabel ? ` · ${ratingLabel}` : ''}</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:rgba(253,249,242,0.45);font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;">
+                    <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${catColor};flex-shrink:0;"></span>
+                    ${p.category.replace(/_/g, ' ')}${ratingLabel ? ` · ${ratingLabel}` : ''}
+                  </p>
                   <button
                     onclick="window.__ariaAskPlace && window.__ariaAskPlace('${p.name.replace(/'/g, "\\'")}')"
                     style="
@@ -353,12 +359,13 @@ export default function AriaPage() {
       // _dotEl is the small visual circle; getElement() is the 44px touch wrapper
       const dot: HTMLDivElement = m._dotEl ?? m.getElement();
       const placeId = dot.dataset.placeId;
+      const catColor = dot.dataset.catColor ?? '#C8965A';
       const isHighlighted = placeId ? highlightedIds.has(placeId) : false;
       const wasHighlighted = dot.dataset.highlighted === '1';
       dot.style.width = isHighlighted ? '18px' : '10px';
       dot.style.height = isHighlighted ? '18px' : '10px';
-      dot.style.background = isHighlighted ? GOLD : 'rgba(200,150,90,0.45)';
-      dot.style.borderColor = isHighlighted ? GOLD : 'rgba(200,150,90,0.7)';
+      dot.style.background = isHighlighted ? GOLD : `${catColor}99`;
+      dot.style.borderColor = isHighlighted ? GOLD : catColor;
       m.getElement().style.zIndex = isHighlighted ? '10' : '1';
       if (isHighlighted && !wasHighlighted) {
         dot.style.animation = 'none';
