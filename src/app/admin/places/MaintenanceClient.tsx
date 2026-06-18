@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { PlaceRow } from './page';
 import PlacesTableClient from './PlacesTableClient';
 
@@ -47,7 +47,7 @@ function ActionBtn({ label, state, onClick }: { label: string; state: ActionStat
   );
 }
 
-function MaintenanceEntry({ row }: { row: MaintenanceRow }) {
+function MaintenanceEntry({ row, selected, onToggle }: { row: MaintenanceRow; selected: boolean; onToggle: () => void }) {
   const [enrichState, setEnrichState] = useState<ActionState>('idle');
   const [imageState, setImageState] = useState<ActionState>('idle');
   const [errorDetail, setErrorDetail] = useState<string | null>(row.enrichment_error);
@@ -76,13 +76,20 @@ function MaintenanceEntry({ row }: { row: MaintenanceRow }) {
   ].filter(Boolean) as string[];
 
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: selected ? 'rgba(201,168,76,0.04)' : undefined }}>
       {/* Issue banner */}
       <div style={{
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
         gap: 12, padding: '12px 16px',
         background: 'rgba(255,255,255,0.015)',
       }}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          style={{ width: 14, height: 14, accentColor: '#C9A84C', cursor: 'pointer', flexShrink: 0, marginTop: 3 }}
+        />
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
             {issues.map(i => (
@@ -142,6 +149,8 @@ function MaintenanceEntry({ row }: { row: MaintenanceRow }) {
 
 export default function MaintenanceClient({ rows }: { rows: MaintenanceRow[] }) {
   const [filter, setFilter] = useState<'all' | 'no_image' | 'not_enriched' | 'error'>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const filtered = rows.filter(r => {
     if (filter === 'no_image') return !r.image_url;
@@ -156,6 +165,43 @@ export default function MaintenanceClient({ rows }: { rows: MaintenanceRow[] }) 
     not_enriched: rows.filter(r => !r.ai_enriched_at).length,
     error: rows.filter(r => !!r.enrichment_error).length,
   };
+
+  const allChecked = filtered.length > 0 && filtered.every(r => selected.has(r.id));
+  const someChecked = filtered.some(r => selected.has(r.id)) && !allChecked;
+
+  function toggleAll() {
+    setSelected(allChecked
+      ? new Set([...selected].filter(id => !filtered.find(r => r.id === id)))
+      : new Set([...selected, ...filtered.map(r => r.id)])
+    );
+  }
+
+  function toggleOne(id: string) {
+    setSelected((s: Set<string>) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  async function bulkDelete() {
+    const ids = (Array.from(selected) as string[]).filter(id => filtered.some(r => r.id === id));
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} place(s)? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      const res = await fetch('/api/admin/places/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        setSelected((s: Set<string>) => { const n = new Set(s); ids.forEach(id => n.delete(id)); return n; });
+        // Refresh the page to re-fetch maintenance data
+        window.location.reload();
+      }
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  const selectedInView = filtered.filter(r => selected.has(r.id)).length;
 
   return (
     <div>
@@ -195,6 +241,33 @@ export default function MaintenanceClient({ rows }: { rows: MaintenanceRow[] }) 
         ))}
       </div>
 
+      {/* Bulk delete bar */}
+      {selectedInView > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 16px', marginBottom: 8,
+          borderRadius: 12, border: '1px solid rgba(220,80,60,0.25)',
+          background: 'rgba(220,80,60,0.08)',
+        }}>
+          <span style={{ fontSize: 13, color: 'rgba(220,80,60,0.9)' }}>
+            {selectedInView} place{selectedInView !== 1 ? 's' : ''} selected
+          </span>
+          <button
+            onClick={() => void bulkDelete()}
+            disabled={bulkDeleting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              background: '#DC503C', border: 'none', color: '#fff',
+              cursor: bulkDeleting ? 'default' : 'pointer',
+              opacity: bulkDeleting ? 0.6 : 1,
+            }}
+          >
+            {bulkDeleting ? 'Deleting…' : `Delete ${selectedInView}`}
+          </button>
+        </div>
+      )}
+
       {/* List */}
       <div style={{
         border: '1px solid rgba(255,255,255,0.08)',
@@ -210,7 +283,34 @@ export default function MaintenanceClient({ rows }: { rows: MaintenanceRow[] }) 
             No issues in this category.
           </div>
         ) : (
-          filtered.map(row => <MaintenanceEntry key={row.id} row={row} />)
+          <>
+            {/* Select-all header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(255,255,255,0.015)',
+            }}>
+              <input
+                type="checkbox"
+                checked={allChecked}
+                ref={(el: HTMLInputElement | null) => { if (el) el.indeterminate = someChecked; }}
+                onChange={toggleAll}
+                style={{ width: 14, height: 14, accentColor: '#C9A84C', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.30)' }}>
+                Select all
+              </span>
+            </div>
+            {filtered.map(row => (
+              <MaintenanceEntry
+                key={row.id}
+                row={row}
+                selected={selected.has(row.id)}
+                onToggle={() => toggleOne(row.id)}
+              />
+            ))}
+          </>
         )}
       </div>
 
