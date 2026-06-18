@@ -9,6 +9,7 @@ import CookieConsent from "@/components/CookieConsent";
 import NextTopLoader from "nextjs-toploader";
 import PageTransition from "@/components/PageTransition";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import InstallPrompt from "@/components/InstallPrompt";
 
 /*
   TYPOGRAPHY RATIONALE
@@ -111,8 +112,7 @@ export default function RootLayout({
       <head>
         <meta name="theme-color" content="#0A0806" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.svg" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.svg" />
+        <link rel="apple-touch-icon" href="/web-app-manifest-192x192.png" />
       </head>
       <body className={`${instrumentSans.variable} ${fraunces.variable} ${spectral.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         {/* Gold progress bar — intercepts pushState so it shows during navigation */}
@@ -137,6 +137,7 @@ export default function RootLayout({
         </ThemeProvider>
         <CookieConsent />
         <ServiceWorkerRegistration />
+        <InstallPrompt />
       </body>
     </html>
   );
