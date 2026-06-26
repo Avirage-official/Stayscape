@@ -11,6 +11,7 @@ const CATEGORIES = [
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type UploadState = 'idle' | 'uploading' | 'done' | 'error';
+type ImageActionState = 'idle' | 'busy' | 'error';
 
 interface EditState {
   name: string;
@@ -65,6 +66,7 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [uploadStates, setUploadStates] = useState<Record<string, UploadState>>({});
+  const [imageActionStates, setImageActionStates] = useState<Record<string, ImageActionState>>({});
   const primaryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const extraInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -147,6 +149,70 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
       setTimeout(() => setUploadStates((s) => ({ ...s, [key]: 'idle' })), 2000);
     } catch {
       setUploadStates((s) => ({ ...s, [key]: 'error' }));
+    }
+  }
+
+  async function deleteImage(placeId: string, url: string, slot: 'primary' | 'extra') {
+    const key = `${placeId}_del_${url}`;
+    setImageActionStates((s) => ({ ...s, [key]: 'busy' }));
+    try {
+      const res = await fetch('/api/admin/places/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId, url, slot }),
+      });
+      const data = await res.json() as { image_url?: string | null; image_urls?: string[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      // Update local edit state with new image lists from server
+      setEdits((e) => {
+        const edit = e[placeId];
+        if (!edit) return e;
+        return {
+          ...e,
+          [placeId]: {
+            ...edit,
+            image_url: data.image_url ?? '',
+            image_urls: (data.image_urls ?? []).join('\n'),
+          },
+        };
+      });
+      // Also update the row thumbnail
+      setRows((r) => r.map((row) => row.id === placeId ? { ...row, image_url: data.image_url ?? null } : row));
+    } catch {
+      setImageActionStates((s) => ({ ...s, [key]: 'error' }));
+    } finally {
+      setImageActionStates((s) => { const next = { ...s }; delete next[key]; return next; });
+    }
+  }
+
+  async function setAsPrimary(placeId: string, url: string) {
+    const key = `${placeId}_promote_${url}`;
+    setImageActionStates((s) => ({ ...s, [key]: 'busy' }));
+    try {
+      const res = await fetch('/api/admin/places/set-primary-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId, url }),
+      });
+      const data = await res.json() as { image_url?: string; image_urls?: string[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setEdits((e) => {
+        const edit = e[placeId];
+        if (!edit) return e;
+        return {
+          ...e,
+          [placeId]: {
+            ...edit,
+            image_url: data.image_url ?? '',
+            image_urls: (data.image_urls ?? []).join('\n'),
+          },
+        };
+      });
+      setRows((r) => r.map((row) => row.id === placeId ? { ...row, image_url: data.image_url ?? null } : row));
+    } catch {
+      setImageActionStates((s) => ({ ...s, [key]: 'error' }));
+    } finally {
+      setImageActionStates((s) => { const next = { ...s }; delete next[key]; return next; });
     }
   }
 
@@ -306,53 +372,122 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
 
                   {/* Images */}
                   <div className="space-y-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Images</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                        Images
+                        <span className="ml-2 text-white/20 normal-case font-normal tracking-normal">
+                          {(() => {
+                            const total = (edit.image_url ? 1 : 0) + edit.image_urls.split('\n').filter(u => u.trim()).length;
+                            return `${total} image${total !== 1 ? 's' : ''}`;
+                          })()}
+                        </span>
+                      </p>
+                    </div>
+
                     <div className="flex gap-3 flex-wrap">
-                      {/* Primary preview + upload */}
-                      <div className="space-y-2">
-                        <div className="relative h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                          {edit.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
+                      {/* Primary image */}
+                      {edit.image_url ? (
+                        <div className="space-y-1.5">
+                          <div className="relative h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-[#C9A84C]/30 group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={edit.image_url} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center text-white/20 text-xs">No image</div>
-                          )}
-                          {primaryUploadState === 'uploading' && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                              <span className="text-xs text-white">Uploading…</span>
+                            {/* Overlay on hover */}
+                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                title="Delete primary image"
+                                onClick={() => void deleteImage(row.id, edit.image_url, 'primary')}
+                                disabled={imageActionStates[`${row.id}_del_${edit.image_url}`] === 'busy'}
+                                className="flex h-7 w-7 items-center justify-center rounded-md bg-red-500/80 hover:bg-red-500 text-white disabled:opacity-50 transition-colors"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                              </button>
                             </div>
-                          )}
+                            {primaryUploadState === 'uploading' && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                                <span className="text-xs text-white">Uploading…</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <span className="flex-1 text-center text-[9px] font-semibold uppercase tracking-widest text-[#C9A84C]/70">Primary</span>
+                            <button
+                              type="button"
+                              onClick={() => primaryInputRefs.current[row.id]?.click()}
+                              className="text-[9px] text-white/30 hover:text-white/60 transition-colors"
+                              title="Replace primary image"
+                            >Replace</button>
+                          </div>
                         </div>
-                        <input
-                          ref={(el) => { primaryInputRefs.current[row.id] = el; }}
-                          type="file" accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) void uploadImage(row.id, file, 'primary');
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => primaryInputRefs.current[row.id]?.click()}
-                          className="w-full rounded-md border border-white/10 bg-white/[0.03] py-1 text-[10px] text-white/50 hover:text-white/80 hover:border-white/20 transition-colors"
-                        >
-                          {primaryUploadState === 'done' ? '✓ Uploaded' : 'Upload primary'}
-                        </button>
-                      </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <div className="h-24 w-36 rounded-lg border border-dashed border-white/15 bg-white/[0.02] flex items-center justify-center">
+                            <span className="text-[10px] text-white/20">No primary</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => primaryInputRefs.current[row.id]?.click()}
+                            className="w-full rounded-md border border-white/10 bg-white/[0.03] py-1 text-[10px] text-white/50 hover:text-white/80 hover:border-white/20 transition-colors"
+                          >
+                            {primaryUploadState === 'done' ? '✓ Uploaded' : 'Upload primary'}
+                          </button>
+                        </div>
+                      )}
+
+                      <input
+                        ref={(el) => { primaryInputRefs.current[row.id] = el; }}
+                        type="file" accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadImage(row.id, file, 'primary');
+                        }}
+                      />
 
                       {/* Extra images */}
-                      {edit.image_urls.split('\n').map((u) => u.trim()).filter(Boolean).map((url, i) => (
-                        <div key={i} className="h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={url} alt="" className="h-full w-full object-cover" />
+                      {edit.image_urls.split('\n').map((u) => u.trim()).filter(Boolean).map((imgUrl) => (
+                        <div key={imgUrl} className="space-y-1.5">
+                          <div className="relative h-24 w-36 rounded-lg overflow-hidden bg-white/5 border border-white/10 group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imgUrl} alt="" className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                              {/* Set as primary */}
+                              <button
+                                type="button"
+                                title="Set as primary"
+                                onClick={() => void setAsPrimary(row.id, imgUrl)}
+                                disabled={imageActionStates[`${row.id}_promote_${imgUrl}`] === 'busy'}
+                                className="flex h-7 w-7 items-center justify-center rounded-md bg-[#C9A84C]/80 hover:bg-[#C9A84C] text-black disabled:opacity-50 transition-colors"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              </button>
+                              {/* Delete extra */}
+                              <button
+                                type="button"
+                                title="Delete image"
+                                onClick={() => void deleteImage(row.id, imgUrl, 'extra')}
+                                disabled={imageActionStates[`${row.id}_del_${imgUrl}`] === 'busy'}
+                                className="flex h-7 w-7 items-center justify-center rounded-md bg-red-500/80 hover:bg-red-500 text-white disabled:opacity-50 transition-colors"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-center text-[9px] text-white/20">Extra</p>
                         </div>
                       ))}
 
-                      {/* Upload extra */}
-                      <div className="space-y-2">
-                        <div className="h-24 w-36 rounded-lg border border-dashed border-white/15 bg-white/[0.02] flex items-center justify-center">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20"><path d="M12 5v14M5 12h14"/></svg>
+                      {/* Add extra image slot */}
+                      <div className="space-y-1.5">
+                        <div
+                          className="h-24 w-36 rounded-lg border border-dashed border-white/15 bg-white/[0.02] flex items-center justify-center cursor-pointer hover:border-white/30 hover:bg-white/[0.04] transition-colors"
+                          onClick={() => extraInputRefs.current[row.id]?.click()}
+                        >
+                          {extraUploadState === 'uploading' ? (
+                            <span className="text-[10px] text-white/40">Uploading…</span>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20"><path d="M12 5v14M5 12h14"/></svg>
+                          )}
                         </div>
                         <input
                           ref={(el) => { extraInputRefs.current[row.id] = el; }}
@@ -363,24 +498,27 @@ export default function PlacesTableClient({ rows: initialRows }: { rows: PlaceRo
                             if (file) void uploadImage(row.id, file, 'extra');
                           }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => extraInputRefs.current[row.id]?.click()}
-                          className="w-full rounded-md border border-white/10 bg-white/[0.03] py-1 text-[10px] text-white/50 hover:text-white/80 hover:border-white/20 transition-colors"
-                        >
-                          {extraUploadState === 'uploading' ? 'Uploading…' : extraUploadState === 'done' ? '✓ Added' : 'Add extra'}
-                        </button>
+                        <p className="text-center text-[9px] text-white/20">
+                          {extraUploadState === 'done' ? '✓ Added' : 'Add image'}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Field label="Primary Image URL">
-                        <input type="url" value={edit.image_url} onChange={(e) => setField(row.id, 'image_url', e.target.value)} placeholder="https://…" className={inputCls} />
-                      </Field>
-                      <Field label="Additional Image URLs (one per line)">
-                        <textarea rows={3} value={edit.image_urls} onChange={(e) => setField(row.id, 'image_urls', e.target.value)} placeholder={"https://…\nhttps://…"} className={`${inputCls} resize-none py-2 h-auto`} />
-                      </Field>
-                    </div>
+                    {/* Manual URL fallback (collapsed by default) */}
+                    <details className="group">
+                      <summary className="cursor-pointer text-[10px] text-white/25 hover:text-white/50 transition-colors select-none list-none flex items-center gap-1">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-open:rotate-90 transition-transform"><path d="M9 18l6-6-6-6"/></svg>
+                        Edit URLs manually
+                      </summary>
+                      <div className="mt-2 grid gap-3 md:grid-cols-2">
+                        <Field label="Primary Image URL">
+                          <input type="url" value={edit.image_url} onChange={(e) => setField(row.id, 'image_url', e.target.value)} placeholder="https://…" className={inputCls} />
+                        </Field>
+                        <Field label="Additional Image URLs (one per line)">
+                          <textarea rows={3} value={edit.image_urls} onChange={(e) => setField(row.id, 'image_urls', e.target.value)} placeholder={"https://…\nhttps://…"} className={`${inputCls} resize-none py-2 h-auto`} />
+                        </Field>
+                      </div>
+                    </details>
                   </div>
 
                   <hr className="border-white/[0.06]" />
