@@ -136,6 +136,10 @@ export async function enrichPlace(
         if (details.phone && !place.phone) {
           providerUpdates.phone = details.phone;
         }
+        // Always refresh city and country_code from Place Details — the
+        // Nearby Search basic record only has vicinity, not full address components.
+        if (details.city) providerUpdates.city = details.city;
+        if (details.country_code) providerUpdates.country_code = details.country_code;
 
         if (Object.keys(providerUpdates).length > 1) {
           await supabase
@@ -147,6 +151,8 @@ export async function enrichPlace(
             ...place,
             website: (providerUpdates.website as string | null) ?? place.website,
             phone: (providerUpdates.phone as string | null) ?? place.phone,
+            city: (providerUpdates.city as string | null) ?? place.city,
+            country_code: (providerUpdates.country_code as string | null) ?? place.country_code,
           };
         }
       }
@@ -155,25 +161,78 @@ export async function enrichPlace(
     }
   }
 
-  // Step 1b – Fetch a high-quality image if the place has none or only a
-  // Wikipedia-sourced one (which tends to be low-res or off-topic).
-  const needsBetterImage =
-    !place.image_url ||
-    place.image_url.includes('wikimedia') ||
-    place.image_url.includes('wikipedia');
+  // Step 1b – Fetch high-quality images from Google Places.
+  // Always attempt this so we fill image_urls[] with as many photos as Google
+  // has (up to 10). Only skips if the place already has 5+ stored images.
+  const existingImageCount =
+    (enrichedPlace.image_urls?.length ?? 0) +
+    (enrichedPlace.image_url ? 1 : 0);
 
-  if (needsBetterImage) {
+  if (existingImageCount < 5) {
     try {
-      const betterImage = await fetchPlaceImage(supabase, place.id, place.name, place.city ?? '', place.country_code ?? '');
-      if (betterImage) {
-        await supabase
-          .from('places')
-          .update({ image_url: betterImage, updated_at: new Date().toISOString() })
-          .eq('id', place.id);
-        enrichedPlace = { ...enrichedPlace, image_url: betterImage };
+      const googleImages = await fetchAndStoreGooglePlaceImage(
+        supabase,
+        place.id,
+        place.name,
+        place.city ?? '',
+        place.country_code ?? '',
+        10,
+      );
+      if (googleImages.length > 0) {
+        const [primary, ...rest] = googleImages;
+        const imageUpdate: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+        // Only set primary image_url if the place doesn't already have one
+        if (!enrichedPlace.image_url) {
+          imageUpdate.image_url = primary;
+          enrichedPlace = { ...enrichedPlace, image_url: primary };
+        }
+        // Always extend image_urls[] with newly fetched photos (dedup)
+        const existingUrls = enrichedPlace.image_urls ?? [];
+        const merged = Array.from(new Set([...existingUrls, ...rest]));
+        imageUpdate.image_urls = merged;
+        enrichedPlace = { ...enrichedPlace, image_urls: merged };
+
+        await supabase.from('places').update(imageUpdate).eq('id', place.id);
       }
     } catch {
-      // Non-fatal
+      // Non-fatal — continue enrichment without new images
+    }
+  }
+
+  // Step 1c – Geographic filter: reject places whose actual country doesn't
+  // match the region's expected country. Handles border bleed (e.g. Singapore
+  // sync picking up Johor/Batam results from nearby-search radius).
+  if (enrichedPlace.region_id && enrichedPlace.country_code) {
+    try {
+      const { data: regionRow } = await supabase
+        .from('regions')
+        .select('country_code')
+        .eq('id', enrichedPlace.region_id)
+        .single();
+
+      if (regionRow?.country_code) {
+        const expectedCountry = (regionRow.country_code as string).toUpperCase();
+        const actualCountry = enrichedPlace.country_code.toUpperCase();
+        if (expectedCountry !== actualCountry) {
+          await supabase
+            .from('places')
+            .update({
+              is_active: false,
+              enrichment_error: `out_of_region: country mismatch (actual: ${actualCountry}, expected: ${expectedCountry})`,
+              ai_enriched_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', place.id);
+          console.log(
+            `[enrichPlace] Deactivated "${place.name}" — country mismatch (actual: ${actualCountry}, expected: ${expectedCountry})`,
+          );
+          return;
+        }
+      }
+    } catch {
+      // Non-fatal — if region lookup fails, continue enrichment
     }
   }
 

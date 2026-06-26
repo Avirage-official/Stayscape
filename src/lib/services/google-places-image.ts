@@ -49,7 +49,7 @@ export async function fetchAndStoreGooglePlaceImage(
 
       const photoRes = await fetch(
         `https://maps.googleapis.com/maps/api/place/photo` +
-          `?maxwidth=1600&photoreference=${encodeURIComponent(photoRef)}&key=${key}`,
+          `?maxwidth=4800&photoreference=${encodeURIComponent(photoRef)}&key=${key}`,
         { redirect: 'follow', signal: AbortSignal.timeout(15000) },
       );
       if (!photoRes.ok) continue;
