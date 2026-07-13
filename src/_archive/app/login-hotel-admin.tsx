@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
+import { getSupabaseBrowser } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +27,27 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/dashboard');
+    try {
+      const supabase = getSupabaseBrowser();
+      const token = supabase
+        ? (await supabase.auth.getSession()).data.session?.access_token
+        : null;
+
+      const res = await fetch('/api/hotel-admin/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        setError('No hotel admin account found for this email.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.push('/hotel-admin/dashboard');
+    } catch {
+      setError('No hotel admin account found for this email.');
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -110,7 +131,7 @@ export default function LoginPage() {
               letterSpacing: '0.06em', fontWeight: 400, margin: '0 0 6px',
             }}>Stayscape</h1>
             <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              Your travel companion
+              Hotel Admin Portal
             </p>
           </div>
 
@@ -175,6 +196,32 @@ export default function LoginPage() {
                 </div>
               </div>
             </form>
+          </div>
+
+          {/* Hotel onboarding note */}
+          <div style={{
+            border: '1px solid rgba(193,127,58,0.2)',
+            background: 'rgba(193,127,58,0.06)',
+            borderRadius: '10px', padding: '14px 18px', marginTop: '16px',
+          }}>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C17F3A', marginBottom: '8px' }}>
+              Hotel Admin
+            </p>
+            <p style={{ fontSize: '12px', color: 'rgba(250,248,245,0.45)', lineHeight: 1.6, margin: 0 }}>
+              Use the credentials from your Stayscape onboarding invite.
+            </p>
+          </div>
+
+          {/* Guest redirect */}
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <a
+              href="/guests"
+              style={{ fontSize: '12px', color: 'rgba(250,248,245,0.25)', letterSpacing: '0.05em', textDecoration: 'none', transition: 'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.5)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,248,245,0.25)')}
+            >
+              Are you a guest? Sign in here →
+            </a>
           </div>
         </div>
       </div>
