@@ -19,13 +19,15 @@ export default function PageTransition({ children }: { children: React.ReactNode
     timers.current.forEach(clearTimeout)
     timers.current = []
 
-    // 1 — Hide content, start line at 0
-    setContentVisible(false)
-    setSweeping(true)
-    setLineWidth(0)
+    // 1 — Hide content, start line at 0 (deferred to avoid sync setState in effect)
+    const t0 = setTimeout(() => {
+      setContentVisible(false)
+      setSweeping(true)
+      setLineWidth(0)
+    }, 0)
 
     // 2 — Trigger CSS transition: line sweeps to full width
-    const t1 = setTimeout(() => setLineWidth(100), 16)
+    const t1 = setTimeout(() => setLineWidth(100), 32)
 
     // 3 — After sweep (220ms), reveal content
     const t2 = setTimeout(() => {
@@ -38,7 +40,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
       setLineWidth(0)
     }, 440)
 
-    timers.current = [t1, t2, t3]
+    timers.current = [t0, t1, t2, t3]
   }, [pathname])
 
   return (
