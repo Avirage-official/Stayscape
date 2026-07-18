@@ -267,9 +267,20 @@ export default function HomePage() {
               </button>
             </form>
 
+            <div className="hp-card-divider">
+              <span className="hp-card-divider-text">or</span>
+            </div>
+
+            <button
+              type="button"
+              className="hp-signup-btn"
+              onClick={() => router.push('/signup')}
+            >
+              Create an account
+            </button>
+
             <p className="hp-card-footer">
-              New to Stayscape?{' '}
-              <button className="hp-link" onClick={() => router.push('/signup')}>Create an account</button>
+              Free forever · No credit card needed
             </p>
           </div>
 
@@ -496,18 +507,42 @@ export default function HomePage() {
         }
         .hp-submit:disabled { opacity: 0.45; cursor: not-allowed; }
         .hp-submit-inner { display: inline-flex; align-items: center; gap: 8px; }
+        .hp-card-divider {
+          display: flex; align-items: center;
+          margin: clamp(12px, 2vh, 18px) 0;
+          gap: 10px;
+        }
+        .hp-card-divider::before,
+        .hp-card-divider::after {
+          content: ''; flex: 1; height: 1px;
+          background: rgba(250,248,245,0.15);
+        }
+        .hp-card-divider-text {
+          font-size: 11px; color: rgba(250,248,245,0.4);
+          font-family: var(--font-dm-sans), system-ui, sans-serif;
+          letter-spacing: 0.08em;
+        }
+        .hp-signup-btn {
+          width: 100%; padding: 12px;
+          border: 1.5px solid rgba(250,248,245,0.25);
+          border-radius: 12px;
+          background: rgba(250,248,245,0.07);
+          color: rgba(250,248,245,0.9);
+          font-family: var(--font-dm-sans), system-ui, sans-serif;
+          font-size: 14px; font-weight: 500;
+          cursor: pointer; letter-spacing: 0.01em;
+          transition: background 0.18s ease, border-color 0.18s ease;
+        }
+        .hp-signup-btn:hover {
+          background: rgba(250,248,245,0.14);
+          border-color: rgba(250,248,245,0.45);
+        }
         .hp-card-footer {
           font-family: var(--font-dm-sans), system-ui, sans-serif;
-          font-size: 12px; color: rgba(250,248,245,0.35);
-          text-align: center; margin: clamp(14px, 2.5vh, 20px) 0 0;
+          font-size: 11px; color: rgba(250,248,245,0.28);
+          text-align: center; margin: 10px 0 0;
+          letter-spacing: 0.02em;
         }
-        .hp-link {
-          background: none; border: none; cursor: pointer; padding: 0;
-          font-size: 12px; color: rgba(250,248,245,0.65);
-          font-family: var(--font-dm-sans), system-ui, sans-serif;
-          text-decoration: underline; text-underline-offset: 2px;
-        }
-        .hp-link:hover { color: #faf8f5; }
 
         /* ── Bottom location tag ────────────────────────────────── */
         .hp-location {
@@ -552,7 +587,7 @@ export default function HomePage() {
           .hp-left-inner { padding: 24px 22px 20px; }
           .hp-headline { font-size: clamp(22px, 5.5vw, 32px); }
           .hp-stat { display: none; }
-          .hp-right { min-height: 58vh; align-items: flex-end; padding-bottom: 32px; }
+          .hp-right { min-height: 60vh; align-items: center; padding: 24px 0; overflow-y: auto; }
           .hp-location { display: none; }
           .hp-card { width: calc(100% - 40px); }
         }
