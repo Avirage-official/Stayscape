@@ -268,7 +268,8 @@ export default function HomePage() {
             </form>
 
             <p className="hp-card-footer">
-              New to Stayscape? <button className="hp-link" onClick={() => router.push('/dashboard')}>Explore as guest</button>
+              New to Stayscape?{' '}
+              <button className="hp-link" onClick={() => router.push('/signup')}>Create an account</button>
             </p>
           </div>
 

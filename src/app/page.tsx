@@ -96,7 +96,7 @@ export default function WelcomePage() {
           {/* Actions */}
           <div className="wl-nav-actions">
             <button className="wl-btn-ghost" onClick={() => router.push('/login')}>Log in</button>
-            <button className="wl-btn-primary" onClick={() => router.push('/login')}>Sign up free</button>
+            <button className="wl-btn-primary" onClick={() => router.push('/signup')}>Sign up free</button>
           </div>
         </div>
       </nav>
@@ -138,7 +138,7 @@ export default function WelcomePage() {
           </p>
 
           <div className="wl-hero-cta wl-anim" style={{ animationDelay: '240ms' }}>
-            <button className="wl-cta-main" onClick={() => router.push('/login')}>
+            <button className="wl-cta-main" onClick={() => router.push('/signup')}>
               Get started free
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6"/>
@@ -219,7 +219,7 @@ export default function WelcomePage() {
         <div className="wl-section-inner wl-bottom-inner">
           <h2 className="wl-bottom-h2">Ready to travel differently?</h2>
           <p className="wl-bottom-sub">Join travellers discovering the world with Stayscape.</p>
-          <button className="wl-cta-main wl-cta-large" onClick={() => router.push('/login')}>
+          <button className="wl-cta-main wl-cta-large" onClick={() => router.push('/signup')}>
             Start for free
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6"/>

@@ -214,13 +214,12 @@ const C = {
   line:    '#E6E4DF',
 } as const;
 
-const SERIF = "'Cormorant Garamond', Georgia, serif";
-const SANS  = "'Outfit', system-ui, sans-serif";
+const SERIF = "var(--font-cormorant), Georgia, serif";
+const SANS  = "var(--font-dm-sans), system-ui, sans-serif";
 
 // ─── Global CSS ───────────────────────────────────────────────────────────────
 
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Outfit:wght@300;400;500;600&display=swap');
 
   @keyframes ob-up {
     from { opacity: 0; transform: translateY(20px); }
