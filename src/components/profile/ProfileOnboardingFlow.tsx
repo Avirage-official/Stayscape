@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 
@@ -451,7 +452,7 @@ function SearchDropdown({ options, value, onChange, placeholder, label, disabled
       </button>
 
       {/* Dropdown panel — position:fixed escapes the scroll container's overflow clip */}
-      {open && fixedRect && (
+      {open && fixedRect && createPortal(
         <div style={{
           position: 'fixed',
           top: fixedRect.top,
@@ -553,7 +554,8 @@ function SearchDropdown({ options, value, onChange, placeholder, label, disabled
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
